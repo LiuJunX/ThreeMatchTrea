@@ -182,8 +182,9 @@ public static class GameRules
         return FindMatches(in state).Count > 0;
     }
 
-    public static void ApplyGravity(ref GameState state)
+    public static List<TileMove> ApplyGravity(ref GameState state)
     {
+        var moves = new List<TileMove>();
         for (int x = 0; x < state.Width; x++)
         {
             int writeY = state.Height - 1;
@@ -196,24 +197,33 @@ public static class GameRules
                     {
                         state.Set(x, writeY, t);
                         state.Set(x, y, TileType.None);
+                        moves.Add(new TileMove(new Position(x, y), new Position(x, writeY)));
                     }
                     writeY--;
                 }
             }
         }
+        return moves;
     }
 
-    public static void Refill(ref GameState state)
+    public static List<TileMove> Refill(ref GameState state)
     {
-        for (int y = 0; y < state.Height; y++)
+        var newTiles = new List<TileMove>();
+        for (int x = 0; x < state.Width; x++)
         {
-            for (int x = 0; x < state.Width; x++)
+            int nextSpawnY = -1;
+            // Iterate from bottom up to assign "closest" spawn tile to deepest empty slot
+            for (int y = state.Height - 1; y >= 0; y--)
             {
                 if (state.Get(x, y) == TileType.None)
                 {
-                    state.Set(x, y, GenerateNonMatchingTile(ref state, x, y));
+                    var t = GenerateNonMatchingTile(ref state, x, y);
+                    state.Set(x, y, t);
+                    newTiles.Add(new TileMove(new Position(x, nextSpawnY), new Position(x, y)));
+                    nextSpawnY--;
                 }
             }
         }
+        return newTiles;
     }
 }

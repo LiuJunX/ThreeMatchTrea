@@ -94,13 +94,13 @@ public sealed class Match3Controller
             _view.RenderBoard(Get2DGridSnapshot());
 
             // 2. Gravity
-            GameRules.ApplyGravity(ref _state);
-            _view.ShowGravity();
+            var gravityMoves = GameRules.ApplyGravity(ref _state);
+            _view.ShowGravity(gravityMoves);
             _view.RenderBoard(Get2DGridSnapshot());
 
             // 3. Refill
-            GameRules.Refill(ref _state);
-            _view.ShowRefill();
+            var refillMoves = GameRules.Refill(ref _state);
+            _view.ShowRefill(refillMoves);
             _view.RenderBoard(Get2DGridSnapshot());
         }
     }

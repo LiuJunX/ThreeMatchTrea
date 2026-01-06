@@ -1,5 +1,6 @@
 @page "/"
 @using Match3.Core
+@using Match3.Core.Structs
 @rendermode InteractiveServer
 @implements IDisposable
 
@@ -18,6 +19,10 @@
                 <span class="stat-value status-text" data-testid="status-message">@StatusMessage</span>
             </div>
         </div>
+        <div class="settings-box" style="margin-top: 1rem; text-align: center;">
+             <label style="font-size: 0.8rem; color: #666; margin-right: 10px;">Drop Speed: @(DropSpeed)ms</label>
+             <input type="range" @bind="DropSpeed" @bind:event="oninput" min="100" max="1000" step="50" style="vertical-align: middle;" />
+        </div>
     </div>
 
     @if (Board != null)
@@ -35,6 +40,7 @@
                         var isMatched = MatchedPositions.Contains(new Position(px, py));
                         
                         <div class="tile @(isSelected ? "selected" : "") @(isMatched ? "matched" : "")" 
+                             style="@GetTileStyle(px, py)"
                              @onclick="() => OnTileClick(px, py)" 
                              data-testid="tile-@px-@py">
                             <span class="tile-content">@GetTileIcon(tile)</span>
@@ -222,6 +228,14 @@
     private string StatusMessage = "Ready";
     private HashSet<Position> MatchedPositions = new();
 
+    // Animation Controls
+    private int DropSpeed = 50;
+    private Dictionary<Position, int> _fallingOffsets = new();
+    private List<TileMove>? _currentMoves;
+    private bool _isGravityUpdate = false;
+    private bool _isRefillUpdate = false;
+    private bool _isAnimatingFall = false;
+
     // Animation Queue
     private Queue<Func<Task>> _animationQueue = new();
     private bool _isProcessingQueue = false;
@@ -312,10 +326,76 @@
         var boardCopy = (TileType[,])board.Clone();
         EnqueueAction(async () => 
         {
-            Board = boardCopy;
-            MatchedPositions.Clear(); // Clear matches on new board render
-            await InvokeAsync(StateHasChanged);
+            if (_isGravityUpdate || _isRefillUpdate)
+            {
+                PopulateOffsetsFromMoves();
+                
+                // 1. Render at new logical positions but visually offset (transition: none)
+                Board = boardCopy;
+                MatchedPositions.Clear();
+                _isAnimatingFall = true; // Signals GetTileStyle to use 'none' transition
+                await InvokeAsync(StateHasChanged);
+                
+                // 2. Short delay to allow DOM to reflow with the offset
+                await Task.Delay(50);
+                
+                // 3. Clear offsets to trigger slide (enable transition)
+                _fallingOffsets.Clear();
+                await InvokeAsync(StateHasChanged);
+                
+                // 4. Wait for animation to complete
+                await Task.Delay(DropSpeed);
+                
+                _isAnimatingFall = false;
+                _isGravityUpdate = false;
+                _isRefillUpdate = false;
+                _currentMoves = null;
+            }
+            else
+            {
+                Board = boardCopy;
+                MatchedPositions.Clear(); // Clear matches on new board render
+                await InvokeAsync(StateHasChanged);
+            }
         });
+    }
+
+    private void PopulateOffsetsFromMoves()
+    {
+        _fallingOffsets.Clear();
+        if (_currentMoves == null) return;
+
+        foreach (var move in _currentMoves)
+        {
+            // Calculate offset: To.Y - From.Y
+            // For gravity: 5 - 2 = 3. TranslateY(-300%)
+            // For refill: 2 - (-1) = 3. TranslateY(-300%)
+            var offset = move.To.Y - move.From.Y;
+            if (offset != 0)
+            {
+                _fallingOffsets[move.To] = offset;
+            }
+        }
+    }
+
+    private string GetTileStyle(int x, int y)
+    {
+        if (_fallingOffsets.TryGetValue(new Position(x, y), out int offset))
+        {
+            // Initial state: offset upwards, no transition
+            return $"transform: translateY(-{offset * 100}%); transition: none;";
+        }
+        
+        // If we are in the middle of an animation but this specific tile has no offset (didn't move),
+        // we still want standard behavior.
+        // But if we cleared offsets (second step), we want transition enabled.
+        if (_isAnimatingFall && _fallingOffsets.Count == 0)
+        {
+            // This is the 'slide down' phase
+             return $"transition: transform {DropSpeed}ms ease-in;";
+        }
+
+        return "";
     }
 
     public void OnSwapResult(bool success)
@@ -343,20 +423,26 @@
         });
     }
 
-    public void OnGravity()
+    public void OnGravity(IEnumerable<TileMove> moves)
     {
+        var movesList = moves.ToList();
         EnqueueAction(async () =>
         {
             StatusMessage = "Gravity...";
+            _isGravityUpdate = true;
+            _currentMoves = movesList;
             await InvokeAsync(StateHasChanged);
         });
     }
 
-    public void OnRefill()
+    public void OnRefill(IEnumerable<TileMove> moves)
     {
+         var movesList = moves.ToList();
          EnqueueAction(async () =>
         {
             StatusMessage = "Refilling...";
+            _isRefillUpdate = true;
+            _currentMoves = movesList;
             await InvokeAsync(StateHasChanged);
         });
     }
@@ -409,7 +495,7 @@
         public void RenderBoard(TileType[,] board) => _parent.UpdateBoard(board);
         public void ShowSwap(Position a, Position b, bool success) => _parent.OnSwapResult(success);
         public void ShowMatches(IReadOnlyCollection<Position> matched) => _parent.OnMatches(matched);
-        public void ShowGravity() => _parent.OnGravity();
-        public void ShowRefill() => _parent.OnRefill();
+        public void ShowGravity(IEnumerable<TileMove> moves) => _parent.OnGravity(moves);
+        public void ShowRefill(IEnumerable<TileMove> moves) => _parent.OnRefill(moves);
     }
 }
