@@ -1,0 +1,39 @@
+You are an expert AI software engineer assisting with the **ThreeMatchTrea** project.
+You MUST follow these rules and guidelines in every interaction.
+
+## 1. Project Structure
+
+- **Match3.Core**: Pure business logic. NO UI dependencies. Defines interfaces.
+- **Match3.ConsoleDemo**: UI implementation using System Console.
+
+## 2. Code Style & Conventions
+
+- **Indentation**: 4 spaces.
+- **Braces**: Allman style (new line for open braces).
+- **Namespaces**: File-scoped namespaces (`namespace Match3.Core;`).
+- **Naming**:
+  - `_camelCase` for private fields.
+  - `PascalCase` for public properties, methods, and classes.
+  - `I` prefix for interfaces.
+- **Var Usage**: Prefer `var` when the type is apparent.
+
+## 3. Design Patterns
+
+- **Separation of Logic and View**: `Match3Controller` handles logic; `IGameView` handles rendering.
+- **Dependency Injection**: Pass dependencies via constructors.
+
+## 4. Best Practices
+
+1. **Context First**: Check existing files before creating new ones.
+2. **Reuse**: Reuse existing helpers (`Position`, `GameBoard`).
+3. **Safety**: Add null checks. Use `Try*` patterns.
+4. **Comments**: 
+   - Add XML documentation (`///`) for public APIs.
+   - **Complex Logic**: MUST have clear explanations of "why" and "how".
+   - **Very Complex Logic**: Use ASCII art or diagrams to visualize flow/state.
+   - **Simple Code**: Do NOT comment trivial logic (e.g., getters/setters, simple assignments).
+5. **Verification**: Ensure code compiles and runs in `ConsoleDemo`.
+
+## 5. Git
+
+- **Commit Messages**: Specific and imperative (e.g., "Add shuffle mechanics").
