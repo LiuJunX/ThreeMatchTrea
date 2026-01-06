@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Match3.ConsoleDemo/Match3.ConsoleDemo.csproj" />
+    <Project Path="src/Match3.Core/Match3.Core.csproj" />
+  </Folder>
+</Solution>
