@@ -1,0 +1,146 @@
+@page "/"
+@using Match3.Core
+@rendermode InteractiveServer
+
+<PageTitle>Match3 Game</PageTitle>
+
+<h1>Match3 Game</h1>
+
+@if (Board != null)
+{
+    <div class="board-container">
+        <div class="board" style="display: grid; grid-template-columns: repeat(@Width, 50px); gap: 5px; width: fit-content; margin-bottom: 20px;">
+            @for (int y = 0; y < Height; y++)
+            {
+                @for (int x = 0; x < Width; x++)
+                {
+                    var px = x;
+                    var py = y;
+                    var tile = Board[x, y];
+                    var isSelected = SelectedX == px && SelectedY == py;
+                    <div class="tile" 
+                         @onclick="() => OnTileClick(px, py)" 
+                         data-testid="tile-@px-@py"
+                         style="width: 50px; height: 50px; border: 2px solid @(isSelected ? "black" : "#ccc"); display: flex; align-items: center; justify-content: center; cursor: pointer; background-color: @GetTileColor(tile); transition: all 0.2s;">
+                        @if (isSelected)
+                        {
+                            <span style="font-weight: bold; color: white; text-shadow: 1px 1px 1px black;">X</span>
+                        }
+                    </div>
+                }
+            }
+        </div>
+        <div class="status">
+            <p data-testid="matches-count">Matches: @LastMatchesCount</p>
+            <p data-testid="status-message">Status: @StatusMessage</p>
+            <button @onclick="ResetGame" class="btn btn-primary">Reset Game</button>
+        </div>
+    </div>
+}
+else
+{
+    <p>Loading...</p>
+}
+
+@code {
+    private Match3Controller? Controller;
+    private TileType[,]? Board;
+    private int Width = 8;
+    private int Height = 8;
+    private int SelectedX = -1;
+    private int SelectedY = -1;
+    private int LastMatchesCount = 0;
+    private string StatusMessage = "Ready";
+
+    protected override void OnInitialized()
+    {
+        StartNewGame();
+    }
+
+    private void StartNewGame()
+    {
+        var rng = new DefaultRandom(Environment.TickCount);
+        var view = new BlazorGameView(this);
+        Controller = new Match3Controller(Width, Height, 6, rng, view);
+        StatusMessage = "Ready";
+        LastMatchesCount = 0;
+        SelectedX = -1;
+        SelectedY = -1;
+    }
+
+    private void ResetGame()
+    {
+        StartNewGame();
+    }
+    
+    public void UpdateBoard(TileType[,] board)
+    {
+        Board = board;
+        StateHasChanged();
+    }
+
+    public void OnSwapResult(bool success)
+    {
+        StatusMessage = success ? "Swap Successful" : "Swap Failed";
+        SelectedX = -1;
+        SelectedY = -1;
+        StateHasChanged();
+    }
+    
+    public void OnMatches(int count)
+    {
+        LastMatchesCount = count;
+        StateHasChanged();
+    }
+
+    private void OnTileClick(int x, int y)
+    {
+        if (SelectedX == -1)
+        {
+            SelectedX = x;
+            SelectedY = y;
+            StatusMessage = $"Selected ({x}, {y})";
+        }
+        else
+        {
+            if (SelectedX == x && SelectedY == y)
+            {
+                SelectedX = -1;
+                SelectedY = -1;
+                StatusMessage = "Selection Cleared";
+                return;
+            }
+
+            var p1 = new Position(SelectedX, SelectedY);
+            var p2 = new Position(x, y);
+            StatusMessage = $"Swapping ({p1.X},{p1.Y}) with ({p2.X},{p2.Y})...";
+            
+            // This is synchronous in Controller but might trigger async view updates?
+            // Controller is synchronous.
+            Controller?.TrySwap(p1, p2);
+        }
+    }
+
+    private string GetTileColor(TileType t) => t switch
+    {
+        TileType.Red => "#ff4444",
+        TileType.Green => "#44ff44",
+        TileType.Blue => "#4444ff",
+        TileType.Yellow => "#ffff44",
+        TileType.Purple => "#ff44ff",
+        TileType.Orange => "#ffaa44",
+        _ => "#f0f0f0"
+    };
+    
+    class BlazorGameView : IGameView
+    {
+        private readonly Home _parent;
+        public BlazorGameView(Home parent) => _parent = parent;
+        
+        public void RenderBoard(TileType[,] board) => _parent.InvokeAsync(() => _parent.UpdateBoard(board));
+        public void ShowSwap(Position a, Position b, bool success) => _parent.InvokeAsync(() => _parent.OnSwapResult(success));
+        public void ShowMatches(IReadOnlyCollection<Position> matched) => _parent.InvokeAsync(() => _parent.OnMatches(matched.Count));
+        public void ShowGravity() {} 
+        public void ShowRefill() {} 
+    }
+}

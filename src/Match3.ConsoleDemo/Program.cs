@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using Match3.Core;
+using Match3.Core.Config;
+
 sealed class ConsoleView : IGameView
 {
     public void RenderBoard(TileType[,] board)
@@ -50,6 +53,26 @@ sealed class Program
 {
     static void Main(string[] args)
     {
+        // --- Config Loading Demo ---
+        Console.WriteLine("--- Initializing Game Config ---");
+        var configPath = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "../../../../../config.bin"));
+        var configManager = new ConfigManager();
+        try
+        {
+            configManager.Load(configPath);
+            Console.WriteLine("Config Loaded Successfully!");
+            foreach (var item in configManager.GetAllItems())
+            {
+                Console.WriteLine($"Loaded: {item}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load config: {ex.Message}");
+            Console.WriteLine($"Looking at: {configPath}");
+        }
+        Console.WriteLine("--------------------------------");
+
         int seed = Environment.TickCount;
         if (args.Length > 0 && int.TryParse(args[0], out var s))
         {
