@@ -34,20 +34,11 @@ public class Match3ControllerTests
         
         // Act
         // Swap (2,0) <-> (3,0)
-        // Note: TrySwap starts the animation state.
-        // Logic resolution happens in Update() after animation or immediately depending on implementation.
-        // In current Match3Controller:
-        // TrySwap -> Checks valid -> Sets AnimateSwap state -> Returns true.
-        // It does NOT resolve matches immediately. Matches are resolved in Update() after animation finishes?
-        // Let's check Controller implementation:
-        // TrySwap sets _currentState = ControllerState.AnimateSwap.
-        // Update(dt) calls AnimateTiles. If stable, it proceeds to ResolveStep.
-        
-        // Act
-        var result = controller.TrySwap(new Position(2, 0), new Position(3, 0));
+        controller.OnTap(new Position(2, 0));
+        controller.OnTap(new Position(3, 0));
 
         // Assert
-        Assert.True(result, "Swap should be accepted as valid move start");
+        Assert.Equal("Swapping...", controller.StatusMessage);
         
         // ShowSwap is called ONLY after animation finishes and logic is resolved.
         Assert.False(view.SwapSuccess.HasValue, "View should NOT be notified of swap result yet (animation pending)");
@@ -103,32 +94,11 @@ public class Match3ControllerTests
         
         // Act
         // Swap (0,0) <-> (1,0) -> G R. No match.
-        var result = controller.TrySwap(new Position(0, 0), new Position(1, 0));
+        controller.OnTap(new Position(0, 0));
+        controller.OnTap(new Position(1, 0));
 
         // Assert
-        Assert.True(result, "Swap start should be accepted initially even if it will fail later? Or does TrySwap check logic immediately?");
-        // Checking Match3Controller.TrySwap:
-        // if (!GameRules.IsValidMove(in _state, a, b)) return false;
-        // Wait, IsValidMove usually checks if they are adjacent. It does NOT check if it creates a match usually?
-        // Actually, let's check GameRules.IsValidMove.
-        // If IsValidMove ONLY checks adjacency, then result is true.
-        // If IsValidMove checks for resulting matches, then result is false.
-        // Assuming standard Match3, you can only swap if it results in a match.
-        // Let's assume IsValidMove checks adjacency. The match check happens after swap.
-        // Wait, if TrySwap returns false, then nothing happens.
-        // If TrySwap returns true, animation starts.
-        
-        // Re-reading Match3Controller.TrySwap:
-        // if (!GameRules.IsValidMove(in _state, a, b)) return false;
-        // GameRules.Swap(ref _state, a, b);
-        // ... _currentState = ControllerState.AnimateSwap;
-        // return true;
-        
-        // It seems it optimistically swaps.
-        // Then in Update -> AnimateSwap -> if (GameRules.HasMatches) ... else ... Revert.
-        
-        // So TrySwap returns true if adjacent.
-        Assert.True(result, "Swap should start (assuming IsValidMove only checks adjacency)");
+        Assert.Equal("Swapping...", controller.StatusMessage);
         
         // Pump update to finish swap animation
         int maxSteps = 100;

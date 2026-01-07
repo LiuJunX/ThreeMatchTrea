@@ -158,7 +158,7 @@ public sealed class Match3Controller
                 {
                     _view.ShowSwap(_swapA, _swapB, true);
                     _currentState = ControllerState.Resolving;
-                    ResolveStep();
+                    ResolveStep(_swapB);
                 }
                 else
                 {
@@ -186,18 +186,20 @@ public sealed class Match3Controller
         }
     }
 
-    private bool ResolveStep()
+    private bool ResolveStep(Position? focus = null)
     {
-        var matches = GameRules.FindMatches(in _state);
-        if (matches.Count == 0) return false;
+        var groups = GameRules.FindMatchGroups(in _state, focus);
+        if (groups.Count == 0) return false;
 
-        _view.ShowMatches(matches);
+        // Flatten for View
+        var allPositions = new HashSet<Position>();
+        foreach(var g in groups) 
+            foreach(var p in g.Positions) allPositions.Add(p);
+
+        _view.ShowMatches(allPositions);
         
-        // 1. Clear matches
-        foreach (var p in matches)
-        {
-             _state.SetTile(p.X, p.Y, new Tile(TileType.None, p.X, p.Y));
-        }
+        // 1. Process matches (Clear + Spawn Bombs)
+        GameRules.ProcessMatches(ref _state, groups);
 
         // 2. Gravity & Refill (Logic)
         // These methods now move Tile structs, preserving their old visual positions
@@ -269,5 +271,63 @@ public sealed class Match3Controller
     public void DebugSetTile(Position p, TileType t)
     {
         _state.SetTile(p.X, p.Y, new Tile(t, p.X, p.Y));
+    }
+
+    public bool TryMakeRandomMove()
+    {
+        if (!IsIdle) return false;
+
+        // Naive search for any valid move
+        for (int y = 0; y < _state.Height; y++)
+        {
+            for (int x = 0; x < _state.Width; x++)
+            {
+                var p = new Position(x, y);
+
+                // Try Right
+                var right = new Position(x + 1, y);
+                if (IsValidPosition(right))
+                {
+                    if (CheckAndPerformMove(p, right)) return true;
+                }
+
+                // Try Down
+                var down = new Position(x, y + 1);
+                if (IsValidPosition(down))
+                {
+                    if (CheckAndPerformMove(p, down)) return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+
+    private bool CheckAndPerformMove(Position a, Position b)
+    {
+        // Simulate
+        GameRules.Swap(ref _state, a, b);
+        bool hasMatch = GameRules.HasMatches(in _state);
+
+        // Also check for special combos (Rainbow, Bomb+Bomb)
+        // Note: After swap, the tile that was at A is now at B, and vice versa.
+        var t1 = _state.GetTile(b.X, b.Y); // Original A
+        var t2 = _state.GetTile(a.X, a.Y); // Original B
+
+        bool isSpecial = (t1.Bomb != BombType.None && t2.Bomb != BombType.None) ||
+                         (t1.Type == TileType.Rainbow || t2.Type == TileType.Rainbow);
+
+        GameRules.Swap(ref _state, a, b); // Swap back
+
+        if (hasMatch || isSpecial)
+        {
+            // Execute real move
+            // We know it's valid, so TrySwapInternal will proceed to AnimateSwap
+            // and Update will eventually resolve it.
+            TrySwapInternal(a, b);
+            StatusMessage = "Auto Move...";
+            return true;
+        }
+        return false;
     }
 }

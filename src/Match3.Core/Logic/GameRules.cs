@@ -205,7 +205,7 @@ public static class GameRules
         }
     }
 
-    private static int ProcessMatches(ref GameState state, List<MatchGroup> groups)
+    public static int ProcessMatches(ref GameState state, List<MatchGroup> groups)
     {
         int points = 0;
         var tilesToClear = new HashSet<Position>();

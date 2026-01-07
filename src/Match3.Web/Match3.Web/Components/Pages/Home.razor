@@ -54,7 +54,13 @@
                         <div class="tile @(isSelected ? "selected" : "")" 
                              style="transform: translate(@(tile.Position.X * CellSize)px, @(tile.Position.Y * CellSize)px);"
                              @onpointerdown="e => HandlePointerDown(e, (int)Math.Round(tile.Position.X), (int)Math.Round(tile.Position.Y))">
-                            <span class="tile-content">@GetTileContent(tile)</span>
+                             <div class="tile-inner">
+                                <span class="tile-base">@GetTileBaseIcon(tile)</span>
+                                @if (HasBombOverlay(tile))
+                                {
+                                    <span class="tile-overlay">@GetBombOverlayIcon(tile)</span>
+                                }
+                             </div>
                         </div>
                     }
                 }
@@ -63,6 +69,13 @@
         
         <div class="controls">
             <button @onclick="ResetGame" class="btn-reset">New Game</button>
+            <button @onclick="ToggleAutoPlay" class="btn-reset" style="margin-left: 10px; background-color: #3b82f6;">
+                @(_isAutoPlaying ? "Stop Auto" : "Auto Play")
+            </button>
+            <div style="margin-top: 15px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                <label for="speedSlider" style="font-weight: 600; color: #4b5563;">Game Speed: @GameSpeed.ToString("0.0")x</label>
+                <input id="speedSlider" type="range" min="0.1" max="5.0" step="0.1" @bind="GameSpeed" @bind:event="oninput" style="width: 200px; cursor: pointer;" />
+            </div>
         </div>
     }
     else
@@ -186,6 +199,37 @@
         filter: brightness(1.1);
     }
 
+    .tile-inner {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .tile-base {
+        font-size: 2rem;
+        line-height: 1;
+        filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
+        z-index: 1;
+    }
+
+    .tile-overlay {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.5rem;
+        z-index: 2;
+        /* Make the overlay visible on top of dark colors */
+        text-shadow: 
+            -1px -1px 0 #fff,  
+             1px -1px 0 #fff,
+            -1px  1px 0 #fff,
+             1px  1px 0 #fff;
+    }
+
     .tile-content {
         font-size: 2rem;
         line-height: 1;
@@ -224,6 +268,8 @@
     // StatusMessage delegated to Controller
     
     private bool _disposed = false;
+    private bool _isAutoPlaying = false;
+    private float GameSpeed = 1.0f;
     private const int TargetFps = 60;
     private const int FrameMs = 1000 / TargetFps;
 
@@ -246,6 +292,7 @@
 
     private void StartNewGame()
     {
+        _isAutoPlaying = false;
         var rng = new DefaultRandom(Environment.TickCount);
         var view = new BlazorGameView(this);
         Controller = new Match3Controller(Width, Height, 6, rng, view);
@@ -260,6 +307,11 @@
         StartNewGame();
     }
     
+    private void ToggleAutoPlay()
+    {
+        _isAutoPlaying = !_isAutoPlaying;
+    }
+
     private async Task GameLoopAsync()
     {
         while (!_disposed)
@@ -267,8 +319,15 @@
             if (Controller != null)
             {
                 // Update Logic
-                Controller.Update(FrameMs / 1000.0f);
+                Controller.Update((FrameMs / 1000.0f) * GameSpeed);
                 
+                // Auto Play Logic
+                if (_isAutoPlaying && Controller.IsIdle)
+                {
+                    bool moved = Controller.TryMakeRandomMove();
+                    // If no move found, we might want to wait or stop, but for now just loop
+                }
+
                 // Update UI
                 await InvokeAsync(StateHasChanged);
             }
@@ -340,11 +399,11 @@
         Controller.OnTap(new Position(x, y));
     }
 
-    private string GetTileContent(Tile t) 
+    private string GetTileBaseIcon(Tile t) 
     {
         if (t.Type == TileType.Rainbow) return "🌈";
         
-        string icon = t.Type switch
+        return t.Type switch
         {
             TileType.Red => "🔴",
             TileType.Green => "🟢",
@@ -354,21 +413,36 @@
             TileType.Orange => "🟠",
             _ => ""
         };
+    }
 
-        if (t.Bomb != BombType.None)
+    private bool HasBombOverlay(Tile t)
+    {
+        // Rainbow tile doesn't need overlay usually, or maybe it does if it's special?
+        // Logic: Only normal colors with bomb types get overlay. 
+        // Or if it is a Color bomb (Rainbow), it is just Rainbow.
+        if (t.Type == TileType.Rainbow) return false; 
+        return t.Bomb != BombType.None && t.Bomb != BombType.Color;
+    }
+
+    private string GetBombOverlayIcon(Tile t)
+    {
+        return t.Bomb switch
         {
-            // Overlay bomb icon or replace
-            return t.Bomb switch
-            {
-                BombType.Horizontal => icon + "↔️",
-                BombType.Vertical => icon + "↕️",
-                BombType.SmallCross => icon + "➕",
-                BombType.Square9x9 => icon + "💣",
-                BombType.Color => "🌈",
-                _ => icon
-            };
-        }
-        return icon;
+            BombType.Horizontal => "↔️",
+            BombType.Vertical => "↕️",
+            BombType.SmallCross => "➕",
+            BombType.Square9x9 => "💣",
+            // BombType.Color is handled by BaseIcon being Rainbow
+            _ => ""
+        };
+    }
+    
+    // Deprecated but keeping for reference or if used elsewhere
+    private string GetTileContent(Tile t) 
+    {
+        if (t.Type == TileType.Rainbow) return "🌈";
+        // ... (Old Logic)
+        return GetTileBaseIcon(t); 
     }
     
     
