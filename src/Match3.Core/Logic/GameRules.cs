@@ -14,7 +14,7 @@ public static class GameRules
         {
             for (int x = 0; x < state.Width; x++)
             {
-                state.SetTile(x, y, new Tile(GenerateNonMatchingTile(ref state, x, y), x, y));
+                state.SetTile(x, y, new Tile(state.NextTileId++, GenerateNonMatchingTile(ref state, x, y), x, y));
             }
         }
     }
@@ -152,15 +152,15 @@ public static class GameRules
                 ExplodeAllByType(ref state, colorTile.Type);
                 
                 // Clear the rainbow and the original bomb
-                state.SetTile(p1.X, p1.Y, new Tile(TileType.None, p1.X, p1.Y));
-                state.SetTile(p2.X, p2.Y, new Tile(TileType.None, p2.X, p2.Y));
+                state.SetTile(p1.X, p1.Y, new Tile(0, TileType.None, p1.X, p1.Y));
+                state.SetTile(p2.X, p2.Y, new Tile(0, TileType.None, p2.X, p2.Y));
             }
             else
             {
                 // Color + Normal -> Clear all of that color
                 ClearColor(ref state, colorTile.Type);
-                state.SetTile(p1.X, p1.Y, new Tile(TileType.None, p1.X, p1.Y));
-                state.SetTile(p2.X, p2.Y, new Tile(TileType.None, p2.X, p2.Y));
+                state.SetTile(p1.X, p1.Y, new Tile(0, TileType.None, p1.X, p1.Y));
+                state.SetTile(p2.X, p2.Y, new Tile(0, TileType.None, p2.X, p2.Y));
             }
             points += 2000;
             return;
@@ -197,8 +197,8 @@ public static class GameRules
                  ExplodeArea(ref state, p2.X, p2.Y, 2); // 5x5
              }
              
-             state.SetTile(p1.X, p1.Y, new Tile(TileType.None, p1.X, p1.Y));
-             state.SetTile(p2.X, p2.Y, new Tile(TileType.None, p2.X, p2.Y));
+             state.SetTile(p1.X, p1.Y, new Tile(0, TileType.None, p1.X, p1.Y));
+             state.SetTile(p2.X, p2.Y, new Tile(0, TileType.None, p2.X, p2.Y));
              
              points += 1000;
              return;
@@ -234,7 +234,7 @@ public static class GameRules
                 // Set the bomb
                 // If it's a Color Bomb, the tile type must be Rainbow
                 var newType = g.SpawnBombType == BombType.Color ? TileType.Rainbow : g.Type;
-                state.SetTile(p.X, p.Y, new Tile(newType, p.X, p.Y, g.SpawnBombType));
+                state.SetTile(p.X, p.Y, new Tile(state.NextTileId++, newType, p.X, p.Y, g.SpawnBombType));
             }
         }
 
@@ -276,7 +276,7 @@ public static class GameRules
             // So we need to check if 'p' is a newly created bomb.
             // Simpler: Just clear it.
             
-            state.SetTile(p.X, p.Y, new Tile(TileType.None, p.X, p.Y));
+            state.SetTile(p.X, p.Y, new Tile(0, TileType.None, p.X, p.Y));
         }
         
         return points;
@@ -332,7 +332,7 @@ public static class GameRules
         for(int i=0; i<state.Grid.Length; i++)
         {
             ref var t = ref state.Grid[i];
-            t = new Tile(TileType.None, t.Position);
+            t = new Tile(0, TileType.None, t.Position);
         }
     }
     
@@ -343,7 +343,7 @@ public static class GameRules
             if (state.Grid[i].Type == color)
             {
                 ref var t = ref state.Grid[i];
-                t = new Tile(TileType.None, t.Position);
+                t = new Tile(0, TileType.None, t.Position);
             }
         }
     }
@@ -373,20 +373,20 @@ public static class GameRules
         var range = GetExplosionRange(in state, x, y, type); // Need to adjust for radiusMultiplier if needed
         foreach(var p in range)
         {
-             state.SetTile(p.X, p.Y, new Tile(TileType.None, p.X, p.Y));
+             state.SetTile(p.X, p.Y, new Tile(0, TileType.None, p.X, p.Y));
         }
     }
 
     private static void ExplodeRow(ref GameState state, int y)
     {
         for(int x=0; x<state.Width; x++) 
-            state.SetTile(x, y, new Tile(TileType.None, x, y));
+            state.SetTile(x, y, new Tile(0, TileType.None, x, y));
     }
     
     private static void ExplodeCol(ref GameState state, int x)
     {
         for(int y=0; y<state.Height; y++) 
-            state.SetTile(x, y, new Tile(TileType.None, x, y));
+            state.SetTile(x, y, new Tile(0, TileType.None, x, y));
     }
     
     private static void ExplodeArea(ref GameState state, int cx, int cy, int radius)
@@ -398,7 +398,7 @@ public static class GameRules
                 int nx = cx + dx;
                 int ny = cy + dy;
                 if (nx >= 0 && nx < state.Width && ny >= 0 && ny < state.Height)
-                     state.SetTile(nx, ny, new Tile(TileType.None, nx, ny));
+                     state.SetTile(nx, ny, new Tile(0, TileType.None, nx, ny));
             }
         }
     }
@@ -629,7 +629,7 @@ public static class GameRules
                     if (writeY != y)
                     {
                         state.SetTile(x, writeY, t);
-                        state.SetTile(x, y, new Tile(TileType.None, x, y));
+                        state.SetTile(x, y, new Tile(0, TileType.None, x, y));
                         moves.Add(new TileMove(new Position(x, y), new Position(x, writeY)));
                     }
                     writeY--;
@@ -650,7 +650,7 @@ public static class GameRules
                 if (state.GetType(x, y) == TileType.None)
                 {
                     var t = GenerateNonMatchingTile(ref state, x, y);
-                    var tile = new Tile(t, new Vector2(x, nextSpawnY));
+                    var tile = new Tile(state.NextTileId++, t, new Vector2(x, nextSpawnY));
                     state.SetTile(x, y, tile);
                     newTiles.Add(new TileMove(new Position(x, nextSpawnY), new Position(x, y)));
                     nextSpawnY--;

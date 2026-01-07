@@ -34,11 +34,11 @@ public class GameBoardTests
         // Arrange
         var state = CreateAndClearState(5, 5);
         // R R R G B
-        state.SetTile(0, 0, new Tile(TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(TileType.Red, 2, 0));
-        state.SetTile(3, 0, new Tile(TileType.Green, 3, 0));
-        state.SetTile(4, 0, new Tile(TileType.Blue, 4, 0));
+        state.SetTile(0, 0, new Tile(0, TileType.Red, 0, 0));
+        state.SetTile(1, 0, new Tile(0, TileType.Red, 1, 0));
+        state.SetTile(2, 0, new Tile(0, TileType.Red, 2, 0));
+        state.SetTile(3, 0, new Tile(0, TileType.Green, 3, 0));
+        state.SetTile(4, 0, new Tile(0, TileType.Blue, 4, 0));
 
         // Act
         var matches = GameRules.FindMatches(in state);
@@ -58,10 +58,10 @@ public class GameBoardTests
         // R
         // R
         // R
-        state.SetTile(0, 0, new Tile(TileType.Red, 0, 0));
-        state.SetTile(0, 1, new Tile(TileType.Red, 0, 1));
-        state.SetTile(0, 2, new Tile(TileType.Red, 0, 2));
-        state.SetTile(0, 3, new Tile(TileType.Green, 0, 3));
+        state.SetTile(0, 0, new Tile(0, TileType.Red, 0, 0));
+        state.SetTile(0, 1, new Tile(0, TileType.Red, 0, 1));
+        state.SetTile(0, 2, new Tile(0, TileType.Red, 0, 2));
+        state.SetTile(0, 3, new Tile(0, TileType.Green, 0, 3));
 
         // Act
         var matches = GameRules.FindMatches(in state);
@@ -80,8 +80,8 @@ public class GameBoardTests
         var state = CreateAndClearState(5, 5);
         var p1 = new Position(0, 0);
         var p2 = new Position(1, 0);
-        state.SetTile(p1.X, p1.Y, new Tile(TileType.Red, p1.X, p1.Y));
-        state.SetTile(p2.X, p2.Y, new Tile(TileType.Blue, p2.X, p2.Y));
+        state.SetTile(p1.X, p1.Y, new Tile(0, TileType.Red, p1.X, p1.Y));
+        state.SetTile(p2.X, p2.Y, new Tile(0, TileType.Blue, p2.X, p2.Y));
 
         // Act
         GameRules.Swap(ref state, p1, p2);
@@ -101,7 +101,7 @@ public class GameBoardTests
         // (3) .
         // (2) R  <- This should fall to 4
         
-        state.SetTile(0, 2, new Tile(TileType.Red, 0, 2));
+        state.SetTile(0, 2, new Tile(0, TileType.Red, 0, 2));
 
         // Act
         GameRules.ApplyGravity(ref state);
@@ -119,7 +119,7 @@ public class GameBoardTests
         {
             for (int x = 0; x < width; x++)
             {
-                state.SetTile(x, y, new Tile(TileType.None, x, y));
+                state.SetTile(x, y, new Tile(0, TileType.None, x, y));
             }
         }
         return state;

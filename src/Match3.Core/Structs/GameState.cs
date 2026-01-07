@@ -19,6 +19,7 @@ public struct GameState
     public int TileTypesCount;
     public long Score;
     public long MoveCount;
+    public long NextTileId;
     
     // We store the seed or state of RNG to ensure determinism if we implement a custom PRNG struct.
     // For simplicity now, we'll keep the reference to IRandom, but in a pure ECS/DOTS, 
@@ -33,6 +34,7 @@ public struct GameState
         Grid = new Tile[width * height];
         Score = 0;
         MoveCount = 0;
+        NextTileId = 1;
         Random = random;
     }
 
@@ -41,6 +43,7 @@ public struct GameState
         var clone = new GameState(Width, Height, TileTypesCount, Random);
         clone.Score = Score;
         clone.MoveCount = MoveCount;
+        clone.NextTileId = NextTileId;
         Array.Copy(Grid, clone.Grid, Grid.Length);
         // Note: IRandom is shared reference here. 
         // For true MCTS/branching, we would need a cloneable/struct RNG.

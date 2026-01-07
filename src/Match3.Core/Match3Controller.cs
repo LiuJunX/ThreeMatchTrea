@@ -270,7 +270,7 @@ public sealed class Match3Controller
     // Helper for tests/debug
     public void DebugSetTile(Position p, TileType t)
     {
-        _state.SetTile(p.X, p.Y, new Tile(t, p.X, p.Y));
+        _state.SetTile(p.X, p.Y, new Tile(_state.NextTileId++, t, p.X, p.Y));
     }
 
     public bool TryMakeRandomMove()

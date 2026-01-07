@@ -2,6 +2,8 @@
 @using Match3.Core
 @using Match3.Core.Structs
 @using System.Numerics
+@using Match3.Web.Services
+@inject Match3GameService GameService
 @rendermode InteractiveServer
 @implements IDisposable
 
@@ -13,46 +15,46 @@
         <div class="stats">
             <div class="stat-box">
                 <span class="stat-label">Matches</span>
-                <span class="stat-value" data-testid="matches-count">@LastMatchesCount</span>
+                <span class="stat-value" data-testid="matches-count">@GameService.LastMatchesCount</span>
             </div>
             <div class="stat-box">
                 <span class="stat-label">Status</span>
-                <span class="stat-value status-text" data-testid="status-message">@Controller.StatusMessage</span>
+                <span class="stat-value status-text" data-testid="status-message">@(GameService.Controller?.StatusMessage ?? "Loading...")</span>
             </div>
         </div>
     </div>
 
-    @if (Controller != null)
+    @if (GameService.Controller != null)
     {
         <div class="board-wrapper">
             <div class="board-container" 
-                 style="width: @(Width * CellSize)px; height: @(Height * CellSize)px;"
+                 style="width: @(GameService.Width * Match3GameService.CellSize)px; height: @(GameService.Height * Match3GameService.CellSize)px;"
                  @onpointerup="HandlePointerUp">
                 <!-- Background Grid -->
-                @for (int y = 0; y < Height; y++)
+                @for (int y = 0; y < GameService.Height; y++)
                 {
-                    @for (int x = 0; x < Width; x++)
+                    @for (int x = 0; x < GameService.Width; x++)
                     {
                         var px = x;
                         var py = y;
                         <div class="cell-bg" 
-                             style="left: @(x * CellSize)px; top: @(y * CellSize)px;"
+                             style="left: @(x * Match3GameService.CellSize)px; top: @(y * Match3GameService.CellSize)px;"
                              @onpointerdown="e => HandlePointerDown(e, px, py)">
                         </div>
                     }
                 }
 
                 <!-- Active Tiles -->
-                @foreach (var tile in Controller.State.Grid)
+                @foreach (var tile in GameService.Controller.State.Grid)
                 {
                     if (tile.Type != TileType.None)
                     {
-                        var isSelected = Controller.SelectedPosition.IsValid && 
-                                       Math.Abs(tile.Position.X - Controller.SelectedPosition.X) < 0.1f && 
-                                       Math.Abs(tile.Position.Y - Controller.SelectedPosition.Y) < 0.1f;
+                        var isSelected = GameService.Controller.SelectedPosition.IsValid && 
+                                       Math.Abs(tile.Position.X - GameService.Controller.SelectedPosition.X) < 0.1f && 
+                                       Math.Abs(tile.Position.Y - GameService.Controller.SelectedPosition.Y) < 0.1f;
                         
-                        <div class="tile @(isSelected ? "selected" : "")" 
-                             style="transform: translate(@(tile.Position.X * CellSize)px, @(tile.Position.Y * CellSize)px);"
+                        <div @key="tile.Id" class="tile @(isSelected ? "selected" : "")" 
+                             style="transform: translate(@(tile.Position.X * Match3GameService.CellSize)px, @(tile.Position.Y * Match3GameService.CellSize)px);"
                              @onpointerdown="e => HandlePointerDown(e, (int)Math.Round(tile.Position.X), (int)Math.Round(tile.Position.Y))">
                              <div class="tile-inner">
                                 <span class="tile-base">@GetTileBaseIcon(tile)</span>
@@ -70,11 +72,11 @@
         <div class="controls">
             <button @onclick="ResetGame" class="btn-reset">New Game</button>
             <button @onclick="ToggleAutoPlay" class="btn-reset" style="margin-left: 10px; background-color: #3b82f6;">
-                @(_isAutoPlaying ? "Stop Auto" : "Auto Play")
+                @(GameService.IsAutoPlaying ? "Stop Auto" : "Auto Play")
             </button>
             <div style="margin-top: 15px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
-                <label for="speedSlider" style="font-weight: 600; color: #4b5563;">Game Speed: @GameSpeed.ToString("0.0")x</label>
-                <input id="speedSlider" type="range" min="0.1" max="5.0" step="0.1" @bind="GameSpeed" @bind:event="oninput" style="width: 200px; cursor: pointer;" />
+                <label for="speedSlider" style="font-weight: 600; color: #4b5563;">Game Speed: @GameService.GameSpeed.ToString("0.0")x</label>
+                <input id="speedSlider" type="range" min="0.1" max="5.0" step="0.1" @bind="GameService.GameSpeed" @bind:event="oninput" style="width: 200px; cursor: pointer;" />
             </div>
         </div>
     }
@@ -259,20 +261,6 @@
 </style>
 
 @code {
-    private Match3Controller? Controller;
-    private int Width = 8;
-    private int Height = 8;
-    private const int CellSize = 66; // 60px + 6px gap
-    
-    private int LastMatchesCount = 0;
-    // StatusMessage delegated to Controller
-    
-    private bool _disposed = false;
-    private bool _isAutoPlaying = false;
-    private float GameSpeed = 1.0f;
-    private const int TargetFps = 60;
-    private const int FrameMs = 1000 / TargetFps;
-
     // Drag & Drop State
     private double? _dragStartX;
     private double? _dragStartY;
@@ -282,63 +270,38 @@
 
     protected override void OnInitialized()
     {
-        StartNewGame();
+        GameService.OnChange += OnGameStateChanged;
+        
+        // Start game if not already started (Singleton/Scoped behavior)
+        if (GameService.Controller == null)
+        {
+            GameService.StartNewGame();
+        }
     }
 
     public void Dispose()
     {
-        _disposed = true;
+        GameService.OnChange -= OnGameStateChanged;
     }
 
-    private void StartNewGame()
+    private void OnGameStateChanged()
     {
-        _isAutoPlaying = false;
-        var rng = new DefaultRandom(Environment.TickCount);
-        var view = new BlazorGameView(this);
-        Controller = new Match3Controller(Width, Height, 6, rng, view);
-        LastMatchesCount = 0;
-        
-        // Start Game Loop
-        _ = GameLoopAsync();
+        InvokeAsync(StateHasChanged);
     }
 
     private void ResetGame()
     {
-        StartNewGame();
+        GameService.ResetGame();
     }
     
     private void ToggleAutoPlay()
     {
-        _isAutoPlaying = !_isAutoPlaying;
-    }
-
-    private async Task GameLoopAsync()
-    {
-        while (!_disposed)
-        {
-            if (Controller != null)
-            {
-                // Update Logic
-                Controller.Update((FrameMs / 1000.0f) * GameSpeed);
-                
-                // Auto Play Logic
-                if (_isAutoPlaying && Controller.IsIdle)
-                {
-                    bool moved = Controller.TryMakeRandomMove();
-                    // If no move found, we might want to wait or stop, but for now just loop
-                }
-
-                // Update UI
-                await InvokeAsync(StateHasChanged);
-            }
-            
-            await Task.Delay(FrameMs);
-        }
+        GameService.ToggleAutoPlay();
     }
 
     private void HandlePointerDown(PointerEventArgs e, int x, int y)
     {
-        if (Controller == null || !Controller.IsIdle) return;
+        if (GameService.Controller == null || !GameService.Controller.IsIdle) return;
         
         _dragStartX = e.ClientX;
         _dragStartY = e.ClientY;
@@ -374,7 +337,7 @@
 
     private void HandleSwipe(double dx, double dy)
     {
-        if (Controller == null) return;
+        if (GameService.Controller == null) return;
 
         // Determine main direction
         Direction direction;
@@ -390,13 +353,12 @@
         }
 
         var p1 = new Position(_dragSourceX, _dragSourceY);
-        Controller.OnSwipe(p1, direction);
+        GameService.OnSwipe(p1, direction);
     }
 
     private void OnTileClick(int x, int y)
     {
-        if (Controller == null) return;
-        Controller.OnTap(new Position(x, y));
+        GameService.OnTap(x, y);
     }
 
     private string GetTileBaseIcon(Tile t) 
@@ -417,9 +379,6 @@
 
     private bool HasBombOverlay(Tile t)
     {
-        // Rainbow tile doesn't need overlay usually, or maybe it does if it's special?
-        // Logic: Only normal colors with bomb types get overlay. 
-        // Or if it is a Color bomb (Rainbow), it is just Rainbow.
         if (t.Type == TileType.Rainbow) return false; 
         return t.Bomb != BombType.None && t.Bomb != BombType.Color;
     }
@@ -432,40 +391,7 @@
             BombType.Vertical => "↕️",
             BombType.SmallCross => "➕",
             BombType.Square9x9 => "💣",
-            // BombType.Color is handled by BaseIcon being Rainbow
             _ => ""
         };
-    }
-    
-    // Deprecated but keeping for reference or if used elsewhere
-    private string GetTileContent(Tile t) 
-    {
-        if (t.Type == TileType.Rainbow) return "🌈";
-        // ... (Old Logic)
-        return GetTileBaseIcon(t); 
-    }
-    
-    
-    class BlazorGameView : IGameView
-    {
-        private readonly Home _parent;
-        public BlazorGameView(Home parent) => _parent = parent;
-        
-        // These are now just events for SFX or text status
-        public void RenderBoard(TileType[,] board) { /* Deprecated/Unused */ }
-        
-        public void ShowSwap(Position a, Position b, bool success)
-        {
-             // Status managed by Controller
-        }
-        
-        public void ShowMatches(IReadOnlyCollection<Position> matched)
-        {
-             _parent.LastMatchesCount = matched.Count;
-             // Status managed by Controller
-        }
-        
-        public void ShowGravity(IEnumerable<TileMove> moves) { }
-        public void ShowRefill(IEnumerable<TileMove> moves) { }
     }
 }

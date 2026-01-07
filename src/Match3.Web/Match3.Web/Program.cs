@@ -1,5 +1,6 @@
 using Match3.Web.Client.Pages;
 using Match3.Web.Components;
+using Match3.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +8,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
+
+builder.Services.AddScoped<Match3GameService>();
 
 var app = builder.Build();
 
