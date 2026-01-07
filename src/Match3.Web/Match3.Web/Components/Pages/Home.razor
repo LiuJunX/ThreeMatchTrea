@@ -7,7 +7,7 @@
 
 <PageTitle>Match3 Game</PageTitle>
 
-<div class="game-container">
+<div class="game-container" @onpointerup="HandlePointerUp">
     <div class="header">
         <h1>Match3 Blast</h1>
         <div class="stats">
@@ -35,7 +35,7 @@
                         var py = y;
                         <div class="cell-bg" 
                              style="left: @(x * CellSize)px; top: @(y * CellSize)px;"
-                             @onclick="() => OnTileClick(px, py)">
+                             @onpointerdown="e => HandlePointerDown(e, px, py)">
                         </div>
                     }
                 }
@@ -51,7 +51,7 @@
                         
                         <div class="tile @(isSelected ? "selected" : "")" 
                              style="transform: translate(@(tile.Position.X * CellSize)px, @(tile.Position.Y * CellSize)px);"
-                             @onclick="() => OnTileClick((int)Math.Round(tile.Position.X), (int)Math.Round(tile.Position.Y))">
+                             @onpointerdown="e => HandlePointerDown(e, (int)Math.Round(tile.Position.X), (int)Math.Round(tile.Position.Y))">
                             <span class="tile-content">@GetTileContent(tile)</span>
                         </div>
                     }
@@ -157,6 +157,7 @@
         background-color: rgba(238, 228, 218, 0.35);
         border-radius: 4px;
         margin: 3px; /* Half gap */
+        touch-action: none;
     }
 
     .tile {
@@ -174,6 +175,7 @@
         margin: 3px; /* Half gap */
         /* IMPORTANT: No transition here, fully controlled by Model */
         z-index: 10;
+        touch-action: none; /* Prevent browser scrolling/zooming/native drag */
     }
 
     .tile.selected {
@@ -225,6 +227,13 @@
     private const int TargetFps = 60;
     private const int FrameMs = 1000 / TargetFps;
 
+    // Drag & Drop State
+    private double? _dragStartX;
+    private double? _dragStartY;
+    private int _dragSourceX = -1;
+    private int _dragSourceY = -1;
+    private const double DragThreshold = 20.0; // pixels
+
     protected override void OnInitialized()
     {
         StartNewGame();
@@ -268,6 +277,83 @@
             }
             
             await Task.Delay(FrameMs);
+        }
+    }
+
+    private void HandlePointerDown(PointerEventArgs e, int x, int y)
+    {
+        if (Controller == null || !Controller.IsIdle) return;
+        
+        _dragStartX = e.ClientX;
+        _dragStartY = e.ClientY;
+        _dragSourceX = x;
+        _dragSourceY = y;
+    }
+
+    private void HandlePointerUp(PointerEventArgs e)
+    {
+        if (_dragStartX == null || _dragStartY == null || _dragSourceX == -1) return;
+
+        var deltaX = e.ClientX - _dragStartX.Value;
+        var deltaY = e.ClientY - _dragStartY.Value;
+        var distance = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
+
+        if (distance < DragThreshold)
+        {
+            // Treat as Click
+            OnTileClick(_dragSourceX, _dragSourceY);
+        }
+        else
+        {
+            // Treat as Swipe
+            HandleSwipe(deltaX, deltaY);
+        }
+
+        // Reset
+        _dragStartX = null;
+        _dragStartY = null;
+        _dragSourceX = -1;
+        _dragSourceY = -1;
+    }
+
+    private void HandleSwipe(double dx, double dy)
+    {
+        if (Controller == null || !Controller.IsIdle) return;
+
+        // Determine main direction
+        int targetX = _dragSourceX;
+        int targetY = _dragSourceY;
+
+        if (Math.Abs(dx) > Math.Abs(dy))
+        {
+            // Horizontal
+            if (dx > 0) targetX++; else targetX--;
+        }
+        else
+        {
+            // Vertical
+            if (dy > 0) targetY++; else targetY--;
+        }
+
+        // Boundary check
+        if (targetX >= 0 && targetX < Width && targetY >= 0 && targetY < Height)
+        {
+            var p1 = new Position(_dragSourceX, _dragSourceY);
+            var p2 = new Position(targetX, targetY);
+            
+            // "Drag" overrides "Selection", so clear selection
+            SelectedX = -1;
+            SelectedY = -1;
+            
+            bool allowed = Controller.TrySwap(p1, p2);
+            if (!allowed)
+            {
+                StatusMessage = "Invalid Move";
+            }
+            else
+            {
+                StatusMessage = "Swapping...";
+            }
         }
     }
 
