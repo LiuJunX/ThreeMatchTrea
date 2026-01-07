@@ -9,7 +9,7 @@ namespace Match3.Core.Config;
 /// </summary>
 public class ConfigManager
 {
-    private Dictionary<int, ItemConfig> _items;
+    private Dictionary<int, ItemConfig> _items = new Dictionary<int, ItemConfig>();
 
     public bool IsLoaded { get; private set; }
 

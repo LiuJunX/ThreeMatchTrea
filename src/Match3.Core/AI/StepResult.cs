@@ -9,7 +9,7 @@ public readonly struct StepResult<TState>
     public readonly bool IsDone;
     public readonly Dictionary<string, object> Info;
 
-    public StepResult(TState state, double reward, bool isDone, Dictionary<string, object> info = null)
+    public StepResult(TState state, double reward, bool isDone, Dictionary<string, object>? info = null)
     {
         State = state;
         Reward = reward;

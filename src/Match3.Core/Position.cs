@@ -51,4 +51,6 @@ public readonly struct Position
     {
         return !(left == right);
     }
+
+    public override string ToString() => $"({X},{Y})";
 }

@@ -75,7 +75,7 @@ public class ClassicMatchFinder : IMatchFinder
         }
     }
 
-    private MatchGroup AnalyzeMatch(HashSet<Position> component, Position? focus)
+    private MatchGroup? AnalyzeMatch(HashSet<Position> component, Position? focus)
     {
         bool hasRun = false;
         var positions = new List<Position>(component);

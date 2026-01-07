@@ -4,6 +4,8 @@ using Match3.Core.Config;
 using Match3.Core.Structs;
 using Match3.Core.Logic;
 using Xunit;
+using Match3.Core.Interfaces;
+using System.Linq;
 
 namespace Match3.Tests;
 
@@ -19,21 +21,23 @@ public class Match3ControllerTests
         var config = new Match3Config(4, 4, 5);
         var controller = new Match3Controller(config, rng, view, new ClassicMatchFinder(), new StandardMatchProcessor(), new StandardGravitySystem(new StandardTileGenerator()), new PowerUpHandler(), new StandardTileGenerator(), logger);
 
-        // Setup a specific board state
-        // Row 0: R R G R  (Swap G<->R at x=2,3 to make R R R R)
-        controller.DebugSetTile(new Position(0, 0), TileType.Red);
-        controller.DebugSetTile(new Position(1, 0), TileType.Red);
-        controller.DebugSetTile(new Position(2, 0), TileType.Green);
-        controller.DebugSetTile(new Position(3, 0), TileType.Red);
-        
-        // Clear others to avoid accidental matches
+        // Setup a stable board (Checkerboard of Blue/Purple) to prevent gravity/matches
         for(int y=0; y<4; y++) 
         {
             for(int x=0; x<4; x++) 
             {
-                if(y > 0) controller.DebugSetTile(new Position(x, y), TileType.None);
+                var type = ((x + y) % 2 == 0) ? TileType.Blue : TileType.Purple;
+                controller.DebugSetTile(new Position(x, y), type);
             }
         }
+        
+        // Setup a specific match scenario on Row 0
+        // R R G R  (Swap G<->R at x=2,3 to make R R R R)
+        // Ensure tiles below are present so they don't fall.
+        controller.DebugSetTile(new Position(0, 0), TileType.Red);
+        controller.DebugSetTile(new Position(1, 0), TileType.Red);
+        controller.DebugSetTile(new Position(2, 0), TileType.Green);
+        controller.DebugSetTile(new Position(3, 0), TileType.Red);
         
         // Act
         // Swap (2,0) <-> (3,0)
@@ -43,41 +47,25 @@ public class Match3ControllerTests
         // Assert
         Assert.Equal("Swapping...", controller.StatusMessage);
         
-        // ShowSwap is called ONLY after animation finishes and logic is resolved.
-        Assert.False(view.SwapSuccess.HasValue, "View should NOT be notified of swap result yet (animation pending)");
+        // Optimistic Swap Start
+        Assert.True(view.SwapSuccess.HasValue);
+        Assert.True(view.SwapSuccess.Value);
 
-        // Now we need to pump the update loop to trigger resolution
-        // We need to simulate time passing so tiles move to swap positions.
-        // SwapSpeed is 10.0f. Distance is 1. Time = 1/10 = 0.1s.
-        // Let's update for 0.2s to be safe.
-        // Note: AnimateTiles moves tiles. We need enough time for them to reach target.
-        // Distance is 1. Speed 10. Time 0.1s.
-        // Update(0.2f) might cover it if single step.
-        // But AnimateTiles steps by dt.
-        
-        // Let's loop until idle or timeout to be robust
+        // Pump update loop
         int maxSteps = 100;
         while(!controller.IsIdle && maxSteps-- > 0)
         {
-            controller.Update(0.016f); // 60fps
+            controller.Update(0.016f);
         }
 
-        Assert.True(view.SwapSuccess.HasValue, "Swap should be visualized as success after animation");
-        Assert.True(view.SwapSuccess.Value, "Swap should be successful");
-        
-        // After swap animation finishes, it checks for matches.
-        // If matches found -> Resolving state.
-        
         // Verify matches were detected
-        // Matches are shown via ShowMatches
-        Assert.NotEmpty(view.AllMatches); // Should be one set of matches
+        Assert.NotEmpty(view.AllMatches);
         var matchSet = view.AllMatches[0];
         
-        // 0,0 1,0 2,0 should match (after swap 2,0 becomes Red)
-        // 3,0 becomes Green.
+        // 0,0 1,0 2,0 should match. They should be at Row 0 because board was full.
         Assert.Contains(new Position(0, 0), matchSet);
         Assert.Contains(new Position(1, 0), matchSet);
-        Assert.Contains(new Position(2, 0), matchSet); // The one that moved from 3,0 to 2,0 (Red)
+        Assert.Contains(new Position(2, 0), matchSet);
     }
 
     [Fact]
@@ -90,10 +78,17 @@ public class Match3ControllerTests
         var config = new Match3Config(4, 4, 5);
         var controller = new Match3Controller(config, rng, view, new ClassicMatchFinder(), new StandardMatchProcessor(), new StandardGravitySystem(new StandardTileGenerator()), new PowerUpHandler(), new StandardTileGenerator(), logger);
 
-        // Clear
-        for(int y=0; y<4; y++) for(int x=0; x<4; x++) controller.DebugSetTile(new Position(x, y), TileType.None);
+        // Stable board
+        for(int y=0; y<4; y++) 
+        {
+            for(int x=0; x<4; x++) 
+            {
+                var type = ((x + y) % 2 == 0) ? TileType.Blue : TileType.Purple;
+                controller.DebugSetTile(new Position(x, y), type);
+            }
+        }
 
-        // R G
+        // R G at (0,0) and (1,0)
         controller.DebugSetTile(new Position(0, 0), TileType.Red);
         controller.DebugSetTile(new Position(1, 0), TileType.Green);
         
@@ -104,8 +99,13 @@ public class Match3ControllerTests
 
         // Assert
         Assert.Equal("Swapping...", controller.StatusMessage);
-        
-        // Pump update to finish swap animation
+        Assert.True(view.SwapSuccess.HasValue);
+        Assert.True(view.SwapSuccess.Value);
+
+        // Reset View
+        view.Reset();
+
+        // Pump update
         int maxSteps = 100;
         while(maxSteps-- > 0)
         {
@@ -113,33 +113,69 @@ public class Match3ControllerTests
             if(controller.IsIdle) break;
         }
         
-        // Now it should have checked matches, found none, and started AnimateRevert.
-        // We need to pump update again for revert animation?
-        // Wait, IsIdle is true only after everything is done.
-        // If it reverts, it goes Idle -> AnimateSwap -> Resolving (no match) -> AnimateRevert -> Idle.
-        // So checking IsIdle above might be enough to catch the end of Revert too?
-        // Let's trace:
-        // Update:
-        //  AnimateSwap (Stable) -> HasMatches? No -> Swap Back -> AnimateRevert.
-        //  Next Update:
-        //  AnimateRevert (Not Stable) -> ...
-        //  AnimateRevert (Stable) -> ShowSwap(false) -> Idle.
-        
-        // So the loop above will run until it is completely back to Idle.
-        
-        // So ShowSwap is called ONLY after the tiles physically moved (visual swap).
-        Assert.True(view.SwapSuccess.HasValue, "View should be notified of swap result");
-        Assert.False(view.SwapSuccess.Value, "Swap should be reported as failed (false) to the view");
+        // Assert Revert Signal
+        Assert.True(view.SwapSuccess.HasValue, "View should be notified of swap revert");
+        Assert.False(view.SwapSuccess.Value, "Swap should be reported as failed");
         
         // Verify state is reverted
-        
-        // Check tiles
-        // We need a way to check state.
-        // Using DebugSetTile we can't get.
-        // But we can check State property.
-        // State returns a copy.
         Assert.Equal(TileType.Red, controller.State.GetTile(0, 0).Type);
         Assert.Equal(TileType.Green, controller.State.GetTile(1, 0).Type);
+    }
+
+    [Fact]
+    public void Match_Triggers_GravityAndRefill()
+    {
+        // Arrange
+        var rng = new TestRandomGenerator(); 
+        var view = new MockGameView();
+        var logger = new ConsoleGameLogger();
+        var config = new Match3Config(4, 4, 5);
+        var controller = new Match3Controller(config, rng, view, new ClassicMatchFinder(), new StandardMatchProcessor(), new StandardGravitySystem(new StandardTileGenerator()), new PowerUpHandler(), new StandardTileGenerator(), logger);
+
+        // Setup board
+        // B B B B (0)
+        // B B B B (1)
+        // R R G R (2)
+        // B B B B (3)
+        for(int y=0; y<4; y++) 
+        {
+            for(int x=0; x<4; x++) 
+            {
+                controller.DebugSetTile(new Position(x, y), TileType.Blue);
+            }
+        }
+        
+        // Set up match at row 2
+        controller.DebugSetTile(new Position(0, 2), TileType.Red);
+        controller.DebugSetTile(new Position(1, 2), TileType.Red);
+        controller.DebugSetTile(new Position(2, 2), TileType.Green);
+        controller.DebugSetTile(new Position(3, 2), TileType.Red);
+        
+        // Act: Swap to make R R R R
+        controller.OnTap(new Position(2, 2));
+        controller.OnTap(new Position(3, 2));
+        
+        // Pump updates
+        int maxSteps = 200;
+        while(!controller.IsIdle && maxSteps-- > 0)
+        {
+            controller.Update(0.016f);
+        }
+        
+        // Assert
+        Assert.NotEmpty(view.AllMatches);
+        Assert.NotEmpty(view.AllGravity); // Tiles from row 0,1 should fall to 2
+        Assert.NotEmpty(view.AllRefill); // New tiles should spawn at top
+        
+        // Verify board is full
+        for(int y=0; y<4; y++)
+        {
+            for(int x=0; x<4; x++)
+            {
+                var t = controller.State.GetTile(x, y);
+                Assert.NotEqual(TileType.None, t.Type);
+            }
+        }
     }
 }
 
@@ -147,6 +183,16 @@ public class MockGameView : IGameView
 {
     public bool? SwapSuccess { get; private set; }
     public List<List<Position>> AllMatches { get; } = new();
+    public List<List<TileMove>> AllGravity { get; } = new();
+    public List<List<TileMove>> AllRefill { get; } = new();
+
+    public void Reset()
+    {
+        SwapSuccess = null;
+        AllMatches.Clear();
+        AllGravity.Clear();
+        AllRefill.Clear();
+    }
 
     public void RenderBoard(TileType[,] board) { }
     
@@ -159,7 +205,18 @@ public class MockGameView : IGameView
     {
         AllMatches.Add(new List<Position>(matched));
     }
+
+    public void ShowMatches(HashSet<Position> positions)
+    {
+        AllMatches.Add(new List<Position>(positions));
+    }
     
-    public void ShowGravity(IEnumerable<TileMove> moves) { }
-    public void ShowRefill(IEnumerable<TileMove> newTiles) { }
+    public void ShowGravity(IEnumerable<TileMove> moves) 
+    {
+        AllGravity.Add(moves.ToList());
+    }
+    public void ShowRefill(IEnumerable<TileMove> newTiles) 
+    {
+        AllRefill.Add(newTiles.ToList());
+    }
 }

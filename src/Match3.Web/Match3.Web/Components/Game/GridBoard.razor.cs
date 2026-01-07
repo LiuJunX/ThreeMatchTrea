@@ -36,7 +36,7 @@ public partial class GridBoard : IDisposable
 
     private void HandlePointerDown(PointerEventArgs e, int x, int y)
     {
-        if (GameService.Controller == null || !GameService.Controller.IsIdle) return;
+        if (GameService.Controller == null) return;
         
         _dragStartX = e.ClientX;
         _dragStartY = e.ClientY;

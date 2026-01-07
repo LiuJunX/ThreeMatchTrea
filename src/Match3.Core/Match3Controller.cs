@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using Match3.Core.Config;
 using Match3.Core.Interfaces;
@@ -28,20 +29,21 @@ public sealed class Match3Controller
     // Animation constants
     private const float Epsilon = 0.01f;
 
-    private enum ControllerState
-    {
-        Idle,
-        AnimateSwap,
-        Resolving,
-        AnimateRevert
-    }
+    // Async/Real-time state tracking
+    // We lock tiles by ID because their position might change due to gravity while swapping
+    private readonly HashSet<long> _lockedTileIds = new();
+    private bool _isVisuallyStable = true;
     
-    private ControllerState _currentState = ControllerState.Idle;
-    private Position _swapA;
-    private Position _swapB;
+    private class SwapTask
+    {
+        public long IdA;
+        public long IdB;
+        public bool CheckMatch;
+    }
+    private readonly List<SwapTask> _activeSwaps = new();
 
-    public GameState State => _state; // Expose state for View
-    public bool IsIdle => _currentState == ControllerState.Idle;
+    public GameState State => _state;
+    public bool IsIdle => _activeSwaps.Count == 0 && _isVisuallyStable;
     public Position SelectedPosition { get; private set; } = Position.Invalid;
     public string StatusMessage { get; private set; } = "Ready";
 
@@ -82,19 +84,20 @@ public sealed class Match3Controller
         }
     }
 
-    /// <summary>
-    /// Handles a tap/click interaction on a specific tile.
-    /// </summary>
     public void OnTap(Position p)
     {
-        if (!IsIdle) return;
         if (!IsValidPosition(p)) return;
+
+        // Interaction Check: Can only interact with Stable and Unlocked tiles
+        if (!IsStable(p) || IsLocked(p)) 
+        {
+            return;
+        }
         
         _logger.LogInfo($"OnTap: {p}");
 
         if (SelectedPosition == Position.Invalid)
         {
-            // Select first tile
             SelectedPosition = p;
             StatusMessage = "Select destination";
         }
@@ -102,53 +105,46 @@ public sealed class Match3Controller
         {
             if (SelectedPosition == p)
             {
-                // Deselect
                 SelectedPosition = Position.Invalid;
                 StatusMessage = "Selection Cleared";
             }
             else
             {
-                // Try swap
-                bool success = TrySwapInternal(SelectedPosition, p);
-                if (success)
+                if (IsNeighbor(SelectedPosition, p))
                 {
-                     SelectedPosition = Position.Invalid;
-                     StatusMessage = "Swapping...";
-                }
-                else
-                {
-                    // If neighbors but invalid move -> Invalid Move
-                    // If not neighbors -> Select new tile
-                    if (IsNeighbor(SelectedPosition, p))
+                    bool success = TryStartSwap(SelectedPosition, p);
+                    if (success)
+                    {
+                        SelectedPosition = Position.Invalid;
+                        StatusMessage = "Swapping...";
+                    }
+                    else
                     {
                         StatusMessage = "Invalid Move";
                         SelectedPosition = Position.Invalid;
                     }
-                    else
-                    {
-                        SelectedPosition = p;
-                        StatusMessage = "Select destination";
-                    }
+                }
+                else
+                {
+                    SelectedPosition = p;
+                    StatusMessage = "Select destination";
                 }
             }
         }
     }
 
-    /// <summary>
-    /// Handles a swipe interaction originating from a specific tile.
-    /// </summary>
     public void OnSwipe(Position from, Direction direction)
     {
-        if (!IsIdle) return;
         if (!IsValidPosition(from)) return;
+        if (!IsStable(from) || IsLocked(from)) return;
 
         Position to = GetNeighbor(from, direction);
         if (!IsValidPosition(to)) return;
+        if (!IsStable(to) || IsLocked(to)) return;
 
-        // Swipe overrides selection
         SelectedPosition = Position.Invalid;
 
-        bool success = TrySwapInternal(from, to);
+        bool success = TryStartSwap(from, to);
         if (success)
         {
             StatusMessage = "Swapping...";
@@ -159,141 +155,155 @@ public sealed class Match3Controller
         }
     }
 
-    private bool IsValidPosition(Position p)
-    {
-        return p.X >= 0 && p.X < _state.Width && p.Y >= 0 && p.Y < _state.Height;
-    }
-
-    private bool IsNeighbor(Position a, Position b)
-    {
-        return Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y) == 1;
-    }
-
-    private Position GetNeighbor(Position p, Direction dir)
-    {
-        return dir switch
-        {
-            Direction.Up => new Position(p.X, p.Y - 1),
-            Direction.Down => new Position(p.X, p.Y + 1),
-            Direction.Left => new Position(p.X - 1, p.Y),
-            Direction.Right => new Position(p.X + 1, p.Y),
-            _ => p
-        };
-    }
-
     public void Update(float dt)
     {
-        bool isStable = AnimateTiles(dt);
+        // 1. Update Animations (Visuals)
+        _isVisuallyStable = AnimateTiles(dt);
 
-        if (!isStable) return;
+        // 2. Update Pending Swaps (Logic)
+        UpdateSwapTasks();
 
-        switch (_currentState)
-        {
-            case ControllerState.AnimateSwap:
-                // Check if the move results in a match or if it was a special move
-                bool hasMatch = _matchFinder.HasMatches(in _state);
-                bool isSpecial = IsSpecialMove(_swapA, _swapB);
-
-                if (hasMatch || isSpecial)
-                {
-                    _view.ShowSwap(_swapA, _swapB, true);
-                    _currentState = ControllerState.Resolving;
-                    
-                    if (isSpecial)
-                    {
-                         _powerUpHandler.ProcessSpecialMove(ref _state, _swapA, _swapB, out int points);
-                         _state.Score += points;
-                         // Special moves usually result in cleared tiles, so we should continue resolving
-                         ResolveStep(null); 
-                    }
-                    else
-                    {
-                        ResolveStep(_swapB);
-                    }
-                }
-                else
-                {
-                    // Invalid move, revert
-                    Swap(ref _state, _swapA, _swapB);
-                    _currentState = ControllerState.AnimateRevert;
-                }
-                break;
-
-            case ControllerState.AnimateRevert:
-                _view.ShowSwap(_swapA, _swapB, false);
-                _currentState = ControllerState.Idle;
-                break;
-
-            case ControllerState.Resolving:
-                if (!ResolveStep())
-                {
-                    _currentState = ControllerState.Idle;
-                }
-                break;
-                
-            case ControllerState.Idle:
-                break;
-        }
+        // 3. Resolve Board State (Matches, Gravity, Refill)
+        ResolveMatches();
     }
 
-    private bool IsSpecialMove(Position a, Position b)
+    private bool TryStartSwap(Position a, Position b)
     {
-        var t1 = _state.GetTile(a.X, a.Y);
-        var t2 = _state.GetTile(b.X, b.Y);
-        
-        // Rainbow swap is always valid
-        if (t1.Type == TileType.Rainbow || t2.Type == TileType.Rainbow) return true;
-        
-        bool isBombCombo = t1.Bomb != BombType.None && t2.Bomb != BombType.None;
-        
-        return isBombCombo;
-    }
+        if (IsLocked(a) || IsLocked(b)) return false;
 
-    private bool ResolveStep(Position? focus = null)
-    {
-        var groups = _matchFinder.FindMatchGroups(in _state, focus);
-        
-        // Also check if we have any pending explosions/cleared tiles that need gravity?
-        // If groups count is 0, we might still have holes from PowerUpHandler
-        // But PowerUpHandler is called before this loop.
-        
-        // If we processed a special move, we might have cleared tiles but no "matches".
-        // In that case, we need to apply gravity.
-        // How do we detect holes?
-        bool hasHoles = HasHoles();
+        var tA = _state.GetTile(a.X, a.Y);
+        var tB = _state.GetTile(b.X, b.Y);
 
-        if (groups.Count == 0 && !hasHoles) return false;
+        // Lock tiles so they cannot be matched or moved again until done
+        Lock(a);
+        Lock(b);
 
-        // Flatten for View
-        var allPositions = new HashSet<Position>();
-        foreach(var g in groups) 
-            foreach(var p in g.Positions) allPositions.Add(p);
+        // Perform logical swap immediately
+        Swap(ref _state, a, b);
 
-        if (allPositions.Count > 0)
-            _view.ShowMatches(allPositions);
+        // Add task to track the animation and subsequent logic
+        _activeSwaps.Add(new SwapTask { IdA = tA.Id, IdB = tB.Id, CheckMatch = true });
         
-        // 1. Process matches (Clear + Spawn Bombs)
-        int points = _matchProcessor.ProcessMatches(ref _state, groups);
-        _state.Score += points;
-
-        // 2. Gravity & Refill (Logic)
-        var gravityMoves = _gravitySystem.ApplyGravity(ref _state);
-        _view.ShowGravity(gravityMoves);
-        
-        var refillMoves = _gravitySystem.Refill(ref _state);
-        _view.ShowRefill(refillMoves);
+        // Notify View
+        _view.ShowSwap(a, b, true); 
         
         return true;
     }
 
-    private bool HasHoles()
+    private void UpdateSwapTasks()
     {
-        for (int i = 0; i < _state.Grid.Length; i++)
+        for (int i = _activeSwaps.Count - 1; i >= 0; i--)
         {
-            if (_state.Grid[i].Type == TileType.None) return true;
+            var task = _activeSwaps[i];
+            
+            var posA = FindTilePosition(task.IdA);
+            var posB = FindTilePosition(task.IdB);
+
+            // If tiles are missing (destroyed?), remove task
+            if (!posA.IsValid || !posB.IsValid)
+            {
+                // Unlocking handles missing IDs gracefully (remove nothing)
+                Unlock(task.IdA);
+                Unlock(task.IdB);
+                _activeSwaps.RemoveAt(i);
+                continue;
+            }
+
+            // Check if visuals have arrived at the logical destination
+            if (IsVisualAtTarget(posA) && IsVisualAtTarget(posB))
+            {
+                if (task.CheckMatch)
+                {
+                    var matchesA = _matchFinder.FindMatchGroups(in _state, posA);
+                    var matchesB = _matchFinder.FindMatchGroups(in _state, posB);
+                    bool hasMatch = matchesA.Count > 0 || matchesB.Count > 0;
+                    bool isSpecial = IsSpecialMove(posA, posB);
+
+                    if (hasMatch || isSpecial)
+                    {
+                        // Valid Move
+                        if (isSpecial)
+                        {
+                            _powerUpHandler.ProcessSpecialMove(ref _state, posA, posB, out int points);
+                            _state.Score += points;
+                        }
+
+                        // Unlock and finish
+                        Unlock(task.IdA);
+                        Unlock(task.IdB);
+                        _activeSwaps.RemoveAt(i);
+                    }
+                    else
+                    {
+                        // Invalid Move -> Revert
+                        Swap(ref _state, posA, posB); // Swap back logically
+                        task.CheckMatch = false; // Next arrival means revert done
+                        
+                        _view.ShowSwap(posA, posB, false); // Visual feedback for revert
+                    }
+                }
+                else
+                {
+                    // Revert Finished
+                    Unlock(task.IdA);
+                    Unlock(task.IdB);
+                    _activeSwaps.RemoveAt(i);
+                    StatusMessage = "Invalid Move";
+                }
+            }
         }
-        return false;
     }
+
+    private void ResolveMatches()
+    {
+        // 1. Find all potential matches
+        var allGroups = _matchFinder.FindMatchGroups(in _state);
+        
+        // 2. Filter matches: Keep only those where ALL tiles are Stable and Not Locked
+        var validGroups = new List<MatchGroup>();
+        foreach (var group in allGroups)
+        {
+            bool isGroupValid = true;
+            foreach (var p in group.Positions)
+            {
+                if (IsLocked(p) || !IsStable(p))
+                {
+                    isGroupValid = false;
+                    break;
+                }
+            }
+            if (isGroupValid)
+            {
+                validGroups.Add(group);
+            }
+        }
+
+        // 3. If no valid matches and no holes, nothing to do
+        if (validGroups.Count == 0 && !HasHoles()) return;
+
+        // 4. Process Matches
+        if (validGroups.Count > 0)
+        {
+            var allPositions = new HashSet<Position>();
+            foreach(var g in validGroups) 
+                foreach(var p in g.Positions) allPositions.Add(p);
+            
+            _view.ShowMatches(allPositions);
+
+            int points = _matchProcessor.ProcessMatches(ref _state, validGroups);
+            _state.Score += points;
+        }
+
+        // 5. Apply Gravity
+        var gravityMoves = _gravitySystem.ApplyGravity(ref _state);
+        if (gravityMoves.Count > 0) _view.ShowGravity(gravityMoves);
+        
+        // 6. Refill
+        var refillMoves = _gravitySystem.Refill(ref _state);
+        if (refillMoves.Count > 0) _view.ShowRefill(refillMoves);
+    }
+
+    // Animation / Stability Helpers
 
     private bool AnimateTiles(float dt)
     {
@@ -331,27 +341,72 @@ public sealed class Match3Controller
         return allStable;
     }
 
-    private bool TrySwapInternal(Position a, Position b)
+    private bool IsStable(Position p)
     {
-        if (_currentState != ControllerState.Idle) return false;
-        
-        if (!IsValidMove(a, b)) return false;
-
-        _swapA = a;
-        _swapB = b;
-        
-        Swap(ref _state, a, b);
-        
-        _currentState = ControllerState.AnimateSwap;
-        return true;
+        return IsVisualAtTarget(p);
     }
 
-    private bool IsValidMove(Position from, Position to)
+    private bool IsVisualAtTarget(Position p)
     {
-        if (from.X < 0 || from.X >= _state.Width || from.Y < 0 || from.Y >= _state.Height) return false;
-        if (to.X < 0 || to.X >= _state.Width || to.Y < 0 || to.Y >= _state.Height) return false;
-        if (Math.Abs(from.X - to.X) + Math.Abs(from.Y - to.Y) != 1) return false;
-        return true;
+        var tile = _state.GetTile(p.X, p.Y);
+        if (tile.Type == TileType.None) return true; // Empty is stable
+
+        var target = new Vector2(p.X, p.Y);
+        return Vector2.DistanceSquared(tile.Position, target) <= Epsilon * Epsilon;
+    }
+
+    // Locking Helpers (ID Based)
+
+    private void Lock(Position p) => _lockedTileIds.Add(_state.GetTile(p.X, p.Y).Id);
+    private void Unlock(long id) => _lockedTileIds.Remove(id);
+    private bool IsLocked(Position p) => _lockedTileIds.Contains(_state.GetTile(p.X, p.Y).Id);
+
+    private Position FindTilePosition(long id)
+    {
+        for (int i = 0; i < _state.Grid.Length; i++)
+        {
+            if (_state.Grid[i].Id == id)
+            {
+                return new Position(i % _state.Width, i / _state.Width);
+            }
+        }
+        return Position.Invalid;
+    }
+
+    // Standard Helpers
+
+    private bool IsValidPosition(Position p)
+    {
+        return p.X >= 0 && p.X < _state.Width && p.Y >= 0 && p.Y < _state.Height;
+    }
+
+    private bool IsNeighbor(Position a, Position b)
+    {
+        return Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y) == 1;
+    }
+
+    private Position GetNeighbor(Position p, Direction dir)
+    {
+        return dir switch
+        {
+            Direction.Up => new Position(p.X, p.Y - 1),
+            Direction.Down => new Position(p.X, p.Y + 1),
+            Direction.Left => new Position(p.X - 1, p.Y),
+            Direction.Right => new Position(p.X + 1, p.Y),
+            _ => p
+        };
+    }
+
+    private bool IsSpecialMove(Position a, Position b)
+    {
+        var t1 = _state.GetTile(a.X, a.Y);
+        var t2 = _state.GetTile(b.X, b.Y);
+        
+        if (t1.Type == TileType.Rainbow || t2.Type == TileType.Rainbow) return true;
+        
+        bool isBombCombo = t1.Bomb != BombType.None && t2.Bomb != BombType.None;
+        
+        return isBombCombo;
     }
 
     private void Swap(ref GameState state, Position a, Position b)
@@ -363,7 +418,15 @@ public sealed class Match3Controller
         state.Grid[idxB] = temp;
     }
 
-    // Helper for tests/debug
+    private bool HasHoles()
+    {
+        for (int i = 0; i < _state.Grid.Length; i++)
+        {
+            if (_state.Grid[i].Type == TileType.None) return true;
+        }
+        return false;
+    }
+
     public void DebugSetTile(Position p, TileType t)
     {
         _state.SetTile(p.X, p.Y, new Tile(_state.NextTileId++, t, p.X, p.Y));
@@ -371,44 +434,38 @@ public sealed class Match3Controller
 
     public bool TryMakeRandomMove()
     {
-        if (!IsIdle) return false;
-
         for (int y = 0; y < _state.Height; y++)
         {
             for (int x = 0; x < _state.Width; x++)
             {
                 var p = new Position(x, y);
-
-                // Try Right
                 var right = new Position(x + 1, y);
                 if (IsValidPosition(right))
                 {
-                    if (CheckAndPerformMove(p, right)) return true;
+                    if (CheckAndStartMove(p, right)) return true;
                 }
-
-                // Try Down
                 var down = new Position(x, y + 1);
                 if (IsValidPosition(down))
                 {
-                    if (CheckAndPerformMove(p, down)) return true;
+                    if (CheckAndStartMove(p, down)) return true;
                 }
             }
         }
-        
         return false;
     }
 
-    private bool CheckAndPerformMove(Position a, Position b)
+    private bool CheckAndStartMove(Position a, Position b)
     {
+        if (IsLocked(a) || IsLocked(b)) return false;
+
         Swap(ref _state, a, b);
         bool hasMatch = _matchFinder.HasMatches(in _state);
-        bool isSpecial = IsSpecialMove(a, b); // Note: a and b are now swapped in grid
-        
+        bool isSpecial = IsSpecialMove(a, b);
         Swap(ref _state, a, b); // Swap back
 
         if (hasMatch || isSpecial)
         {
-            TrySwapInternal(a, b);
+            TryStartSwap(a, b);
             StatusMessage = "Auto Move...";
             return true;
         }
