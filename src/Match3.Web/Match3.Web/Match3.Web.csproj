@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Match3.Core\Match3.Core.csproj" />
+    <ProjectReference Include="..\..\Match3.Random\Match3.Random.csproj" />
   </ItemGroup>
 
 </Project>

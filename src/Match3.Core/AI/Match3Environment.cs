@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Match3.Core.Structs;
 using Match3.Core.Logic;
 using Match3.Core.Interfaces;
+using Match3.Random;
 
 namespace Match3.Core.AI;
 
@@ -20,9 +21,9 @@ public class Match3Environment : IGameEnvironment<GameState, Move>
 
     private readonly IMatchFinder _matchFinder;
     private readonly IMatchProcessor _matchProcessor;
-    private readonly IGravitySystem _gravitySystem;
+    private IGravitySystem _gravitySystem;
     private readonly IPowerUpHandler _powerUpHandler;
-    private readonly ITileGenerator _tileGenerator;
+    private ITileGenerator _tileGenerator;
 
     public Match3Environment(int width, int height, int tileTypesCount, int maxMoves = 100)
     {
@@ -31,17 +32,19 @@ public class Match3Environment : IGameEnvironment<GameState, Move>
         _tileTypesCount = tileTypesCount;
         _maxMoves = maxMoves;
 
-        _tileGenerator = new StandardTileGenerator();
         _matchFinder = new ClassicMatchFinder();
         _matchProcessor = new StandardMatchProcessor();
-        _gravitySystem = new StandardGravitySystem(_tileGenerator);
+        _gravitySystem = new StandardGravitySystem(new StandardTileGenerator());
         _powerUpHandler = new PowerUpHandler();
     }
 
     public GameState Reset(int? seed = null)
     {
-        var rng = new DefaultRandom(seed);
+        var seeds = new SeedManager(seed);
+        var rng = seeds.GetRandom(RandomDomain.Main);
         _state = new GameState(_width, _height, _tileTypesCount, rng);
+        _tileGenerator = new StandardTileGenerator(seeds.GetRandom(RandomDomain.Refill));
+        _gravitySystem = new StandardGravitySystem(_tileGenerator);
         InitializeBoard();
         _stepsTaken = 0;
         return _state; // Returns a copy because GameState is a struct

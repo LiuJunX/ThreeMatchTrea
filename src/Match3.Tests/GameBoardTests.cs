@@ -6,6 +6,7 @@ using Match3.Core.Logic;
 using Match3.Core.Interfaces;
 using System.Collections.Generic;
 using System.Numerics;
+using Match3.Random;
 
 namespace Match3.Tests;
 
@@ -22,7 +23,7 @@ public class GameBoardTests
         
         // Use Controller to initialize
         var view = new MockGameView();
-        var tileGen = new StandardTileGenerator();
+        var tileGen = new StandardTileGenerator(new DefaultRandom(1001));
         var gravity = new StandardGravitySystem(tileGen);
         var finder = new ClassicMatchFinder();
         var processor = new StandardMatchProcessor();
@@ -126,7 +127,7 @@ public class GameBoardTests
         
         state.SetTile(0, 2, new Tile(0, TileType.Red, 0, 2));
 
-        var tileGen = new StandardTileGenerator();
+        var tileGen = new StandardTileGenerator(new DefaultRandom(2002));
         var gravity = new StandardGravitySystem(tileGen);
 
         // Act

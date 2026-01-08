@@ -6,6 +6,7 @@ using Match3.Core.Config;
 using Match3.Core.Interfaces;
 using Match3.Core.Logic;
 using Match3.Core.Structs;
+using Match3.Random;
 
 namespace Match3.Core;
 

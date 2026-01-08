@@ -6,6 +6,7 @@ using Match3.Core.Logic;
 using Xunit;
 using Match3.Core.Interfaces;
 using System.Linq;
+using Match3.Random;
 
 namespace Match3.Tests;
 
@@ -19,7 +20,16 @@ public class Match3ControllerTests
         var view = new MockGameView();
         var logger = new ConsoleGameLogger();
         var config = new Match3Config(4, 4, 5);
-        var controller = new Match3Controller(config, rng, view, new ClassicMatchFinder(), new StandardMatchProcessor(), new StandardGravitySystem(new StandardTileGenerator()), new PowerUpHandler(), new StandardTileGenerator(), logger);
+        var controller = new Match3Controller(
+            config,
+            rng,
+            view,
+            new ClassicMatchFinder(),
+            new StandardMatchProcessor(),
+            new StandardGravitySystem(new StandardTileGenerator(new DefaultRandom(3001))),
+            new PowerUpHandler(),
+            new StandardTileGenerator(new DefaultRandom(3002)),
+            logger);
 
         // Setup a stable board (Checkerboard of Blue/Purple) to prevent gravity/matches
         for(int y=0; y<4; y++) 
@@ -76,7 +86,16 @@ public class Match3ControllerTests
         var view = new MockGameView();
         var logger = new ConsoleGameLogger();
         var config = new Match3Config(4, 4, 5);
-        var controller = new Match3Controller(config, rng, view, new ClassicMatchFinder(), new StandardMatchProcessor(), new StandardGravitySystem(new StandardTileGenerator()), new PowerUpHandler(), new StandardTileGenerator(), logger);
+        var controller = new Match3Controller(
+            config,
+            rng,
+            view,
+            new ClassicMatchFinder(),
+            new StandardMatchProcessor(),
+            new StandardGravitySystem(new StandardTileGenerator(new DefaultRandom(3003))),
+            new PowerUpHandler(),
+            new StandardTileGenerator(new DefaultRandom(3004)),
+            logger);
 
         // Stable board
         for(int y=0; y<4; y++) 
@@ -130,7 +149,16 @@ public class Match3ControllerTests
         var view = new MockGameView();
         var logger = new ConsoleGameLogger();
         var config = new Match3Config(4, 4, 5);
-        var controller = new Match3Controller(config, rng, view, new ClassicMatchFinder(), new StandardMatchProcessor(), new StandardGravitySystem(new StandardTileGenerator()), new PowerUpHandler(), new StandardTileGenerator(), logger);
+        var controller = new Match3Controller(
+            config,
+            rng,
+            view,
+            new ClassicMatchFinder(),
+            new StandardMatchProcessor(),
+            new StandardGravitySystem(new StandardTileGenerator(new DefaultRandom(3005))),
+            new PowerUpHandler(),
+            new StandardTileGenerator(new DefaultRandom(3006)),
+            logger);
 
         // Setup board
         // B B B B (0)

@@ -8,6 +8,7 @@ using Match3.Core.Interfaces;
 using Match3.Core.Logic;
 using Match3.Core.Structs;
 using Microsoft.Extensions.Logging;
+using Match3.Random;
 
 namespace Match3.Web.Services;
 
@@ -50,10 +51,12 @@ public class Match3GameService : IDisposable
             Height = levelConfig.Height;
         }
 
-        var rng = new DefaultRandom(Environment.TickCount);
+        var rngSeed = Environment.TickCount;
+        var seedManager = new SeedManager(rngSeed);
+        var rng = seedManager.GetRandom(RandomDomain.Main);
         var view = new ServiceGameView(this);
         
-        var tileGenerator = new StandardTileGenerator();
+        var tileGenerator = new StandardTileGenerator(seedManager.GetRandom(RandomDomain.Refill));
         var gravitySystem = new StandardGravitySystem(tileGenerator);
         var matchFinder = new ClassicMatchFinder();
         var matchProcessor = new StandardMatchProcessor();

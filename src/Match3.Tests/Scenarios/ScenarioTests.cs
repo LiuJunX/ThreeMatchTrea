@@ -8,6 +8,7 @@ using Match3.Core.Interfaces;
 using Match3.Core.Logic;
 using Match3.Core.Structs;
 using Xunit;
+using Match3.Random;
 
 namespace Match3.Tests.Scenarios
 {
@@ -61,7 +62,7 @@ namespace Match3.Tests.Scenarios
             var state = new GameState(scenario.Width, scenario.Height, 6, rng);
             
             // Systems
-            var tileGen = new StandardTileGenerator();
+            var tileGen = new StandardTileGenerator(new DefaultRandom(4242));
             var finder = new ClassicMatchFinder();
             var processor = new StandardMatchProcessor();
             var gravity = new StandardGravitySystem(tileGen);

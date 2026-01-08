@@ -1,4 +1,5 @@
 using System;
+using Match3.Random;
 
 namespace Match3.Core.Structs;
 

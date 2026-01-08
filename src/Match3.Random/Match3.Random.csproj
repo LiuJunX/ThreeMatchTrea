@@ -4,8 +4,7 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
+    <AssemblyName>Match3.Random</AssemblyName>
+    <RootNamespace>Match3.Random</RootNamespace>
   </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Match3.Random\Match3.Random.csproj" />
-  </ItemGroup>
 </Project>
