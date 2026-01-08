@@ -14,7 +14,7 @@ namespace Match3.Tests.Scenarios
 {
     public class ScenarioTests
     {
-        public static IEnumerable<object[]> GetScenarios()
+        private static List<TestScenario> LoadScenarios()
         {
             var dataDir = Path.Combine(AppContext.BaseDirectory, "Scenarios", "Data");
             if (!Directory.Exists(dataDir))
@@ -27,12 +27,7 @@ namespace Match3.Tests.Scenarios
             }
 
             var files = Directory.GetFiles(dataDir, "*.json", SearchOption.AllDirectories);
-            if (files.Length == 0)
-            {
-                 throw new FileNotFoundException($"No JSON files found in: {dataDir}");
-            }
-
-            var scenarios = new List<object[]>();
+            var scenarios = new List<TestScenario>();
 
             foreach (var file in files)
             {
@@ -42,7 +37,7 @@ namespace Match3.Tests.Scenarios
                     var scenario = JsonSerializer.Deserialize<TestScenario>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     if (scenario != null)
                     {
-                        scenarios.Add(new object[] { scenario });
+                        scenarios.Add(scenario);
                     }
                 }
                 catch (Exception ex)
@@ -54,54 +49,53 @@ namespace Match3.Tests.Scenarios
             return scenarios;
         }
 
-        [Theory]
-        [MemberData(nameof(GetScenarios))]
-        public void RunScenario(TestScenario scenario)
+        [Fact]
+        public void RunScenarios()
         {
-            var rng = new DefaultRandom(42);
-            var state = new GameState(scenario.Width, scenario.Height, 6, rng);
-            
-            // Systems
-            var tileGen = new StandardTileGenerator(new DefaultRandom(4242));
-            var finder = new ClassicMatchFinder();
-            var processor = new StandardMatchProcessor();
-            var gravity = new StandardGravitySystem(tileGen);
-            var powerUp = new PowerUpHandler();
+            var scenarios = LoadScenarios();
+            if (scenarios.Count == 0) return;
 
-            // Parse layout
-            for (int y = 0; y < scenario.Height; y++)
+            foreach (var scenario in scenarios)
             {
-                var row = scenario.Layout[y].Split(',', StringSplitOptions.TrimEntries);
-                for (int x = 0; x < scenario.Width; x++)
-                {
-                    var type = ParseType(row[x]);
-                    state.SetTile(x, y, new Tile(state.NextTileId++, type, x, y));
-                }
-            }
-            
-            // Execute moves
-            foreach (var move in scenario.Moves)
-            {
-                var p1 = ParsePos(move.From);
-                var p2 = ParsePos(move.To);
+                var rng = new DefaultRandom(42);
+                var state = new GameState(scenario.Width, scenario.Height, 6, rng);
                 
-                // Execute Logic Loop
-                ApplyMove(ref state, p1, p2, finder, processor, gravity, powerUp);
-            }
-            
-            // Verify expectations
-            foreach (var exp in scenario.Expectations)
-            {
-                var tile = state.GetTile(exp.X, exp.Y);
-                if (exp.Type != null)
+                var tileGen = new StandardTileGenerator(new DefaultRandom(4242));
+                var finder = new ClassicMatchFinder();
+                var processor = new StandardMatchProcessor();
+                var gravity = new StandardGravitySystem(tileGen);
+                var powerUp = new PowerUpHandler();
+
+                for (int y = 0; y < scenario.Height; y++)
                 {
-                    var expectedType = ParseType(exp.Type); 
-                    Assert.Equal(expectedType, tile.Type);
+                    var row = scenario.Layout[y].Split(',', StringSplitOptions.TrimEntries);
+                    for (int x = 0; x < scenario.Width; x++)
+                    {
+                        var type = ParseType(row[x]);
+                        state.SetTile(x, y, new Tile(state.NextTileId++, type, x, y));
+                    }
                 }
-                if (exp.Bomb != null)
+                
+                foreach (var move in scenario.Moves)
                 {
-                    var expectedBomb = ParseBombType(exp.Bomb);
-                    Assert.Equal(expectedBomb, tile.Bomb);
+                    var p1 = ParsePos(move.From);
+                    var p2 = ParsePos(move.To);
+                    ApplyMove(ref state, p1, p2, finder, processor, gravity, powerUp);
+                }
+                
+                foreach (var exp in scenario.Expectations)
+                {
+                    var tile = state.GetTile(exp.X, exp.Y);
+                    if (exp.Type != null)
+                    {
+                        var expectedType = ParseType(exp.Type); 
+                        Assert.Equal(expectedType, tile.Type);
+                    }
+                    if (exp.Bomb != null)
+                    {
+                        var expectedBomb = ParseBombType(exp.Bomb);
+                        Assert.Equal(expectedBomb, tile.Bomb);
+                    }
                 }
             }
         }

@@ -40,15 +40,16 @@ namespace Match3.ConfigTool
             
             // Let's assume the mock returns a list of dictionaries or objects.
             // We define a DTO for parsing.
-            var dtos = JsonSerializer.Deserialize<List<ItemDto>>(json, options);
+            var dtos = JsonSerializer.Deserialize<List<ItemDto>>(json, options) ?? new List<ItemDto>();
             
             var result = new List<ItemConfig>();
             foreach (var dto in dtos)
             {
+                if (dto == null) continue;
                 result.Add(new ItemConfig
                 {
                     Id = dto.Id,
-                    Name = dto.Name,
+                    Name = dto.Name ?? string.Empty,
                     Cost = dto.Cost,
                     Power = dto.Power
                 });
@@ -82,7 +83,7 @@ namespace Match3.ConfigTool
     class ItemDto
     {
         public int Id { get; set; }
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public int Cost { get; set; }
         public int Power { get; set; }
     }

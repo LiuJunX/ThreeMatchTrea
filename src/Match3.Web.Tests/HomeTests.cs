@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Match3.Core;
 using Match3.Core.Structs;
 using Match3.Web.Services;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace Match3.Web.Tests;
 
@@ -52,7 +53,11 @@ public class HomeTests : TestContext
         
         // Find first tile and click
         var firstTile = cut.Find(".tile");
-        firstTile.Click();
+        var down = new PointerEventArgs { ClientX = 0, ClientY = 0 };
+        firstTile.TriggerEvent("onpointerdown", down);
+        var board = cut.Find(".board-container");
+        var up = new PointerEventArgs { ClientX = 0, ClientY = 0 };
+        board.TriggerEvent("onpointerup", up);
         
         // Assert: Verify status becomes "Select destination"
         cut.WaitForAssertion(() => 
