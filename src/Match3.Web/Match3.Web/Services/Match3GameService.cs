@@ -36,14 +36,20 @@ public class Match3GameService : IDisposable
     }
     public int LastMatchesCount { get; private set; }
 
-    public int Width { get; } = 8;
-    public int Height { get; } = 8;
+    public int Width { get; private set; } = 8;
+    public int Height { get; private set; } = 8;
     public const int CellSize = 66; // Exposed for UI
 
-    public void StartNewGame()
+    public void StartNewGame(LevelConfig? levelConfig = null)
     {
         StopLoop();
         
+        if (levelConfig != null)
+        {
+            Width = levelConfig.Width;
+            Height = levelConfig.Height;
+        }
+
         var rng = new DefaultRandom(Environment.TickCount);
         var view = new ServiceGameView(this);
         
@@ -65,7 +71,8 @@ public class Match3GameService : IDisposable
             gravitySystem,
             powerUpHandler,
             tileGenerator,
-            gameLogger
+            gameLogger,
+            levelConfig
         );
         
         LastMatchesCount = 0;

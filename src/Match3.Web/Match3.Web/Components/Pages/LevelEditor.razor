@@ -1,0 +1,172 @@
+@page "/level-editor"
+@using Match3.Core
+@using Match3.Core.Config
+@using Match3.Web.Services
+@using System.Text.Json
+@inject NavigationManager Navigation
+@inject Match3GameService GameService
+@rendermode InteractiveServer
+
+<PageTitle>Level Editor</PageTitle>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card mb-3">
+                <div class="card-header">Settings</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Width</label>
+                        <input type="number" class="form-control" @bind="EditorWidth" min="3" max="12" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Height</label>
+                        <input type="number" class="form-control" @bind="EditorHeight" min="3" max="12" />
+                    </div>
+                    <button class="btn btn-primary w-100 mb-2" @onclick="ResizeGrid">Resize Grid</button>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Move Limit</label>
+                        <input type="number" class="form-control" @bind="CurrentLevel.MoveLimit" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header">Tools</div>
+                <div class="card-body">
+                    <label class="form-label">Select Tile Type:</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var type in Enum.GetValues<TileType>())
+                        {
+                            <button class="btn @(SelectedType == type ? "btn-outline-primary active" : "btn-outline-secondary") p-2" 
+                                    style="width: 40px; height: 40px;"
+                                    @onclick="() => SelectedType = type"
+                                    title="@type">
+                                <div style="width: 100%; height: 100%; background-color: @GetColor(type); border-radius: 4px;"></div>
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">Data</div>
+                <div class="card-body">
+                    <button class="btn btn-info w-100 mb-2" @onclick="PlayLevel">Play This Level</button>
+                    <button class="btn btn-success w-100 mb-2" @onclick="ExportJson">Export JSON</button>
+                    <textarea class="form-control mb-2" rows="5" @bind="JsonOutput"></textarea>
+                    <button class="btn btn-warning w-100" @onclick="ImportJson">Import JSON</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-9">
+            <div class="d-flex justify-content-center bg-secondary p-4 rounded" style="min-height: 600px; overflow: auto;">
+                <div class="position-relative" 
+                     style="width: @(CurrentLevel.Width * 60)px; height: @(CurrentLevel.Height * 60)px;"
+                     @onmouseleave="StopDrawing"
+                     @onmouseup="StopDrawing">
+                    @for (int i = 0; i < CurrentLevel.Grid.Length; i++)
+                    {
+                        var index = i;
+                        var x = i % CurrentLevel.Width;
+                        var y = i / CurrentLevel.Width;
+                        <div class="position-absolute border border-dark" 
+                             style="left: @(x * 60)px; top: @(y * 60)px; width: 60px; height: 60px; background-color: @GetColor(CurrentLevel.Grid[i]); cursor: pointer; user-select: none;"
+                             @onmousedown="() => StartDrawing(index)"
+                             @onmouseenter="() => PaintTile(index)"
+                             @ondragstart:preventDefault="true">
+                            <div class="w-100 h-100 d-flex align-items-center justify-content-center text-white small" style="text-shadow: 1px 1px 2px black; pointer-events: none;">
+                                @(CurrentLevel.Grid[i] == TileType.None ? "" : CurrentLevel.Grid[i].ToString().Substring(0, 1))
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LevelConfig CurrentLevel { get; set; } = new LevelConfig();
+    private int EditorWidth { get; set; } = 8;
+    private int EditorHeight { get; set; } = 8;
+    private TileType SelectedType { get; set; } = TileType.Red;
+    private string JsonOutput { get; set; } = "";
+    private bool IsDrawing { get; set; } = false;
+
+    private void ResizeGrid()
+    {
+        var newLevel = new LevelConfig(EditorWidth, EditorHeight);
+        newLevel.MoveLimit = CurrentLevel.MoveLimit;
+        // Optional: Copy old data if possible, but for now just reset
+        CurrentLevel = newLevel;
+    }
+
+    private void StartDrawing(int index)
+    {
+        IsDrawing = true;
+        PaintTile(index);
+    }
+
+    private void PaintTile(int index)
+    {
+        if (IsDrawing && index >= 0 && index < CurrentLevel.Grid.Length)
+        {
+            CurrentLevel.Grid[index] = SelectedType;
+        }
+    }
+
+    private void StopDrawing()
+    {
+        IsDrawing = false;
+    }
+
+    private void ExportJson()
+    {
+        var options = new JsonSerializerOptions { WriteIndented = true };
+        JsonOutput = JsonSerializer.Serialize(CurrentLevel, options);
+    }
+
+    private void ImportJson()
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(JsonOutput))
+            {
+                var loaded = JsonSerializer.Deserialize<LevelConfig>(JsonOutput);
+                if (loaded != null)
+                {
+                    CurrentLevel = loaded;
+                    EditorWidth = loaded.Width;
+                    EditorHeight = loaded.Height;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Simple error handling
+            Console.WriteLine($"Error importing JSON: {ex.Message}");
+        }
+    }
+
+    private void PlayLevel()
+    {
+        GameService.StartNewGame(CurrentLevel);
+        Navigation.NavigateTo("/");
+    }
+
+    private string GetColor(TileType type) => type switch
+    {
+        TileType.Red => "#ff4444",
+        TileType.Green => "#44ff44",
+        TileType.Blue => "#4444ff",
+        TileType.Yellow => "#ffff44",
+        TileType.Purple => "#ff44ff",
+        TileType.Orange => "#ffaa44",
+        TileType.Rainbow => "linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet)",
+        TileType.None => "#eee4da", // Similar to grid background
+        _ => "#cccccc"
+    };
+}

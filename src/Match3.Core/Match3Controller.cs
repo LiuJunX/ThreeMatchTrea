@@ -56,7 +56,8 @@ public sealed class Match3Controller
         IGravitySystem gravitySystem,
         IPowerUpHandler powerUpHandler,
         ITileGenerator tileGenerator,
-        IGameLogger logger)
+        IGameLogger logger,
+        LevelConfig? levelConfig = null)
     {
         _config = config;
         _view = view;
@@ -68,18 +69,45 @@ public sealed class Match3Controller
         _logger = logger;
 
         _state = new GameState(_config.Width, _config.Height, _config.TileTypesCount, rng);
-        InitializeBoard();
+        InitializeBoard(levelConfig);
         _logger.LogInfo($"Match3Controller initialized with size {_config.Width}x{_config.Height}");
     }
 
-    private void InitializeBoard()
+    private void InitializeBoard(LevelConfig? levelConfig)
     {
-        for (int y = 0; y < _state.Height; y++)
+        if (levelConfig != null)
         {
-            for (int x = 0; x < _state.Width; x++)
+            // Load from config
+            for (int i = 0; i < levelConfig.Grid.Length; i++)
             {
-                var type = _tileGenerator.GenerateNonMatchingTile(ref _state, x, y);
-                _state.SetTile(x, y, new Tile(_state.NextTileId++, type, x, y));
+                int x = i % levelConfig.Width;
+                int y = i / levelConfig.Width;
+                
+                // Ensure we don't go out of bounds if config doesn't match state dimensions exactly
+                if (x < _state.Width && y < _state.Height)
+                {
+                    var type = levelConfig.Grid[i];
+                    // If type is None (0), maybe we want to generate one? 
+                    // Or maybe None is a valid hole? 
+                    // For now, let's assume None means "Empty/Hole" or if the user wants random, they shouldn't set it in config?
+                    // But usually level config specifies the initial layout.
+                    
+                    // If the editor saves 0 (None), it usually means empty space.
+                    // Let's assign it directly.
+                    _state.SetTile(x, y, new Tile(_state.NextTileId++, type, x, y));
+                }
+            }
+        }
+        else
+        {
+            // Default random generation
+            for (int y = 0; y < _state.Height; y++)
+            {
+                for (int x = 0; x < _state.Width; x++)
+                {
+                    var type = _tileGenerator.GenerateNonMatchingTile(ref _state, x, y);
+                    _state.SetTile(x, y, new Tile(_state.NextTileId++, type, x, y));
+                }
             }
         }
     }
