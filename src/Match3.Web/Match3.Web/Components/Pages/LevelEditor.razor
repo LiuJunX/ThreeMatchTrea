@@ -4,6 +4,7 @@
 @using Match3.Core.Logic
 @using Match3.Core.Interfaces
 @using Match3.Core.Structs
+@using Match3.Core.Systems
 @using Match3.Web.Services
 @using Match3.Random
 @using System.Text.Json
@@ -18,209 +19,173 @@
 
 <PageTitle>Level Editor</PageTitle>
 
-<div class="container mt-4">
-    <!-- Mode Switcher -->
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="btn-group w-100">
-                <button class="btn @(CurrentMode == EditorMode.Level ? "btn-primary" : "btn-outline-primary")" 
+<div class="d-flex flex-column vh-100 overflow-hidden" style="max-height: 100vh;">
+    <!-- Header -->
+    <header class="navbar navbar-dark bg-dark flex-shrink-0 px-3 py-2 shadow-sm justify-content-between">
+        <div class="d-flex align-items-center gap-3">
+            <span class="navbar-brand mb-0 h1 fs-5">Level Editor</span>
+            
+            <div class="btn-group btn-group-sm">
+                <button class="btn @(CurrentMode == EditorMode.Level ? "btn-light" : "btn-outline-light")" 
                         @onclick="() => SwitchMode(EditorMode.Level)">
                     Level Design
                 </button>
-                <button class="btn @(CurrentMode == EditorMode.Scenario ? "btn-primary" : "btn-outline-primary")" 
+                <button class="btn @(CurrentMode == EditorMode.Scenario ? "btn-light" : "btn-outline-light")" 
                         @onclick="() => SwitchMode(EditorMode.Scenario)">
-                    Scenario Design (Test Case)
+                    Scenario / Test
                 </button>
             </div>
         </div>
-    </div>
 
-    <div class="row">
-        <!-- Sidebar Controls -->
-        <div class="col-md-3">
-            <div class="card mb-3">
-                <div class="card-header">Grid Settings</div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label">Width</label>
-                        <input type="number" class="form-control" @bind="EditorWidth" min="3" max="12" />
+        <div class="d-flex gap-2">
+            @if (CurrentMode == EditorMode.Level)
+            {
+                <button class="btn btn-sm btn-success" @onclick="PlayLevel">
+                    <i class="bi bi-play-fill"></i> Play Level
+                </button>
+            }
+            <button class="btn btn-sm btn-outline-info" @onclick="ExportForAICritic">AI Critic</button>
+        </div>
+    </header>
+
+    <div class="flex-grow-1 d-flex overflow-hidden">
+        <!-- LEFT SIDEBAR: Configuration -->
+        <aside class="bg-light border-end d-flex flex-column" style="width: 320px; min-width: 320px; overflow-y: auto;">
+            <div class="p-3 border-bottom">
+                <h6 class="text-uppercase text-muted small fw-bold mb-3">Grid Settings</h6>
+                <div class="row g-2 align-items-end">
+                    <div class="col-4">
+                        <label class="form-label small mb-1">Width</label>
+                        <input type="number" class="form-control form-control-sm" @bind="EditorWidth" min="3" max="12" />
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Height</label>
-                        <input type="number" class="form-control" @bind="EditorHeight" min="3" max="12" />
+                    <div class="col-4">
+                        <label class="form-label small mb-1">Height</label>
+                        <input type="number" class="form-control form-control-sm" @bind="EditorHeight" min="3" max="12" />
                     </div>
-                    <button class="btn btn-primary w-100 mb-2" @onclick="ResizeGrid">Resize Grid</button>
-                    
-                    @if (CurrentMode == EditorMode.Level)
-                    {
-                        <div class="mb-3">
-                            <label class="form-label">Move Limit</label>
-                            <input type="number" class="form-control" @bind="CurrentLevel.MoveLimit" />
-                        </div>
-                    }
+                    <div class="col-4">
+                        <button class="btn btn-sm btn-secondary w-100" @onclick="ResizeGrid">Apply</button>
+                    </div>
                 </div>
+                
+                @if (CurrentMode == EditorMode.Level)
+                {
+                    <div class="mt-2">
+                        <label class="form-label small mb-1">Move Limit</label>
+                        <input type="number" class="form-control form-control-sm" @bind="CurrentLevel.MoveLimit" />
+                    </div>
+                }
             </div>
-            
-            <div class="card mb-3">
-                <div class="card-header">Levels</div>
-                <div class="card-body">
-                    @if (CurrentMode == EditorMode.Level)
+
+            <div class="flex-grow-1 p-3 overflow-auto">
+                @if (CurrentMode == EditorMode.Level)
+                {
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-uppercase text-muted small fw-bold mb-0">Levels</h6>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-success py-0" @onclick="AddLevel" title="Add New">+</button>
+                            <button class="btn btn-outline-primary py-0" @onclick="DuplicateSelectedLevel" disabled="@(SelectedLevelIndex < 0)" title="Duplicate">Copy</button>
+                            <button class="btn btn-outline-danger py-0" @onclick="DeleteSelectedLevel" disabled="@(SelectedLevelIndex < 0)" title="Delete">Del</button>
+                        </div>
+                    </div>
+
+                    <div class="list-group list-group-flush border rounded mb-3" style="max-height: 300px; overflow-y: auto;">
+                        @for (int i = 0; i < LevelList.Count; i++)
+                        {
+                            var idx = i;
+                            <button type="button" 
+                                    class="list-group-item list-group-item-action py-2 px-2 d-flex justify-content-between align-items-center small @(SelectedLevelIndex == idx ? "active" : "")" 
+                                    @onclick="() => SelectLevelIndex(idx)">
+                                <span class="text-truncate" style="max-width: 150px;">@LevelList[idx].Name</span>
+                                <span class="badge bg-secondary opacity-50">@LevelList[idx].Config.Width x @LevelList[idx].Config.Height</span>
+                            </button>
+                        }
+                    </div>
+
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control" @bind="LevelNameEditing" placeholder="Level Name" disabled="@(SelectedLevelIndex < 0)" />
+                        <button class="btn btn-outline-secondary" @onclick="ApplyLevelRename" disabled="@(SelectedLevelIndex < 0)">Rename</button>
+                    </div>
+                }
+                else
+                {
+                    <!-- SCENARIO MODE CONTROLS -->
+                    <h6 class="text-uppercase text-muted small fw-bold mb-3">Scenario Info</h6>
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Name</label>
+                        <input type="text" class="form-control form-control-sm" @bind="CurrentScenario.Name" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Description</label>
+                        <textarea class="form-control form-control-sm" rows="2" @bind="CurrentScenario.Description"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small mb-1">Random Seed</label>
+                        <input type="number" class="form-control form-control-sm" @bind="CurrentScenario.Seed" />
+                    </div>
+
+                    <h6 class="text-uppercase text-muted small fw-bold mb-2">Recording</h6>
+                    @if (!IsRecording)
                     {
-                        <div class="d-flex mb-2 gap-2">
-                            <button class="btn btn-success flex-fill" @onclick="AddLevel">New</button>
-                            <button class="btn btn-secondary flex-fill" @onclick="DuplicateSelectedLevel" disabled="@(SelectedLevelIndex < 0)">Duplicate</button>
-                            <button class="btn btn-danger flex-fill" @onclick="DeleteSelectedLevel" disabled="@(SelectedLevelIndex < 0)">Delete</button>
-                        </div>
-                        <ul class="list-group mb-2" style="max-height: 180px; overflow-y: auto;">
-                            @for (int i = 0; i < LevelList.Count; i++)
-                            {
-                                var idx = i;
-                                <li class="list-group-item d-flex justify-content-between align-items-center @(SelectedLevelIndex == idx ? "active" : "")" style="cursor:pointer" @onclick="() => SelectLevelIndex(idx)">
-                                    <span>@LevelList[idx].Name</span>
-                                    <span class="badge bg-light text-dark">@LevelList[idx].Config.Width x @LevelList[idx].Config.Height</span>
-                                </li>
-                            }
-                        </ul>
-                        <div class="mb-2">
-                            <label class="form-label">Name</label>
-                            <input class="form-control" type="text" @bind="LevelNameEditing" disabled="@(SelectedLevelIndex < 0)" />
-                        </div>
-                        <button class="btn btn-primary w-100" @onclick="ApplyLevelRename" disabled="@(SelectedLevelIndex < 0)">Rename</button>
+                        <button class="btn btn-success btn-sm w-100 mb-2" @onclick="StartRecording">
+                            <i class="bi bi-record-circle"></i> Start Recording
+                        </button>
                     }
                     else
                     {
-                        <div class="alert alert-warning small mb-2">切换到 Level Design 查看和编辑关卡列表</div>
-                        <button class="btn btn-primary w-100" @onclick="() => SwitchMode(EditorMode.Level)">切换到 Level Design</button>
+                        <button class="btn btn-danger btn-sm w-100 mb-2" @onclick="StopRecording">
+                            <i class="bi bi-stop-circle"></i> Stop Recording
+                        </button>
+                        <div class="alert alert-info py-1 px-2 small mb-2 text-center">
+                            Recording... Click grid to swap.
+                        </div>
                     }
-                </div>
-            </div>
 
-            @if (CurrentMode == EditorMode.Scenario)
-            {
-                <div class="card mb-3">
-                    <div class="card-header">Scenario Info</div>
-                    <div class="card-body">
-                        <div class="mb-2">
-                            <label class="form-label">Name</label>
-                            <input type="text" class="form-control" @bind="CurrentScenario.Name" />
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label">Description</label>
-                            <textarea class="form-control" rows="2" @bind="CurrentScenario.Description"></textarea>
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label">Random Seed</label>
-                            <input type="number" class="form-control" @bind="CurrentScenario.Seed" />
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card mb-3">
-                    <div class="card-header">Recording</div>
-                    <div class="card-body">
-                        @if (!IsRecording)
-                        {
-                            <button class="btn btn-success w-100 mb-2" @onclick="StartRecording">Start Recording</button>
-                        }
-                        else
-                        {
-                            <button class="btn btn-danger w-100 mb-2" @onclick="StopRecording">Stop Recording</button>
-                            <div class="alert alert-info small p-2">
-                                Playing... Click grid to swap.
-                            </div>
-                        }
-                        
-                        <h6>Moves: @CurrentScenario.Operations.Count</h6>
-                        <ul class="list-group list-group-flush small" style="max-height: 150px; overflow-y: auto;">
+                    <div class="border rounded bg-white p-2 mb-3" style="height: 150px; overflow-y: auto;">
+                        <div class="small text-muted mb-1">Moves: @CurrentScenario.Operations.Count</div>
+                        <ul class="list-unstyled small mb-0 font-monospace">
                             @foreach (var move in CurrentScenario.Operations)
                             {
-                                <li class="list-group-item p-1">
-                                    (@move.FromX, @move.FromY) -> (@move.ToX, @move.ToY)
-                                </li>
+                                <li>(@move.FromX, @move.FromY) &rarr; (@move.ToX, @move.ToY)</li>
                             }
                         </ul>
                     </div>
-                </div>
 
-                 <div class="card mb-3">
-                    <div class="card-header">Expected State</div>
-                    <div class="card-body">
-                        <button class="btn btn-warning w-100" @onclick="CaptureExpectedState" disabled="@(!IsRecording && SimulationController == null)">
-                            Capture Current Result
-                        </button>
-                        @if (CurrentScenario.ExpectedState.Grid.Length > 0)
-                        {
-                            <div class="mt-2 text-success small">State Captured!</div>
-                        }
-                    </div>
-                </div>
-            }
+                    <button class="btn btn-warning btn-sm w-100" @onclick="CaptureExpectedState" disabled="@(!IsRecording && SimulationController == null)">
+                        Capture Result State
+                    </button>
+                    @if (CurrentScenario.ExpectedState.Grid.Length > 0)
+                    {
+                        <div class="text-success small text-center mt-1">
+                            <i class="bi bi-check-circle"></i> State Captured
+                        </div>
+                    }
+                }
+            </div>
+        </aside>
 
-            <!-- Common Tools (Palette) -->
-            <div class="card mb-3">
-                <div class="card-header">Palette</div>
-                <div class="card-body">
-                    <div class="d-flex flex-wrap gap-2">
-                        @foreach (var type in Enum.GetValues<TileType>())
-                        {
-                            <button class="btn @(SelectedType == type ? "btn-outline-primary active" : "btn-outline-secondary") p-2" 
-                                    style="width: 40px; height: 40px;"
-                                    @onclick="() => SelectedType = type"
-                                    title="@type"
-                                    disabled="@IsRecording"> 
-                                <div style="width: 100%; height: 100%; background-color: @GetColor(type); border-radius: 4px;"></div>
-                            </button>
-                        }
-                    </div>
-                    <hr />
-                    <div class="d-flex flex-wrap gap-2">
-                        @foreach (var bomb in (BombType[])Enum.GetValues(typeof(BombType)))
-                        {
-                            <button class="btn @(SelectedBomb == bomb ? "btn-outline-danger active" : "btn-outline-secondary") p-2" 
-                                    style="height: 40px; min-width: 60px;"
-                                    @onclick="() => SelectedBomb = bomb"
-                                    title="@bomb"
-                                    disabled="@IsRecording">
-                                <span>@GetBombIcon(bomb)</span>
-                            </button>
-                        }
-                    </div>
-                </div>
+        <!-- CENTER: Canvas -->
+        <main class="flex-grow-1 bg-secondary bg-opacity-10 d-flex flex-column position-relative overflow-hidden">
+            <!-- Toolbar Overlay -->
+            <div class="position-absolute top-0 start-50 translate-middle-x mt-3 bg-white shadow-sm rounded-pill px-3 py-1 d-flex gap-3 align-items-center z-index-10 border" style="z-index: 100;">
+                <div class="small fw-bold text-muted">@(IsRecording ? "🔴 RECORDING" : "✏️ EDITING")</div>
+                <div class="vr"></div>
+                <div class="small text-muted">@ActiveLevelConfig.Width x @ActiveLevelConfig.Height</div>
             </div>
 
-            <!-- Data Management -->
-            <div class="card">
-                <div class="card-header">Data</div>
-                <div class="card-body">
-                    @if (CurrentMode == EditorMode.Level)
-                    {
-                        <button class="btn btn-info w-100 mb-2" @onclick="PlayLevel">Play This Level</button>
-                    }
-                    else
-                    {
-                        <button class="btn btn-primary w-100 mb-2" @onclick="ExportTestJsonToDirectory">导出测试 JSON 到 Scenarios/Data</button>
-                    }
-                    <button class="btn btn-success w-100 mb-2" @onclick="ExportJson">Export JSON</button>
-                    <textarea class="form-control mb-2" rows="5" @bind="JsonOutput"></textarea>
-                    <button class="btn btn-warning w-100 mb-2" @onclick="ImportJson">Import JSON</button>
-                    <hr />
-                    <button class="btn btn-outline-dark w-100" @onclick="ExportForAICritic">Generate AI Critic Prompt</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Grid Area -->
-        <div class="col-md-9">
-            <div class="d-flex justify-content-center bg-secondary p-4 rounded" style="min-height: 600px; overflow: auto;">
+            <!-- Grid Container -->
+            <div class="flex-grow-1 d-flex align-items-center justify-content-center overflow-auto p-5">
                 @{
                     var currentConfig = ActiveLevelConfig;
                     var width = currentConfig.Width;
                     var height = currentConfig.Height;
+                    var scale = 1.0; // Could add zoom later
+                    var tileSize = 60;
                 }
-                <div class="position-relative" 
-                     style="width: @(width * 60)px; height: @(height * 60)px;"
+                <div class="position-relative shadow-lg bg-white" 
+                     style="width: @(width * tileSize)px; height: @(height * tileSize)px; border: 10px solid #fff; border-radius: 4px;"
                      @onmouseleave="StopDrawing"
                      @onmouseup="StopDrawing">
+                    
                     @for (int i = 0; i < currentConfig.Grid.Length; i++)
                     {
                         var index = i;
@@ -228,33 +193,90 @@
                         var y = i / width;
                         var displayType = GetTileType(index);
                         var displayBomb = GetBomb(index);
+                        var isSelected = IsRecording && SimulationController?.SelectedPosition == new Position(x, y);
 
-                        <div class="position-absolute border border-dark" 
-                             style="left: @(x * 60)px; top: @(y * 60)px; width: 60px; height: 60px; background-color: @GetColor(displayType); cursor: pointer; user-select: none;"
+                        <div class="position-absolute border border-light" 
+                             style="left: @(x * tileSize)px; top: @(y * tileSize)px; width: @(tileSize)px; height: @(tileSize)px; background-color: @GetColor(displayType); cursor: pointer; transition: transform 0.1s;"
                              @onmousedown="() => HandleGridClick(index)"
                              @onmouseenter="() => PaintTile(index)"
                              @ondragstart:preventDefault="true">
                              
-                             <!-- Selection Highlight in Recording Mode -->
-                             @if (IsRecording && SimulationController?.SelectedPosition == new Position(x, y))
+                             @if (isSelected)
                              {
-                                 <div class="position-absolute w-100 h-100 border border-3 border-white"></div>
+                                 <div class="position-absolute top-0 start-0 w-100 h-100 border border-3 border-white shadow-sm" style="z-index: 5;"></div>
                              }
 
-                            <div class="w-100 h-100 d-flex align-items-center justify-content-center text-white small" style="text-shadow: 1px 1px 2px black; pointer-events: none;">
-                                @(displayType == TileType.None ? "" : displayType.ToString().Substring(0, 1))
+                            <div class="w-100 h-100 d-flex align-items-center justify-content-center" style="pointer-events: none;">
+                                @if (displayType != TileType.None)
+                                {
+                                    <!-- Simple shine effect or icon could go here -->
+                                }
                             </div>
+                            
                             @if (displayBomb != BombType.None)
                             {
-                                <div class="position-absolute top-0 end-0 p-1" style="pointer-events:none;">
-                                    <span>@GetBombIcon(displayBomb)</span>
+                                <div class="position-absolute top-50 start-50 translate-middle fs-4" style="pointer-events:none; text-shadow: 0 0 5px rgba(255,255,255,0.8);">
+                                    @GetBombIcon(displayBomb)
                                 </div>
                             }
                         </div>
                     }
                 </div>
             </div>
-        </div>
+        </main>
+
+        <!-- RIGHT SIDEBAR: Tools -->
+        <aside class="bg-light border-start d-flex flex-column" style="width: 280px; min-width: 280px; overflow-y: auto;">
+            <div class="p-3 border-bottom">
+                <h6 class="text-uppercase text-muted small fw-bold mb-3">Palette</h6>
+                <div class="d-grid gap-2" style="grid-template-columns: repeat(4, 1fr);">
+                    @foreach (var type in Enum.GetValues<TileType>())
+                    {
+                        <button class="btn p-0 border position-relative @(SelectedType == type ? "border-primary border-3" : "")" 
+                                style="height: 48px; background-color: @GetColor(type); box-shadow: @(SelectedType == type ? "inset 0 0 0 1px rgba(255,255,255,0.5)" : "none")"
+                                @onclick="() => SelectedType = type"
+                                title="@type"
+                                disabled="@IsRecording">
+                            @if (SelectedType == type) { <span class="position-absolute top-50 start-50 translate-middle text-white small">✓</span> }
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <div class="p-3 border-bottom">
+                <h6 class="text-uppercase text-muted small fw-bold mb-3">Items / Bombs</h6>
+                <div class="d-grid gap-2" style="grid-template-columns: repeat(3, 1fr);">
+                    @foreach (var bomb in (BombType[])Enum.GetValues(typeof(BombType)))
+                    {
+                        <button class="btn btn-outline-secondary p-1 d-flex flex-column align-items-center justify-content-center @(SelectedBomb == bomb ? "active" : "")" 
+                                style="height: 60px;"
+                                @onclick="() => SelectedBomb = bomb"
+                                title="@bomb"
+                                disabled="@IsRecording">
+                            <span class="fs-4">@GetBombIcon(bomb)</span>
+                            <span style="font-size: 10px;">@bomb</span>
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <div class="flex-grow-1 p-3">
+                <h6 class="text-uppercase text-muted small fw-bold mb-3">Data IO</h6>
+                
+                @if (CurrentMode == EditorMode.Scenario)
+                {
+                     <button class="btn btn-primary btn-sm w-100 mb-2" @onclick="ExportTestJsonToDirectory">Save Test JSON</button>
+                     <button class="btn btn-outline-secondary btn-sm w-100 mb-2" @onclick="ExportCSharp">Export C# Code</button>
+                }
+                
+                <div class="btn-group w-100 mb-2">
+                    <button class="btn btn-success btn-sm" @onclick="ExportJson">Export</button>
+                    <button class="btn btn-warning btn-sm" @onclick="ImportJson">Import</button>
+                </div>
+                
+                <textarea class="form-control form-control-sm font-monospace small" rows="8" @bind="JsonOutput" style="white-space: pre; overflow-x: auto;"></textarea>
+            </div>
+        </aside>
     </div>
 </div>
 
@@ -527,14 +549,16 @@
         var tileGenerator = new StandardTileGenerator(new SeedManager(seed).GetRandom(RandomDomain.Refill));
         var gravity = new StandardGravitySystem(tileGenerator);
         var finder = new ClassicMatchFinder();
-        var processor = new StandardMatchProcessor();
-        var powerup = new PowerUpHandler();
+        var scoreSystem = new StandardScoreSystem();
+        var processor = new StandardMatchProcessor(scoreSystem);
+        var powerup = new PowerUpHandler(scoreSystem);
+        var inputSystem = new StandardInputSystem();
         var logger = new ConsoleGameLogger(); // Or a dummy logger
         
         var config = new Match3Config(ActiveLevelConfig.Width, ActiveLevelConfig.Height, 6);
         
         SimulationController = new Match3Controller(
-            config, rng, view, finder, processor, gravity, powerup, tileGenerator, logger, ActiveLevelConfig
+            config, rng, view, finder, processor, gravity, powerup, tileGenerator, logger, scoreSystem, inputSystem, ActiveLevelConfig
         );
 
         // Apply initial bombs to simulation state

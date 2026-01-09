@@ -8,6 +8,8 @@ using System.Collections.Generic;
 using System.Numerics;
 using Match3.Random;
 
+using Match3.Core.Systems;
+
 namespace Match3.Tests;
 
 public class GameBoardTests
@@ -26,12 +28,14 @@ public class GameBoardTests
         var tileGen = new StandardTileGenerator(new DefaultRandom(1001));
         var gravity = new StandardGravitySystem(tileGen);
         var finder = new ClassicMatchFinder();
-        var processor = new StandardMatchProcessor();
-        var powerUp = new PowerUpHandler();
+        var scoreSystem = new StandardScoreSystem();
+        var processor = new StandardMatchProcessor(scoreSystem);
+        var powerUp = new PowerUpHandler(scoreSystem);
+        var inputSystem = new StandardInputSystem();
         var logger = new ConsoleGameLogger();
         var config = new Match3Config(width, height, tileCount);
         
-        var controller = new Match3Controller(config, rng, view, finder, processor, gravity, powerUp, tileGen, logger);
+        var controller = new Match3Controller(config, rng, view, finder, processor, gravity, powerUp, tileGen, logger, scoreSystem, inputSystem);
 
         // Assert
         Assert.Equal(width, controller.State.Width);

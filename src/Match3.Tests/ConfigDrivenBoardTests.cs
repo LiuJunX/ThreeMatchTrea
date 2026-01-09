@@ -10,6 +10,8 @@ using Match3.Core.Logic;
 using Match3.Core.Interfaces;
 using Match3.Random;
 
+using Match3.Core.Systems;
+
 namespace Match3.Tests;
 
 public class ConfigDrivenBoardTests
@@ -81,16 +83,21 @@ public class ConfigDrivenBoardTests
         var view = new NullView();
         var logger = new ConsoleGameLogger();
         var config = new Match3Config(level.Width, level.Height, 6);
+        var scoreSystem = new StandardScoreSystem();
+        var inputSystem = new StandardInputSystem();
+        
         return new Match3Controller(
             config,
             rng,
             view,
             new ClassicMatchFinder(),
-            new StandardMatchProcessor(),
+            new StandardMatchProcessor(scoreSystem),
             new StandardGravitySystem(new StandardTileGenerator(seedManager.GetRandom(RandomDomain.Refill))),
-            new PowerUpHandler(),
+            new PowerUpHandler(scoreSystem),
             new StandardTileGenerator(seedManager.GetRandom(RandomDomain.Refill)),
             logger,
+            scoreSystem,
+            inputSystem,
             level
         );
     }

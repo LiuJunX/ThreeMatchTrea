@@ -6,6 +6,7 @@ using Match3.Core;
 using Match3.Core.Config;
 using Match3.Core.Interfaces;
 using Match3.Core.Logic;
+using Match3.Core.Systems;
 using Match3.Core.Structs;
 using Microsoft.Extensions.Logging;
 using Match3.Random;
@@ -59,8 +60,10 @@ public class Match3GameService : IDisposable
         var tileGenerator = new StandardTileGenerator(seedManager.GetRandom(RandomDomain.Refill));
         var gravitySystem = new StandardGravitySystem(tileGenerator);
         var matchFinder = new ClassicMatchFinder();
-        var matchProcessor = new StandardMatchProcessor();
-        var powerUpHandler = new PowerUpHandler();
+        var scoreSystem = new StandardScoreSystem();
+        var matchProcessor = new StandardMatchProcessor(scoreSystem);
+        var powerUpHandler = new PowerUpHandler(scoreSystem);
+        var inputSystem = new StandardInputSystem();
 
         var gameLogger = new MicrosoftGameLogger(_appLogger);
         var config = new Match3Config(Width, Height, 6);
@@ -75,6 +78,8 @@ public class Match3GameService : IDisposable
             powerUpHandler,
             tileGenerator,
             gameLogger,
+            scoreSystem,
+            inputSystem,
             levelConfig
         );
         

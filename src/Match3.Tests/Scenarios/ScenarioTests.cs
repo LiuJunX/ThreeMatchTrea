@@ -11,6 +11,8 @@ using Match3.Core.Config;
 using Xunit;
 using Match3.Random;
 
+using Match3.Core.Systems;
+
 namespace Match3.Tests.Scenarios
 {
     public class ScenarioTests
@@ -81,16 +83,21 @@ namespace Match3.Tests.Scenarios
                     }
                 }
 
+                var scoreSystem = new StandardScoreSystem();
+                var inputSystem = new StandardInputSystem();
+
                 var controller = new Match3Controller(
                     config,
                     rng,
                     view,
                     new ClassicMatchFinder(),
-                    new StandardMatchProcessor(),
+                    new StandardMatchProcessor(scoreSystem),
                     new StandardGravitySystem(new StandardTileGenerator(seedManager.GetRandom(RandomDomain.Refill))),
-                    new PowerUpHandler(),
+                    new PowerUpHandler(scoreSystem),
                     new StandardTileGenerator(seedManager.GetRandom(RandomDomain.Refill)),
                     logger,
+                    scoreSystem,
+                    inputSystem,
                     levelConfig
                 );
                 
