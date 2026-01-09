@@ -8,4 +8,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Match3.Random\Match3.Random.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="ZString" Version="2.6.0" />
+  </ItemGroup>
 </Project>
