@@ -1,15 +1,15 @@
 # ThreeMatchTrea Architecture
 
-This document describes the high-level architecture and design of the ThreeMatchTrea project.
+This document describes the high-level architecture, design philosophy, and coding standards of the ThreeMatchTrea project.
 
-## Core Design Philosophy: AI-First & Data-Oriented
+## 1. Core Design Philosophy: AI-First & Data-Oriented
 
 The architecture of `Match3.Core` has been strictly refactored to follow a **Data-Oriented Design (DOD)** approach, inspired by ECS (Entity Component System) principles. This is to ensure:
 1.  **High Performance**: Minimal memory allocation and cache-friendly data layout.
 2.  **Determinism**: Guaranteed reproducibility given a seed.
 3.  **AI Readiness**: Easy integration with Reinforcement Learning (RL) and Monte Carlo Tree Search (MCTS) algorithms.
 
-### 1. Data-Logic Separation
+### Data-Logic Separation
 
 We strictly enforce the separation of **State** (Data) and **Logic** (Behavior).
 
@@ -18,54 +18,78 @@ We strictly enforce the separation of **State** (Data) and **Logic** (Behavior).
 
 **Violation of this principle (e.g., adding logic to GameState or storing state in GameRules) is strictly prohibited.**
 
-### 2. Project Structure
+## 2. Architecture Layers
 
-- **Match3.Core**
-    - **Structs/**: Contains pure data structures (e.g., `GameState`, `Position`, `TileType`).
-    - **Logic/**: Contains pure logic (e.g., `GameRules`).
-    - **AI/**: Contains the RL environment wrapper (`Match3Environment`) that exposes the core logic to AI agents.
-    - **Interfaces**: `IGameView` (Presentation), `IRandom` (Determinism).
+The solution is divided into strict layers to maintain separation of concerns:
 
-- **Match3.ConsoleDemo**: Reference implementation of the UI layer.
-- **Match3.Tests**: Unit tests ensuring correctness of `GameRules` and `Match3Environment`.
+*   **Match3.Web (UI)**: 
+    *   Blazor Server application.
+    *   View-only responsibilities.
+    *   **No game rules** should exist here.
+    *   Visualizes the `GameState` provided by the Core.
 
-## Core Components
+*   **Match3.Core (Domain)**:
+    *   **Structs**: Pure data models (`Tile`, `GameState`, `Position`).
+    *   **Interfaces**: Abstract behaviors (`IMatchFinder`, `IGameView`).
+    *   **Logic**: Pure logic implementations (`ClassicMatchFinder`, `StandardGravitySystem`).
+    *   **AI**: RL environment wrappers (`Match3Environment`).
 
-### 1. GameState (Struct)
+*   **Match3.ConfigTool (Tools)**:
+    *   Console application for generating binary configuration files from external sources (e.g., Feishu/Lark).
+
+*   **Match3.Tests**:
+    *   Unit and Scenario tests ensuring correctness.
+
+## 3. Core Components
+
+### GameState (Struct)
 The heart of the system.
-- **`TileType[] Grid`**: Flattened 1D array representing the 2D board for better memory locality.
+- **`Tile[] Grid`**: Flattened 1D array representing the 2D board for better memory locality.
 - **`long Score`**: Current game score.
 - **`long MoveCount`**: Number of moves made.
+- **`IRandom Random`**: Deterministic random source.
 
-### 2. GameRules (Static Logic)
-The brain of the system.
-- **`Initialize(ref GameState)`**: Fills the board ensuring no initial matches.
-- **`ApplyMove(ref GameState, ...)`**: Executes a move, handles matching, gravity, and refilling in a loop until stable.
-- **`FindMatches(in GameState)`**: Pure function returning current matches.
+### Match3Controller
+The bridge between Data and UI.
+- Maintains a `GameState` instance.
+- Orchestrates the game loop (Swap -> Match -> Gravity -> Refill).
+- Notifies `IGameView` (UI) of changes.
 
-### 3. Match3Environment (AI Wrapper)
+### Match3Environment (AI Wrapper)
 Implements a standard RL interface (`Reset`, `Step`, `GetState`).
-- Wraps `GameState` and `GameRules` into an object-oriented API for easy consumption by external AI frameworks (Python/ML.NET).
+- Wraps `GameState` and Logic into an object-oriented API for external AI frameworks (Python/ML.NET).
 
-### 4. Match3Controller (Legacy/UI Bridge)
-A thin wrapper that maintains a `GameState` instance and notifies `IGameView` of changes. It bridges the new Data-Oriented core with the event-driven UI.
+## 4. Configuration System
 
-## Key Algorithms
+The system allows game designers to edit configuration data in **Feishu (Lark) Spreadsheets**. A build tool converts this to an optimized **Binary Format**.
 
-### Cascade Resolution
-The game loop within `ApplyMove` (and `Match3Controller`) follows this strict sequence:
-1.  **Swap**: Tentative swap of tiles.
-2.  **Match Check**: If no matches, revert swap.
-3.  **Loop**:
-    - Find Matches.
-    - Clear Tiles.
-    - Apply Gravity (Bottom-up scan).
-    - Refill (Top-down generation).
-    - Repeat until no matches found.
+### Workflow
+1.  **Design**: Edit data in Feishu.
+2.  **Build**: Run `Match3.ConfigTool` to fetch JSON and compile to `config.bin`.
+3.  **Runtime**: Game loads `config.bin` at startup via `ConfigManager`.
 
-## Future Development Guidelines
+### Components
+*   **Match3.ConfigTool**: Fetches and serializes data.
+*   **ConfigManager** (`Match3.Core`): Loads binary data into efficient structs (`ItemConfig`).
 
+## 5. Coding Standards & Best Practices
+
+### Code Style
+*   **Format**: 4 spaces indent, CRLF, Allman braces (start on new line).
+*   **Naming**: 
+    *   `_camelCase` for private fields.
+    *   `PascalCase` for public members/classes.
+    *   `IInterface` prefix for interfaces.
+*   **Namespaces**: Use file-scoped namespaces (e.g., `namespace Match3.Core;`).
+
+### Critical Rules
+1.  **Single Responsibility**: Split classes > 300 lines.
+2.  **Randomness**: **MUST** use `Match3.Core.Interfaces.IRandom`. NEVER use `System.Random` or `Guid` directly.
+3.  **Performance**: Pass `GameState` by `ref` or `in` to avoid struct copying.
+4.  **State Management**: Use explicit State classes where possible.
+5.  **CSS Isolation**: Use `.razor.css` files. No `<style>` tags in razor.
+
+### Future Development Guidelines
 1.  **Never add state to Logic classes.**
 2.  **Never add logic to State structs.**
-3.  **Always use `ref` or `in`** when passing `GameState` to avoid unnecessary copying, unless a snapshot is explicitly needed (e.g., for MCTS branching).
-4.  **Randomness**: Always use the `IRandom` interface stored in `GameState`. Never use `System.Random.Shared` or `Guid.NewGuid()`.
+3.  **Always use `ref`** when passing `GameState` unless a snapshot is explicitly needed.

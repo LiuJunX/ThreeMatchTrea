@@ -60,6 +60,40 @@
                     }
                 </div>
             </div>
+            
+            <div class="card mb-3">
+                <div class="card-header">Levels</div>
+                <div class="card-body">
+                    @if (CurrentMode == EditorMode.Level)
+                    {
+                        <div class="d-flex mb-2 gap-2">
+                            <button class="btn btn-success flex-fill" @onclick="AddLevel">New</button>
+                            <button class="btn btn-secondary flex-fill" @onclick="DuplicateSelectedLevel" disabled="@(SelectedLevelIndex < 0)">Duplicate</button>
+                            <button class="btn btn-danger flex-fill" @onclick="DeleteSelectedLevel" disabled="@(SelectedLevelIndex < 0)">Delete</button>
+                        </div>
+                        <ul class="list-group mb-2" style="max-height: 180px; overflow-y: auto;">
+                            @for (int i = 0; i < LevelList.Count; i++)
+                            {
+                                var idx = i;
+                                <li class="list-group-item d-flex justify-content-between align-items-center @(SelectedLevelIndex == idx ? "active" : "")" style="cursor:pointer" @onclick="() => SelectLevelIndex(idx)">
+                                    <span>@LevelList[idx].Name</span>
+                                    <span class="badge bg-light text-dark">@LevelList[idx].Config.Width x @LevelList[idx].Config.Height</span>
+                                </li>
+                            }
+                        </ul>
+                        <div class="mb-2">
+                            <label class="form-label">Name</label>
+                            <input class="form-control" type="text" @bind="LevelNameEditing" disabled="@(SelectedLevelIndex < 0)" />
+                        </div>
+                        <button class="btn btn-primary w-100" @onclick="ApplyLevelRename" disabled="@(SelectedLevelIndex < 0)">Rename</button>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning small mb-2">切换到 Level Design 查看和编辑关卡列表</div>
+                        <button class="btn btn-primary w-100" @onclick="() => SwitchMode(EditorMode.Level)">切换到 Level Design</button>
+                    }
+                </div>
+            </div>
 
             @if (CurrentMode == EditorMode.Scenario)
             {
@@ -168,7 +202,9 @@
                     }
                     <button class="btn btn-success w-100 mb-2" @onclick="ExportJson">Export JSON</button>
                     <textarea class="form-control mb-2" rows="5" @bind="JsonOutput"></textarea>
-                    <button class="btn btn-warning w-100" @onclick="ImportJson">Import JSON</button>
+                    <button class="btn btn-warning w-100 mb-2" @onclick="ImportJson">Import JSON</button>
+                    <hr />
+                    <button class="btn btn-outline-dark w-100" @onclick="ExportForAICritic">Generate AI Critic Prompt</button>
                 </div>
             </div>
         </div>
@@ -228,6 +264,15 @@
 
     // Level Mode Data
     private LevelConfig CurrentLevel { get; set; } = new LevelConfig();
+    private sealed class LevelItem
+    {
+        public string Name { get; set; } = "Level";
+        public LevelConfig Config { get; set; } = new LevelConfig();
+        public BombType[] Bombs { get; set; } = new BombType[8 * 8];
+    }
+    private List<LevelItem> LevelList { get; set; } = new();
+    private int SelectedLevelIndex { get; set; } = -1;
+    private string LevelNameEditing { get; set; } = "";
 
     // Scenario Mode Data
     private ScenarioConfig CurrentScenario { get; set; } = new ScenarioConfig();
@@ -248,6 +293,11 @@
     private BombType[] ScenarioBombs { get; set; } = new BombType[8 * 8];
     private BombType[] ActiveBombs => CurrentMode == EditorMode.Level ? LevelBombs : ScenarioBombs;
 
+    protected override void OnInitialized()
+    {
+        EnsureDefaultLevel();
+    }
+
     private void SwitchMode(EditorMode mode)
     {
         CurrentMode = mode;
@@ -259,8 +309,10 @@
         }
         else
         {
+            EnsureDefaultLevel();
             EditorWidth = CurrentLevel.Width;
             EditorHeight = CurrentLevel.Height;
+            LevelNameEditing = SelectedLevelIndex >= 0 ? LevelList[SelectedLevelIndex].Name : "";
         }
         IsRecording = false;
         StopLoop();
@@ -272,6 +324,11 @@
         {
             CurrentLevel = new LevelConfig(EditorWidth, EditorHeight) { MoveLimit = CurrentLevel.MoveLimit };
             LevelBombs = new BombType[EditorWidth * EditorHeight];
+            if (SelectedLevelIndex >= 0 && SelectedLevelIndex < LevelList.Count)
+            {
+                LevelList[SelectedLevelIndex].Config = CurrentLevel;
+                LevelList[SelectedLevelIndex].Bombs = LevelBombs;
+            }
         }
         else
         {
@@ -283,6 +340,96 @@
             CurrentScenario.ExpectedState = new LevelConfig(); // Clear expected
             ScenarioBombs = new BombType[EditorWidth * EditorHeight];
         }
+    }
+
+    private void EnsureDefaultLevel()
+    {
+        if (LevelList.Count == 0)
+        {
+            var item = new LevelItem
+            {
+                Name = "Level 1",
+                Config = new LevelConfig(EditorWidth, EditorHeight),
+                Bombs = new BombType[EditorWidth * EditorHeight]
+            };
+            LevelList.Add(item);
+            SelectedLevelIndex = 0;
+            CurrentLevel = item.Config;
+            LevelBombs = item.Bombs;
+            LevelNameEditing = item.Name;
+        }
+        else if (SelectedLevelIndex < 0 || SelectedLevelIndex >= LevelList.Count)
+        {
+            SelectedLevelIndex = 0;
+            var item = LevelList[0];
+            CurrentLevel = item.Config;
+            LevelBombs = item.Bombs;
+            LevelNameEditing = item.Name;
+        }
+    }
+
+    private void AddLevel()
+    {
+        var idx = LevelList.Count + 1;
+        var item = new LevelItem
+        {
+            Name = $"Level {idx}",
+            Config = new LevelConfig(EditorWidth, EditorHeight),
+            Bombs = new BombType[EditorWidth * EditorHeight]
+        };
+        LevelList.Add(item);
+        SelectLevelIndex(LevelList.Count - 1);
+    }
+
+    private void SelectLevelIndex(int index)
+    {
+        if (index < 0 || index >= LevelList.Count) return;
+        SelectedLevelIndex = index;
+        var item = LevelList[index];
+        CurrentLevel = item.Config;
+        LevelBombs = item.Bombs;
+        EditorWidth = item.Config.Width;
+        EditorHeight = item.Config.Height;
+        LevelNameEditing = item.Name;
+    }
+
+    private void DuplicateSelectedLevel()
+    {
+        if (SelectedLevelIndex < 0 || SelectedLevelIndex >= LevelList.Count) return;
+        var src = LevelList[SelectedLevelIndex];
+        var copy = new LevelItem
+        {
+            Name = src.Name + " Copy",
+            Config = new LevelConfig(src.Config.Width, src.Config.Height) { MoveLimit = src.Config.MoveLimit },
+            Bombs = new BombType[src.Config.Width * src.Config.Height]
+        };
+        Array.Copy(src.Config.Grid, copy.Config.Grid, src.Config.Grid.Length);
+        Array.Copy(src.Bombs, copy.Bombs, src.Bombs.Length);
+        LevelList.Add(copy);
+        SelectLevelIndex(LevelList.Count - 1);
+    }
+
+    private void DeleteSelectedLevel()
+    {
+        if (SelectedLevelIndex < 0 || SelectedLevelIndex >= LevelList.Count) return;
+        LevelList.RemoveAt(SelectedLevelIndex);
+        if (LevelList.Count == 0)
+        {
+            SelectedLevelIndex = -1;
+            CurrentLevel = new LevelConfig(EditorWidth, EditorHeight);
+            LevelBombs = new BombType[EditorWidth * EditorHeight];
+            LevelNameEditing = "";
+        }
+        else
+        {
+            SelectLevelIndex(Math.Min(SelectedLevelIndex, LevelList.Count - 1));
+        }
+    }
+
+    private void ApplyLevelRename()
+    {
+        if (SelectedLevelIndex < 0 || SelectedLevelIndex >= LevelList.Count) return;
+        LevelList[SelectedLevelIndex].Name = LevelNameEditing ?? "";
     }
 
     private void HandleGridClick(int index)
@@ -619,6 +766,57 @@
         var fileName = $"{safeName}_{DateTime.Now:yyyyMMdd_HHmmss}.json";
         var path = Path.Combine(targetDir, fileName);
         File.WriteAllText(path, json);
+    }
+
+    private void ExportForAICritic()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Role: You are a senior level designer for a Match-3 game.");
+        sb.AppendLine("Task: Evaluate the following level design based on Visual Aesthetics, Strategic Depth, and Potential Issues.");
+        sb.AppendLine();
+        sb.AppendLine("=== Level Data ===");
+        sb.AppendLine($"Size: {ActiveLevelConfig.Width}x{ActiveLevelConfig.Height}");
+        if (CurrentMode == EditorMode.Level)
+        {
+            sb.AppendLine($"Move Limit: {CurrentLevel.MoveLimit}");
+        }
+        sb.AppendLine();
+        sb.AppendLine("=== Grid Layout (ASCII) ===");
+        sb.AppendLine("Legend: R=Red, G=Green, B=Blue, Y=Yellow, P=Purple, O=Orange, X=Rainbow, #=None/Empty");
+        sb.AppendLine();
+
+        var width = ActiveLevelConfig.Width;
+        var height = ActiveLevelConfig.Height;
+        var grid = ActiveLevelConfig.Grid;
+
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                var idx = y * width + x;
+                var type = grid[idx];
+                char c = type switch
+                {
+                    TileType.Red => 'R',
+                    TileType.Green => 'G',
+                    TileType.Blue => 'B',
+                    TileType.Yellow => 'Y',
+                    TileType.Purple => 'P',
+                    TileType.Orange => 'O',
+                    TileType.Rainbow => 'X',
+                    TileType.None => '#',
+                    _ => '?'
+                };
+                sb.Append(c + " ");
+            }
+            sb.AppendLine();
+        }
+        
+        sb.AppendLine();
+        sb.AppendLine("=== Instructions ===");
+        sb.AppendLine("Please provide a score (0-10) and a qualitative critique.");
+        
+        JsonOutput = sb.ToString();
     }
 
     private void ExportJson()

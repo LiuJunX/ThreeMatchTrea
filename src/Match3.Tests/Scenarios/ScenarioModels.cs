@@ -7,6 +7,7 @@ namespace Match3.Tests.Scenarios
         public string Name { get; set; } = "";
         public int Width { get; set; }
         public int Height { get; set; }
+        public int Seed { get; set; } = 42;
         public string[] Layout { get; set; } = System.Array.Empty<string>();
         public List<ScenarioMove> Moves { get; set; } = new();
         public List<ScenarioExpectation> Expectations { get; set; } = new();
