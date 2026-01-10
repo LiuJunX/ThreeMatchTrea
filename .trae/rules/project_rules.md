@@ -3,6 +3,11 @@ alwaysApply: true
 ---
 # Project Rules (Trae)
 
+## 0. Interaction Protocol (Highest Priority)
+- **Confirm Before Action**: For any ambiguous or uncertain requirements, the AI MUST pause and ask the user for confirmation before proceeding.
+- **No Assumptions**: Do NOT make assumptions to fill in gaps in requirements. Clarify first.
+- **Plan Confirmation**: For complex tasks, propose a plan and wait for explicit user approval.
+
 ## 1. Project Structure
 - Match3.Core：纯业务逻辑，无 UI 依赖，定义接口与核心流程
 - Match3.Random：统一随机入口（IRandom、SeedManager、RandomDomain、RandomStreamFactory）
@@ -18,6 +23,7 @@ alwaysApply: true
 - 模型驱动：Core 为唯一真源；坐标实时；用 Update/Tick 推进
 - 视图只渲染：禁止插值/物理/独立计时（禁用 CSS 过渡/Task.Delay 位移）
 - 分层职责：Controller 管理逻辑与状态；IGameView 仅渲染与输入意图；依赖注入用构造函数
+- **DDD (Domain-Driven Design)**: Use ubiquitous language (e.g., Gravity, Matching). High Cohesion: Code that changes together stays together.
 
 ## 4. Best Practices
 - 先看上下文：修改/新增前检索既有文件与约定
