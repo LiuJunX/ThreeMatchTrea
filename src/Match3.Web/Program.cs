@@ -19,6 +19,7 @@ builder.Services.AddScoped<Match3.Editor.ViewModels.LevelEditorViewModel>();
 
 builder.Services.AddScoped<ScenarioLibraryService>(sp => 
     new ScenarioLibraryService(@"d:\GitWorkSpace\LiuJun\ThreeMatchTrea\src\Match3.Core.Tests\Scenarios\Data"));
+builder.Services.AddScoped<Match3.Editor.Interfaces.IScenarioService>(sp => sp.GetRequiredService<ScenarioLibraryService>());
 
 
 var app = builder.Build();

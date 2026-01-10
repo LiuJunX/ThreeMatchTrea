@@ -1,0 +1,253 @@
+@using Match3.Editor.ViewModels
+@using Match3.Web.Components.Pages
+@inject LevelEditorViewModel VM
+
+<aside class="bg-light border-end d-flex flex-column" style="width: 320px; min-width: 320px; overflow-y: auto;">
+    <div class="p-3 border-bottom">
+        <h6 class="text-uppercase text-muted small fw-bold mb-3">Grid Settings</h6>
+        <div class="row g-2 align-items-end">
+            <div class="col-4">
+                <label class="form-label small mb-1">Width</label>
+                <input type="number" class="form-control form-control-sm" @bind="VM.EditorWidth" min="1" max="12" />
+            </div>
+            <div class="col-4">
+                <label class="form-label small mb-1">Height</label>
+                <input type="number" class="form-control form-control-sm" @bind="VM.EditorHeight" min="1" max="12" />
+            </div>
+            <div class="col-4">
+                <button class="btn btn-sm btn-secondary w-100" @onclick="VM.ResizeGrid">Apply</button>
+            </div>
+        </div>
+        
+        @if (VM.CurrentMode == LevelEditorViewModel.EditorMode.Level)
+        {
+            <div class="mt-2">
+                <label class="form-label small mb-1">Move Limit</label>
+                <input type="number" class="form-control form-control-sm" @bind="VM.CurrentLevel.MoveLimit" />
+            </div>
+        }
+    </div>
+
+    <div class="flex-grow-1 p-3 overflow-auto">
+         @if (VM.CurrentMode == LevelEditorViewModel.EditorMode.Level)
+        {
+            <h6 class="text-uppercase text-muted small fw-bold mb-2">Level Info</h6>
+             <button class="btn btn-sm btn-outline-secondary w-100 mb-2" @onclick="VM.GenerateRandomLevel">
+                <i class="bi bi-shuffle"></i> Randomize
+            </button>
+        }
+        else
+        {
+            <!-- Scenario Settings -->
+            <div class="mb-3 border-bottom pb-3">
+                <h6 class="text-uppercase text-muted small fw-bold mb-2">Scenario Info</h6>
+                <label class="form-label small mb-1">Name</label>
+                <input type="text" class="form-control form-control-sm mb-2" @bind="VM.ScenarioName" @bind:event="oninput" />
+                
+                <label class="form-label small mb-1">Description</label>
+                <textarea class="form-control form-control-sm mb-2" rows="2" @bind="VM.ScenarioDescription" @bind:event="oninput"></textarea>
+            </div>
+
+            <!-- File Browser -->
+            <div class="mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="text-uppercase text-muted small fw-bold mb-0">Scenarios</h6>
+                    <button class="btn btn-sm btn-link p-0 text-decoration-none" @onclick="VM.RefreshScenarioList">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+                
+                <div class="border rounded bg-white overflow-auto" style="height: 200px;">
+                    @if (VM.RootFolderNode != null)
+                    {
+                        <ScenarioTreeItem Folder="VM.RootFolderNode" 
+                                          CurrentFilePath="@VM.CurrentFilePath"
+                                          ExpandedPaths="VM.ExpandedPaths"
+                                          OnSelectFile="OnSelectScenarioFile"
+                                          OnOpenFile="OnOpenScenarioFile"
+                                          OnContextMenuAction="OnContextMenuAction" />
+                    }
+                    else
+                    {
+                        <div class="p-3 text-center text-muted small">Loading...</div>
+                    }
+                </div>
+            </div>
+            
+            @if (ShowContextMenu)
+            {
+                <div class="position-fixed top-0 start-0 w-100 h-100" style="z-index: 2000; background: rgba(0,0,0,0.1);" @onclick="CloseContextMenu" @oncontextmenu="CloseContextMenu" @oncontextmenu:preventDefault="true"></div>
+                <div class="position-fixed bg-white shadow-lg rounded border p-2" 
+                     style="z-index: 2001; left: @(ContextMenuX)px; top: @(ContextMenuY)px; min-width: 150px;">
+                    <h6 class="dropdown-header small text-truncate">@ContextMenuTargetName</h6>
+                    @if (ContextMenuType == "folder")
+                    {
+                        <button class="btn btn-sm btn-light w-100 text-start mb-1" @onclick="CreateNewScenario">
+                            <i class="bi bi-file-earmark-plus me-2"></i> New Scenario
+                        </button>
+                        <button class="btn btn-sm btn-light w-100 text-start" @onclick="CreateNewFolder">
+                            <i class="bi bi-folder-plus me-2"></i> New Folder
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-sm btn-light w-100 text-start mb-1" @onclick="DuplicateScenario">
+                            <i class="bi bi-files me-2"></i> Duplicate
+                        </button>
+                        <hr class="dropdown-divider my-1">
+                        <button class="btn btn-sm btn-danger w-100 text-start" @onclick="DeleteFile">
+                            <i class="bi bi-trash me-2"></i> Delete
+                        </button>
+                    }
+                </div>
+            }
+
+            <h6 class="text-uppercase text-muted small fw-bold mb-2">Recording</h6>
+            @if (!VM.IsRecording)
+            {
+                <button class="btn btn-success btn-sm w-100 mb-2" @onclick="VM.StartRecording">
+                    <i class="bi bi-record-circle"></i> Start Recording
+                </button>
+            }
+            else
+            {
+                <button class="btn btn-danger btn-sm w-100 mb-2" @onclick="VM.StopRecording">
+                    <i class="bi bi-stop-circle"></i> Stop Recording
+                </button>
+                <div class="alert alert-info py-1 px-2 small mb-2 text-center">
+                    Recording... Click grid to swap.
+                </div>
+            }
+            
+            <h6 class="text-uppercase text-muted small fw-bold mb-2">Validation</h6>
+            @if (!VM.IsAssertionMode)
+            {
+                <button class="btn btn-outline-warning btn-sm w-100 mb-2" 
+                        @onclick="VM.ToggleAssertionMode" disabled="@VM.IsRecording">
+                    <i class="bi bi-bullseye"></i> Edit Assertions
+                </button>
+            }
+            else
+            {
+                <div class="bg-warning bg-opacity-10 p-2 rounded border border-warning mb-2">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small fw-bold text-warning-emphasis">Assertion Rules</span>
+                    </div>
+                    
+                    <div class="form-check form-switch small mb-1">
+                        <input class="form-check-input" type="checkbox" id="assertColor" @bind="VM.AssertColor">
+                        <label class="form-check-label" for="assertColor">Match Color</label>
+                    </div>
+                    <div class="form-check form-switch small mb-2">
+                        <input class="form-check-input" type="checkbox" id="assertBomb" @bind="VM.AssertBomb">
+                        <label class="form-check-label" for="assertBomb">Match Bomb</label>
+                    </div>
+                    
+                    <div class="small text-muted mb-2 fst-italic" style="font-size: 0.75rem; line-height: 1.2;">
+                        Select palette items to define expected state, then click grid cells.
+                    </div>
+
+                    <button class="btn btn-warning btn-sm w-100" @onclick="VM.ToggleAssertionMode">
+                        <i class="bi bi-check-lg"></i> Finish Assertions
+                    </button>
+                </div>
+            }
+            
+            <div class="border rounded bg-white p-2 mb-3" style="height: 150px; overflow-y: auto;">
+                <div class="small text-muted mb-1">Moves: @VM.CurrentScenario.Operations.Count</div>
+                <ul class="list-unstyled small mb-0 font-monospace">
+                    @foreach (var move in VM.CurrentScenario.Operations)
+                    {
+                        <li>(@move.FromX, @move.FromY) &rarr; (@move.ToX, @move.ToY)</li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+</aside>
+
+@implements IDisposable
+
+@code {
+    protected override void OnInitialized()
+    {
+        VM.PropertyChanged += OnVmPropertyChanged;
+    }
+
+    private void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        VM.PropertyChanged -= OnVmPropertyChanged;
+    }
+
+    private bool ShowContextMenu = false;
+    private double ContextMenuX = 0;
+    private double ContextMenuY = 0;
+    private string ContextMenuType = "";
+    private string ContextMenuPath = "";
+    private string ContextMenuTargetName => System.IO.Path.GetFileName(ContextMenuPath);
+
+    private void OnSelectScenarioFile(string path)
+    {
+        VM.CurrentFilePath = path;
+    }
+
+    private async Task OnOpenScenarioFile(string path)
+    {
+        await VM.LoadScenarioAsync(path);
+    }
+
+    private void OnContextMenuAction((MouseEventArgs e, string type, string path) args)
+    {
+        ContextMenuType = args.type;
+        ContextMenuPath = args.path;
+        
+        if (args.e != null)
+        {
+            ContextMenuX = args.e.ClientX;
+            ContextMenuY = args.e.ClientY;
+        }
+        else
+        {
+            ContextMenuX = 100; 
+            ContextMenuY = 100;
+        }
+
+        if (ContextMenuX > 1000) ContextMenuX = 800;
+        
+        ShowContextMenu = true;
+    }
+
+    private void CloseContextMenu()
+    {
+        ShowContextMenu = false;
+    }
+
+    private async Task CreateNewScenario()
+    {
+        CloseContextMenu();
+        await VM.CreateNewScenarioAsync(ContextMenuPath);
+    }
+
+    private async Task CreateNewFolder()
+    {
+        CloseContextMenu();
+        await VM.CreateNewFolderAsync(ContextMenuPath);
+    }
+
+    private async Task DuplicateScenario()
+    {
+        CloseContextMenu();
+        await VM.DuplicateScenarioAsync(ContextMenuPath);
+    }
+
+    private async Task DeleteFile()
+    {
+        CloseContextMenu();
+        await VM.DeleteFileAsync(ContextMenuPath, ContextMenuType == "folder");
+    }
+}

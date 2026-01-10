@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Text;
+using System.IO;
 using System.Threading.Tasks;
 using Match3.Core;
 using Match3.Core.Config;
@@ -30,6 +30,7 @@ namespace Match3.Editor.ViewModels
         private readonly IFileSystemService _fileSystem;
         private readonly IJsonService _jsonService;
         private readonly IGameLogger _logger;
+        private readonly IScenarioService _scenarioService;
 
         // --- Core State ---
         public enum EditorMode { Level, Scenario }
@@ -128,11 +129,6 @@ namespace Match3.Editor.ViewModels
                 {
                     _selectedType = value; 
                     OnPropertyChanged(nameof(SelectedType));
-                    // If a valid type is selected, deselect bomb (Mutual Exclusivity)
-                    if (value != TileType.None && value != TileType.Bomb)
-                    {
-                        SelectedBomb = BombType.None;
-                    }
                 }
             }
         }
@@ -147,11 +143,22 @@ namespace Match3.Editor.ViewModels
                 {
                     _selectedBomb = value; 
                     OnPropertyChanged(nameof(SelectedBomb));
-                    // If a bomb is selected, we conceptually "deselect" the tile type
-                    // We don't necessarily set it to None to avoid losing the last color choice,
-                    // but the UI should visually indicate bomb mode is active.
                 }
             }
+        }
+
+        private bool _assertColor = true;
+        public bool AssertColor
+        {
+            get => _assertColor;
+            set { _assertColor = value; OnPropertyChanged(nameof(AssertColor)); }
+        }
+
+        private bool _assertBomb = true;
+        public bool AssertBomb
+        {
+            get => _assertBomb;
+            set { _assertBomb = value; OnPropertyChanged(nameof(AssertBomb)); }
         }
 
         private string _jsonOutput = "";
@@ -190,7 +197,6 @@ namespace Match3.Editor.ViewModels
         // --- Computed Properties ---
         public LevelConfig ActiveLevelConfig => CurrentMode == EditorMode.Level ? CurrentLevel : CurrentScenario.InitialState;
         
-        // Direct access to the bombs array in the config
         public BombType[] ActiveBombs => ActiveLevelConfig.Bombs;
 
         // --- Simulation ---
@@ -203,12 +209,14 @@ namespace Match3.Editor.ViewModels
             IPlatformService platform, 
             IFileSystemService fileSystem, 
             IJsonService jsonService,
-            IGameLogger logger)
+            IGameLogger logger,
+            IScenarioService scenarioService)
         {
             _platform = platform;
             _fileSystem = fileSystem;
             _jsonService = jsonService;
             _logger = logger;
+            _scenarioService = scenarioService;
             
             EnsureDefaultLevel();
         }
@@ -247,7 +255,6 @@ namespace Match3.Editor.ViewModels
                 CurrentLevel = new LevelConfig(8, 8);
                 GenerateRandomLevel();
             }
-            // Ensure Bombs array exists (for legacy configs or manual instantiation)
             if (CurrentLevel.Bombs == null || CurrentLevel.Bombs.Length != CurrentLevel.Grid.Length)
             {
                 CurrentLevel.Bombs = new BombType[CurrentLevel.Grid.Length];
@@ -257,7 +264,6 @@ namespace Match3.Editor.ViewModels
         public void GenerateRandomLevel()
         {
             var config = ActiveLevelConfig;
-            // Ensure bombs array matches grid
             if (config.Bombs == null || config.Bombs.Length != config.Grid.Length)
             {
                 config.Bombs = new BombType[config.Grid.Length];
@@ -271,7 +277,6 @@ namespace Match3.Editor.ViewModels
                 config.Grid[i] = types[rng.Next(0, types.Length)];
             }
             
-            // Clear bombs
             Array.Clear(config.Bombs, 0, config.Bombs.Length);
             
             RequestRepaint();
@@ -281,10 +286,8 @@ namespace Match3.Editor.ViewModels
         public void ResizeGrid()
         {
             var oldConfig = ActiveLevelConfig;
-            
             var newConfig = new LevelConfig(EditorWidth, EditorHeight);
             
-            // Copy logic
             int w = Math.Min(oldConfig.Width, newConfig.Width);
             int h = Math.Min(oldConfig.Height, newConfig.Height);
 
@@ -297,8 +300,6 @@ namespace Match3.Editor.ViewModels
                     if (oldIdx < oldConfig.Grid.Length && newIdx < newConfig.Grid.Length)
                     {
                         newConfig.Grid[newIdx] = oldConfig.Grid[oldIdx];
-                        
-                        // Copy bombs safely
                         if (oldConfig.Bombs != null && oldIdx < oldConfig.Bombs.Length)
                         {
                             newConfig.Bombs[newIdx] = oldConfig.Bombs[oldIdx];
@@ -322,11 +323,42 @@ namespace Match3.Editor.ViewModels
             IsDirty = true;
         }
 
+        public void ToggleAssertionMode()
+        {
+            IsAssertionMode = !IsAssertionMode;
+            if (IsAssertionMode)
+            {
+                IsRecording = false;
+            }
+        }
+
         public void HandleGridClick(int index)
         {
             if (IsAssertionMode)
             {
-                // Assertion logic (simplified for now)
+                var w = ActiveLevelConfig.Width;
+                var x = index % w;
+                var y = index / w;
+                
+                var existing = CurrentScenario.Assertions.FirstOrDefault(a => a.X == x && a.Y == y);
+                if (existing != null)
+                {
+                    CurrentScenario.Assertions.Remove(existing);
+                }
+                else
+                {
+                    var type = AssertColor ? SelectedType : (TileType?)null;
+                    var bomb = AssertBomb ? SelectedBomb : (BombType?)null;
+                    
+                    CurrentScenario.Assertions.Add(new ScenarioAssertion
+                    {
+                        X = x, Y = y,
+                        Type = type,
+                        Bomb = bomb
+                    });
+                }
+                IsDirty = true;
+                RequestRepaint();
                 return;
             }
 
@@ -345,32 +377,36 @@ namespace Match3.Editor.ViewModels
         {
             if (index < 0 || index >= ActiveLevelConfig.Grid.Length) return;
             
-            // Mutual Exclusivity Logic:
-            // If a Bomb tool is selected, we paint a Bomb (and set Type to Bomb/Rainbow).
-            // If a Tile tool is selected, we paint a Tile (and set Bomb to None).
-            
             if (SelectedBomb != BombType.None)
             {
-                // Paint Bomb
                 ActiveLevelConfig.Bombs[index] = SelectedBomb;
-                
-                // Determine appropriate TileType
                 if (SelectedBomb == BombType.Color)
                 {
                     ActiveLevelConfig.Grid[index] = TileType.Rainbow;
                 }
                 else
                 {
-                    // For other bombs, use the generic Bomb type placeholder
-                    ActiveLevelConfig.Grid[index] = TileType.Bomb;
+                    var current = ActiveLevelConfig.Grid[index];
+                    if (current == TileType.None || current == TileType.Bomb || current == TileType.Rainbow)
+                    {
+                        var defaultColor = (SelectedType >= TileType.Red && SelectedType <= TileType.Orange) 
+                            ? SelectedType 
+                            : TileType.Red;
+                        ActiveLevelConfig.Grid[index] = defaultColor;
+                    }
                 }
             }
             else
             {
-                // Paint Tile
                 ActiveLevelConfig.Grid[index] = SelectedType;
-                // Clear Bomb
-                ActiveLevelConfig.Bombs[index] = BombType.None;
+                if (SelectedType == TileType.Rainbow)
+                {
+                    ActiveLevelConfig.Bombs[index] = BombType.Color;
+                }
+                else
+                {
+                    ActiveLevelConfig.Bombs[index] = BombType.None;
+                }
             }
 
             RequestRepaint();
@@ -423,9 +459,7 @@ namespace Match3.Editor.ViewModels
                     }
                 }
                 
-                // Ensure bombs are initialized after import
                 EnsureDefaultLevel();
-                
                 RequestRepaint();
                 IsDirty = false;
             }
@@ -435,26 +469,167 @@ namespace Match3.Editor.ViewModels
             }
         }
 
+        // --- Scenario Management (New Logic) ---
+
+        public void RefreshScenarioList()
+        {
+            RootFolderNode = _scenarioService.BuildTree();
+        }
+
+        public async Task LoadScenarioAsync(string path)
+        {
+            if (IsDirty)
+            {
+                var confirm = await _platform.ConfirmAsync("Unsaved Changes", "You have unsaved changes. Do you want to save them before switching?");
+                if (confirm)
+                {
+                    if (!string.IsNullOrEmpty(CurrentFilePath))
+                    {
+                        await SaveScenarioAsync();
+                    }
+                    else
+                    {
+                        // Cannot auto-save unnamed file, ask to discard?
+                        // For now just proceed or abort? Let's abort if they said YES to save but we can't save.
+                        // Or we could trigger "Save As" flow, but simplest is just:
+                        var discard = await _platform.ConfirmAsync("Cannot Save", "File has no path. Discard changes?");
+                        if (!discard) return;
+                    }
+                }
+                else
+                {
+                    var discard = await _platform.ConfirmAsync("Discard Changes?", "Are you sure you want to discard unsaved changes?");
+                    if (!discard) return;
+                }
+            }
+
+            try 
+            {
+                var json = _scenarioService.ReadScenarioJson(path);
+                JsonOutput = json;
+                ImportJson(keepScenarioMode: true); 
+                CurrentFilePath = path;
+                SetScenarioName(Path.GetFileNameWithoutExtension(path));
+            }
+            catch(Exception ex)
+            {
+                await _platform.ShowAlertAsync("Error", "Failed to load file: " + ex.Message);
+            }
+        }
+
+        public async Task SaveScenarioAsync()
+        {
+            if (string.IsNullOrEmpty(CurrentFilePath)) return;
+
+            try
+            {
+                var currentName = Path.GetFileNameWithoutExtension(CurrentFilePath);
+                if (!string.Equals(currentName, ScenarioName, StringComparison.Ordinal))
+                {
+                     // Logic for rename
+                     _scenarioService.RenameScenario(CurrentFilePath, ScenarioName);
+                     
+                     var stem = ScenarioFileName.SanitizeFileStem(ScenarioName);
+                     SetScenarioName(stem);
+
+                     var dir = Path.GetDirectoryName(CurrentFilePath);
+                     var newPath = string.IsNullOrEmpty(dir) 
+                         ? stem + ".json" 
+                         : Path.Combine(dir, stem + ".json");
+                     CurrentFilePath = newPath.Replace('\\', '/');
+                }
+
+                ExportJson();
+                _scenarioService.WriteScenarioJson(CurrentFilePath, JsonOutput);
+                IsDirty = false;
+                RefreshScenarioList();
+            }
+            catch (Exception ex)
+            {
+                await _platform.ShowAlertAsync("Error", "Failed to save: " + ex.Message);
+            }
+        }
+
+        public async Task CreateNewScenarioAsync(string folderPath)
+        {
+            try 
+            {
+                var newPath = _scenarioService.CreateNewScenario(folderPath, "New Scenario", "{}");
+                RefreshScenarioList();
+            }
+            catch(Exception ex) 
+            { 
+                await _platform.ShowAlertAsync("Error", "Failed to create scenario: " + ex.Message);
+            }
+        }
+
+        public async Task CreateNewFolderAsync(string parentPath)
+        {
+            try 
+            {
+                _scenarioService.CreateFolder(parentPath, "New Folder");
+                RefreshScenarioList();
+            }
+            catch(Exception ex) 
+            { 
+                await _platform.ShowAlertAsync("Error", "Failed to create folder: " + ex.Message);
+            }
+        }
+
+        public async Task DuplicateScenarioAsync(string path)
+        {
+            try 
+            {
+                _scenarioService.DuplicateScenario(path, Path.GetFileNameWithoutExtension(path) + "_Copy");
+                RefreshScenarioList();
+            }
+            catch(Exception ex) 
+            { 
+                await _platform.ShowAlertAsync("Error", "Failed to duplicate: " + ex.Message);
+            }
+        }
+
+        public async Task DeleteFileAsync(string path, bool isFolder)
+        {
+            var confirm = await _platform.ConfirmAsync("Delete", $"Are you sure you want to delete '{Path.GetFileName(path)}'?");
+            if (!confirm) return;
+
+            try
+            {
+                if (isFolder)
+                {
+                    _scenarioService.DeleteFolder(path);
+                }
+                else
+                {
+                    _scenarioService.DeleteScenario(path);
+                }
+                RefreshScenarioList();
+            }
+            catch(Exception ex)
+            {
+                await _platform.ShowAlertAsync("Error", "Failed to delete: " + ex.Message);
+            }
+        }
+
         // --- Simulation ---
 
         public void StartRecording()
         {
             IsRecording = true;
+            IsAssertionMode = false;
             CurrentScenario.Operations.Clear();
             
             var seed = CurrentScenario.Seed;
             var seedManager = new SeedManager(seed);
             
-            // Create Simulation Components
             var view = new EditorGameView(this);
             var config = new Match3Config(ActiveLevelConfig.Width, ActiveLevelConfig.Height, 6);
             
             var scoreSystem = new StandardScoreSystem();
             var inputSystem = new StandardInputSystem();
-            var logger = new ConsoleGameLogger(); // Or wrap _logger if needed, but ConsoleGameLogger is fine for sim
             var tileGen = new StandardTileGenerator(seedManager.GetRandom(RandomDomain.Refill));
 
-            // Note: Match3Engine will now load Bombs directly from ActiveLevelConfig
             SimulationController = new Match3Engine(
                 config, 
                 seedManager.GetRandom(RandomDomain.Main),
@@ -474,7 +649,6 @@ namespace Match3.Editor.ViewModels
         public void StopRecording()
         {
             IsRecording = false;
-            // SimulationController stays alive for inspection
         }
 
         public void UpdateSimulation(float dt)

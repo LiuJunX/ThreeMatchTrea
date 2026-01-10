@@ -1,0 +1,186 @@
+@using Match3.Editor.ViewModels
+@using Match3.Core.Models.Enums
+@using Match3.Core.Models.Grid
+@using Match3.Core.Scenarios
+@inject LevelEditorViewModel VM
+@implements IDisposable
+
+<main class="flex-grow-1 bg-secondary bg-opacity-10 d-flex flex-column position-relative overflow-hidden">
+    <!-- Toolbar Overlay -->
+    <div class="position-absolute top-0 start-50 translate-middle-x mt-3 bg-white shadow-sm rounded-pill px-3 py-1 d-flex gap-3 align-items-center z-index-10 border" style="z-index: 100;">
+        <div class="small fw-bold text-muted">
+            @if(VM.IsRecording) { <span>🔴 RECORDING</span> }
+            else if(VM.IsAssertionMode) { <span>🎯 VERIFYING</span> }
+            else { <span>✏️ EDITING</span> }
+        </div>
+        <div class="vr"></div>
+        <div class="small text-muted">@VM.ActiveLevelConfig.Width x @VM.ActiveLevelConfig.Height</div>
+    </div>
+
+    <!-- Grid Container -->
+    <div class="flex-grow-1 d-flex align-items-center justify-content-center overflow-auto p-5">
+        @{
+            var currentConfig = VM.ActiveLevelConfig;
+            var width = currentConfig.Width;
+            var height = currentConfig.Height;
+            var tileSize = 60;
+        }
+        <div class="position-relative shadow-lg bg-white" 
+             style="width: @(width * tileSize)px; height: @(height * tileSize)px; border: 10px solid @(VM.IsAssertionMode ? "#ffc107" : "#fff"); border-radius: 4px;"
+             @onmouseleave="StopDrawing"
+             @onmouseup="StopDrawing">
+            
+            @for (int i = 0; i < currentConfig.Grid.Length; i++)
+            {
+                var index = i;
+                var x = i % width;
+                var y = i / width;
+                var displayType = GetTileType(index);
+                var displayBomb = GetBomb(index);
+                var isSelected = VM.IsRecording && VM.SimulationController?.SelectedPosition == new Position(x, y);
+
+                <div class="position-absolute border border-light" 
+                     style="left: @(x * tileSize)px; top: @(y * tileSize)px; width: @(tileSize)px; height: @(tileSize)px; background-color: @GetColor(displayType); cursor: @(VM.IsAssertionMode ? "crosshair" : "pointer"); transition: transform 0.1s;"
+                     @onmousedown="() => StartDrawing(index)"
+                     @onmouseenter="() => PaintTile(index)"
+                     @ondragstart:preventDefault="true">
+                     
+                     @if (isSelected)
+                     {
+                         <div class="position-absolute top-0 start-0 w-100 h-100 border border-3 border-white shadow-sm" style="z-index: 5;"></div>
+                     }
+                     
+                    <div class="w-100 h-100 d-flex align-items-center justify-content-center" style="pointer-events: none;">
+                    </div>
+                    
+                    @if (displayBomb != BombType.None)
+                    {
+                        <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" 
+                             style="pointer-events:none; background: rgba(0,0,0,0.15);">
+                            <span class="fs-3" style="filter: drop-shadow(0 0 2px white);">
+                                @GetBombIcon(displayBomb)
+                            </span>
+                        </div>
+                    }
+
+                    @if (VM.CurrentMode == LevelEditorViewModel.EditorMode.Scenario)
+                    {
+                        var assertion = VM.CurrentScenario.Assertions.FirstOrDefault(a => a.X == x && a.Y == y);
+                        if (assertion != null)
+                        {
+                            <div class="position-absolute top-0 start-0 w-100 h-100 border border-3 border-warning" style="z-index: 6; pointer-events: none;">
+                                <div class="position-absolute bottom-0 end-0 bg-warning text-dark px-1 small" style="font-size: 10px; opacity: 0.9;">
+                                    @(assertion.Type.HasValue ? assertion.Type.Value.ToString().Substring(0,1) : "*")
+                                    @(assertion.Bomb.HasValue ? "💣" : "")
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</main>
+
+@code {
+    private bool IsDrawing { get; set; } = false;
+
+    protected override void OnInitialized()
+    {
+        VM.OnRequestRepaint += RequestUpdate;
+    }
+
+    private void RequestUpdate()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void StartDrawing(int index)
+    {
+        VM.HandleGridClick(index);
+
+        if (!VM.IsRecording && !VM.IsAssertionMode)
+        {
+            IsDrawing = true;
+        }
+    }
+
+    private void PaintTile(int index)
+    {
+        if (IsDrawing && !VM.IsRecording && !VM.IsAssertionMode)
+        {
+            VM.PaintTile(index);
+        }
+    }
+
+    private void StopDrawing()
+    {
+        IsDrawing = false;
+    }
+
+    private TileType GetTileType(int index)
+    {
+        if (VM.IsRecording && VM.SimulationController != null)
+        {
+            var w = VM.ActiveLevelConfig.Width;
+            try 
+            {
+                return VM.SimulationController.State.GetType(index % w, index / w);
+            }
+            catch { return TileType.None; }
+        }
+        return VM.ActiveLevelConfig.Grid[index];
+    }
+
+    private BombType GetBomb(int index)
+    {
+        if (VM.IsRecording && VM.SimulationController != null)
+        {
+            var w = VM.ActiveLevelConfig.Width;
+            try
+            {
+                return VM.SimulationController.State.GetTile(index % w, index / w).Bomb;
+            }
+            catch { return BombType.None; }
+        }
+        return index >= 0 && index < VM.ActiveBombs.Length ? VM.ActiveBombs[index] : BombType.None;
+    }
+
+    public void Dispose()
+    {
+        VM.OnRequestRepaint -= RequestUpdate;
+        VM.PropertyChanged -= OnVmPropertyChanged;
+    }
+
+    private string GetColor(TileType t)
+    {
+        return t switch
+        {
+            TileType.Red => "#dc3545",
+            TileType.Green => "#198754",
+            TileType.Blue => "#0d6efd",
+            TileType.Yellow => "#ffc107",
+            TileType.Purple => "#6f42c1",
+            TileType.Orange => "#fd7e14",
+            TileType.Rainbow => "linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet)",
+            TileType.None => "#f8f9fa",
+            TileType.Bomb => "#dee2e6",
+            _ => "#ccc"
+        };
+    }
+    private string GetBombIcon(BombType bomb) => bomb switch
+    {
+        BombType.None => "",
+        BombType.Horizontal => "↔️",
+        BombType.Vertical => "↕️",
+        BombType.Ufo => "🛸",
+        BombType.Square3x3 => "💣",
+        BombType.Color => "🌈",
+        _ => ""
+    };
+}

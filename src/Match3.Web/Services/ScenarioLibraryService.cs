@@ -5,11 +5,12 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Match3.Core.Scenarios;
+using Match3.Editor.Interfaces;
 using Match3.Editor.ViewModels;
 
 namespace Match3.Web.Services;
 
-public sealed class ScenarioLibraryService
+public sealed class ScenarioLibraryService : IScenarioService
 {
     private readonly string _rootDir;
     private readonly Dictionary<string, (DateTime LastWrite, ScenarioFileEntry Entry)> _entryCache = new();
@@ -185,8 +186,12 @@ public sealed class ScenarioLibraryService
         var newFileName = $"{stem}.json";
         var newFullPath = Path.Combine(directory!, newFileName);
 
-        if (fullPath != newFullPath && !File.Exists(newFullPath))
+        if (fullPath != newFullPath)
         {
+            if (File.Exists(newFullPath))
+            {
+                throw new IOException($"A scenario with the name '{stem}' already exists.");
+            }
             File.Move(fullPath, newFullPath);
         }
     }
