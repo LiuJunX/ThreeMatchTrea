@@ -172,5 +172,34 @@ namespace Match3.Core.Tests.Systems.Matching
             Assert.True(results[0].SpawnBombType.IsRocket());
             Assert.True(results[1].SpawnBombType.IsRocket());
         }
+        [Fact]
+        public void Generate_MassiveBlock_ShouldRunFast()
+        {
+            // 6x6 Block of same color
+            var rows = new[]
+            {
+                "A A A A A A",
+                "A A A A A A",
+                "A A A A A A",
+                "A A A A A A",
+                "A A A A A A",
+                "A A A A A A"
+            };
+            var component = ParseGrid(rows);
+
+            // Warm up
+            _generator.Generate(component);
+
+            // Measure
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var results = _generator.Generate(component);
+            sw.Stop();
+
+            // Should be under 50ms (currently might take 2s+)
+            Assert.True(sw.ElapsedMilliseconds < 100, $"Performance check failed: {sw.ElapsedMilliseconds}ms");
+            
+            // Should verify some bombs are generated
+            Assert.Contains(results, g => g.SpawnBombType == BombType.Color);
+        }
     }
 }

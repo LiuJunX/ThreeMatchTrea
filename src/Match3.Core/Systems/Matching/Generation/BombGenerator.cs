@@ -75,10 +75,18 @@ public class BombGenerator : IBombGenerator
                 return b.Cells.Count.CompareTo(a.Cells.Count);
             });
 
-            // 3. Solve Optimal Partition (Backtracking with Pools)
+            // 3. Solve Optimal Partition
             int bestScore = -1;
             
-            Solve(candidates, 0, currentIndices, usedCells, 0, ref bestScore, bestIndices);
+            // Optimization: For large number of candidates, use Greedy to avoid O(2^N)
+            if (candidates.Count > 15)
+            {
+                SolveGreedy(candidates, currentIndices, usedCells, ref bestScore, bestIndices);
+            }
+            else
+            {
+                Solve(candidates, 0, currentIndices, usedCells, 0, ref bestScore, bestIndices);
+            }
             
             // 4. Scrap Absorption & Result Construction
             var results = new List<MatchGroup>();
@@ -239,6 +247,43 @@ public class BombGenerator : IBombGenerator
     {
         if (currentBest == null) return candidate;
         return candidate.Weight > currentBest.Weight ? candidate : currentBest;
+    }
+
+    private void SolveGreedy(
+        List<DetectedShape> candidates,
+        List<int> currentIndices,
+        HashSet<Position> usedCells,
+        ref int bestScore,
+        List<int> bestIndices)
+    {
+        int score = 0;
+        bestIndices.Clear();
+        usedCells.Clear();
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            var candidate = candidates[i];
+            bool overlaps = false;
+            
+            // Check overlap
+            foreach (var p in candidate.Cells)
+            {
+                if (usedCells.Contains(p))
+                {
+                    overlaps = true;
+                    break;
+                }
+            }
+
+            if (!overlaps)
+            {
+                // Take it
+                bestIndices.Add(i);
+                score += candidate.Weight;
+                foreach (var p in candidate.Cells) usedCells.Add(p);
+            }
+        }
+        bestScore = score;
     }
 
     private void Solve(

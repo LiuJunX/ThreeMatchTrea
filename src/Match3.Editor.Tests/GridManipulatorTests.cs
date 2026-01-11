@@ -82,9 +82,9 @@ namespace Match3.Editor.Tests
             Assert.Equal(BombType.None, config.Bombs[0]);
 
             // Paint Bomb
-            manipulator.PaintTile(config, 0, TileType.Red, BombType.Row);
+            manipulator.PaintTile(config, 0, TileType.Red, BombType.Horizontal);
             Assert.Equal(TileType.Red, config.Grid[0]);
-            Assert.Equal(BombType.Row, config.Bombs[0]);
+            Assert.Equal(BombType.Horizontal, config.Bombs[0]);
 
             // Paint Rainbow
             manipulator.PaintTile(config, 1, TileType.Rainbow, BombType.Color);
