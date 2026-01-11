@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using Match3.Core.Interfaces;
@@ -65,28 +66,55 @@ public class BombGenerator : IBombGenerator
                 if (weightDiff != 0) return weightDiff;
                 
                 // Secondary: Affinity (Does it touch foci?)
-                bool aTouches = a.Cells.Overlaps(fociSet);
-                bool bTouches = b.Cells.Overlaps(fociSet);
+                bool aTouches = a.Cells!.Overlaps(fociSet);
+                bool bTouches = b.Cells!.Overlaps(fociSet);
                 
                 if (aTouches && !bTouches) return -1;
                 if (!aTouches && bTouches) return 1;
                 
                 // Tertiary: Size (larger shapes preferred for same weight)
-                return b.Cells.Count.CompareTo(a.Cells.Count);
+                return b.Cells!.Count.CompareTo(a.Cells!.Count);
             });
 
             // 3. Solve Optimal Partition
             int bestScore = -1;
             
-            // Optimization: For large number of candidates, use Greedy to avoid O(2^N)
-            if (candidates.Count > 15)
+            // Optimization: Branch & Bound with BitMasks
+            // Precompute masks and suffix sums
+            var candidateMasks = ArrayPool<BitMask256>.Shared.Rent(candidates.Count);
+            var suffixSums = ArrayPool<int>.Shared.Rent(candidates.Count + 1);
+            
+            // Map component positions to indices for BitMask
+            var positionToIndex = Pools.Obtain<Dictionary<Position, int>>();
+            int posIndex = 0;
+            foreach (var p in component) 
             {
-                SolveGreedy(candidates, currentIndices, usedCells, ref bestScore, bestIndices);
+                positionToIndex[p] = posIndex++;
             }
-            else
+
+            suffixSums[candidates.Count] = 0;
+            for (int i = candidates.Count - 1; i >= 0; i--)
             {
-                Solve(candidates, 0, currentIndices, usedCells, 0, ref bestScore, bestIndices);
+                suffixSums[i] = suffixSums[i + 1] + candidates[i].Weight;
+                
+                var mask = new BitMask256();
+                foreach (var p in candidates[i].Cells!)
+                {
+                    // Map Position to Index in component
+                    if (positionToIndex.TryGetValue(p, out int index) && index < 256)
+                    {
+                        mask.Set(index);
+                    }
+                }
+                candidateMasks[i] = mask;
             }
+
+            SolveOptimized(candidates, 0, currentIndices, new BitMask256(), 0, ref bestScore, bestIndices, suffixSums, candidateMasks);
+            
+            positionToIndex.Clear();
+            Pools.Release(positionToIndex);
+            ArrayPool<BitMask256>.Shared.Return(candidateMasks);
+            ArrayPool<int>.Shared.Return(suffixSums);
             
             // 4. Scrap Absorption & Result Construction
             var results = new List<MatchGroup>();
@@ -98,7 +126,7 @@ public class BombGenerator : IBombGenerator
             // Mark used cells
             foreach(var shape in solutionShapes) 
             {
-                foreach(var p in shape.Cells) allUsed.Add(p);
+                foreach(var p in shape.Cells!) allUsed.Add(p);
             }
             
             // Identify scraps
@@ -115,7 +143,7 @@ public class BombGenerator : IBombGenerator
                 // Map each position to its owner shape
                 foreach(var shape in solutionShapes)
                 {
-                    foreach(var p in shape.Cells) ownerMap[p] = shape;
+                    foreach(var p in shape.Cells!) ownerMap[p] = shape;
                 }
 
                 bool changed = true;
@@ -142,7 +170,7 @@ public class BombGenerator : IBombGenerator
                         if (bestOwner != null)
                         {
                             ownerMap[scrap] = bestOwner;
-                            bestOwner.Cells.Add(scrap); // Add directly to shape
+                            bestOwner.Cells!.Add(scrap); // Add directly to shape
                             toRemove.Add(scrap);
                             changed = true;
                         }
@@ -160,7 +188,7 @@ public class BombGenerator : IBombGenerator
                 var shape = candidates[idx];
                 var group = Pools.Obtain<MatchGroup>();
                 group.Positions.Clear();
-                foreach(var p in shape.Cells) group.Positions.Add(p);
+                foreach(var p in shape.Cells!) group.Positions.Add(p);
                 
                 group.Shape = shape.Shape;
                 group.SpawnBombType = shape.Type;
@@ -173,7 +201,7 @@ public class BombGenerator : IBombGenerator
                 {
                     foreach (var f in foci)
                     {
-                        if (shape.Cells.Contains(f))
+                        if (shape.Cells!.Contains(f))
                         {
                             origin = f;
                             break;
@@ -181,9 +209,9 @@ public class BombGenerator : IBombGenerator
                     }
                 }
                 // Priority 2: Center/Random
-                if (origin == null && shape.Cells.Count > 0)
+                if (origin == null && shape.Cells!.Count > 0)
                 {
-                    origin = shape.Cells.First();
+                    origin = shape.Cells!.First();
                 }
                 group.BombOrigin = origin;
 
@@ -220,7 +248,7 @@ public class BombGenerator : IBombGenerator
             // Release detected shapes and their inner sets
             foreach(var c in candidates)
             {
-                Pools.Release(c.Cells);
+                if (c.Cells != null) Pools.Release(c.Cells);
                 c.Cells = null;
                 Pools.Release(c);
             }
@@ -248,97 +276,84 @@ public class BombGenerator : IBombGenerator
         if (currentBest == null) return candidate;
         return candidate.Weight > currentBest.Weight ? candidate : currentBest;
     }
-
-    private void SolveGreedy(
+    
+    // Fixed Solve Implementation
+    private void SolveOptimized(
         List<DetectedShape> candidates,
+        int index,
         List<int> currentIndices,
-        HashSet<Position> usedCells,
-        ref int bestScore,
-        List<int> bestIndices)
-    {
-        int score = 0;
-        bestIndices.Clear();
-        usedCells.Clear();
-
-        for (int i = 0; i < candidates.Count; i++)
-        {
-            var candidate = candidates[i];
-            bool overlaps = false;
-            
-            // Check overlap
-            foreach (var p in candidate.Cells)
-            {
-                if (usedCells.Contains(p))
-                {
-                    overlaps = true;
-                    break;
-                }
-            }
-
-            if (!overlaps)
-            {
-                // Take it
-                bestIndices.Add(i);
-                score += candidate.Weight;
-                foreach (var p in candidate.Cells) usedCells.Add(p);
-            }
-        }
-        bestScore = score;
-    }
-
-    private void Solve(
-        List<DetectedShape> candidates, 
-        int index, 
-        List<int> currentIndices, 
-        HashSet<Position> usedCells, 
+        BitMask256 usedMask,
         int currentScore,
         ref int bestScore,
-        List<int> bestIndices)
+        List<int> bestIndices,
+        int[] suffixSums,
+        BitMask256[] candidateMasks)
     {
-        // Optimization: Pruning?
-        // If remaining candidates can't possibly beat bestScore, return.
-        // But calculating "potential max" is costly.
+         // 1. Base Case / Pruning
+         if (index >= candidates.Count)
+         {
+             if (currentScore > bestScore)
+             {
+                 bestScore = currentScore;
+                 bestIndices.Clear();
+                 bestIndices.AddRange(currentIndices);
+             }
+             return;
+         }
 
-        if (index >= candidates.Count)
+         if (currentScore + suffixSums[index] <= bestScore)
+         {
+             return;
+         }
+
+         // 2. Try Include
+         var candidateMask = candidateMasks[index];
+         if (!usedMask.Overlaps(candidateMask))
+         {
+             currentIndices.Add(index);
+             
+             // Create new mask for next level (copy + union)
+             var nextMask = usedMask; 
+             nextMask.UnionWith(candidateMask);
+             
+             SolveOptimized(candidates, index + 1, currentIndices, nextMask, currentScore + candidates[index].Weight, ref bestScore, bestIndices, suffixSums, candidateMasks);
+             
+             currentIndices.RemoveAt(currentIndices.Count - 1);
+         }
+
+         // 3. Try Exclude
+         SolveOptimized(candidates, index + 1, currentIndices, usedMask, currentScore, ref bestScore, bestIndices, suffixSums, candidateMasks);
+    }
+
+    private struct BitMask256
+    {
+        private ulong _p0;
+        private ulong _p1;
+        private ulong _p2;
+        private ulong _p3;
+
+        public void Set(int index)
         {
-            if (currentScore > bestScore)
-            {
-                bestScore = currentScore;
-                bestIndices.Clear();
-                bestIndices.AddRange(currentIndices);
-            }
-            return;
+            if (index < 64) _p0 |= 1UL << index;
+            else if (index < 128) _p1 |= 1UL << (index - 64);
+            else if (index < 192) _p2 |= 1UL << (index - 128);
+            else if (index < 256) _p3 |= 1UL << (index - 192);
         }
 
-        var candidate = candidates[index];
-
-        // Option A: Include Candidate
-        // Check overlap
-        bool overlaps = false;
-        foreach (var p in candidate.Cells)
+        public bool Overlaps(in BitMask256 other)
         {
-            if (usedCells.Contains(p))
-            {
-                overlaps = true;
-                break;
-            }
+            return (_p0 & other._p0) != 0 ||
+                   (_p1 & other._p1) != 0 ||
+                   (_p2 & other._p2) != 0 ||
+                   (_p3 & other._p3) != 0;
         }
 
-        if (!overlaps)
+        public void UnionWith(in BitMask256 other)
         {
-            currentIndices.Add(index);
-            foreach (var p in candidate.Cells) usedCells.Add(p);
-            
-            Solve(candidates, index + 1, currentIndices, usedCells, currentScore + candidate.Weight, ref bestScore, bestIndices);
-            
-            // Backtrack
-            foreach (var p in candidate.Cells) usedCells.Remove(p);
-            currentIndices.RemoveAt(currentIndices.Count - 1);
+            _p0 |= other._p0;
+            _p1 |= other._p1;
+            _p2 |= other._p2;
+            _p3 |= other._p3;
         }
-
-        // Option B: Exclude Candidate
-        // Optimization: If candidate is crucial? 
-        // Just standard subset sum variation.
-        Solve(candidates, index + 1, currentIndices, usedCells, currentScore, ref bestScore, bestIndices);
     }
 }

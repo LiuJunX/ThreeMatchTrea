@@ -16,7 +16,7 @@ public static class BombWeights
 public class DetectedShape
 {
     public BombType Type { get; set; }
-    public HashSet<Position> Cells { get; set; } // Managed by Pool
+    public HashSet<Position>? Cells { get; set; } // Managed by Pool
     public int Weight { get; set; }
     public MatchShape Shape { get; set; } 
     
