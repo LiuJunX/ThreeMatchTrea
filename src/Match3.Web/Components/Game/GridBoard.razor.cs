@@ -108,18 +108,16 @@ public partial class GridBoard : IDisposable
             };
         }
 
-        if (t.Type == TileType.Rainbow) return "🌈";
+        if (t.Type.HasFlag(TileType.Rainbow)) return "🌈";
         
-        return t.Type switch
-        {
-            TileType.Red => "🔴",
-            TileType.Green => "🟢",
-            TileType.Blue => "🔵",
-            TileType.Yellow => "🟡",
-            TileType.Purple => "🟣",
-            TileType.Orange => "🟠",
-            _ => ""
-        };
+        if (t.Type.HasFlag(TileType.Red)) return "🔴";
+        if (t.Type.HasFlag(TileType.Green)) return "🟢";
+        if (t.Type.HasFlag(TileType.Blue)) return "🔵";
+        if (t.Type.HasFlag(TileType.Yellow)) return "🟡";
+        if (t.Type.HasFlag(TileType.Purple)) return "🟣";
+        if (t.Type.HasFlag(TileType.Orange)) return "🟠";
+        
+        return "";
     }
 
     private bool HasBombOverlay(Tile t)

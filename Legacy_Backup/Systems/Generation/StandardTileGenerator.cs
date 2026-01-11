@@ -1,4 +1,3 @@
-using System;
 using Match3.Core.Interfaces;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
@@ -20,31 +19,14 @@ public class StandardTileGenerator : ITileGenerator
         _rng = rng;
     }
 
-    private static readonly TileType[] _colors = new[]
-    {
-        TileType.Red,
-        TileType.Green,
-        TileType.Blue,
-        TileType.Yellow,
-        TileType.Purple,
-        TileType.Orange
-    };
-
     public TileType GenerateNonMatchingTile(ref GameState state, int x, int y)
     {
-        int count = Math.Min(state.TileTypesCount, _colors.Length);
-        if (count <= 0) return TileType.None;
-
         for (int i = 0; i < 10; i++)
         {
-            // Use 0-based index for array lookup
-            int idx = Next(state, 0, count);
-            var t = _colors[idx];
-            
+            var t = (TileType)Next(state, 1, state.TileTypesCount + 1);
             if (!CreatesImmediateRun(ref state, x, y, t)) return t;
         }
-        
-        return _colors[Next(state, 0, count)];
+        return (TileType)Next(state, 1, state.TileTypesCount + 1);
     }
 
     private bool CreatesImmediateRun(ref GameState state, int x, int y, TileType t)

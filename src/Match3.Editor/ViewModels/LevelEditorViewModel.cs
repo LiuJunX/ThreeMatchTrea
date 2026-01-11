@@ -5,26 +5,19 @@ using System.Linq;
 using System.IO;
 using System.Threading.Tasks;
 using Match3.Core;
+using Match3.Core.Utility;
 using Match3.Core.Config;
 using Match3.Core.Interfaces;
 using Match3.Core.Scenarios;
-using Match3.Core.Systems;
-using Match3.Editor.Interfaces;
-using Match3.Random;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
-using Match3.Core.Utility;
-using Match3.Core.Systems.Generation;
-using Match3.Core.Systems.Gravity;
-using Match3.Core.Systems.Input;
-using Match3.Core.Systems.Matching;
-using Match3.Core.Systems.PowerUps;
-using Match3.Core.Systems.Scoring;
+using Match3.Editor.Interfaces;
+using Match3.Editor.Logic;
 
 namespace Match3.Editor.ViewModels
 {
-    public class LevelEditorViewModel : INotifyPropertyChanged
+    public class LevelEditorViewModel : INotifyPropertyChanged, IDisposable
     {
         private readonly IPlatformService _platform;
         private readonly IFileSystemService _fileSystem;
@@ -32,79 +25,50 @@ namespace Match3.Editor.ViewModels
         private readonly IGameLogger _logger;
         private readonly IScenarioService _scenarioService;
 
-        // --- Core State ---
-        public enum EditorMode { Level, Scenario }
-        private EditorMode _currentMode = EditorMode.Level;
+        private readonly EditorSession _session;
+        private readonly GridManipulator _gridManipulator;
+        private readonly SimulationRunner _simulationRunner;
+
+        // --- Core State (Delegated to Session) ---
         public EditorMode CurrentMode
         {
-            get => _currentMode;
-            set { _currentMode = value; OnPropertyChanged(nameof(CurrentMode)); OnPropertyChanged(nameof(ActiveLevelConfig)); }
+            get => _session.CurrentMode;
+            set => _session.CurrentMode = value;
         }
 
-        // --- Data Models ---
-        public LevelConfig CurrentLevel { get; set; } = new LevelConfig();
+        public LevelConfig CurrentLevel
+        {
+            get => _session.CurrentLevel;
+            set => _session.CurrentLevel = value;
+        }
         
-        private ScenarioConfig _currentScenario = new ScenarioConfig();
         public ScenarioConfig CurrentScenario
         {
-            get => _currentScenario;
-            set
-            {
-                _currentScenario = value;
-                OnPropertyChanged(nameof(CurrentScenario));
-                OnPropertyChanged(nameof(ScenarioDescription));
-                OnPropertyChanged(nameof(ActiveLevelConfig));
-            }
+            get => _session.CurrentScenario;
+            set => _session.CurrentScenario = value;
         }
 
         public ScenarioMetadata CurrentScenarioMetadata { get; set; } = new ScenarioMetadata();
 
-        private string _scenarioName = "New Scenario";
         public string ScenarioName
         {
-            get => _scenarioName;
-            set
-            {
-                if (_scenarioName != value)
-                {
-                    _scenarioName = value;
-                    OnPropertyChanged(nameof(ScenarioName));
-                    IsDirty = true;
-                }
-            }
-        }
-
-        public void SetScenarioName(string name)
-        {
-            if (_scenarioName != name)
-            {
-                _scenarioName = name;
-                OnPropertyChanged(nameof(ScenarioName));
-            }
+            get => _session.ScenarioName;
+            set => _session.ScenarioName = value;
         }
 
         public string ScenarioDescription
         {
-            get => CurrentScenario.Description;
-            set
-            {
-                if (CurrentScenario.Description != value)
-                {
-                    CurrentScenario.Description = value;
-                    OnPropertyChanged(nameof(ScenarioDescription));
-                    IsDirty = true;
-                }
-            }
+            get => _session.ScenarioDescription;
+            set => _session.ScenarioDescription = value;
         }
         
-        // --- Editor UI State ---
-        private bool _isDirty;
         public bool IsDirty
         {
-            get => _isDirty;
-            set { _isDirty = value; OnPropertyChanged(nameof(IsDirty)); }
+            get => _session.IsDirty;
+            set => _session.IsDirty = value;
         }
 
+        // --- Editor UI State ---
         private int _editorWidth = 8;
         public int EditorWidth 
         { 
@@ -168,12 +132,9 @@ namespace Match3.Editor.ViewModels
             set { _jsonOutput = value; OnPropertyChanged(nameof(JsonOutput)); }
         }
 
-        private bool _isRecording;
-        public bool IsRecording
-        {
-            get => _isRecording;
-            set { _isRecording = value; OnPropertyChanged(nameof(IsRecording)); }
-        }
+        // IsRecording is now derived from SimulationRunner, but for UI binding we might need a local property
+        // that updates when Runner updates.
+        public bool IsRecording => _simulationRunner.IsRecording;
 
         private bool _isAssertionMode;
         public bool IsAssertionMode
@@ -195,12 +156,12 @@ namespace Match3.Editor.ViewModels
         }
 
         // --- Computed Properties ---
-        public LevelConfig ActiveLevelConfig => CurrentMode == EditorMode.Level ? CurrentLevel : CurrentScenario.InitialState;
+        public LevelConfig ActiveLevelConfig => _session.ActiveLevelConfig;
         
         public BombType[] ActiveBombs => ActiveLevelConfig.Bombs;
 
         // --- Simulation ---
-        public Match3Engine? SimulationController { get; private set; }
+        public Match3Engine? SimulationController => _simulationRunner.Engine;
 
         public event PropertyChangedEventHandler? PropertyChanged;
         public event Action? OnRequestRepaint;
@@ -218,7 +179,28 @@ namespace Match3.Editor.ViewModels
             _logger = logger;
             _scenarioService = scenarioService;
             
-            EnsureDefaultLevel();
+            _session = new EditorSession();
+            _gridManipulator = new GridManipulator();
+            _simulationRunner = new SimulationRunner(logger);
+
+            _session.PropertyChanged += OnSessionPropertyChanged;
+            _simulationRunner.OnRepaintRequired += RequestRepaint;
+
+            // Initialize default state
+            _session.EnsureDefaultLevel();
+            GenerateRandomLevel(); // Fill it
+        }
+
+        public void Dispose()
+        {
+            _session.PropertyChanged -= OnSessionPropertyChanged;
+            _simulationRunner.OnRepaintRequired -= RequestRepaint;
+            _simulationRunner.Dispose();
+        }
+
+        private void OnSessionPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            OnPropertyChanged(e.PropertyName);
         }
 
         protected void OnPropertyChanged(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
@@ -226,101 +208,56 @@ namespace Match3.Editor.ViewModels
 
         // --- Actions ---
 
+        public void SetScenarioName(string name)
+        {
+            _session.ScenarioName = name;
+        }
+
         public void SwitchMode(EditorMode mode)
         {
-            CurrentMode = mode;
+            _session.CurrentMode = mode;
             if (mode == EditorMode.Scenario)
             {
-                EditorWidth = CurrentScenario.InitialState.Width;
-                EditorHeight = CurrentScenario.InitialState.Height;
-                if (CurrentScenario.InitialState.Grid.All(t => t == TileType.None))
+                EditorWidth = _session.CurrentScenario.InitialState.Width;
+                EditorHeight = _session.CurrentScenario.InitialState.Height;
+                if (_session.CurrentScenario.InitialState.Grid.All(t => t == TileType.None))
                 {
                     GenerateRandomLevel();
                 }
             }
             else
             {
-                EnsureDefaultLevel();
-                EditorWidth = CurrentLevel.Width;
-                EditorHeight = CurrentLevel.Height;
+                _session.EnsureDefaultLevel();
+                EditorWidth = _session.CurrentLevel.Width;
+                EditorHeight = _session.CurrentLevel.Height;
             }
-            IsRecording = false;
-            SimulationController = null;
-        }
-
-        public void EnsureDefaultLevel()
-        {
-            if (CurrentLevel.Grid == null || CurrentLevel.Grid.Length == 0)
-            {
-                CurrentLevel = new LevelConfig(8, 8);
-                GenerateRandomLevel();
-            }
-            if (CurrentLevel.Bombs == null || CurrentLevel.Bombs.Length != CurrentLevel.Grid.Length)
-            {
-                CurrentLevel.Bombs = new BombType[CurrentLevel.Grid.Length];
-            }
+            _simulationRunner.StopRecording();
+            OnPropertyChanged(nameof(IsRecording));
         }
 
         public void GenerateRandomLevel()
         {
-            var config = ActiveLevelConfig;
-            if (config.Bombs == null || config.Bombs.Length != config.Grid.Length)
-            {
-                config.Bombs = new BombType[config.Grid.Length];
-            }
-
-            var rng = new SeedManager(Environment.TickCount).GetRandom(RandomDomain.Refill);
-            var types = new[] { TileType.Red, TileType.Green, TileType.Blue, TileType.Yellow, TileType.Purple, TileType.Orange };
-
-            for (int i = 0; i < config.Grid.Length; i++)
-            {
-                config.Grid[i] = types[rng.Next(0, types.Length)];
-            }
-            
-            Array.Clear(config.Bombs, 0, config.Bombs.Length);
-            
+            _gridManipulator.GenerateRandomLevel(_session.ActiveLevelConfig, Environment.TickCount);
             RequestRepaint();
-            IsDirty = true;
+            _session.IsDirty = true;
         }
 
         public void ResizeGrid()
         {
-            var oldConfig = ActiveLevelConfig;
-            var newConfig = new LevelConfig(EditorWidth, EditorHeight);
-            
-            int w = Math.Min(oldConfig.Width, newConfig.Width);
-            int h = Math.Min(oldConfig.Height, newConfig.Height);
-
-            for (int y = 0; y < h; y++)
-            {
-                for (int x = 0; x < w; x++)
-                {
-                    int oldIdx = y * oldConfig.Width + x;
-                    int newIdx = y * newConfig.Width + x;
-                    if (oldIdx < oldConfig.Grid.Length && newIdx < newConfig.Grid.Length)
-                    {
-                        newConfig.Grid[newIdx] = oldConfig.Grid[oldIdx];
-                        if (oldConfig.Bombs != null && oldIdx < oldConfig.Bombs.Length)
-                        {
-                            newConfig.Bombs[newIdx] = oldConfig.Bombs[oldIdx];
-                        }
-                    }
-                }
-            }
+            var newConfig = _gridManipulator.ResizeGrid(_session.ActiveLevelConfig, EditorWidth, EditorHeight);
 
             if (CurrentMode == EditorMode.Level)
             {
-                newConfig.MoveLimit = CurrentLevel.MoveLimit;
-                CurrentLevel = newConfig;
+                _session.CurrentLevel = newConfig;
             }
             else
             {
-                CurrentScenario.InitialState = newConfig;
-                CurrentScenario.Operations.Clear();
-                CurrentScenario.ExpectedState = new LevelConfig();
+                _session.CurrentScenario.InitialState = newConfig;
+                _session.CurrentScenario.Operations.Clear();
+                _session.CurrentScenario.ExpectedState = new LevelConfig();
             }
             RequestRepaint();
-            IsDirty = true;
+            _session.IsDirty = true;
         }
 
         public void ToggleAssertionMode()
@@ -328,7 +265,8 @@ namespace Match3.Editor.ViewModels
             IsAssertionMode = !IsAssertionMode;
             if (IsAssertionMode)
             {
-                IsRecording = false;
+                _simulationRunner.StopRecording();
+                OnPropertyChanged(nameof(IsRecording));
             }
         }
 
@@ -340,24 +278,24 @@ namespace Match3.Editor.ViewModels
                 var x = index % w;
                 var y = index / w;
                 
-                var existing = CurrentScenario.Assertions.FirstOrDefault(a => a.X == x && a.Y == y);
+                var existing = _session.CurrentScenario.Assertions.FirstOrDefault(a => a.X == x && a.Y == y);
                 if (existing != null)
                 {
-                    CurrentScenario.Assertions.Remove(existing);
+                    _session.CurrentScenario.Assertions.Remove(existing);
                 }
                 else
                 {
                     var type = AssertColor ? SelectedType : (TileType?)null;
                     var bomb = AssertBomb ? SelectedBomb : (BombType?)null;
                     
-                    CurrentScenario.Assertions.Add(new ScenarioAssertion
+                    _session.CurrentScenario.Assertions.Add(new ScenarioAssertion
                     {
                         X = x, Y = y,
                         Type = type,
                         Bomb = bomb
                     });
                 }
-                IsDirty = true;
+                _session.IsDirty = true;
                 RequestRepaint();
                 return;
             }
@@ -365,7 +303,7 @@ namespace Match3.Editor.ViewModels
             if (IsRecording && SimulationController != null)
             {
                 var w = ActiveLevelConfig.Width;
-                SimulationController.OnTap(new Position(index % w, index / w));
+                _simulationRunner.HandleInput(index % w, index / w);
             }
             else
             {
@@ -375,42 +313,9 @@ namespace Match3.Editor.ViewModels
 
         public void PaintTile(int index)
         {
-            if (index < 0 || index >= ActiveLevelConfig.Grid.Length) return;
-            
-            if (SelectedBomb != BombType.None)
-            {
-                ActiveLevelConfig.Bombs[index] = SelectedBomb;
-                if (SelectedBomb == BombType.Color)
-                {
-                    ActiveLevelConfig.Grid[index] = TileType.Rainbow;
-                }
-                else
-                {
-                    var current = ActiveLevelConfig.Grid[index];
-                    if (current == TileType.None || current == TileType.Bomb || current == TileType.Rainbow)
-                    {
-                        var defaultColor = (SelectedType >= TileType.Red && SelectedType <= TileType.Orange) 
-                            ? SelectedType 
-                            : TileType.Red;
-                        ActiveLevelConfig.Grid[index] = defaultColor;
-                    }
-                }
-            }
-            else
-            {
-                ActiveLevelConfig.Grid[index] = SelectedType;
-                if (SelectedType == TileType.Rainbow)
-                {
-                    ActiveLevelConfig.Bombs[index] = BombType.Color;
-                }
-                else
-                {
-                    ActiveLevelConfig.Bombs[index] = BombType.None;
-                }
-            }
-
+            _gridManipulator.PaintTile(_session.ActiveLevelConfig, index, SelectedType, SelectedBomb);
             RequestRepaint();
-            IsDirty = true;
+            _session.IsDirty = true;
         }
 
         // --- IO & Export ---
@@ -418,9 +323,9 @@ namespace Match3.Editor.ViewModels
         public void ExportJson()
         {
             if (CurrentMode == EditorMode.Level)
-                JsonOutput = _jsonService.Serialize(CurrentLevel);
+                JsonOutput = _jsonService.Serialize(_session.CurrentLevel);
             else
-                JsonOutput = _jsonService.Serialize(CurrentScenario);
+                JsonOutput = _jsonService.Serialize(_session.CurrentScenario);
         }
 
         public void ImportJson(bool keepScenarioMode = false)
@@ -430,10 +335,10 @@ namespace Match3.Editor.ViewModels
             {
                 if (JsonOutput.Contains("Operations"))
                 {
-                    CurrentScenario = _jsonService.Deserialize<ScenarioConfig>(JsonOutput);
-                    CurrentMode = EditorMode.Scenario;
-                    EditorWidth = CurrentScenario.InitialState.Width;
-                    EditorHeight = CurrentScenario.InitialState.Height;
+                    _session.CurrentScenario = _jsonService.Deserialize<ScenarioConfig>(JsonOutput);
+                    _session.CurrentMode = EditorMode.Scenario;
+                    EditorWidth = _session.CurrentScenario.InitialState.Width;
+                    EditorHeight = _session.CurrentScenario.InitialState.Height;
                 }
                 else
                 {
@@ -441,27 +346,27 @@ namespace Match3.Editor.ViewModels
 
                     if (keepScenarioMode || CurrentMode == EditorMode.Scenario)
                     {
-                        CurrentScenario = new ScenarioConfig 
+                        _session.CurrentScenario = new ScenarioConfig 
                         { 
                             InitialState = level,
                             Operations = new List<MoveOperation>() 
                         };
-                        CurrentMode = EditorMode.Scenario;
+                        _session.CurrentMode = EditorMode.Scenario;
                         EditorWidth = level.Width;
                         EditorHeight = level.Height;
                     }
                     else
                     {
-                        CurrentLevel = level;
-                        CurrentMode = EditorMode.Level;
-                        EditorWidth = CurrentLevel.Width;
-                        EditorHeight = CurrentLevel.Height;
+                        _session.CurrentLevel = level;
+                        _session.CurrentMode = EditorMode.Level;
+                        EditorWidth = _session.CurrentLevel.Width;
+                        EditorHeight = _session.CurrentLevel.Height;
                     }
                 }
                 
-                EnsureDefaultLevel();
+                _session.EnsureDefaultLevel();
                 RequestRepaint();
-                IsDirty = false;
+                _session.IsDirty = false;
             }
             catch (Exception ex)
             {
@@ -469,7 +374,7 @@ namespace Match3.Editor.ViewModels
             }
         }
 
-        // --- Scenario Management (New Logic) ---
+        // --- Scenario Management ---
 
         public void RefreshScenarioList()
         {
@@ -489,9 +394,6 @@ namespace Match3.Editor.ViewModels
                     }
                     else
                     {
-                        // Cannot auto-save unnamed file, ask to discard?
-                        // For now just proceed or abort? Let's abort if they said YES to save but we can't save.
-                        // Or we could trigger "Save As" flow, but simplest is just:
                         var discard = await _platform.ConfirmAsync("Cannot Save", "File has no path. Discard changes?");
                         if (!discard) return;
                     }
@@ -526,7 +428,6 @@ namespace Match3.Editor.ViewModels
                 var currentName = Path.GetFileNameWithoutExtension(CurrentFilePath);
                 if (!string.Equals(currentName, ScenarioName, StringComparison.Ordinal))
                 {
-                     // Logic for rename
                      _scenarioService.RenameScenario(CurrentFilePath, ScenarioName);
                      
                      var stem = ScenarioFileName.SanitizeFileStem(ScenarioName);
@@ -541,7 +442,7 @@ namespace Match3.Editor.ViewModels
 
                 ExportJson();
                 _scenarioService.WriteScenarioJson(CurrentFilePath, JsonOutput);
-                IsDirty = false;
+                _session.IsDirty = false;
                 RefreshScenarioList();
             }
             catch (Exception ex)
@@ -616,69 +517,25 @@ namespace Match3.Editor.ViewModels
 
         public void StartRecording()
         {
-            IsRecording = true;
             IsAssertionMode = false;
-            CurrentScenario.Operations.Clear();
-            
-            var seed = CurrentScenario.Seed;
-            var seedManager = new SeedManager(seed);
-            
-            var view = new EditorGameView(this);
-            var config = new Match3Config(ActiveLevelConfig.Width, ActiveLevelConfig.Height, 6);
-            
-            var scoreSystem = new StandardScoreSystem();
-            var inputSystem = new StandardInputSystem();
-            var tileGen = new StandardTileGenerator(seedManager.GetRandom(RandomDomain.Refill));
-
-            SimulationController = new Match3Engine(
-                config, 
-                seedManager.GetRandom(RandomDomain.Main),
-                view,
-                _logger,
-                inputSystem,
-                new ClassicMatchFinder(),
-                new StandardMatchProcessor(scoreSystem),
-                new StandardGravitySystem(tileGen),
-                new PowerUpHandler(scoreSystem),
-                scoreSystem,
-                tileGen,
-                ActiveLevelConfig
-            );
+            _simulationRunner.StartRecording(_session.ActiveLevelConfig, _session.CurrentScenario);
+            OnPropertyChanged(nameof(IsRecording));
         }
 
         public void StopRecording()
         {
-            IsRecording = false;
+            _simulationRunner.StopRecording();
+            OnPropertyChanged(nameof(IsRecording));
         }
 
         public void UpdateSimulation(float dt)
         {
-            if (SimulationController != null)
-            {
-                SimulationController.Update(dt);
-                RequestRepaint();
-            }
-        }
-        
-        public void RecordMove(Position a, Position b)
-        {
-            CurrentScenario.Operations.Add(new MoveOperation(a.X, a.Y, b.X, b.Y));
-            IsDirty = true;
-        }
-
-        private class EditorGameView : IGameView
-        {
-            private readonly LevelEditorViewModel _vm;
-            public EditorGameView(LevelEditorViewModel vm) => _vm = vm;
-            public void RenderBoard(TileType[,] board) { _vm.RequestRepaint(); }
-            public void ShowSwap(Position a, Position b, bool success) 
-            {
-                if(success) _vm.RecordMove(a, b);
-                _vm.RequestRepaint();
-            }
-            public void ShowMatches(IReadOnlyCollection<Position> matched) { }
-            public void ShowGravity(IEnumerable<TileMove> moves) { }
-            public void ShowRefill(IEnumerable<TileMove> moves) { }
+            // SimulationRunner handles its own timer, but if called manually, we could forward it.
+            // For backward compatibility with the Razor file if it still calls it.
+            // But since SimulationRunner has its own timer, calling this might double-update if not careful.
+            // The Razor file should stop calling this.
+            // However, to avoid breaking compilation of Razor file immediately:
+            // _simulationRunner.Update(dt); // If we exposed it.
         }
     }
 }

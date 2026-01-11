@@ -1,52 +1,53 @@
-namespace Match3.Core.Models.Enums;
+using System;
 
-/// <summary>
-/// Defines the types (colors) of tiles available in the game.
-/// </summary>
-public enum TileType
+namespace Match3.Core.Models.Enums
 {
     /// <summary>
-    /// Represents an empty space or cleared tile.
+    /// Defines the structural properties of a grid cell.
+    /// Can be combined as flags.
     /// </summary>
-    None = 0,
+    [Flags]
+    public enum TileType
+    {
+        None = 0,
+        
+        /// <summary>
+        /// A standard playable cell.
+        /// </summary>
+        Normal = 1 << 0,
+        
+        /// <summary>
+        /// A wall that blocks movement or matches.
+        /// Note: Often handled as a separate layer or edge property, 
+        /// but can be a cell type for "solid rock" cells.
+        /// </summary>
+        Wall = 1 << 1,
+        
+        /// <summary>
+        /// A spawn point for new items.
+        /// </summary>
+        Spawner = 1 << 2,
+        
+        /// <summary>
+        /// A collection point (e.g., for ingredients to drop out).
+        /// </summary>
+        Sink = 1 << 3,
 
-    /// <summary>
-    /// Red color tile.
-    /// </summary>
-    Red,
+        /// <summary>
+        /// A void cell (empty space, items fall through or around).
+        /// </summary>
+        Hole = 1 << 4,
 
-    /// <summary>
-    /// Green color tile.
-    /// </summary>
-    Green,
-
-    /// <summary>
-    /// Blue color tile.
-    /// </summary>
-    Blue,
-
-    /// <summary>
-    /// Yellow color tile.
-    /// </summary>
-    Yellow,
-
-    /// <summary>
-    /// Purple color tile.
-    /// </summary>
-    Purple,
-
-    /// <summary>
-    /// Orange color tile.
-    /// </summary>
-    Orange,
-
-    /// <summary>
-    /// Special Rainbow tile (Color Bomb). Matches with any color.
-    /// </summary>
-    Rainbow,
-
-    /// <summary>
-    /// Generic Bomb placeholder. Acts as a solid block but does not match with colors.
-    /// </summary>
-    Bomb
+        // Legacy compatibility
+        Rainbow = 1 << 5,
+        Bomb = 1 << 6,
+        
+        // Colors (Legacy/Editor support)
+        Red = 1 << 7,
+        Green = 1 << 8,
+        Blue = 1 << 9,
+        Yellow = 1 << 10,
+        Purple = 1 << 11,
+        Orange = 1 << 12
+    }
 }

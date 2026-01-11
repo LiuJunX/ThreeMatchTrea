@@ -1,4 +1,5 @@
 @using Match3.Editor.ViewModels
+@using Match3.Editor.Logic
 @using Match3.Core.Models.Enums
 @using Match3.Core.Models.Grid
 @using Match3.Core.Scenarios
@@ -63,7 +64,7 @@
                         </div>
                     }
 
-                    @if (VM.CurrentMode == LevelEditorViewModel.EditorMode.Scenario)
+                    @if (VM.CurrentMode == EditorMode.Scenario)
                     {
                         var assertion = VM.CurrentScenario.Assertions.FirstOrDefault(a => a.X == x && a.Y == y);
                         if (assertion != null)
@@ -159,15 +160,16 @@
 
     private string GetColor(TileType t)
     {
+        if (t.HasFlag(TileType.Red)) return "#dc3545";
+        if (t.HasFlag(TileType.Green)) return "#198754";
+        if (t.HasFlag(TileType.Blue)) return "#0d6efd";
+        if (t.HasFlag(TileType.Yellow)) return "#ffc107";
+        if (t.HasFlag(TileType.Purple)) return "#6f42c1";
+        if (t.HasFlag(TileType.Orange)) return "#fd7e14";
+        if (t.HasFlag(TileType.Rainbow)) return "linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet)";
+        
         return t switch
         {
-            TileType.Red => "#dc3545",
-            TileType.Green => "#198754",
-            TileType.Blue => "#0d6efd",
-            TileType.Yellow => "#ffc107",
-            TileType.Purple => "#6f42c1",
-            TileType.Orange => "#fd7e14",
-            TileType.Rainbow => "linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet)",
             TileType.None => "#f8f9fa",
             TileType.Bomb => "#dee2e6",
             _ => "#ccc"

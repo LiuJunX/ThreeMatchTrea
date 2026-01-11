@@ -1,71 +1,46 @@
-# Match3 Project Architecture Overview
+# Match3 Core Architecture
 
-## 1. Core Design Philosophy: AI-First & Data-Oriented
+## Overview
+The Match3 Core is the heart of the game engine, designed with a **Slot-Based Layered Architecture**. It strictly adheres to the principle of separation of concerns, ensuring that game logic is decoupled from the view layer.
 
-The architecture of `Match3.Core` has been strictly refactored to follow a **Data-Oriented Design (DOD)** approach, inspired by ECS (Entity Component System) principles. This is to ensure:
-1.  **High Performance**: Minimal memory allocation and cache-friendly data layout.
-2.  **Determinism**: Guaranteed reproducibility given a seed.
-3.  **AI Readiness**: Easy integration with Reinforcement Learning (RL) and Monte Carlo Tree Search (MCTS) algorithms.
+## 1. Grid System
+The game board is represented by `Match3Grid`, which manages a 2D array of `Match3Cell` objects. Unlike traditional single-layer grids, each cell is a **multi-layered container**.
 
-### Data-Logic Separation
+### The 5-Layer Slot Model
+Each `Match3Cell` contains specific slots for different types of elements. This enforces the "One Item Per Layer" rule physically.
 
-We strictly enforce the separation of **State** (Data) and **Logic** (Behavior).
+| Layer | Property | Interface | Description |
+| :--- | :--- | :--- | :--- |
+| **1. Topology** | `Topology` | `TileType` (Enum) | Physical properties of the cell (Wall, Spawner, Hole, Sink). Stored as a BitMask. |
+| **2. Ground** | `Ground` | `IGroundElement` | Elements sitting on the "floor" (e.g., Jelly, Carpet). They do not move with gravity. |
+| **3. Unit** | `Unit` | `IUnitElement` | The main playable items (e.g., Color Blocks, Bombs). Subject to gravity and matching. |
+| **4. Cover** | `Cover` | `ICoverElement` | Obstacles covering the unit (e.g., Ice, Cages). Can be Static (fixed) or Dynamic (moves with unit). |
+| **5. Aux** | `Aux` | `IAuxElement` | Reserved for future expansions (e.g., temporary status effects, markers). |
 
-*   **State (`GameState`)**: A pure `struct` containing only data (arrays, integers, scores). It has **zero** logic methods. It is allocated on the stack or as a compact array, making it extremely cheap to clone (Snapshot).
-*   **Logic (`GameRules`)**: A `static class` containing pure functions. These functions take `ref GameState` as input and modify it. They are stateless and thread-safe.
+### Coordinate System
+- **Vector2Int**: A fundamental primitive used for grid coordinates `(x, y)`.
+- **Origin**: `(0, 0)` is typically the bottom-left or top-left (implementation dependent, currently logical).
 
-**Violation of this principle (e.g., adding logic to GameState or storing state in GameRules) is strictly prohibited.**
+## 2. Element Interfaces
+All items on the grid implement specific interfaces to define their behavior.
 
-## 2. Architecture Layers
+### Core Interfaces
+- **`IGridElement`**: The base contract. Defines `Size` (default 1x1).
+- **`IDamageable`**: The Unified Damage Model.
+    - `int Health { get; }`
+    - `int MaxHealth { get; }`
+    - `bool TakeDamage(int amount)`
 
-The solution is divided into strict layers to maintain separation of concerns:
+### Specific Interfaces
+- **`IMatchable`**: For items that participate in color matching (e.g., `UnitNormalItem`).
+- **`IUnitElement`**: Marker for items in the Unit layer.
+- **`ICoverElement`**: Defines `AttachmentMode` (Static/Dynamic).
 
-*   **Match3.Web (UI)**: 
-    *   Blazor Server application.
-    *   View-only responsibilities.
-    *   **No game rules** should exist here.
-    *   Visualizes the `GameState` provided by the Core.
+## 3. Core Systems (Planned)
+- **MatchFinder**: Scans `Unit` layer for matches based on `IMatchable`.
+- **GravitySystem**: Moves items in the `Unit` layer (and attached `Dynamic` covers) down to empty spaces.
+- **InteractionSystem**: Handles swaps between `Unit` elements, respecting `Cover` constraints.
 
-*   **Match3.Core (Domain)**:
-    *   **Structs**: Pure data models (`Tile`, `GameState`, `Position`).
-    *   **Interfaces**: Abstract behaviors (`IMatchFinder`, `IGameView`).
-    *   **Logic**: Pure logic implementations (`ClassicMatchFinder`, `StandardGravitySystem`).
-    *   **AI**: RL environment wrappers (`Match3Environment`).
-
-*   **Match3.ConfigTool (Tools)**:
-    *   Console application for generating binary configuration files from external sources (e.g., Feishu/Lark).
-
-*   **Match3.Tests**:
-    *   Unit and Scenario tests ensuring correctness.
-
-## 3. Core Components
-
-### GameState (Struct)
-The heart of the system.
-- **`Tile[] Grid`**: Flattened 1D array representing the 2D board for better memory locality.
-- **`long Score`**: Current game score.
-- **`long MoveCount`**: Number of moves made.
-- **`IRandom Random`**: Deterministic random source.
-
-### Match3Controller
-The bridge between Data and UI.
-- Maintains a `GameState` instance.
-- Orchestrates the game loop (Swap -> Match -> Gravity -> Refill).
-- Notifies `IGameView` (UI) of changes.
-
-### Match3Environment (AI Wrapper)
-Implements a standard RL interface (`Reset`, `Step`, `GetState`).
-- Wraps `GameState` and Logic into an object-oriented API for external AI frameworks (Python/ML.NET).
-
-## 4. Configuration System
-
-The system allows game designers to edit configuration data in **Feishu (Lark) Spreadsheets**. A build tool converts this to an optimized **Binary Format**.
-
-### Workflow
-1.  **Design**: Edit data in Feishu.
-2.  **Build**: Run `Match3.ConfigTool` to fetch JSON and compile to `config.bin`.
-3.  **Runtime**: Game loads `config.bin` at startup via `ConfigManager`.
-
-### Components
-*   **Match3.ConfigTool**: Fetches and serializes data.
-*   **ConfigManager** (`Match3.Core`): Loads binary data into efficient structs (`ItemConfig`).
+## 4. Key Design Decisions
+- **OOP over Pure DOD**: We use classes (`Match3Cell`) and interfaces to handle the complexity of multi-layered interactions, favoring maintainability and flexibility over raw struct-array performance for this specific component.
+- **Unified Damage**: Clearing a block, breaking ice, or spreading jelly are all treated as `TakeDamage` events.

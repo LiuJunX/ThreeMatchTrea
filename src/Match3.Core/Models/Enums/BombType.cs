@@ -1,28 +1,27 @@
-namespace Match3.Core.Models.Enums;
-
-/// <summary>
-/// Defines the type of bomb or special effect associated with a tile.
-/// </summary>
-public enum BombType
+namespace Match3.Core.Models.Enums
 {
-    None = 0,
+    public enum BombType
+    {
+        None = 0,
+        
+        /// <summary>
+        /// Explodes in a circular area (e.g., 3x3).
+        /// </summary>
+        Area,
+        
+        /// <summary>
+        /// Explodes a whole row.
+        /// </summary>
+        Horizontal,
+        
+        /// <summary>
+        /// Explodes a whole column.
+        /// </summary>
+        Vertical,
 
-    /// <summary>
-    /// Clears the entire row.
-    /// </summary>
-    Horizontal,
-
-    /// <summary>
-    /// Clears the entire column.
-    /// </summary>
-    Vertical,
-
-    Ufo,
-
-    Square3x3,
-
-    /// <summary>
-    /// Matches with any color and clears all tiles of that color.
-    /// </summary>
-    Color
+        // Legacy compatibility
+        Color,
+        Ufo,
+        Square3x3
+    }
 }

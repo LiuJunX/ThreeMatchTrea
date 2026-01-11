@@ -1,4 +1,5 @@
 @using Match3.Editor.ViewModels
+@using Match3.Editor.Logic
 @using Match3.Web.Components.Pages
 @inject LevelEditorViewModel VM
 
@@ -19,7 +20,7 @@
             </div>
         </div>
         
-        @if (VM.CurrentMode == LevelEditorViewModel.EditorMode.Level)
+        @if (VM.CurrentMode == EditorMode.Level)
         {
             <div class="mt-2">
                 <label class="form-label small mb-1">Move Limit</label>
@@ -29,7 +30,7 @@
     </div>
 
     <div class="flex-grow-1 p-3 overflow-auto">
-         @if (VM.CurrentMode == LevelEditorViewModel.EditorMode.Level)
+         @if (VM.CurrentMode == EditorMode.Level)
         {
             <h6 class="text-uppercase text-muted small fw-bold mb-2">Level Info</h6>
              <button class="btn btn-sm btn-outline-secondary w-100 mb-2" @onclick="VM.GenerateRandomLevel">

@@ -1,4 +1,5 @@
 @using Match3.Editor.ViewModels
+@using Match3.Editor.Logic
 @inject LevelEditorViewModel VM
 @inject Match3.Web.Services.Match3GameService GameService
 @inject NavigationManager Navigation
@@ -8,11 +9,11 @@
         <span class="navbar-brand mb-0 h1 fs-5">Level Editor</span>
         
         <div class="btn-group btn-group-sm">
-            <button class="btn @(VM.CurrentMode == LevelEditorViewModel.EditorMode.Level ? "btn-light" : "btn-outline-light")" 
-                    @onclick="() => VM.SwitchMode(LevelEditorViewModel.EditorMode.Level)">
+            <button class="btn @(VM.CurrentMode == EditorMode.Level ? "btn-light" : "btn-outline-light")" 
+                    @onclick="() => VM.SwitchMode(EditorMode.Level)">
                 Level Design
             </button>
-            <button class="btn @(VM.CurrentMode == LevelEditorViewModel.EditorMode.Scenario ? "btn-light" : "btn-outline-light")" 
+            <button class="btn @(VM.CurrentMode == EditorMode.Scenario ? "btn-light" : "btn-outline-light")" 
                     @onclick="SwitchToScenarioMode">
                 Scenario / Test
             </button>
@@ -20,7 +21,7 @@
     </div>
 
     <div class="d-flex gap-2">
-        @if (VM.CurrentMode == LevelEditorViewModel.EditorMode.Level)
+        @if (VM.CurrentMode == EditorMode.Level)
         {
             <button class="btn btn-sm btn-success" @onclick="PlayLevel">
                 <i class="bi bi-play-fill"></i> Play Level
@@ -50,7 +51,7 @@
 
     private void SwitchToScenarioMode()
     {
-        VM.SwitchMode(LevelEditorViewModel.EditorMode.Scenario);
+        VM.SwitchMode(EditorMode.Scenario);
         VM.RefreshScenarioList();
     }
 
