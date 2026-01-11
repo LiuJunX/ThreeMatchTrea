@@ -25,19 +25,6 @@ public class BombGenerator : IBombGenerator
         // 1. Detect All Candidates
         var candidates = Pools.ObtainList<DetectedShape>();
         
-        // Pools for internal logic
-        var fociSet = Pools.ObtainHashSet<Position>();
-        var bestIndices = Pools.ObtainList<int>();
-        var currentIndices = Pools.ObtainList<int>();
-        var usedCells = Pools.ObtainHashSet<Position>();
-        var allUsed = Pools.ObtainHashSet<Position>();
-        var scraps = Pools.ObtainList<Position>();
-        var unassignedScraps = Pools.ObtainHashSet<Position>();
-        var toRemove = Pools.ObtainList<Position>();
-        var finalUsed = Pools.ObtainHashSet<Position>();
-        var orphans = Pools.ObtainList<Position>();
-        var ownerMap = Pools.Obtain<Dictionary<Position, DetectedShape>>();
-
         try
         {
             _detector.DetectAll(component, candidates);
@@ -45,20 +32,62 @@ public class BombGenerator : IBombGenerator
             // Handle Simple Match (No bomb candidates)
             if (candidates.Count == 0)
             {
-                 var simpleGroup = Pools.Obtain<MatchGroup>();
-                 simpleGroup.Positions.Clear();
-                 foreach(var p in component) simpleGroup.Positions.Add(p);
-                 simpleGroup.Shape = MatchShape.Simple3;
-                 simpleGroup.SpawnBombType = BombType.None;
-                 simpleGroup.Type = TileType.None; // Set by caller
-                 simpleGroup.BombOrigin = null;
-                 
-                 return new List<MatchGroup> { simpleGroup };
+                return CreateSimpleMatchGroup(component);
             }
 
             // 2. Sort Candidates (Weight DESC, then Affinity)
-            if (foci != null) foreach(var f in foci) fociSet.Add(f);
-            
+            SortCandidates(candidates, foci);
+
+            // 3. Solve Optimal Partition
+            var bestIndices = Pools.ObtainList<int>();
+            try 
+            {
+                FindOptimalPartition(candidates, component, bestIndices);
+
+                // 4. Scrap Absorption & Result Construction
+                AbsorbScraps(component, candidates, bestIndices);
+                
+                // 5. Finalize Results
+                return ConstructResults(candidates, bestIndices, component, foci);
+            }
+            finally
+            {
+                Pools.Release(bestIndices);
+            }
+        }
+        finally
+        {
+            // Release detected shapes and their inner sets
+            foreach(var c in candidates)
+            {
+                if (c.Cells != null) Pools.Release(c.Cells);
+                c.Cells = null;
+                Pools.Release(c);
+            }
+            Pools.Release(candidates);
+        }
+    }
+
+    private List<MatchGroup> CreateSimpleMatchGroup(HashSet<Position> component)
+    {
+        var simpleGroup = Pools.Obtain<MatchGroup>();
+        simpleGroup.Positions.Clear();
+        foreach(var p in component) simpleGroup.Positions.Add(p);
+        simpleGroup.Shape = MatchShape.Simple3;
+        simpleGroup.SpawnBombType = BombType.None;
+        simpleGroup.Type = TileType.None; // Set by caller
+        simpleGroup.BombOrigin = null;
+        
+        return new List<MatchGroup> { simpleGroup };
+    }
+
+    private void SortCandidates(List<DetectedShape> candidates, IEnumerable<Position>? foci)
+    {
+        var fociSet = Pools.ObtainHashSet<Position>();
+        if (foci != null) foreach(var f in foci) fociSet.Add(f);
+
+        try
+        {
             candidates.Sort((a, b) =>
             {
                 // Primary: Weight
@@ -75,17 +104,26 @@ public class BombGenerator : IBombGenerator
                 // Tertiary: Size (larger shapes preferred for same weight)
                 return b.Cells!.Count.CompareTo(a.Cells!.Count);
             });
+        }
+        finally
+        {
+            Pools.Release(fociSet);
+        }
+    }
 
-            // 3. Solve Optimal Partition
-            int bestScore = -1;
-            
-            // Optimization: Branch & Bound with BitMasks
-            // Precompute masks and suffix sums
-            var candidateMasks = ArrayPool<BitMask256>.Shared.Rent(candidates.Count);
-            var suffixSums = ArrayPool<int>.Shared.Rent(candidates.Count + 1);
-            
+    private void FindOptimalPartition(List<DetectedShape> candidates, HashSet<Position> component, List<int> bestIndices)
+    {
+        var currentIndices = Pools.ObtainList<int>();
+        var positionToIndex = Pools.Obtain<Dictionary<Position, int>>();
+        
+        // Optimization: Branch & Bound with BitMasks
+        // Precompute masks and suffix sums
+        var candidateMasks = ArrayPool<BitMask256>.Shared.Rent(candidates.Count);
+        var suffixSums = ArrayPool<int>.Shared.Rent(candidates.Count + 1);
+
+        try
+        {
             // Map component positions to indices for BitMask
-            var positionToIndex = Pools.Obtain<Dictionary<Position, int>>();
             int posIndex = 0;
             foreach (var p in component) 
             {
@@ -109,20 +147,79 @@ public class BombGenerator : IBombGenerator
                 candidateMasks[i] = mask;
             }
 
-            SolveOptimized(candidates, 0, currentIndices, new BitMask256(), 0, ref bestScore, bestIndices, suffixSums, candidateMasks);
-            
+            int bestScore = -1;
+            SolveBranchAndBound(candidates, 0, currentIndices, new BitMask256(), 0, ref bestScore, bestIndices, suffixSums, candidateMasks);
+        }
+        finally
+        {
+            Pools.Release(currentIndices);
             positionToIndex.Clear();
             Pools.Release(positionToIndex);
             ArrayPool<BitMask256>.Shared.Return(candidateMasks);
             ArrayPool<int>.Shared.Return(suffixSums);
-            
-            // 4. Scrap Absorption & Result Construction
-            var results = new List<MatchGroup>();
-            
-            // Build the best solution shapes
-            var solutionShapes = Pools.ObtainList<DetectedShape>();
+        }
+    }
+
+    private void SolveBranchAndBound(
+        List<DetectedShape> candidates,
+        int index,
+        List<int> currentIndices,
+        BitMask256 usedMask,
+        int currentScore,
+        ref int bestScore,
+        List<int> bestIndices,
+        int[] suffixSums,
+        BitMask256[] candidateMasks)
+    {
+         // 1. Base Case / Pruning
+         if (index >= candidates.Count)
+         {
+             if (currentScore > bestScore)
+             {
+                 bestScore = currentScore;
+                 bestIndices.Clear();
+                 bestIndices.AddRange(currentIndices);
+             }
+             return;
+         }
+
+         if (currentScore + suffixSums[index] <= bestScore)
+         {
+             return;
+         }
+
+         // 2. Try Include
+         var candidateMask = candidateMasks[index];
+         if (!usedMask.Overlaps(candidateMask))
+         {
+             currentIndices.Add(index);
+             
+             // Create new mask for next level (copy + union)
+             var nextMask = usedMask; 
+             nextMask.UnionWith(candidateMask);
+             
+             SolveBranchAndBound(candidates, index + 1, currentIndices, nextMask, currentScore + candidates[index].Weight, ref bestScore, bestIndices, suffixSums, candidateMasks);
+             
+             currentIndices.RemoveAt(currentIndices.Count - 1);
+         }
+
+         // 3. Try Exclude
+         SolveBranchAndBound(candidates, index + 1, currentIndices, usedMask, currentScore, ref bestScore, bestIndices, suffixSums, candidateMasks);
+    }
+
+    private void AbsorbScraps(HashSet<Position> component, List<DetectedShape> candidates, List<int> bestIndices)
+    {
+        var allUsed = Pools.ObtainHashSet<Position>();
+        var scraps = Pools.ObtainList<Position>();
+        var unassignedScraps = Pools.ObtainHashSet<Position>();
+        var toRemove = Pools.ObtainList<Position>();
+        var ownerMap = Pools.Obtain<Dictionary<Position, DetectedShape>>();
+        var solutionShapes = Pools.ObtainList<DetectedShape>();
+
+        try
+        {
             foreach(var idx in bestIndices) solutionShapes.Add(candidates[idx]);
-            
+
             // Mark used cells
             foreach(var shape in solutionShapes) 
             {
@@ -179,10 +276,37 @@ public class BombGenerator : IBombGenerator
                     foreach(var p in toRemove) unassignedScraps.Remove(p);
                 }
             }
-            
-            Pools.Release(solutionShapes); // Just release the list shell, content is from candidates
+        }
+        finally
+        {
+            Pools.Release(allUsed);
+            Pools.Release(scraps);
+            Pools.Release(unassignedScraps);
+            Pools.Release(toRemove);
+            ownerMap.Clear();
+            Pools.Release(ownerMap);
+            Pools.Release(solutionShapes);
+        }
+    }
 
-            // 5. Finalize Results
+    private DetectedShape? GetBestOwner(DetectedShape? currentBest, DetectedShape candidate)
+    {
+        if (currentBest == null) return candidate;
+        return candidate.Weight > currentBest.Weight ? candidate : currentBest;
+    }
+
+    private List<MatchGroup> ConstructResults(
+        List<DetectedShape> candidates, 
+        List<int> bestIndices, 
+        HashSet<Position> component,
+        IEnumerable<Position>? foci)
+    {
+        var results = new List<MatchGroup>();
+        var finalUsed = Pools.ObtainHashSet<Position>();
+        var orphans = Pools.ObtainList<Position>();
+
+        try
+        {
             foreach (var idx in bestIndices)
             {
                 var shape = candidates[idx];
@@ -218,8 +342,7 @@ public class BombGenerator : IBombGenerator
                 results.Add(group);
             }
             
-            // 6. Handle Orphans (Islands not connected to any solution shape)
-            // Recalculate what was used
+            // Handle Orphans (Islands not connected to any solution shape)
             foreach (var r in results) 
                 foreach(var p in r.Positions) finalUsed.Add(p);
             
@@ -245,84 +368,9 @@ public class BombGenerator : IBombGenerator
         }
         finally
         {
-            // Release detected shapes and their inner sets
-            foreach(var c in candidates)
-            {
-                if (c.Cells != null) Pools.Release(c.Cells);
-                c.Cells = null;
-                Pools.Release(c);
-            }
-            Pools.Release(candidates);
-
-            // Release other pooled objects
-            Pools.Release(fociSet);
-            Pools.Release(bestIndices);
-            Pools.Release(currentIndices);
-            Pools.Release(usedCells);
-            Pools.Release(allUsed);
-            Pools.Release(scraps);
-            Pools.Release(unassignedScraps);
-            Pools.Release(toRemove);
             Pools.Release(finalUsed);
             Pools.Release(orphans);
-            
-            ownerMap.Clear(); // Must clear manually
-            Pools.Release(ownerMap);
         }
-    }
-
-    private DetectedShape? GetBestOwner(DetectedShape? currentBest, DetectedShape candidate)
-    {
-        if (currentBest == null) return candidate;
-        return candidate.Weight > currentBest.Weight ? candidate : currentBest;
-    }
-    
-    // Fixed Solve Implementation
-    private void SolveOptimized(
-        List<DetectedShape> candidates,
-        int index,
-        List<int> currentIndices,
-        BitMask256 usedMask,
-        int currentScore,
-        ref int bestScore,
-        List<int> bestIndices,
-        int[] suffixSums,
-        BitMask256[] candidateMasks)
-    {
-         // 1. Base Case / Pruning
-         if (index >= candidates.Count)
-         {
-             if (currentScore > bestScore)
-             {
-                 bestScore = currentScore;
-                 bestIndices.Clear();
-                 bestIndices.AddRange(currentIndices);
-             }
-             return;
-         }
-
-         if (currentScore + suffixSums[index] <= bestScore)
-         {
-             return;
-         }
-
-         // 2. Try Include
-         var candidateMask = candidateMasks[index];
-         if (!usedMask.Overlaps(candidateMask))
-         {
-             currentIndices.Add(index);
-             
-             // Create new mask for next level (copy + union)
-             var nextMask = usedMask; 
-             nextMask.UnionWith(candidateMask);
-             
-             SolveOptimized(candidates, index + 1, currentIndices, nextMask, currentScore + candidates[index].Weight, ref bestScore, bestIndices, suffixSums, candidateMasks);
-             
-             currentIndices.RemoveAt(currentIndices.Count - 1);
-         }
-
-         // 3. Try Exclude
-         SolveOptimized(candidates, index + 1, currentIndices, usedMask, currentScore, ref bestScore, bestIndices, suffixSums, candidateMasks);
     }
 
     private struct BitMask256
