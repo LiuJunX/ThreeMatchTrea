@@ -6,6 +6,7 @@ using Match3.Core.Interfaces;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Matching;
 using Match3.Core.Utility.Pools;
 
 namespace Match3.Core.Systems.Matching.Generation;
@@ -147,8 +148,21 @@ public class BombGenerator : IBombGenerator
                 candidateMasks[i] = mask;
             }
 
-            int bestScore = -1;
-            SolveBranchAndBound(candidates, 0, currentIndices, new BitMask256(), 0, ref bestScore, bestIndices, suffixSums, candidateMasks);
+            // Hybrid Approach:
+            // If candidates are few (< 40), use Exact Branch & Bound (Global Optimal).
+            // If candidates are many (>= 40), use Greedy with BitMasks (Local Optimal, but extremely fast).
+            // 40 is chosen because 2^40 is roughly 1 trillion operations, but pruning helps.
+            // With pruning, 40 might still be slow if many overlaps exist.
+            // For Massive Block (81 cells), we might have 100+ candidates.
+            if (candidates.Count < 40)
+            {
+                int bestScore = -1;
+                SolveBranchAndBound(candidates, 0, currentIndices, new BitMask256(), 0, ref bestScore, bestIndices, suffixSums, candidateMasks);
+            }
+            else
+            {
+                SolveGreedy(candidates, bestIndices, candidateMasks);
+            }
         }
         finally
         {
@@ -157,6 +171,25 @@ public class BombGenerator : IBombGenerator
             Pools.Release(positionToIndex);
             ArrayPool<BitMask256>.Shared.Return(candidateMasks);
             ArrayPool<int>.Shared.Return(suffixSums);
+        }
+    }
+
+    private void SolveGreedy(
+        List<DetectedShape> candidates,
+        List<int> bestIndices,
+        BitMask256[] candidateMasks)
+    {
+        // Candidates are already sorted by Weight DESC
+        var usedMask = new BitMask256();
+        
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            var mask = candidateMasks[i];
+            if (!usedMask.Overlaps(mask))
+            {
+                bestIndices.Add(i);
+                usedMask.UnionWith(mask);
+            }
         }
     }
 
