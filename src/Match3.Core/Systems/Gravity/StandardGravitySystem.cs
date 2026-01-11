@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Numerics;
+using Match3.Core.Config;
 using Match3.Core.Interfaces;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
@@ -11,15 +12,23 @@ namespace Match3.Core.Systems.Gravity;
 public class StandardGravitySystem : IGravitySystem
 {
     private readonly ITileGenerator _tileGenerator;
+    private readonly Match3Config _config;
 
-    public StandardGravitySystem(ITileGenerator tileGenerator)
+    public StandardGravitySystem(ITileGenerator tileGenerator, Match3Config config)
     {
         _tileGenerator = tileGenerator;
+        _config = config;
     }
 
     public List<TileMove> ApplyGravity(ref GameState state)
     {
         var moves = Pools.ObtainList<TileMove>();
+
+        if (!_config.IsGravityEnabled)
+        {
+            return moves;
+        }
+
         for (int x = 0; x < state.Width; x++)
         {
             int writeY = state.Height - 1;
@@ -44,6 +53,12 @@ public class StandardGravitySystem : IGravitySystem
     public List<TileMove> Refill(ref GameState state)
     {
         var newTiles = Pools.ObtainList<TileMove>();
+
+        if (!_config.IsGravityEnabled)
+        {
+            return newTiles;
+        }
+
         for (int x = 0; x < state.Width; x++)
         {
             int nextSpawnY = -1;

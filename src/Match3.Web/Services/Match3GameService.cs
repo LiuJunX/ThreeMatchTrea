@@ -12,6 +12,7 @@ using Match3.Core.Systems.Generation;
 using Match3.Core.Systems.Gravity;
 using Match3.Core.Systems.Input;
 using Match3.Core.Systems.Matching;
+using Match3.Core.Systems.Matching.Generation;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
 using Match3.Core.Utility;
@@ -64,16 +65,17 @@ public class Match3GameService : IDisposable
         var rng = seedManager.GetRandom(RandomDomain.Main);
         var view = new ServiceGameView(this);
         
+        var gameLogger = new MicrosoftGameLogger(_appLogger);
+        var config = new Match3Config(Width, Height, 6);
+
         var tileGenerator = new StandardTileGenerator(seedManager.GetRandom(RandomDomain.Refill));
-        var gravitySystem = new StandardGravitySystem(tileGenerator);
-        var matchFinder = new ClassicMatchFinder();
+        var gravitySystem = new StandardGravitySystem(tileGenerator, config);
+        var bombGenerator = new Match3.Core.Systems.Matching.Generation.BombGenerator();
+        var matchFinder = new ClassicMatchFinder(bombGenerator);
         var scoreSystem = new StandardScoreSystem();
         var matchProcessor = new StandardMatchProcessor(scoreSystem);
         var powerUpHandler = new PowerUpHandler(scoreSystem);
         var inputSystem = new StandardInputSystem();
-
-        var gameLogger = new MicrosoftGameLogger(_appLogger);
-        var config = new Match3Config(Width, Height, 6);
 
         _engine = new Match3Engine(
             config,

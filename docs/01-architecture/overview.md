@@ -36,8 +36,9 @@ All items on the grid implement specific interfaces to define their behavior.
 - **`IUnitElement`**: Marker for items in the Unit layer.
 - **`ICoverElement`**: Defines `AttachmentMode` (Static/Dynamic).
 
-## 3. Core Systems (Planned)
+## 3. Core Systems (Planned & Implemented)
 - **MatchFinder**: Scans `Unit` layer for matches based on `IMatchable`.
+- **BombGenerationSystem**: Handles complex match analysis, bomb creation, and optimal shape partitioning.
 - **GravitySystem**: Moves items in the `Unit` layer (and attached `Dynamic` covers) down to empty spaces.
 - **InteractionSystem**: Handles swaps between `Unit` elements, respecting `Cover` constraints.
 

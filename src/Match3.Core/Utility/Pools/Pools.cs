@@ -110,6 +110,37 @@ namespace Match3.Core.Utility.Pools
             QueuePoolCache<T>.Instance.Return(queue);
         }
 
+        // Cache for generic object pools.
+        private static class GenericPoolCache<T> where T : class, new()
+        {
+            public static readonly IObjectPool<T> Instance = new GenericObjectPool<T>(
+                generator: () => new T(),
+                reset: null, // Caller is responsible for reset
+                maxSize: 1024
+            );
+        }
+
+        /// <summary>
+        /// Gets an object of type T from the global pool.
+        /// Caller is responsible for resetting the object state.
+        /// </summary>
+        /// <typeparam name="T">The type of object to retrieve. Must have a parameterless constructor.</typeparam>
+        /// <returns>An instance of T.</returns>
+        public static T Obtain<T>() where T : class, new()
+        {
+            return GenericPoolCache<T>.Instance.Get();
+        }
+
+        /// <summary>
+        /// Returns an object of type T to the global pool.
+        /// </summary>
+        /// <typeparam name="T">The type of object to return.</typeparam>
+        /// <param name="obj">The object to return.</param>
+        public static void Release<T>(T obj) where T : class, new()
+        {
+            GenericPoolCache<T>.Instance.Return(obj);
+        }
+
         /// <summary>
         /// Creates a new generic object pool.
         /// </summary>

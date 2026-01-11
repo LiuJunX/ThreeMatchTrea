@@ -12,6 +12,7 @@ using Match3.Core.Systems.Generation;
 using Match3.Core.Systems.Gravity;
 using Match3.Core.Systems.Input;
 using Match3.Core.Systems.Matching;
+using Match3.Core.Systems.Matching.Generation;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
 using Match3.Random;
@@ -60,9 +61,9 @@ namespace Match3.Editor.Logic
                 view,
                 _logger,
                 inputSystem,
-                new ClassicMatchFinder(),
+                new ClassicMatchFinder(new BombGenerator()),
                 new StandardMatchProcessor(scoreSystem),
-                new StandardGravitySystem(tileGen),
+                new StandardGravitySystem(tileGen, engineConfig),
                 new PowerUpHandler(scoreSystem),
                 scoreSystem,
                 tileGen,
