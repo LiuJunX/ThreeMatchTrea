@@ -50,8 +50,11 @@ public class RealtimeGravitySystem : IPhysicsSimulation
             if (tile.Type == TileType.None || tile.IsSuspended) continue;
 
             // 1. Calculate the floor (stop target)
-            // The floor is the Y index of the first non-empty tile below, OR the bottom (Height-1)
             int floorY = y;
+            float targetY = y;
+            bool foundTarget = false;
+            float targetVelocityY = 0f;
+
             for (int checkY = y + 1; checkY < state.Height; checkY++)
             {
                 var below = state.GetTile(x, checkY);
@@ -62,20 +65,23 @@ public class RealtimeGravitySystem : IPhysicsSimulation
                 else
                 {
                     // Hit an obstacle
+                    if (below.IsFalling)
+                    {
+                        // Follow the falling tile (maintain 1 unit distance)
+                        targetY = below.Position.Y - 1.0f;
+                        targetVelocityY = below.Velocity.Y;
+                        foundTarget = true;
+                    }
                     break;
                 }
             }
 
-            // 2. Physics Update
-            // Target Y is simply floorY (integer).
-            // But wait, if the tile below is ALSO falling, we should be able to follow it?
-            // With this logic (finding floor based on current grid), if the tile below is falling, 
-            // it might still be logically at 'y+1', so floorY will be 'y'. 
-            // So we won't move until the tile below moves to 'y+2'.
-            // This creates a "step-by-step" following, which is safe.
-            
-            float targetY = (float)floorY;
+            if (!foundTarget)
+            {
+                targetY = (float)floorY;
+            }
 
+            // 2. Physics Update
             if (tile.Position.Y < targetY - FloorThreshold)
             {
                 // Falling
@@ -89,19 +95,39 @@ public class RealtimeGravitySystem : IPhysicsSimulation
                 if (tile.Position.Y >= targetY)
                 {
                     tile.Position.Y = targetY;
-                    tile.Velocity.Y = 0;
-                    tile.IsFalling = false;
+                    
+                    if (foundTarget)
+                    {
+                        // Match velocity of the obstacle we hit and keep falling state
+                        tile.Velocity.Y = targetVelocityY;
+                        tile.IsFalling = true;
+                    }
+                    else
+                    {
+                        // Hit static floor
+                        tile.Velocity.Y = 0;
+                        tile.IsFalling = false;
+                    }
                 }
             }
             else
             {
                 // Stable or near floor
-                if (tile.IsFalling || Math.Abs(tile.Position.Y - y) > float.Epsilon)
+                if (tile.IsFalling || Math.Abs(tile.Position.Y - targetY) > float.Epsilon)
                 {
-                    // Snap to integer position
-                    tile.Position.Y = y; 
-                    tile.Velocity.Y = 0;
-                    tile.IsFalling = false;
+                    // Snap to target position
+                    tile.Position.Y = targetY;
+                    
+                    if (foundTarget)
+                    {
+                        tile.Velocity.Y = targetVelocityY;
+                        tile.IsFalling = true;
+                    }
+                    else
+                    {
+                        tile.Velocity.Y = 0;
+                        tile.IsFalling = false;
+                    }
                 }
             }
 

@@ -19,26 +19,40 @@ public class RealtimeRefillSystem
     {
         for (int x = 0; x < state.Width; x++)
         {
-            // Check the logical top slot (0)
-            var topTile = state.GetTile(x, 0);
-            
-            // If it's empty, we can spawn.
-            // But we must ensure we don't spawn if there's already a tile visually falling into it?
-            // In our Physics system, if a tile moves from -1 to 0, it occupies 0 immediately when > -0.5.
-            // So if slot 0 is None, it means it's truly free.
-            
-            if (topTile.Type == TileType.None)
+            // Find continuous empty slots starting from top
+            int deepestEmptyY = -1;
+            for (int y = 0; y < state.Height; y++)
             {
-                var type = _tileGenerator.GenerateNonMatchingTile(ref state, x, 0);
-                
-                // Spawn logic
-                var tile = new Tile(state.NextTileId++, type, x, 0);
-                // Set initial visual position above the board
-                tile.Position = new Vector2(x, -1.0f);
-                tile.Velocity = new Vector2(0, 2.0f); // Initial downward velocity
-                tile.IsFalling = true;
+                if (state.GetTile(x, y).Type != TileType.None)
+                {
+                    break;
+                }
+                deepestEmptyY = y;
+            }
 
-                state.SetTile(x, 0, tile);
+            if (deepestEmptyY >= 0)
+            {
+                // Fill from bottom up (deepest first) to ensure correct stacking positions
+                // deepestEmptyY corresponds to the first tile to enter (lowest position: -1)
+                // 0 corresponds to the last tile (highest position: -(deepest + 1))
+                
+                for (int y = deepestEmptyY; y >= 0; y--)
+                {
+                    var type = _tileGenerator.GenerateNonMatchingTile(ref state, x, y);
+                    var tile = new Tile(state.NextTileId++, type, x, y);
+                    
+                    // Calculate start position
+                    // The tile at 'deepestEmptyY' starts at -1.0f
+                    // The tile above it starts at -2.0f, etc.
+                    // offset = (deepestEmptyY - y) + 1
+                    float startY = -1.0f - (deepestEmptyY - y);
+                    
+                    tile.Position = new Vector2(x, startY);
+                    tile.Velocity = new Vector2(0, 2.0f); 
+                    tile.IsFalling = true;
+
+                    state.SetTile(x, y, tile);
+                }
             }
         }
     }

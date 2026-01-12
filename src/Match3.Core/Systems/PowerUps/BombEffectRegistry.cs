@@ -31,6 +31,7 @@ public class BombEffectRegistry
     {
         var effects = new List<IBombEffect>
         {
+            new AreaBombEffect(), // Added Area bomb
             new HorizontalRocketEffect(),
             new VerticalRocketEffect(),
             new SquareBombEffect(), // Was Square5x5
