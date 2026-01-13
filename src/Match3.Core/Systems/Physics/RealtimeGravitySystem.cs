@@ -13,7 +13,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
     private readonly Match3Config _config;
     private const float FloorThreshold = 0.05f; // Snap distance
 
-    public RealtimeGravitySystem(Match3Config config) : this()
+    public RealtimeGravitySystem(Match3Config config)
     {
         _config = config;
     }

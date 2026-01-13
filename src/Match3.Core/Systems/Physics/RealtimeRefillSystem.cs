@@ -19,40 +19,34 @@ public class RealtimeRefillSystem
     {
         for (int x = 0; x < state.Width; x++)
         {
-            // Find continuous empty slots starting from top
-            int deepestEmptyY = -1;
-            for (int y = 0; y < state.Height; y++)
+            // Only spawn if the spawn point (0) is empty
+            if (state.GetTile(x, 0).Type == TileType.None)
             {
-                if (state.GetTile(x, y).Type != TileType.None)
-                {
-                    break;
-                }
-                deepestEmptyY = y;
-            }
-
-            if (deepestEmptyY >= 0)
-            {
-                // Fill from bottom up (deepest first) to ensure correct stacking positions
-                // deepestEmptyY corresponds to the first tile to enter (lowest position: -1)
-                // 0 corresponds to the last tile (highest position: -(deepest + 1))
+                // Spawn a new tile at the top
+                var type = _tileGenerator.GenerateNonMatchingTile(ref state, x, 0);
+                var tile = new Tile(state.NextTileId++, type, x, 0);
                 
-                for (int y = deepestEmptyY; y >= 0; y--)
-                {
-                    var type = _tileGenerator.GenerateNonMatchingTile(ref state, x, y);
-                    var tile = new Tile(state.NextTileId++, type, x, y);
-                    
-                    // Calculate start position
-                    // The tile at 'deepestEmptyY' starts at -1.0f
-                    // The tile above it starts at -2.0f, etc.
-                    // offset = (deepestEmptyY - y) + 1
-                    float startY = -1.0f - (deepestEmptyY - y);
-                    
-                    tile.Position = new Vector2(x, startY);
-                    tile.Velocity = new Vector2(0, 2.0f); 
-                    tile.IsFalling = true;
+                // Calculate start position
+                // Default: Just above the board (-1.0f)
+                float startY = -1.0f;
 
-                    state.SetTile(x, y, tile);
+                // Optimization: If there's a falling tile immediately below, spawn relative to it
+                // to create a continuous stream without gaps.
+                if (state.Height > 1)
+                {
+                    var tileBelow = state.GetTile(x, 1);
+                    if (tileBelow.Type != TileType.None && tileBelow.IsFalling)
+                    {
+                        // Maintain 1.0 distance
+                        startY = tileBelow.Position.Y - 1.0f;
+                    }
                 }
+
+                tile.Position = new Vector2(x, startY);
+                tile.Velocity = new Vector2(0, 2.0f); // Initial downward velocity
+                tile.IsFalling = true;
+
+                state.SetTile(x, 0, tile);
             }
         }
     }

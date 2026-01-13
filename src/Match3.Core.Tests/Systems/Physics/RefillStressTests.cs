@@ -51,7 +51,7 @@ public class RefillStressTests
     }
 
     [Fact]
-    public void Refill_ShouldSpawnTilesCorrectlyStacked()
+    public void Refill_ShouldSpawnTilesOneByOne()
     {
         // 1. Setup empty board
         int height = 5;
@@ -61,30 +61,51 @@ public class RefillStressTests
         // 2. Run refill once
         refill.Update(ref state);
 
-        // 3. Check initial positions of spawned tiles
-        // Logic:
-        // y=4 (bottom empty) -> filled first -> pos -1
-        // y=3 -> filled second -> pos -2
-        // ...
-        // y=0 (top) -> filled last -> pos -5
+        // 3. Check that only the top slot is filled
+        var topTile = state.GetTile(0, 0);
+        Assert.NotEqual(TileType.None, topTile.Type);
+        Assert.True(topTile.IsFalling);
+        Assert.Equal(-1.0f, topTile.Position.Y, 0.01f);
 
-        for (int y = 0; y < height; y++)
+        // The rest should be empty
+        for (int y = 1; y < height; y++)
         {
             var tile = state.GetTile(0, y);
-            Assert.NotEqual(TileType.None, tile.Type);
-            Assert.True(tile.IsFalling);
-            
-            // Expected StartY calculation: -1.0f - (deepestEmptyY - y)
-            // deepestEmptyY was 4.
-            // y=4: -1 - (4-4) = -1
-            // y=0: -1 - (4-0) = -5
-            float expectedY = -1.0f - (4 - y);
-            Assert.Equal(expectedY, tile.Position.Y, 0.01f);
+            Assert.Equal(TileType.None, tile.Type);
         }
     }
 
     [Fact]
-    public void RefillAndGravity_ShouldFallSmoothlyToBottom()
+    public void Refill_ShouldSpawnContinuouslyRelativeToTileBelow()
+    {
+        // 1. Setup board with a falling tile at (0, 1)
+        int height = 5;
+        var state = new GameState(1, height, 3, new StubRandom());
+        var refill = new RealtimeRefillSystem(new StubTileGenerator());
+
+        // Place a tile at (0, 1) that has fallen slightly
+        // Logical position is (0, 1), Physical position is 0.5f
+        var fallingTile = new Tile(100, TileType.Red, 0, 1);
+        fallingTile.Position = new Vector2(0, 0.5f);
+        fallingTile.IsFalling = true;
+        state.SetTile(0, 1, fallingTile);
+
+        // Ensure (0, 0) is empty
+        state.SetTile(0, 0, new Tile(0, TileType.None, 0, 0));
+
+        // 2. Run refill
+        refill.Update(ref state);
+
+        // 3. Check new tile at (0, 0)
+        var newTile = state.GetTile(0, 0);
+        Assert.NotEqual(TileType.None, newTile.Type);
+        
+        // Expected: 0.5f - 1.0f = -0.5f
+        Assert.Equal(-0.5f, newTile.Position.Y, 0.001f);
+    }
+
+    [Fact]
+    public void RefillAndGravity_ShouldFillBoardEventually()
     {
         // 1. Setup empty board
         int height = 10;
@@ -92,41 +113,41 @@ public class RefillStressTests
         var refill = new RealtimeRefillSystem(new StubTileGenerator());
         var gravity = new RealtimeGravitySystem(new Match3Config());
 
-        // 2. Run refill
-        refill.Update(ref state);
-
-        // 3. Simulate frames
+        // 2. Simulate loop
         float dt = 0.016f;
-        int frames = 200; // Enough time to fall 10+5 units
-
-        // Track the bottom-most tile (originally at y=height-1)
-        // Its ID should be... depends on iteration order.
-        // Refill iterates y from deepest(9) to 0.
-        // So ID order: 1, 2, ... 10
-        // y=9 gets ID 1.
+        int maxFrames = 1000; // Allow enough time for all tiles to spawn and fall
         
-        var bottomTileStart = state.GetTile(0, 9); 
-        long bottomTileId = bottomTileStart.Id;
-
-        for (int i = 0; i < frames; i++)
+        for (int i = 0; i < maxFrames; i++)
         {
+            // System Order: Refill -> Gravity
+            refill.Update(ref state);
             gravity.Update(ref state, dt);
             
-            var t = GetTileById(state, bottomTileId);
-            
-            // Check if it stops prematurely
-            if (t.IsFalling && t.Velocity.Y < 0.1f && t.Position.Y < 8.0f && i > 10)
-            {
-                 Assert.Fail($"Tile stuck at {t.Position.Y} with velocity {t.Velocity.Y} at frame {i}");
-            }
+            if (IsBoardFullAndStable(state)) break;
         }
 
-        // 4. Verify all tiles landed
+        // 3. Verify all tiles landed
         for (int y = 0; y < height; y++)
         {
             var tile = state.GetTile(0, y);
+            Assert.NotEqual(TileType.None, tile.Type);
             Assert.False(tile.IsFalling, $"Tile at {y} is still falling at {tile.Position.Y}");
             Assert.Equal((float)y, tile.Position.Y, 0.1f);
         }
+    }
+
+    private bool IsBoardFullAndStable(GameState state)
+    {
+        for (int x = 0; x < state.Width; x++)
+        {
+            for (int y = 0; y < state.Height; y++)
+            {
+                var t = state.GetTile(x, y);
+                if (t.Type == TileType.None) return false;
+                if (t.IsFalling) return false;
+                if (Math.Abs(t.Position.Y - y) > 0.01f) return false;
+            }
+        }
+        return true;
     }
 }
