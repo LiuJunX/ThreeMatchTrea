@@ -74,7 +74,7 @@ public sealed class Match3Engine : IDisposable
         _interactionSystem = new InteractionSystem(inputSystem, logger);
         _animationSystem = new AnimationSystem(config);
         
-        var physics = new RealtimeGravitySystem();
+        var physics = new RealtimeGravitySystem(config);
         var refill = new RealtimeRefillSystem(tileGenerator);
         _gameLoopSystem = new AsyncGameLoopSystem(physics, refill, matchFinder, matchProcessor, powerUpHandler);
 
