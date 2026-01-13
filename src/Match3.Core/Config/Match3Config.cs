@@ -10,8 +10,9 @@ public class Match3Config
     public int TileTypesCount { get; set; } = 6;
     
     // Animation speeds (visual/logical update speeds)
-    public float SwapSpeed { get; set; } = 10.0f;
-    public float GravitySpeed { get; set; } = 20.0f;
+    public float SwapSpeed { get; set; } = 15.0f;
+    public float GravitySpeed { get; set; } = 165.0f;
+    public float MaxFallSpeed { get; set; } = 40.0f;
 
     // Logic Flags
     public bool IsGravityEnabled { get; set; } = true;
