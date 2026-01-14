@@ -5,6 +5,7 @@ using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Core;
 using Match3.Core.Systems.Physics;
+using Match3.Core.Tests.TestHelpers;
 using Match3.Random;
 using Xunit;
 using Xunit.Abstractions;
@@ -220,6 +221,96 @@ public class GravityAnimationIntegrationTests
     #region Swap Animation Integration Tests
 
     /// <summary>
+    /// 关键测试：验证无效交换的"交换-回退"动画流程
+    ///
+    /// 这个测试覆盖了之前遗漏的 bug：
+    /// - 旧代码：两次 SwapTiles 在同一帧执行，没有动画
+    /// - 新代码：先交换动画 → 检查 match → 回退动画
+    ///
+    /// 测试验证：
+    /// 1. 交换后第 1 帧：tiles 应该在动画中（不在目标位置）
+    /// 2. 动画完成前：tiles 应该逐渐移动
+    /// 3. 动画完成后：如果无 match，应该触发回退
+    /// </summary>
+    [Fact]
+    public void SwapAnimation_InvalidSwap_ShouldShowSwapThenRevert()
+    {
+        // Arrange: 创建 2x1 棋盘
+        var state = new GameState(2, 1, 5, new StubRandom());
+
+        var redTile = new Tile(1, TileType.Red, 0, 0);
+        redTile.Position = new Vector2(0, 0);
+        state.SetTile(0, 0, redTile);
+
+        var blueTile = new Tile(2, TileType.Blue, 1, 0);
+        blueTile.Position = new Vector2(1, 0);
+        state.SetTile(1, 0, blueTile);
+
+        var config = new Match3Config { GravitySpeed = 10.0f };
+        var animationSystem = new AnimationSystem(config);
+
+        // Act 1: 模拟交换（只交换引用，保持视觉位置）
+        var temp = state.Grid[0];
+        state.Grid[0] = state.Grid[1];
+        state.Grid[1] = temp;
+
+        // Assert 1: 交换后第 1 帧 - tiles 应该在动画中
+        bool stableAfterSwap = animationSystem.Animate(ref state, 0.016f);
+        Assert.False(stableAfterSwap, "交换后应该有动画在进行");
+
+        // 记录动画中的位置
+        float blueXDuringAnimation = state.Grid[0].Position.X;
+        float redXDuringAnimation = state.Grid[1].Position.X;
+
+        _output.WriteLine($"动画中: Blue.X={blueXDuringAnimation:F3}, Red.X={redXDuringAnimation:F3}");
+
+        // Assert 2: tiles 应该在移动中（不在起点也不在终点）
+        Assert.True(blueXDuringAnimation < 1.0f && blueXDuringAnimation > 0.0f,
+            "Blue 应该在移动中（0 < X < 1）");
+        Assert.True(redXDuringAnimation > 0.0f && redXDuringAnimation < 1.0f,
+            "Red 应该在移动中（0 < X < 1）");
+
+        // Act 2: 继续动画直到完成
+        bool stable = false;
+        for (int i = 0; i < 100 && !stable; i++)
+        {
+            stable = animationSystem.Animate(ref state, 0.016f);
+        }
+
+        // Assert 3: 动画完成，tiles 到达交换后的位置
+        Assert.True(stable, "动画应该完成");
+        Assert.Equal(0, state.Grid[0].Position.X, 2); // Blue 到达 (0,0)
+        Assert.Equal(1, state.Grid[1].Position.X, 2); // Red 到达 (1,0)
+
+        _output.WriteLine($"交换动画完成: Blue 在 X={state.Grid[0].Position.X:F3}, Red 在 X={state.Grid[1].Position.X:F3}");
+
+        // Act 3: 模拟"无 match，需要回退"- 再次交换
+        temp = state.Grid[0];
+        state.Grid[0] = state.Grid[1];
+        state.Grid[1] = temp;
+
+        // Assert 4: 回退交换后也应该有动画
+        bool stableAfterRevert = animationSystem.Animate(ref state, 0.016f);
+        Assert.False(stableAfterRevert, "回退交换后也应该有动画");
+
+        // Act 4: 继续动画直到回退完成
+        stable = false;
+        for (int i = 0; i < 100 && !stable; i++)
+        {
+            stable = animationSystem.Animate(ref state, 0.016f);
+        }
+
+        // Assert 5: 回退完成，tiles 回到原始位置
+        Assert.True(stable, "回退动画应该完成");
+        Assert.Equal(0, state.Grid[0].Position.X, 2); // Red 回到 (0,0)
+        Assert.Equal(1, state.Grid[1].Position.X, 2); // Blue 回到 (1,0)
+        Assert.Equal(TileType.Red, state.Grid[0].Type);  // 类型也应该正确
+        Assert.Equal(TileType.Blue, state.Grid[1].Type);
+
+        _output.WriteLine($"回退动画完成: Red 在 X={state.Grid[0].Position.X:F3}, Blue 在 X={state.Grid[1].Position.X:F3}");
+    }
+
+    /// <summary>
     /// 集成测试：验证交换后 AnimationSystem 能正确产生动画
     ///
     /// 这是对 Match3Engine.SwapTiles 修复的端到端验证：
@@ -326,6 +417,42 @@ public class GravityAnimationIntegrationTests
         Assert.True(stable, "Buggy 实现会导致没有动画（这是 bug 的表现）");
 
         _output.WriteLine("此测试展示了 bug 的表现：交换后没有动画");
+    }
+
+    /// <summary>
+    /// 使用 AnimationTestHelper 简化的测试示例
+    /// </summary>
+    [Fact]
+    public void SwapAnimation_UsingHelper_SimplifiedTest()
+    {
+        // Arrange
+        var state = new GameState(2, 1, 5, new StubRandom());
+
+        var redTile = new Tile(1, TileType.Red, 0, 0);
+        redTile.Position = new Vector2(0, 0);
+        state.SetTile(0, 0, redTile);
+
+        var blueTile = new Tile(2, TileType.Blue, 1, 0);
+        blueTile.Position = new Vector2(1, 0);
+        state.SetTile(1, 0, blueTile);
+
+        var config = new Match3Config { GravitySpeed = 10.0f };
+        var animationSystem = new AnimationSystem(config);
+
+        var helper = new AnimationTestHelper(_output);
+
+        // Act: 使用辅助类模拟无效交换
+        var result = helper.SimulateInvalidSwap(ref state, animationSystem, 0, 1);
+
+        // Assert
+        Assert.True(result.SwapResult.FrameCount > 0, "交换应该有动画帧");
+        Assert.True(result.RevertResult.FrameCount > 0, "回退应该有动画帧");
+        Assert.Equal(TileType.Red, state.Grid[0].Type);   // 回到原始位置
+        Assert.Equal(TileType.Blue, state.Grid[1].Type);
+
+        _output.WriteLine($"交换动画: {result.SwapResult.FrameCount} 帧");
+        _output.WriteLine($"回退动画: {result.RevertResult.FrameCount} 帧");
+        _output.WriteLine($"总计: {result.TotalFrameCount} 帧");
     }
 
     #endregion

@@ -291,11 +291,18 @@ public class Match3EngineInteractionTests
         // Act - 直接调用 OnSwipe
         engine.OnSwipe(new Position(0, 0), Direction.Right);
 
+        // 交换后立即检查 - tiles 应该已经交换（但还没验证回退）
+        Assert.Equal(TileType.Blue, engine.State.GetTile(0, 0).Type);
+        Assert.Equal(TileType.Red, engine.State.GetTile(1, 0).Type);
+
+        // 运行 Update 来触发验证（StubAnimationSystem.IsVisualAtTarget 返回 true，所以立即验证）
+        engine.Update(0.016f);
+
         // Assert - 无 match，交换回退
         var tileAt00 = engine.State.GetTile(0, 0);
         var tileAt10 = engine.State.GetTile(1, 0);
 
-        // Tiles should remain in original positions
+        // Tiles should be swapped back to original positions
         Assert.Equal(TileType.Red, tileAt00.Type);
         Assert.Equal(TileType.Blue, tileAt10.Type);
     }

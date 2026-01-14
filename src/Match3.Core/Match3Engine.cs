@@ -40,6 +40,10 @@ public sealed class Match3Engine : IDisposable
     // Input Queue
     private readonly Queue<InputIntent> _inputQueue = new();
 
+    // Pending move for swap animation validation
+    private Move? _pendingMove;
+    private bool _pendingMoveNeedsValidation;
+
     public GameState State => _state;
     public Position SelectedPosition => _state.SelectedPosition;
     public string StatusMessage => _interactionSystem.StatusMessage;
@@ -88,7 +92,35 @@ public sealed class Match3Engine : IDisposable
     {
         ProcessInput();
         _animationSystem.Animate(ref _state, dt);
+
+        // Check pending move validation after animation completes
+        ValidatePendingMove();
+
         _gameLoopSystem.Update(ref _state, dt);
+    }
+
+    private void ValidatePendingMove()
+    {
+        if (!_pendingMoveNeedsValidation || !_pendingMove.HasValue)
+            return;
+
+        var move = _pendingMove.Value;
+
+        // Wait until both tiles have finished animating to their new positions
+        if (!_animationSystem.IsVisualAtTarget(in _state, move.From) ||
+            !_animationSystem.IsVisualAtTarget(in _state, move.To))
+            return;
+
+        // Animation complete, now check for matches
+        _pendingMoveNeedsValidation = false;
+
+        if (!HasMatch(move.From) && !HasMatch(move.To))
+        {
+            // Invalid swap - swap back (this will trigger another animation)
+            SwapTiles(ref _state, move.From, move.To);
+        }
+
+        _pendingMove = null;
     }
 
     private void ProcessInput()
@@ -157,13 +189,15 @@ public sealed class Match3Engine : IDisposable
 
     private void ExecuteMove(Move move)
     {
+        // Don't start a new swap if one is already pending
+        if (_pendingMoveNeedsValidation)
+            return;
+
         SwapTiles(ref _state, move.From, move.To);
-        
-        if (!HasMatch(move.From) && !HasMatch(move.To))
-        {
-            // Invalid swap, swap back
-            SwapTiles(ref _state, move.From, move.To);
-        }
+
+        // Mark as pending - validation will happen after animation completes
+        _pendingMove = move;
+        _pendingMoveNeedsValidation = true;
     }
 
     private bool HasMatch(Position p)
