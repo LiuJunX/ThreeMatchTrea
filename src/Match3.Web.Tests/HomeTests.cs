@@ -84,10 +84,10 @@ public class HomeTests : TestContext, IDisposable
             Assert.Contains("Select destination", status.TextContent);
         });
         
-        // Verify tile has 'selected' class
-        // Note: we need to re-query or check if bUnit updates the reference. 
-        // bUnit elements are live, but let's re-find to be safe and check class attribute.
-        firstTile = cut.Find(".tile"); // Get the first one again, it should be the same one we clicked if layout didn't shift
-        Assert.Contains("selected", firstTile.ClassName);
+        // Verify a tile has 'selected' class
+        // Note: Grid tiles are rendered in State.Grid order, not position order.
+        // After clicking, we need to find the tile that has the 'selected' class.
+        var selectedTile = cut.Find(".tile.selected");
+        Assert.NotNull(selectedTile);
     }
 }
