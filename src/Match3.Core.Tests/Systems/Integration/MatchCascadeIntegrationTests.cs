@@ -4,12 +4,14 @@ using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Core;
 using Match3.Core.Systems.Generation;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Matching.Generation;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
+using Match3.Core.Tests.TestHelpers;
 using Match3.Random;
 using Xunit;
 using Xunit.Abstractions;
@@ -475,4 +477,234 @@ public class MatchCascadeIntegrationTests
             _output.WriteLine(row);
         }
     }
+
+    #region Animation Integration Tests
+
+    /// <summary>
+    /// 集成测试：消除后的重力下落应该有平滑的视觉动画
+    ///
+    /// 这个测试验证 GravitySystem + AnimationSystem 的协作：
+    /// 1. GravitySystem 更新物理位置
+    /// 2. AnimationSystem 不干扰掉落中的 tile
+    /// 3. 掉落完成后 AnimationSystem 吸附到整数位置
+    /// </summary>
+    [Fact]
+    public void AfterMatch_FallingTiles_ShouldHaveSmoothAnimation()
+    {
+        // Arrange: 创建一个有匹配的棋盘
+        var rng = new StubRandom();
+        var state = new GameState(3, 4, 6, rng);
+
+        // 设置棋盘:
+        //   0 1 2
+        // 0 G B Y
+        // 1 R R R  <- 匹配行
+        // 2 B G P
+        // 3 Y P B
+
+        state.SetTile(0, 0, new Tile(1, TileType.Green, 0, 0));
+        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0));
+        state.SetTile(2, 0, new Tile(3, TileType.Yellow, 2, 0));
+
+        state.SetTile(0, 1, new Tile(4, TileType.Red, 0, 1));
+        state.SetTile(1, 1, new Tile(5, TileType.Red, 1, 1));
+        state.SetTile(2, 1, new Tile(6, TileType.Red, 2, 1));
+
+        state.SetTile(0, 2, new Tile(7, TileType.Blue, 0, 2));
+        state.SetTile(1, 2, new Tile(8, TileType.Green, 1, 2));
+        state.SetTile(2, 2, new Tile(9, TileType.Purple, 2, 2));
+
+        state.SetTile(0, 3, new Tile(10, TileType.Yellow, 0, 3));
+        state.SetTile(1, 3, new Tile(11, TileType.Purple, 1, 3));
+        state.SetTile(2, 3, new Tile(12, TileType.Blue, 2, 3));
+
+        var bombGenerator = new BombGenerator();
+        var matchFinder = new ClassicMatchFinder(bombGenerator);
+        var scoreSystem = new StubScoreSystem();
+        var bombRegistry = BombEffectRegistry.CreateDefault();
+        var processor = new StandardMatchProcessor(scoreSystem, bombRegistry);
+        var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };
+        var gravitySystem = new RealtimeGravitySystem(config, rng);
+        var animationSystem = new AnimationSystem(config);
+
+        var helper = new AnimationTestHelper(_output);
+
+        // Act 1: 检测并处理匹配
+        var matches = matchFinder.FindMatchGroups(ref state);
+        Assert.NotEmpty(matches);
+        processor.ProcessMatches(ref state, matches);
+
+        // 验证匹配行被消除
+        Assert.Equal(TileType.None, state.GetTile(0, 1).Type);
+        Assert.Equal(TileType.None, state.GetTile(1, 1).Type);
+        Assert.Equal(TileType.None, state.GetTile(2, 1).Type);
+
+        // 记录第 0 行方块的 ID
+        var greenId = state.GetTile(0, 0).Id;
+
+        // Act 2: 运行物理+动画系统
+        int frameCount = helper.UpdateUntilStable(ref state, gravitySystem, animationSystem, maxFrames: 120);
+
+        _output.WriteLine($"动画完成: {frameCount} 帧");
+
+        // Assert: 方块应该下落到新位置
+        var tileAt01 = state.GetTile(0, 1);
+        Assert.Equal(greenId, tileAt01.Id);
+        Assert.Equal(TileType.Green, tileAt01.Type);
+
+        // 验证位置是整数（被吸附）
+        Assert.Equal(0, tileAt01.Position.X, 1);
+        Assert.Equal(1, tileAt01.Position.Y, 1);
+    }
+
+    /// <summary>
+    /// 集成测试：连锁消除的完整动画流程
+    ///
+    /// 测试流程：
+    /// 1. 第一次消除 → 重力动画 → 检查新匹配
+    /// 2. 如果有新匹配 → 再次消除 → 重力动画
+    /// 3. 验证每一步都有平滑的动画
+    /// </summary>
+    [Fact]
+    public void ChainReaction_ShouldHaveAnimationAtEachStep()
+    {
+        // Arrange: 设置一个会触发连锁的棋盘
+        //   0 1 2
+        // 0 G G B  <- 下落后可能形成新匹配
+        // 1 R R R  <- 第一次匹配
+        // 2 G B Y
+        var rng = new StubRandom();
+        var state = new GameState(3, 3, 6, rng);
+
+        state.SetTile(0, 0, new Tile(1, TileType.Green, 0, 0));
+        state.SetTile(1, 0, new Tile(2, TileType.Green, 1, 0));
+        state.SetTile(2, 0, new Tile(3, TileType.Blue, 2, 0));
+
+        state.SetTile(0, 1, new Tile(4, TileType.Red, 0, 1));
+        state.SetTile(1, 1, new Tile(5, TileType.Red, 1, 1));
+        state.SetTile(2, 1, new Tile(6, TileType.Red, 2, 1));
+
+        state.SetTile(0, 2, new Tile(7, TileType.Green, 0, 2));
+        state.SetTile(1, 2, new Tile(8, TileType.Blue, 1, 2));
+        state.SetTile(2, 2, new Tile(9, TileType.Yellow, 2, 2));
+
+        var bombGenerator = new BombGenerator();
+        var matchFinder = new ClassicMatchFinder(bombGenerator);
+        var scoreSystem = new StubScoreSystem();
+        var bombRegistry = BombEffectRegistry.CreateDefault();
+        var processor = new StandardMatchProcessor(scoreSystem, bombRegistry);
+        var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };
+        var gravitySystem = new RealtimeGravitySystem(config, rng);
+        var animationSystem = new AnimationSystem(config);
+
+        var helper = new AnimationTestHelper(_output);
+
+        // Act 1: 第一次消除
+        var matches1 = matchFinder.FindMatchGroups(ref state);
+        Assert.NotEmpty(matches1);
+        _output.WriteLine($"第一次匹配: {matches1.Count} 组");
+
+        processor.ProcessMatches(ref state, matches1);
+
+        // Act 2: 运行动画直到稳定
+        int frames1 = helper.UpdateUntilStable(ref state, gravitySystem, animationSystem);
+        _output.WriteLine($"第一次动画: {frames1} 帧");
+
+        // Assert: 第一次动画应该有多帧
+        Assert.True(frames1 > 1, "第一次消除后应该有动画");
+
+        // 打印当前状态
+        _output.WriteLine("第一次动画后:");
+        PrintBoard(ref state);
+
+        // 检查是否有新的匹配（连锁）
+        var matches2 = matchFinder.FindMatchGroups(ref state);
+        if (matches2.Count > 0)
+        {
+            _output.WriteLine($"触发连锁: {matches2.Count} 组新匹配");
+            processor.ProcessMatches(ref state, matches2);
+
+            int frames2 = helper.UpdateUntilStable(ref state, gravitySystem, animationSystem);
+            _output.WriteLine($"连锁动画: {frames2} 帧");
+
+            Assert.True(frames2 > 0, "连锁消除后应该有动画");
+        }
+    }
+
+    /// <summary>
+    /// 集成测试：炸弹爆炸后的重力动画
+    /// </summary>
+    [Fact]
+    public void BombExplosion_ShouldHaveSmoothGravityAnimation()
+    {
+        // Arrange: 创建有炸弹的棋盘
+        var rng = new StubRandom();
+        var state = new GameState(3, 4, 6, rng);
+
+        // 设置棋盘:
+        //   0 1 2
+        // 0 R G B
+        // 1 G [H] Y  <- 水平炸弹
+        // 2 B R G
+        // 3 Y P B
+
+        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(1, 0, new Tile(2, TileType.Green, 1, 0));
+        state.SetTile(2, 0, new Tile(3, TileType.Blue, 2, 0));
+
+        state.SetTile(0, 1, new Tile(4, TileType.Green, 0, 1));
+        var bombTile = new Tile(5, TileType.Red, 1, 1);
+        bombTile.Bomb = BombType.Horizontal;
+        state.SetTile(1, 1, bombTile);
+        state.SetTile(2, 1, new Tile(6, TileType.Yellow, 2, 1));
+
+        state.SetTile(0, 2, new Tile(7, TileType.Blue, 0, 2));
+        state.SetTile(1, 2, new Tile(8, TileType.Red, 1, 2));
+        state.SetTile(2, 2, new Tile(9, TileType.Green, 2, 2));
+
+        state.SetTile(0, 3, new Tile(10, TileType.Yellow, 0, 3));
+        state.SetTile(1, 3, new Tile(11, TileType.Purple, 1, 3));
+        state.SetTile(2, 3, new Tile(12, TileType.Blue, 2, 3));
+
+        var scoreSystem = new StubScoreSystem();
+        var powerUpHandler = new PowerUpHandler(scoreSystem);
+        var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };
+        var gravitySystem = new RealtimeGravitySystem(config, rng);
+        var animationSystem = new AnimationSystem(config);
+
+        var helper = new AnimationTestHelper(_output);
+
+        // 记录第 0 行方块 ID
+        var redId = state.GetTile(0, 0).Id;
+        var greenId = state.GetTile(1, 0).Id;
+        var blueId = state.GetTile(2, 0).Id;
+
+        // Act 1: 激活炸弹
+        powerUpHandler.ActivateBomb(ref state, new Position(1, 1));
+
+        // 验证整行被清除
+        Assert.Equal(TileType.None, state.GetTile(0, 1).Type);
+        Assert.Equal(TileType.None, state.GetTile(1, 1).Type);
+        Assert.Equal(TileType.None, state.GetTile(2, 1).Type);
+
+        _output.WriteLine("炸弹爆炸后:");
+        PrintBoard(ref state);
+
+        // Act 2: 运行重力+动画
+        int frameCount = helper.UpdateUntilStable(ref state, gravitySystem, animationSystem, maxFrames: 120);
+
+        _output.WriteLine($"动画完成: {frameCount} 帧");
+        _output.WriteLine("最终状态:");
+        PrintBoard(ref state);
+
+        // Assert: 动画应该有多帧
+        Assert.True(frameCount > 1, "炸弹爆炸后应该有重力动画");
+
+        // 第 0 行的方块应该下落到第 1 行
+        Assert.Equal(redId, state.GetTile(0, 1).Id);
+        Assert.Equal(greenId, state.GetTile(1, 1).Id);
+        Assert.Equal(blueId, state.GetTile(2, 1).Id);
+    }
+
+    #endregion
 }

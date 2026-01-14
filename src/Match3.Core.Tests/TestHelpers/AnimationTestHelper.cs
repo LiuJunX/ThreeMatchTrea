@@ -57,6 +57,10 @@ public class AnimationTestHelper
 
     /// <summary>
     /// 运行物理+动画系统直到稳定
+    ///
+    /// 重要：稳定性检测需要同时检查：
+    /// 1. GravitySystem 的 IsStable（没有掉落中的 tile）
+    /// 2. AnimationSystem 的返回值（没有需要插值的 tile）
     /// </summary>
     public int UpdateUntilStable(
         ref GameState state,
@@ -71,7 +75,12 @@ public class AnimationTestHelper
         while (!stable && frameCount < maxFrames)
         {
             physics?.Update(ref state, dt);
-            stable = animationSystem.Animate(ref state, dt);
+            bool animStable = animationSystem.Animate(ref state, dt);
+
+            // 同时检查物理稳定性和动画稳定性
+            bool physicsStable = physics?.IsStable(in state) ?? true;
+            stable = animStable && physicsStable;
+
             frameCount++;
         }
 
