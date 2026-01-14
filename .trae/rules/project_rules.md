@@ -9,12 +9,12 @@ alwaysApply: true
 - **Plan Confirmation**: For complex tasks, propose a plan and wait for explicit user approval.
 
 ## 1. Project Structure
-- Match3.Core：纯业务逻辑，无 UI 依赖，定义接口与核心流程
-- Match3.Random：统一随机入口（IRandom、SeedManager、RandomDomain、RandomStreamFactory）
-- Match3.Web：应用装配与视图层（IGameView、输入意图）
-- Match3.Editor: Cross-platform editor logic and tools (No UI framework dependencies)
-- Match3.Tests：单元/场景测试（含编码规范）
-- Match3.ConsoleDemo：控制台演示 UI（若存在）
+- `Match3.Core` - 纯业务逻辑，无 UI 依赖，定义接口与核心流程
+- `Match3.Random` - 统一随机入口（IRandom、SeedManager、RandomDomain）
+- `Match3.Web` - Blazor 应用与视图层（IGameView、输入意图）
+- `Match3.Editor` - 跨平台编辑器逻辑（无 UI 框架依赖）
+- `Match3.ConfigTool` - 配置工具
+- `Match3.*.Tests` - 各模块对应的测试项目（Core.Tests、Editor.Tests、Web.Tests、Random.Tests）
 
 ## 2. Code Style & Conventions
 - 4 空格缩进；Allman 大括号；文件级命名空间；私有字段 _camelCase；公共成员/类型 PascalCase；接口 I 前缀；类型明显用 var
@@ -54,13 +54,13 @@ alwaysApply: true
 - **Docs-as-Code**: Documentation lives in `/docs`.
 - **Sync Rule**: Update `docs/01-architecture/overview.md` when changing core components.
 - **ADR Required**: Create a new ADR in `docs/04-adr` for major architectural decisions (e.g., adding a new dependency).
-- **API Docs**: All core interfaces (`Match3.Core/Interfaces`) MUST have XML comments.
+- **API Docs**: All core interfaces (`Match3.Core/Systems/*/I*.cs`) MUST have XML comments.
 
 ## 9. AI Context Guidelines (For AI Agents)
 ### Core Services Whitelist
-- **Object Creation**: MUST use `Pools.Rent<T>()` for hot-path objects. PROHIBITED: `new T()` inside loops.
-- **Logging**: MUST use `IGameLogger.LogInfo<T>()` with templates. PROHIBITED: `Console.WriteLine` or `$"..."` interpolation.
-- **String Ops**: MUST use `ZString` for formatting. PROHIBITED: `StringBuilder` (unless pooled) or `+` operator.
+- **Object Creation**: MUST use `Pools.ObtainList<T>()`, `Pools.ObtainHashSet<T>()`, `Pools.ObtainQueue<T>()` for hot-path collections. Release with `Pools.Release(collection)`. PROHIBITED: `new List<T>()` inside loops.
+- **Logging**: MUST use `IGameLogger.LogInfo<T>()` with templates. PROHIBITED: `Console.WriteLine` or `$"..."` interpolation in hot paths.
+- **String Ops**: Avoid string operations in hot paths (Update/Tick). ToString() and logging in non-hot paths are acceptable.
 - **Randomness**: MUST use `Match3.Random` interfaces. PROHIBITED: `System.Random`.
 
 ### Architecture Red Lines
@@ -70,10 +70,10 @@ alwaysApply: true
 
 ## 10. Mandatory Modularization (Priority: ★★★★★)
 All new features MUST be implemented as independent Systems.
-1.  **Define Interface**: `I{Name}System` in `Match3.Core.Interfaces`.
-2.  **Implement System**: `{Name}System` in `Match3.Core.Systems`.
-3.  **Inject**: Pass via constructor to `Match3Controller`.
-4.  **No God Classes**: `Match3Controller` must only coordinate; it must not contain business logic.
+1.  **Define Interface**: `I{Name}System` in `Match3.Core/Systems/{Domain}/` (co-located with implementation).
+2.  **Implement System**: `{Name}System` in same directory as interface.
+3.  **Inject**: Pass via constructor to `Match3Engine` or relevant coordinator.
+4.  **No God Classes**: Coordinators must only orchestrate; they must not contain business logic.
 
 ## 11. Cross-Platform Portability (Priority: ★★★★★)
 Ensure all core logic and editor tools are portable to Unity and other platforms.
