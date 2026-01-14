@@ -409,21 +409,30 @@ if (allMatches.Count > 0)
 src/Match3.Core/Systems/Matching/
 ├── IMatchFinder.cs           # 匹配检测接口
 ├── IMatchProcessor.cs        # 匹配处理接口
+├── IBombGenerator.cs         # 炸弹生成接口
+├── IShapeRule.cs             # 形状规则接口
 ├── ClassicMatchFinder.cs     # 经典匹配检测实现
 ├── StandardMatchProcessor.cs # 标准处理实现
-├── IBombGenerator.cs         # 炸弹生成接口
 └── Generation/
     ├── BombGenerator.cs      # 炸弹生成实现
     ├── BombDefinitions.cs    # 炸弹定义
     ├── ShapeDetector.cs      # 形状检测
-    └── ShapeFeature.cs       # 形状特征
+    ├── ShapeFeature.cs       # 形状特征
+    └── Rules/
+        ├── LineRule.cs           # 直线匹配规则 (3/4/5连)
+        ├── IntersectionRule.cs   # 交叉匹配规则 (T/L型)
+        └── SquareRule.cs         # 方块匹配规则 (2x2)
 
 src/Match3.Core/Models/Gameplay/
 └── MatchGroup.cs             # 匹配组数据结构
 
 src/Match3.Core.Tests/Systems/Matching/
 ├── ClassicMatchFinderTests.cs
-└── StandardMatchProcessorTests.cs
+├── StandardMatchProcessorTests.cs
+├── BombGeneratorTests.cs
+├── BombGeneratorComprehensiveTests.cs
+├── BombGeneratorPerformanceTests.cs
+└── ExplosionRangeTests.cs
 ```
 
 ---
