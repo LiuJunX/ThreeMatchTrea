@@ -356,6 +356,158 @@ public class Match3EngineInteractionTests
 
     #endregion
 
+    #region Vertical Swap Tests
+
+    [Fact]
+    public void OnSwipe_Vertical_ShouldSwapTiles_WhenMatchFound()
+    {
+        // Arrange
+        var config = new Match3Config(8, 8, 5);
+        var gameLoopStub = new StubAsyncGameLoopSystem();
+        var interactionStub = new StubInteractionSystem();
+        var animationStub = new StubAnimationSystem();
+        var boardInitStub = new StubBoardInitializer();
+        var matchFinderStub = new StubMatchFinder { HasMatchResult = true };
+        var botSystemStub = new StubBotSystem();
+
+        var random = new StubRandom();
+        var view = new StubGameView();
+        var logger = new StubLogger();
+
+        // Setup Interaction to return a vertical move (down)
+        interactionStub.MoveToReturn = new Move(new Position(0, 0), new Position(0, 1));
+
+        var engine = new Match3Engine(
+            config, random, view, logger,
+            gameLoopStub, interactionStub, animationStub, boardInitStub, matchFinderStub, botSystemStub
+        );
+
+        // Inject tiles with different colors (vertically)
+        var stateField = typeof(Match3Engine).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
+        var state = (GameState)stateField!.GetValue(engine)!;
+
+        var t1 = new Tile(1, TileType.Red, 0, 0);
+        t1.Position = new Vector2(0, 0);
+        var t2 = new Tile(2, TileType.Blue, 0, 1);
+        t2.Position = new Vector2(0, 1);
+        state.SetTile(0, 0, t1);
+        state.SetTile(0, 1, t2);
+
+        // Act - 向下交换
+        engine.OnSwipe(new Position(0, 0), Direction.Down);
+
+        // Assert - 有 match，交换生效
+        var tileAt00 = engine.State.GetTile(0, 0);
+        var tileAt01 = engine.State.GetTile(0, 1);
+
+        // Tiles should be swapped (Blue at 0,0, Red at 0,1)
+        Assert.Equal(TileType.Blue, tileAt00.Type);
+        Assert.Equal(TileType.Red, tileAt01.Type);
+    }
+
+    [Fact]
+    public void OnSwipe_Vertical_ShouldSwapBack_WhenNoMatchFound()
+    {
+        // Arrange
+        var config = new Match3Config(8, 8, 5);
+        var gameLoopStub = new StubAsyncGameLoopSystem();
+        var interactionStub = new StubInteractionSystem();
+        var animationStub = new StubAnimationSystem();
+        var boardInitStub = new StubBoardInitializer();
+        var matchFinderStub = new StubMatchFinder { HasMatchResult = false }; // No match
+        var botSystemStub = new StubBotSystem();
+
+        var random = new StubRandom();
+        var view = new StubGameView();
+        var logger = new StubLogger();
+
+        // Setup Interaction to return a vertical move (down)
+        interactionStub.MoveToReturn = new Move(new Position(0, 0), new Position(0, 1));
+
+        var engine = new Match3Engine(
+            config, random, view, logger,
+            gameLoopStub, interactionStub, animationStub, boardInitStub, matchFinderStub, botSystemStub
+        );
+
+        // Inject tiles with different colors (vertically)
+        var stateField = typeof(Match3Engine).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
+        var state = (GameState)stateField!.GetValue(engine)!;
+
+        var t1 = new Tile(1, TileType.Red, 0, 0);
+        t1.Position = new Vector2(0, 0);
+        var t2 = new Tile(2, TileType.Blue, 0, 1);
+        t2.Position = new Vector2(0, 1);
+        state.SetTile(0, 0, t1);
+        state.SetTile(0, 1, t2);
+
+        // Act - 向下交换
+        engine.OnSwipe(new Position(0, 0), Direction.Down);
+
+        // 交换后立即检查 - tiles 应该已经交换（但还没验证回退）
+        Assert.Equal(TileType.Blue, engine.State.GetTile(0, 0).Type);
+        Assert.Equal(TileType.Red, engine.State.GetTile(0, 1).Type);
+
+        // 运行 Update 来触发验证
+        engine.Update(0.016f);
+
+        // Assert - 无 match，交换回退
+        var tileAt00 = engine.State.GetTile(0, 0);
+        var tileAt01 = engine.State.GetTile(0, 1);
+
+        // Tiles should be swapped back to original positions
+        Assert.Equal(TileType.Red, tileAt00.Type);
+        Assert.Equal(TileType.Blue, tileAt01.Type);
+    }
+
+    [Fact]
+    public void OnSwipe_Vertical_KeepsVisualPositions_ForSwapAnimation()
+    {
+        // Arrange
+        var config = new Match3Config(8, 8, 5);
+        var gameLoopStub = new StubAsyncGameLoopSystem();
+        var interactionStub = new StubInteractionSystem();
+        var animationStub = new StubAnimationSystem();
+        var boardInitStub = new StubBoardInitializer();
+        var matchFinderStub = new StubMatchFinder { HasMatchResult = true };
+        var botSystemStub = new StubBotSystem();
+
+        var random = new StubRandom();
+        var view = new StubGameView();
+        var logger = new StubLogger();
+
+        // Setup Interaction to return a vertical move (down)
+        interactionStub.MoveToReturn = new Move(new Position(0, 0), new Position(0, 1));
+
+        var engine = new Match3Engine(
+            config, random, view, logger,
+            gameLoopStub, interactionStub, animationStub, boardInitStub, matchFinderStub, botSystemStub
+        );
+
+        // Inject tiles with specific visual positions (vertically)
+        var stateField = typeof(Match3Engine).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
+        var state = (GameState)stateField!.GetValue(engine)!;
+
+        var t1 = new Tile(1, TileType.Red, 0, 0);
+        t1.Position = new Vector2(0, 0);
+        var t2 = new Tile(2, TileType.Blue, 0, 1);
+        t2.Position = new Vector2(0, 1);
+        state.SetTile(0, 0, t1);
+        state.SetTile(0, 1, t2);
+
+        // Act - 向下交换
+        engine.OnSwipe(new Position(0, 0), Direction.Down);
+
+        // Assert - 交换后视觉位置应保持不变（用于动画）
+        var tileAt00 = engine.State.GetTile(0, 0); // 原来是 t2 (Blue)
+        var tileAt01 = engine.State.GetTile(0, 1); // 原来是 t1 (Red)
+
+        // 视觉位置应该保持原来的值，AnimationSystem 会将它们动画到新位置
+        Assert.Equal(new Vector2(0, 1), tileAt00.Position); // Blue 的视觉位置仍在 (0,1)
+        Assert.Equal(new Vector2(0, 0), tileAt01.Position); // Red 的视觉位置仍在 (0,0)
+    }
+
+    #endregion
+
     #region Update Tests
 
     [Fact]

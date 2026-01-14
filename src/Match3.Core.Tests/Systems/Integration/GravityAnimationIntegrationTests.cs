@@ -456,4 +456,190 @@ public class GravityAnimationIntegrationTests
     }
 
     #endregion
+
+    #region Vertical Swap Animation Tests
+
+    /// <summary>
+    /// 竖向交换动画测试：验证无效竖向交换的"交换-回退"动画流程
+    /// </summary>
+    [Fact]
+    public void VerticalSwapAnimation_InvalidSwap_ShouldShowSwapThenRevert()
+    {
+        // Arrange: 创建 1x2 棋盘（竖向）
+        var state = new GameState(1, 2, 5, new StubRandom());
+
+        var redTile = new Tile(1, TileType.Red, 0, 0);
+        redTile.Position = new Vector2(0, 0);
+        state.SetTile(0, 0, redTile);
+
+        var blueTile = new Tile(2, TileType.Blue, 0, 1);
+        blueTile.Position = new Vector2(0, 1);
+        state.SetTile(0, 1, blueTile);
+
+        var config = new Match3Config { GravitySpeed = 10.0f };
+        var animationSystem = new AnimationSystem(config);
+
+        // Act 1: 模拟竖向交换（只交换引用，保持视觉位置）
+        // Grid[0] = (0,0), Grid[1] = (0,1)
+        var temp = state.Grid[0];
+        state.Grid[0] = state.Grid[1];
+        state.Grid[1] = temp;
+
+        // Assert 1: 交换后第 1 帧 - tiles 应该在动画中
+        bool stableAfterSwap = animationSystem.Animate(ref state, 0.016f);
+        Assert.False(stableAfterSwap, "竖向交换后应该有动画在进行");
+
+        // 记录动画中的 Y 位置
+        float blueYDuringAnimation = state.Grid[0].Position.Y;
+        float redYDuringAnimation = state.Grid[1].Position.Y;
+
+        _output.WriteLine($"动画中: Blue.Y={blueYDuringAnimation:F3}, Red.Y={redYDuringAnimation:F3}");
+
+        // Assert 2: tiles 应该在移动中（不在起点也不在终点）
+        Assert.True(blueYDuringAnimation < 1.0f && blueYDuringAnimation > 0.0f,
+            "Blue 应该在竖向移动中（0 < Y < 1）");
+        Assert.True(redYDuringAnimation > 0.0f && redYDuringAnimation < 1.0f,
+            "Red 应该在竖向移动中（0 < Y < 1）");
+
+        // Act 2: 继续动画直到完成
+        bool stable = false;
+        for (int i = 0; i < 100 && !stable; i++)
+        {
+            stable = animationSystem.Animate(ref state, 0.016f);
+        }
+
+        // Assert 3: 动画完成，tiles 到达交换后的位置
+        Assert.True(stable, "动画应该完成");
+        Assert.Equal(0, state.Grid[0].Position.Y, 2); // Blue 到达 (0,0)
+        Assert.Equal(1, state.Grid[1].Position.Y, 2); // Red 到达 (0,1)
+
+        _output.WriteLine($"交换动画完成: Blue 在 Y={state.Grid[0].Position.Y:F3}, Red 在 Y={state.Grid[1].Position.Y:F3}");
+
+        // Act 3: 模拟"无 match，需要回退"- 再次交换
+        temp = state.Grid[0];
+        state.Grid[0] = state.Grid[1];
+        state.Grid[1] = temp;
+
+        // Assert 4: 回退交换后也应该有动画
+        bool stableAfterRevert = animationSystem.Animate(ref state, 0.016f);
+        Assert.False(stableAfterRevert, "回退交换后也应该有动画");
+
+        // Act 4: 继续动画直到回退完成
+        stable = false;
+        for (int i = 0; i < 100 && !stable; i++)
+        {
+            stable = animationSystem.Animate(ref state, 0.016f);
+        }
+
+        // Assert 5: 回退完成，tiles 回到原始位置
+        Assert.True(stable, "回退动画应该完成");
+        Assert.Equal(0, state.Grid[0].Position.Y, 2); // Red 回到 (0,0)
+        Assert.Equal(1, state.Grid[1].Position.Y, 2); // Blue 回到 (0,1)
+        Assert.Equal(TileType.Red, state.Grid[0].Type);
+        Assert.Equal(TileType.Blue, state.Grid[1].Type);
+
+        _output.WriteLine($"回退动画完成: Red 在 Y={state.Grid[0].Position.Y:F3}, Blue 在 Y={state.Grid[1].Position.Y:F3}");
+    }
+
+    /// <summary>
+    /// 竖向交换集成测试：验证交换后 AnimationSystem 能正确产生竖向动画
+    /// </summary>
+    [Fact]
+    public void VerticalSwapAnimation_Integration_TilesShouldAnimateToNewPositions()
+    {
+        // Arrange: 创建 1x2 棋盘（竖向）
+        var state = new GameState(1, 2, 5, new StubRandom());
+
+        var redTile = new Tile(1, TileType.Red, 0, 0);
+        redTile.Position = new Vector2(0, 0);
+        state.SetTile(0, 0, redTile);
+
+        var blueTile = new Tile(2, TileType.Blue, 0, 1);
+        blueTile.Position = new Vector2(0, 1);
+        state.SetTile(0, 1, blueTile);
+
+        var config = new Match3Config { GravitySpeed = 10.0f };
+        var animationSystem = new AnimationSystem(config);
+
+        // 验证初始状态
+        Assert.True(animationSystem.Animate(ref state, 0.016f), "初始状态应该是稳定的");
+
+        // Act: 模拟 SwapTiles（只交换引用，保持视觉位置不变）
+        var temp = state.Grid[0];
+        state.Grid[0] = state.Grid[1];
+        state.Grid[1] = temp;
+
+        // 交换后验证视觉位置保持不变
+        Assert.Equal(new Vector2(0, 1), state.Grid[0].Position); // Blue 仍在视觉位置 (0,1)
+        Assert.Equal(new Vector2(0, 0), state.Grid[1].Position); // Red 仍在视觉位置 (0,0)
+
+        // Act: 运行动画
+        bool stable = animationSystem.Animate(ref state, 0.016f);
+
+        // Assert: 动画应该正在进行
+        Assert.False(stable, "竖向交换后应该有动画在进行");
+
+        // Grid[0] (Blue) 应该从 (0,1) 向 (0,0) 移动
+        Assert.True(state.Grid[0].Position.Y < 1.0f, "Blue 应该向上移动");
+        Assert.True(state.Grid[0].Position.Y > 0.0f, "Blue 还没到达目标");
+
+        // Grid[1] (Red) 应该从 (0,0) 向 (0,1) 移动
+        Assert.True(state.Grid[1].Position.Y > 0.0f, "Red 应该向下移动");
+        Assert.True(state.Grid[1].Position.Y < 1.0f, "Red 还没到达目标");
+
+        _output.WriteLine($"动画第1帧: Blue.Y={state.Grid[0].Position.Y:F3}, Red.Y={state.Grid[1].Position.Y:F3}");
+
+        // 继续运行动画直到完成
+        int maxFrames = 100;
+        for (int i = 0; i < maxFrames && !stable; i++)
+        {
+            stable = animationSystem.Animate(ref state, 0.016f);
+        }
+
+        // Assert: 动画应该完成，tile 到达目标位置
+        Assert.True(stable, "动画应该最终完成");
+        Assert.Equal(0, state.Grid[0].Position.Y, 2); // Blue 到达 (0,0)
+        Assert.Equal(1, state.Grid[1].Position.Y, 2); // Red 到达 (0,1)
+
+        _output.WriteLine($"动画完成: Blue 在 ({state.Grid[0].Position.X:F3}, {state.Grid[0].Position.Y:F3})");
+        _output.WriteLine($"动画完成: Red 在 ({state.Grid[1].Position.X:F3}, {state.Grid[1].Position.Y:F3})");
+    }
+
+    /// <summary>
+    /// 使用 AnimationTestHelper 简化的竖向交换测试
+    /// </summary>
+    [Fact]
+    public void VerticalSwapAnimation_UsingHelper_SimplifiedTest()
+    {
+        // Arrange: 创建 1x2 棋盘（竖向）
+        var state = new GameState(1, 2, 5, new StubRandom());
+
+        var redTile = new Tile(1, TileType.Red, 0, 0);
+        redTile.Position = new Vector2(0, 0);
+        state.SetTile(0, 0, redTile);
+
+        var blueTile = new Tile(2, TileType.Blue, 0, 1);
+        blueTile.Position = new Vector2(0, 1);
+        state.SetTile(0, 1, blueTile);
+
+        var config = new Match3Config { GravitySpeed = 10.0f };
+        var animationSystem = new AnimationSystem(config);
+
+        var helper = new AnimationTestHelper(_output);
+
+        // Act: 使用辅助类模拟无效竖向交换
+        var result = helper.SimulateInvalidSwap(ref state, animationSystem, 0, 1);
+
+        // Assert
+        Assert.True(result.SwapResult.FrameCount > 0, "竖向交换应该有动画帧");
+        Assert.True(result.RevertResult.FrameCount > 0, "竖向回退应该有动画帧");
+        Assert.Equal(TileType.Red, state.Grid[0].Type);   // 回到原始位置
+        Assert.Equal(TileType.Blue, state.Grid[1].Type);
+
+        _output.WriteLine($"竖向交换动画: {result.SwapResult.FrameCount} 帧");
+        _output.WriteLine($"竖向回退动画: {result.RevertResult.FrameCount} 帧");
+        _output.WriteLine($"总计: {result.TotalFrameCount} 帧");
+    }
+
+    #endregion
 }
