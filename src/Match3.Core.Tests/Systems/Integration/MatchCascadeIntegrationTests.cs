@@ -98,7 +98,7 @@ public class MatchCascadeIntegrationTests
         var gravitySystem = new RealtimeGravitySystem(config, rng);
 
         // Act 1: 检测匹配
-        var matches = matchFinder.FindMatchGroups(ref state);
+        var matches = matchFinder.FindMatchGroups(in state);
         Assert.NotEmpty(matches);
 
         // Act 2: 处理匹配（消除方块）
@@ -188,7 +188,7 @@ public class MatchCascadeIntegrationTests
         var gravitySystem = new RealtimeGravitySystem(config, rng);
 
         // Act 1: 第一次匹配检测和消除
-        var matches1 = matchFinder.FindMatchGroups(ref state);
+        var matches1 = matchFinder.FindMatchGroups(in state);
         Assert.Single(matches1); // 应该只有红色匹配
         Assert.Equal(TileType.Red, matches1[0].Type);
 
@@ -362,7 +362,7 @@ public class MatchCascadeIntegrationTests
         PrintBoard(ref state);
 
         // Act 2: 检测匹配
-        var matches = matchFinder.FindMatchGroups(ref state);
+        var matches = matchFinder.FindMatchGroups(in state);
         Assert.NotEmpty(matches);
         _output.WriteLine($"Found {matches.Count} match(es)");
 
@@ -530,7 +530,7 @@ public class MatchCascadeIntegrationTests
         var helper = new AnimationTestHelper(_output);
 
         // Act 1: 检测并处理匹配
-        var matches = matchFinder.FindMatchGroups(ref state);
+        var matches = matchFinder.FindMatchGroups(in state);
         Assert.NotEmpty(matches);
         processor.ProcessMatches(ref state, matches);
 
@@ -600,7 +600,7 @@ public class MatchCascadeIntegrationTests
         var helper = new AnimationTestHelper(_output);
 
         // Act 1: 第一次消除
-        var matches1 = matchFinder.FindMatchGroups(ref state);
+        var matches1 = matchFinder.FindMatchGroups(in state);
         Assert.NotEmpty(matches1);
         _output.WriteLine($"第一次匹配: {matches1.Count} 组");
 
@@ -618,7 +618,7 @@ public class MatchCascadeIntegrationTests
         PrintBoard(ref state);
 
         // 检查是否有新的匹配（连锁）
-        var matches2 = matchFinder.FindMatchGroups(ref state);
+        var matches2 = matchFinder.FindMatchGroups(in state);
         if (matches2.Count > 0)
         {
             _output.WriteLine($"触发连锁: {matches2.Count} 组新匹配");

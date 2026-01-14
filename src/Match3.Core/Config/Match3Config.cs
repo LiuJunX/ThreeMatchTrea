@@ -5,20 +5,61 @@ namespace Match3.Core.Config;
 /// </summary>
 public class Match3Config
 {
-    public int Width { get; set; } = 8;
-    public int Height { get; set; } = 8;
-    public int TileTypesCount { get; set; } = 6;
-    
-    // Animation speeds (visual/logical update speeds)
-    public float SwapSpeed { get; set; } = 15.0f;
+    #region Default Values
 
-    // Gravity settings
-    public float InitialFallSpeed { get; set; } = 8.0f;  // 初始掉落速度，解决"前半格慢"问题
-    public float GravitySpeed { get; set; } = 20.0f;     // 重力加速度
-    public float MaxFallSpeed { get; set; } = 25.0f;     // 最大掉落速度
+    public const int DefaultWidth = 8;
+    public const int DefaultHeight = 8;
+    public const int DefaultTileTypesCount = 6;
+    public const float DefaultSwapSpeed = 15.0f;
+    public const float DefaultInitialFallSpeed = 8.0f;
+    public const float DefaultGravitySpeed = 20.0f;
+    public const float DefaultMaxFallSpeed = 25.0f;
 
-    // Logic Flags
+    #endregion
+
+    #region Grid Settings
+
+    public int Width { get; set; } = DefaultWidth;
+    public int Height { get; set; } = DefaultHeight;
+    public int TileTypesCount { get; set; } = DefaultTileTypesCount;
+
+    #endregion
+
+    #region Animation Settings
+
+    /// <summary>
+    /// Speed of tile swap animation (units per second).
+    /// </summary>
+    public float SwapSpeed { get; set; } = DefaultSwapSpeed;
+
+    #endregion
+
+    #region Gravity Settings
+
+    /// <summary>
+    /// Initial fall speed when a tile starts falling (units per second).
+    /// </summary>
+    public float InitialFallSpeed { get; set; } = DefaultInitialFallSpeed;
+
+    /// <summary>
+    /// Gravity acceleration (units per second squared).
+    /// </summary>
+    public float GravitySpeed { get; set; } = DefaultGravitySpeed;
+
+    /// <summary>
+    /// Maximum fall speed cap (units per second).
+    /// </summary>
+    public float MaxFallSpeed { get; set; } = DefaultMaxFallSpeed;
+
+    #endregion
+
+    #region Logic Flags
+
     public bool IsGravityEnabled { get; set; } = true;
+
+    #endregion
+
+    #region Constructors
 
     public Match3Config(int width, int height, int tileTypesCount)
     {
@@ -28,4 +69,6 @@ public class Match3Config
     }
 
     public Match3Config() { }
+
+    #endregion
 }

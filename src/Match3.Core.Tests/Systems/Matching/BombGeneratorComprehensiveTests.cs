@@ -901,9 +901,9 @@ namespace Match3.Core.Tests.Systems.Matching
             for (int i = 0; i < 50; i++)
             {
                 var results = _generator.Generate(component, null, random);
-                if (results.Count > 0 && results[0].BombOrigin.HasValue)
+                if (results.Count > 0 && results[0].BombOrigin is { } origin)
                 {
-                    origins.Add(results[0].BombOrigin.Value);
+                    origins.Add(origin);
                 }
             }
 
