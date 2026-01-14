@@ -21,6 +21,12 @@ project.nuget.cache
 .history/
 *.code-workspace
 
+# Test Results and Coverage
+TestResults/
+coverage-report/
+*.coverage
+*.coveragexml
+
 # OS generated files
 .DS_Store
 Thumbs.db
