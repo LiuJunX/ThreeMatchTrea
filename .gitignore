@@ -23,6 +23,7 @@ project.nuget.cache
 
 # Test Results and Coverage
 TestResults/
+coverage/
 coverage-report/
 *.coverage
 *.coveragexml
@@ -30,3 +31,11 @@ coverage-report/
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Backup files
+*.bak
+nul
+
+# AI Tools - Local Settings
+.claude/settings.local.json
+.trae/documents/
