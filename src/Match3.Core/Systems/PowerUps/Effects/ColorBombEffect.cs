@@ -19,15 +19,12 @@ public class ColorBombEffect : IBombEffect
 
     public void Apply(in GameState state, Position origin, HashSet<Position> affectedTiles)
     {
-        // Strategy: Find the most frequent color on the board and clear it.
-        // This is the fallback behavior when a Color Bomb is exploded by another bomb
-        // rather than being swapped by a player.
-        
+        // 彩球爆炸：消除出现最多的一种颜色
         var counts = Pools.Obtain<Dictionary<TileType, int>>();
-        
+
         try
         {
-            // 1. Count colors
+            // 1. 统计颜色数量（只统计普通颜色，不统计 Rainbow/Bomb/None）
             for (int i = 0; i < state.Grid.Length; i++)
             {
                 var t = state.Grid[i];
@@ -37,11 +34,11 @@ public class ColorBombEffect : IBombEffect
                     counts[t.Type]++;
                 }
             }
-            
-            // 2. Find max
+
+            // 2. 找出数量最多的颜色
             TileType maxType = TileType.None;
             int maxCount = -1;
-            foreach(var kvp in counts)
+            foreach (var kvp in counts)
             {
                 if (kvp.Value > maxCount)
                 {
@@ -49,8 +46,8 @@ public class ColorBombEffect : IBombEffect
                     maxType = kvp.Key;
                 }
             }
-            
-            // 3. Mark for clearing
+
+            // 3. 消除该颜色的所有方块
             if (maxType != TileType.None)
             {
                 for (int y = 0; y < state.Height; y++)

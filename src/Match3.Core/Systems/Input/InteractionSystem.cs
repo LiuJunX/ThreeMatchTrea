@@ -19,14 +19,12 @@ namespace Match3.Core.Systems.Input;
 /// </summary>
 public class InteractionSystem : IInteractionSystem
 {
-    private readonly IInputSystem _inputSystem;
     private readonly IGameLogger _logger;
 
     public string StatusMessage { get; private set; } = "Ready";
 
-    public InteractionSystem(IInputSystem inputSystem, IGameLogger logger)
+    public InteractionSystem(IGameLogger logger)
     {
-        _inputSystem = inputSystem;
         _logger = logger;
     }
 
@@ -37,7 +35,7 @@ public class InteractionSystem : IInteractionSystem
     {
         move = null;
 
-        if (!_inputSystem.IsValidPosition(in state, p)) return false;
+        if (!state.IsValid(p)) return false;
         if (!isBoardInteractive) return false;
 
         _logger.LogInfo($"OnTap: {p}");
@@ -83,11 +81,11 @@ public class InteractionSystem : IInteractionSystem
     {
         move = null;
 
-        if (!_inputSystem.IsValidPosition(in state, from)) return false;
+        if (!state.IsValid(from)) return false;
         if (!isBoardInteractive) return false;
 
-        Position to = _inputSystem.GetSwipeTarget(from, direction);
-        if (!_inputSystem.IsValidPosition(in state, to)) return false;
+        Position to = from.GetNeighbor(direction);
+        if (!state.IsValid(to)) return false;
         
         // Swipe doesn't use selection state, but clears it if any
         state.SelectedPosition = Position.Invalid;

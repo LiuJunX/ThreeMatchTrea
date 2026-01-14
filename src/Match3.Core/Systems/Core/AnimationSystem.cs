@@ -41,6 +41,9 @@ public class AnimationSystem : IAnimationSystem
             ref var tile = ref state.Grid[i];
             if (tile.Type == TileType.None) continue;
 
+            // 跳过正在掉落的 tile，让 RealtimeGravitySystem 控制其位置
+            if (tile.IsFalling) continue;
+
             int x = i % state.Width;
             int y = i / state.Width;
             var targetPos = new Vector2(x, y);

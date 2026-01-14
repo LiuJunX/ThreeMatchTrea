@@ -1,24 +1,28 @@
 using System.Collections.Generic;
-using Match3.Core.Systems.Core;
-using Match3.Core.Systems.Generation;
-using Match3.Core.Systems.Input;
-using Match3.Core.Systems.Matching;
-using Match3.Core.Systems.Physics;
-using Match3.Core.Systems.PowerUps;
-using Match3.Core.Systems.Scoring;
-using Match3.Core.View;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Scoring;
+using Match3.Core.Systems.PowerUps.Effects;
+using Match3.Core.Utility.Pools;
 
 namespace Match3.Core.Systems.PowerUps;
 
 public class PowerUpHandler : IPowerUpHandler
 {
     private readonly IScoreSystem _scoreSystem;
+    private readonly BombComboHandler _comboHandler;
+    private readonly BombEffectRegistry _effectRegistry;
 
     public PowerUpHandler(IScoreSystem scoreSystem)
+        : this(scoreSystem, new BombComboHandler(), BombEffectRegistry.CreateDefault())
+    {
+    }
+
+    public PowerUpHandler(IScoreSystem scoreSystem, BombComboHandler comboHandler, BombEffectRegistry effectRegistry)
     {
         _scoreSystem = scoreSystem;
+        _comboHandler = comboHandler;
+        _effectRegistry = effectRegistry;
     }
 
     public void ProcessSpecialMove(ref GameState state, Position p1, Position p2, out int points)
@@ -30,17 +34,22 @@ public class PowerUpHandler : IPowerUpHandler
         // Calculate score before modifying state (tiles might be cleared)
         points = _scoreSystem.CalculateSpecialMoveScore(t1.Type, t1.Bomb, t2.Type, t2.Bomb);
 
-        if (TryHandleRainbowCombo(ref state, t1, t2, p1, p2, out int rainbowPoints))
+        // 使用 BombComboHandler 处理组合
+        var affected = Pools.ObtainHashSet<Position>();
+        try
         {
-            // Use calculated points, ignore legacy out param if needed, or consistency check
-            return;
+            if (_comboHandler.TryApplyCombo(ref state, p1, p2, affected))
+            {
+                // 清除所有受影响的方块
+                ClearAffectedTiles(ref state, affected);
+                return;
+            }
+        }
+        finally
+        {
+            Pools.Release(affected);
         }
 
-        if (TryHandleBombCombo(ref state, t1, t2, p1, p2, out int bombPoints))
-        {
-            return;
-        }
-        
         // If no special move happened, reset points
         points = 0;
     }
@@ -50,212 +59,83 @@ public class PowerUpHandler : IPowerUpHandler
         var t = state.GetTile(p.X, p.Y);
         if (t.Bomb == BombType.None) return;
 
-        ExplodeBomb(ref state, p.X, p.Y, t.Bomb);
-
-        // Ensure the bomb itself is cleared if the explosion didn't cover it (e.g. UFO targetting elsewhere)
-        var currentT = state.GetTile(p.X, p.Y);
-        if (currentT.Type != TileType.None)
+        var affected = Pools.ObtainHashSet<Position>();
+        try
         {
-             state.SetTile(p.X, p.Y, new Tile(0, TileType.None, p.X, p.Y));
-        }
-    }
-
-    private bool TryHandleRainbowCombo(ref GameState state, Tile t1, Tile t2, Position p1, Position p2, out int points)
-    {
-        points = 0; // Legacy param, ignored by caller in favor of IScoreSystem result
-        bool isT1Rainbow = t1.Type == TileType.Rainbow;
-        bool isT2Rainbow = t2.Type == TileType.Rainbow;
-
-        if (!isT1Rainbow && !isT2Rainbow) return false;
-
-        // 1. Rainbow + Rainbow
-        if (isT1Rainbow && isT2Rainbow)
-        {
-            ClearAll(ref state);
-            return true;
-        }
-
-        // 2. Rainbow + Any
-        var colorTile = isT1Rainbow ? t2 : t1;
-        
-        // If the other tile is not a valid color target (e.g. None), ignore
-        if (colorTile.Type == TileType.None || colorTile.Type == TileType.Rainbow) return false;
-
-        if (colorTile.Bomb != BombType.None)
-        {
-            // Rainbow + Bomb: Transform all of that color to that BombType
-            ReplaceColorWithBomb(ref state, colorTile.Type, colorTile.Bomb);
-            
-            // Then Explode all of them. Pass the bomb type to ensure they explode even if cleared by others.
-            ExplodeAllByType(ref state, colorTile.Type, colorTile.Bomb);
-        }
-        else
-        {
-            // Rainbow + Normal: Clear all of that color
-            ClearColor(ref state, colorTile.Type);
-        }
-        
-        // Clear the Rainbow and the source tile (ensure they are gone)
-        state.SetTile(p1.X, p1.Y, new Tile(0, TileType.None, p1.X, p1.Y));
-        state.SetTile(p2.X, p2.Y, new Tile(0, TileType.None, p2.X, p2.Y));
-        
-        return true;
-    }
-
-    private bool TryHandleBombCombo(ref GameState state, Tile t1, Tile t2, Position p1, Position p2, out int points)
-    {
-        points = 0;
-        if (t1.Bomb == BombType.None || t2.Bomb == BombType.None) return false;
-
-        // 3. Bomb + Bomb
-        if ((t1.Bomb == BombType.Horizontal || t1.Bomb == BombType.Vertical) &&
-            (t2.Bomb == BombType.Horizontal || t2.Bomb == BombType.Vertical))
-        {
-            ExplodeRow(ref state, p2.Y);
-            ExplodeCol(ref state, p2.X);
-        }
-        else
-        {
-            ExplodeArea(ref state, p2.X, p2.Y, 2);
-        }
-        
-        state.SetTile(p1.X, p1.Y, new Tile(0, TileType.None, p1.X, p1.Y));
-        state.SetTile(p2.X, p2.Y, new Tile(0, TileType.None, p2.X, p2.Y));
-        
-        return true;
-    }
-
-    private void ClearAll(ref GameState state)
-    {
-        for(int i=0; i<state.Grid.Length; i++)
-        {
-            ref var t = ref state.Grid[i];
-            t = new Tile(0, TileType.None, t.Position);
-        }
-    }
-    
-    private void ClearColor(ref GameState state, TileType color)
-    {
-        for(int i=0; i<state.Grid.Length; i++)
-        {
-            if (state.Grid[i].Type == color)
+            // 使用 BombEffectRegistry 获取单个炸弹效果
+            if (_effectRegistry.TryGetEffect(t.Bomb, out var effect))
             {
-                ref var t = ref state.Grid[i];
-                t = new Tile(0, TileType.None, t.Position);
+                effect!.Apply(in state, p, affected);
+                ClearAffectedTiles(ref state, affected);
+            }
+
+            // 确保炸弹本身被清除
+            var currentT = state.GetTile(p.X, p.Y);
+            if (currentT.Type != TileType.None)
+            {
+                state.SetTile(p.X, p.Y, new Tile(0, TileType.None, p.X, p.Y));
             }
         }
-    }
-    
-    private void ReplaceColorWithBomb(ref GameState state, TileType color, BombType bomb)
-    {
-        for(int i=0; i<state.Grid.Length; i++)
+        finally
         {
-            if (state.Grid[i].Type == color)
-            {
-                ref var t = ref state.Grid[i];
-                t.Bomb = bomb;
-            }
-        }
-    }
-    
-    private void ExplodeAllByType(ref GameState state, TileType type, BombType forcedBombType = BombType.None)
-    {
-        // Collect positions first
-        var positions = new List<Position>();
-        for(int i=0; i<state.Grid.Length; i++)
-        {
-            if (state.Grid[i].Type == type)
-            {
-                int x = i % state.Width;
-                int y = i / state.Width;
-                positions.Add(new Position(x, y));
-            }
-        }
-
-        // Explode each
-        foreach(var p in positions)
-        {
-            if (forcedBombType != BombType.None)
-            {
-                ExplodeBomb(ref state, p.X, p.Y, forcedBombType);
-            }
-            else
-            {
-                var t = state.GetTile(p.X, p.Y);
-                if (t.Bomb != BombType.None)
-                    ExplodeBomb(ref state, p.X, p.Y, t.Bomb);
-                else
-                    state.SetTile(p.X, p.Y, new Tile(0, TileType.None, p.X, p.Y));
-            }
+            Pools.Release(affected);
         }
     }
 
-    private void ExplodeBomb(ref GameState state, int cx, int cy, BombType type)
+    /// <summary>
+    /// 清除所有受影响的方块（支持递归连锁爆炸）
+    /// </summary>
+    private void ClearAffectedTiles(ref GameState state, HashSet<Position> affected)
     {
-        switch (type)
+        foreach (var pos in affected)
         {
-            case BombType.Horizontal:
-                ExplodeRow(ref state, cy);
-                break;
-            case BombType.Vertical:
-                ExplodeCol(ref state, cx);
-                break;
-            case BombType.Ufo:
+            ClearTileWithChain(ref state, pos);
+        }
+    }
+
+    /// <summary>
+    /// 清除单个方块，如果是炸弹则触发连锁爆炸
+    /// </summary>
+    private void ClearTileWithChain(ref GameState state, Position pos)
+    {
+        if (pos.X < 0 || pos.X >= state.Width || pos.Y < 0 || pos.Y >= state.Height)
+            return;
+
+        var tile = state.GetTile(pos.X, pos.Y);
+
+        // 已经是空的，跳过
+        if (tile.Type == TileType.None)
+            return;
+
+        // 如果是炸弹，触发连锁爆炸
+        if (tile.Bomb != BombType.None)
+        {
+            // 先清除炸弹本身（防止重复触发）
+            state.SetTile(pos.X, pos.Y, new Tile(0, TileType.None, pos.X, pos.Y));
+
+            // 触发炸弹效果
+            if (_effectRegistry.TryGetEffect(tile.Bomb, out var effect))
+            {
+                var chainAffected = Pools.ObtainHashSet<Position>();
+                try
                 {
-                    var positions = new List<Position>();
-                    for (int i = 0; i < state.Grid.Length; i++)
+                    effect!.Apply(in state, pos, chainAffected);
+                    // 递归清除连锁受影响的方块
+                    foreach (var chainPos in chainAffected)
                     {
-                        int x = i % state.Width;
-                        int y = i / state.Width;
-                        if (x == cx && y == cy) continue;
-                        if (state.Grid[i].Type != TileType.None)
-                        {
-                            positions.Add(new Position(x, y));
-                        }
-                    }
-                    if (positions.Count > 0)
-                    {
-                        int idx = state.Random.Next(0, positions.Count);
-                        var p = positions[idx];
-                        state.SetTile(p.X, p.Y, new Tile(0, TileType.None, p.X, p.Y));
+                        ClearTileWithChain(ref state, chainPos);
                     }
                 }
-                break;
-            case BombType.Square5x5:
-                ExplodeArea(ref state, cx, cy, 2); // 5x5
-                break;
-            case BombType.Color:
-                ClearAll(ref state);
-                break;
-            default:
-                state.SetTile(cx, cy, new Tile(0, TileType.None, cx, cy));
-                break;
-        }
-    }
-
-    private void ExplodeRow(ref GameState state, int y)
-    {
-        for(int x=0; x<state.Width; x++) 
-            state.SetTile(x, y, new Tile(0, TileType.None, x, y));
-    }
-    
-    private void ExplodeCol(ref GameState state, int x)
-    {
-        for(int y=0; y<state.Height; y++) 
-            state.SetTile(x, y, new Tile(0, TileType.None, x, y));
-    }
-    
-    private void ExplodeArea(ref GameState state, int cx, int cy, int radius)
-    {
-        for (int dy = -radius; dy <= radius; dy++)
-        {
-            for (int dx = -radius; dx <= radius; dx++)
-            {
-                int nx = cx + dx;
-                int ny = cy + dy;
-                if (nx >= 0 && nx < state.Width && ny >= 0 && ny < state.Height)
-                     state.SetTile(nx, ny, new Tile(0, TileType.None, nx, ny));
+                finally
+                {
+                    Pools.Release(chainAffected);
+                }
             }
+        }
+        else
+        {
+            // 普通方块，直接清除
+            state.SetTile(pos.X, pos.Y, new Tile(0, TileType.None, pos.X, pos.Y));
         }
     }
 }

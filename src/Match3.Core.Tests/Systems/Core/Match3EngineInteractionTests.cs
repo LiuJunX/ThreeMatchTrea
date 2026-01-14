@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Reflection;
 using Match3.Core;
 using Match3.Core.Config;
@@ -7,49 +8,30 @@ using Match3.Core.Systems.Core;
 using Match3.Core.Systems.Generation;
 using Match3.Core.Systems.Input;
 using Match3.Core.Systems.Matching;
-using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
-using Match3.Core.Systems.Scoring;
 using Match3.Core.View;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Models.Gameplay;
-using Match3.Core.Systems.Generation;
-using Match3.Core.Systems.Input;
-using Match3.Core.Systems.Matching;
-using Match3.Core.Systems.PowerUps;
-using Match3.Core.Systems.Scoring;
 using Match3.Core.Utility;
+using Match3.Core.Models.Input;
 using Match3.Random;
 using Xunit;
 
 namespace Match3.Core.Tests.Systems.Core;
 
+/// <summary>
+/// Match3Engine 交互集成测试
+///
+/// 职责：
+/// - 测试 Engine 与各系统的集成
+/// - 测试点击炸弹激活
+/// - 测试交换后是否正确回退无效交换
+/// - 测试交换动画的触发
+/// </summary>
 public class Match3EngineInteractionTests
 {
-    private class StubInputSystem : IInputSystem
-    {
-        public event Action<Position>? TapDetected;
-        public event Action<Position, Direction>? SwipeDetected;
-        public void Configure(double cellSize) { }
-        public void OnPointerDown(int gx, int gy, double sx, double sy) { }
-        public void OnPointerUp(double sx, double sy) { }
-        public void OnPointerMove(double sx, double sy) { }
-        public bool IsValidPosition(in GameState state, Position p) => p.X >= 0 && p.X < state.Width && p.Y >= 0 && p.Y < state.Height;
-        public Position GetSwipeTarget(Position from, Direction direction)
-        {
-            return direction switch
-            {
-                Direction.Up => new Position(from.X, from.Y + 1),
-                Direction.Down => new Position(from.X, from.Y - 1),
-                Direction.Left => new Position(from.X - 1, from.Y),
-                Direction.Right => new Position(from.X + 1, from.Y),
-                _ => from
-            };
-        }
-        public void TriggerTap(Position p) => TapDetected?.Invoke(p);
-        public void TriggerSwipe(Position p, Direction d) => SwipeDetected?.Invoke(p, d);
-    }
+    #region Stub Classes
 
     private class StubAsyncGameLoopSystem : IAsyncGameLoopSystem
     {
@@ -74,13 +56,13 @@ public class Match3EngineInteractionTests
         public bool TryHandleTap(ref GameState state, Position p, bool isInteractive, out Move? move)
         {
             move = MoveToReturn;
-            return ShouldSucceed;
+            return ShouldSucceed && MoveToReturn.HasValue;
         }
 
         public bool TryHandleSwipe(ref GameState state, Position from, Direction direction, bool isInteractive, out Move? move)
         {
             move = MoveToReturn;
-            return ShouldSucceed;
+            return ShouldSucceed && MoveToReturn.HasValue;
         }
     }
 
@@ -93,7 +75,19 @@ public class Match3EngineInteractionTests
 
     private class StubBoardInitializer : IBoardInitializer
     {
-        public void Initialize(ref GameState state, LevelConfig? levelConfig) { }
+        public void Initialize(ref GameState state, LevelConfig? levelConfig)
+        {
+            // 初始化所有格子为红色
+            for (int y = 0; y < state.Height; y++)
+            {
+                for (int x = 0; x < state.Width; x++)
+                {
+                    var tile = new Tile(y * state.Width + x + 1, TileType.Red, x, y);
+                    tile.Position = new Vector2(x, y);
+                    state.SetTile(x, y, tile);
+                }
+            }
+        }
     }
 
     private class StubGameView : IGameView
@@ -118,13 +112,7 @@ public class Match3EngineInteractionTests
 
     private class StubRandom : IRandom
     {
-        public int Next() => 0;
-        public int Next(int max) => 0;
         public int Next(int min, int max) => min;
-        public float NextFloat() => 0f;
-        public bool NextBool() => false;
-        public T PickRandom<T>(IList<T> items) => items[0];
-        public void Shuffle<T>(IList<T> list) { }
     }
 
     private class StubMatchFinder : IMatchFinder
@@ -144,32 +132,35 @@ public class Match3EngineInteractionTests
         }
     }
 
+    #endregion
+
+    #region Bomb Activation Tests
+
     [Fact]
     public void OnTap_WithBomb_ShouldActivateBomb()
     {
         // Arrange
         var config = new Match3Config(8, 8, 5);
-        var inputStub = new StubInputSystem();
         var gameLoopStub = new StubAsyncGameLoopSystem();
         var interactionStub = new StubInteractionSystem();
         var animationStub = new StubAnimationSystem();
         var boardInitStub = new StubBoardInitializer();
         var matchFinderStub = new StubMatchFinder();
         var botSystemStub = new StubBotSystem();
-        
+
         var random = new StubRandom();
         var view = new StubGameView();
         var logger = new StubLogger();
-        
+
         var engine = new Match3Engine(
-            config, random, view, logger, inputStub, 
+            config, random, view, logger,
             gameLoopStub, interactionStub, animationStub, boardInitStub, matchFinderStub, botSystemStub
         );
 
         // Inject a Bomb into State using Reflection
         var stateField = typeof(Match3Engine).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
         var state = (GameState)stateField!.GetValue(engine)!;
-        
+
         // Place a bomb at (0,0)
         var bombTile = new Tile(1, TileType.Red, 0, 0);
         bombTile.Bomb = BombType.Horizontal;
@@ -188,28 +179,21 @@ public class Match3EngineInteractionTests
     {
         // Arrange
         var config = new Match3Config(8, 8, 5);
-        var inputStub = new StubInputSystem();
         var gameLoopStub = new StubAsyncGameLoopSystem();
         var interactionStub = new StubInteractionSystem();
         var animationStub = new StubAnimationSystem();
         var boardInitStub = new StubBoardInitializer();
         var matchFinderStub = new StubMatchFinder();
         var botSystemStub = new StubBotSystem();
-        
+
         var random = new StubRandom();
         var view = new StubGameView();
         var logger = new StubLogger();
-        
+
         var engine = new Match3Engine(
-            config, random, view, logger, inputStub, 
+            config, random, view, logger,
             gameLoopStub, interactionStub, animationStub, boardInitStub, matchFinderStub, botSystemStub
         );
-
-        // Inject a Normal Tile at (0,0)
-        var stateField = typeof(Match3Engine).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
-        var state = (GameState)stateField!.GetValue(engine)!;
-        
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
 
         // Act
         engine.OnTap(new Position(0, 0));
@@ -218,50 +202,200 @@ public class Match3EngineInteractionTests
         Assert.False(gameLoopStub.ActivateBombCalled, "ActivateBomb should NOT be called when tapping a normal tile");
     }
 
+    #endregion
+
+    #region Swap Tests
+
     [Fact]
     public void OnSwipe_ShouldSwapTiles_WhenMatchFound()
     {
         // Arrange
         var config = new Match3Config(8, 8, 5);
-        var inputStub = new StubInputSystem();
         var gameLoopStub = new StubAsyncGameLoopSystem();
         var interactionStub = new StubInteractionSystem();
         var animationStub = new StubAnimationSystem();
         var boardInitStub = new StubBoardInitializer();
         var matchFinderStub = new StubMatchFinder { HasMatchResult = true }; // Simulate valid match
         var botSystemStub = new StubBotSystem();
-        
+
         var random = new StubRandom();
         var view = new StubGameView();
         var logger = new StubLogger();
-        
+
         // Setup Interaction to return a valid move
         interactionStub.MoveToReturn = new Move(new Position(0, 0), new Position(1, 0));
-        
+
         var engine = new Match3Engine(
-            config, random, view, logger, inputStub, 
+            config, random, view, logger,
             gameLoopStub, interactionStub, animationStub, boardInitStub, matchFinderStub, botSystemStub
         );
 
-        // Inject tiles
+        // Inject tiles with different colors
         var stateField = typeof(Match3Engine).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
         var state = (GameState)stateField!.GetValue(engine)!;
-        
+
         var t1 = new Tile(1, TileType.Red, 0, 0);
+        t1.Position = new Vector2(0, 0);
         var t2 = new Tile(2, TileType.Blue, 1, 0);
+        t2.Position = new Vector2(1, 0);
         state.SetTile(0, 0, t1);
         state.SetTile(1, 0, t2);
 
-        // Act
-        // Trigger swipe. InteractionSystem.TryHandleSwipe will return true and the Move.
-        inputStub.TriggerSwipe(new Position(0, 0), Direction.Right);
+        // Act - 直接调用 OnSwipe
+        engine.OnSwipe(new Position(0, 0), Direction.Right);
 
-        // Assert
+        // Assert - 有 match，交换生效
         var tileAt00 = engine.State.GetTile(0, 0);
         var tileAt10 = engine.State.GetTile(1, 0);
-        
+
         // Tiles should be swapped (Blue at 0,0, Red at 1,0)
         Assert.Equal(TileType.Blue, tileAt00.Type);
         Assert.Equal(TileType.Red, tileAt10.Type);
     }
+
+    [Fact]
+    public void OnSwipe_ShouldSwapBack_WhenNoMatchFound()
+    {
+        // Arrange
+        var config = new Match3Config(8, 8, 5);
+        var gameLoopStub = new StubAsyncGameLoopSystem();
+        var interactionStub = new StubInteractionSystem();
+        var animationStub = new StubAnimationSystem();
+        var boardInitStub = new StubBoardInitializer();
+        var matchFinderStub = new StubMatchFinder { HasMatchResult = false }; // No match
+        var botSystemStub = new StubBotSystem();
+
+        var random = new StubRandom();
+        var view = new StubGameView();
+        var logger = new StubLogger();
+
+        // Setup Interaction to return a valid move
+        interactionStub.MoveToReturn = new Move(new Position(0, 0), new Position(1, 0));
+
+        var engine = new Match3Engine(
+            config, random, view, logger,
+            gameLoopStub, interactionStub, animationStub, boardInitStub, matchFinderStub, botSystemStub
+        );
+
+        // Inject tiles with different colors
+        var stateField = typeof(Match3Engine).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
+        var state = (GameState)stateField!.GetValue(engine)!;
+
+        var t1 = new Tile(1, TileType.Red, 0, 0);
+        t1.Position = new Vector2(0, 0);
+        var t2 = new Tile(2, TileType.Blue, 1, 0);
+        t2.Position = new Vector2(1, 0);
+        state.SetTile(0, 0, t1);
+        state.SetTile(1, 0, t2);
+
+        // Act - 直接调用 OnSwipe
+        engine.OnSwipe(new Position(0, 0), Direction.Right);
+
+        // Assert - 无 match，交换回退
+        var tileAt00 = engine.State.GetTile(0, 0);
+        var tileAt10 = engine.State.GetTile(1, 0);
+
+        // Tiles should remain in original positions
+        Assert.Equal(TileType.Red, tileAt00.Type);
+        Assert.Equal(TileType.Blue, tileAt10.Type);
+    }
+
+    [Fact]
+    public void OnSwipe_KeepsVisualPositions_ForSwapAnimation()
+    {
+        // Arrange
+        var config = new Match3Config(8, 8, 5);
+        var gameLoopStub = new StubAsyncGameLoopSystem();
+        var interactionStub = new StubInteractionSystem();
+        var animationStub = new StubAnimationSystem();
+        var boardInitStub = new StubBoardInitializer();
+        var matchFinderStub = new StubMatchFinder { HasMatchResult = true };
+        var botSystemStub = new StubBotSystem();
+
+        var random = new StubRandom();
+        var view = new StubGameView();
+        var logger = new StubLogger();
+
+        // Setup Interaction to return a valid move
+        interactionStub.MoveToReturn = new Move(new Position(0, 0), new Position(1, 0));
+
+        var engine = new Match3Engine(
+            config, random, view, logger,
+            gameLoopStub, interactionStub, animationStub, boardInitStub, matchFinderStub, botSystemStub
+        );
+
+        // Inject tiles with specific visual positions
+        var stateField = typeof(Match3Engine).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
+        var state = (GameState)stateField!.GetValue(engine)!;
+
+        var t1 = new Tile(1, TileType.Red, 0, 0);
+        t1.Position = new Vector2(0, 0);
+        var t2 = new Tile(2, TileType.Blue, 1, 0);
+        t2.Position = new Vector2(1, 0);
+        state.SetTile(0, 0, t1);
+        state.SetTile(1, 0, t2);
+
+        // Act
+        engine.OnSwipe(new Position(0, 0), Direction.Right);
+
+        // Assert - 交换后视觉位置应保持不变（用于动画）
+        var tileAt00 = engine.State.GetTile(0, 0); // 原来是 t2 (Blue)
+        var tileAt10 = engine.State.GetTile(1, 0); // 原来是 t1 (Red)
+
+        // 视觉位置应该保持原来的值，AnimationSystem 会将它们动画到新位置
+        Assert.Equal(new Vector2(1, 0), tileAt00.Position); // Blue 的视觉位置仍在 (1,0)
+        Assert.Equal(new Vector2(0, 0), tileAt10.Position); // Red 的视觉位置仍在 (0,0)
+    }
+
+    #endregion
+
+    #region Update Tests
+
+    [Fact]
+    public void Update_ProcessesQueuedInputIntent()
+    {
+        // Arrange
+        var config = new Match3Config(8, 8, 5);
+        var gameLoopStub = new StubAsyncGameLoopSystem();
+        var interactionStub = new StubInteractionSystem();
+        var animationStub = new StubAnimationSystem();
+        var boardInitStub = new StubBoardInitializer();
+        var matchFinderStub = new StubMatchFinder { HasMatchResult = true };
+        var botSystemStub = new StubBotSystem();
+
+        var random = new StubRandom();
+        var view = new StubGameView();
+        var logger = new StubLogger();
+
+        interactionStub.MoveToReturn = new Move(new Position(0, 0), new Position(1, 0));
+
+        var engine = new Match3Engine(
+            config, random, view, logger,
+            gameLoopStub, interactionStub, animationStub, boardInitStub, matchFinderStub, botSystemStub
+        );
+
+        // Setup tiles
+        var stateField = typeof(Match3Engine).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
+        var state = (GameState)stateField!.GetValue(engine)!;
+
+        var t1 = new Tile(1, TileType.Red, 0, 0);
+        t1.Position = new Vector2(0, 0);
+        var t2 = new Tile(2, TileType.Blue, 1, 0);
+        t2.Position = new Vector2(1, 0);
+        state.SetTile(0, 0, t1);
+        state.SetTile(1, 0, t2);
+
+        // Act - 通过 EnqueueIntent 排队输入
+        engine.EnqueueIntent(new SwipeIntent(new Position(0, 0), Direction.Right));
+        engine.Update(0.016f);
+
+        // Assert - 输入被处理，交换生效
+        var tileAt00 = engine.State.GetTile(0, 0);
+        var tileAt10 = engine.State.GetTile(1, 0);
+
+        Assert.Equal(TileType.Blue, tileAt00.Type);
+        Assert.Equal(TileType.Red, tileAt10.Type);
+    }
+
+    #endregion
 }

@@ -164,6 +164,46 @@ namespace Match3.Editor.ViewModels
 
         public BombType[] ActiveBombs => ActiveLevelConfig.Bombs;
 
+        private static readonly TileType[] _tilePaletteTypes =
+        {
+            TileType.Red,
+            TileType.Green,
+            TileType.Blue,
+            TileType.Yellow,
+            TileType.Purple,
+            TileType.Orange,
+            TileType.Rainbow,
+            TileType.None
+        };
+
+        public IReadOnlyList<TileType> TilePaletteTypes => _tilePaletteTypes;
+
+        public static string GetTileBackground(TileType t)
+        {
+            return t switch
+            {
+                TileType.Red => "#dc3545",
+                TileType.Green => "#198754",
+                TileType.Blue => "#0d6efd",
+                TileType.Yellow => "#ffc107",
+                TileType.Purple => "#6f42c1",
+                TileType.Orange => "#fd7e14",
+                TileType.Rainbow => "linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet)",
+                TileType.None => "#f8f9fa",
+                _ => "#ccc"
+            };
+        }
+
+        public static string GetTileCheckmarkClass(TileType t)
+        {
+            return t switch
+            {
+                TileType.None => "text-dark",
+                TileType.Yellow => "text-dark",
+                _ => "text-white"
+            };
+        }
+
         public event PropertyChangedEventHandler? PropertyChanged;
         public event Action? OnRequestRepaint;
 

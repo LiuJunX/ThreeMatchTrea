@@ -14,6 +14,9 @@ using Match3.Core.Models.Grid;
 using Match3.Core.Utility;
 using Match3.Random;
 
+using System.Collections.Generic;
+using Match3.Core.Models.Input;
+
 namespace Match3.Core;
 
 /// <summary>
@@ -26,7 +29,6 @@ public sealed class Match3Engine : IDisposable
     private readonly Match3Config _config;
     private readonly IGameView _view;
     private readonly IGameLogger _logger;
-    private readonly IInputSystem _inputSystem;
 
     // Systems
     private readonly IInteractionSystem _interactionSystem;
@@ -34,6 +36,9 @@ public sealed class Match3Engine : IDisposable
     private readonly IAsyncGameLoopSystem _gameLoopSystem;
     private readonly IMatchFinder _matchFinder;
     private readonly IBotSystem _botSystem;
+    
+    // Input Queue
+    private readonly Queue<InputIntent> _inputQueue = new();
 
     public GameState State => _state;
     public Position SelectedPosition => _state.SelectedPosition;
@@ -45,7 +50,6 @@ public sealed class Match3Engine : IDisposable
         IRandom rng,
         IGameView view,
         IGameLogger logger,
-        IInputSystem inputSystem,
         IAsyncGameLoopSystem gameLoopSystem,
         IInteractionSystem interactionSystem,
         IAnimationSystem animationSystem,
@@ -57,7 +61,6 @@ public sealed class Match3Engine : IDisposable
         _config = config;
         _view = view;
         _logger = logger;
-        _inputSystem = inputSystem;
         _gameLoopSystem = gameLoopSystem;
         _interactionSystem = interactionSystem;
         _animationSystem = animationSystem;
@@ -69,25 +72,39 @@ public sealed class Match3Engine : IDisposable
         boardInitializer.Initialize(ref _state, levelConfig);
         
         _logger.LogInfo($"Match3Engine initialized with size {_config.Width}x{_config.Height}");
-
-        // Bind Events
-        _inputSystem.TapDetected += OnTap;
-        _inputSystem.SwipeDetected += OnSwipe;
     }
 
     public void Dispose()
     {
-        if (_inputSystem != null)
-        {
-            _inputSystem.TapDetected -= OnTap;
-            _inputSystem.SwipeDetected -= OnSwipe;
-        }
+        _inputQueue.Clear();
+    }
+
+    public void EnqueueIntent(InputIntent intent)
+    {
+        _inputQueue.Enqueue(intent);
     }
 
     public void Update(float dt)
     {
+        ProcessInput();
         _animationSystem.Animate(ref _state, dt);
         _gameLoopSystem.Update(ref _state, dt);
+    }
+
+    private void ProcessInput()
+    {
+        while (_inputQueue.TryDequeue(out var intent))
+        {
+            switch (intent)
+            {
+                case TapIntent tap:
+                    OnTap(tap.Position);
+                    break;
+                case SwipeIntent swipe:
+                    OnSwipe(swipe.From, swipe.Direction);
+                    break;
+            }
+        }
     }
 
     public void OnTap(Position p)
@@ -128,6 +145,10 @@ public sealed class Match3Engine : IDisposable
     {
         if (_botSystem.TryGetRandomMove(ref _state, _interactionSystem, out var move))
         {
+             // For bot moves, we can either execute directly or queue an intent.
+             // Queuing ensures consistent processing order.
+             // However, BotSystem returns a Move (already resolved), not an Intent.
+             // Let's execute directly for now as it's a resolved move.
              ExecuteMove(move);
              return true;
         }
@@ -150,25 +171,17 @@ public sealed class Match3Engine : IDisposable
         return _matchFinder.HasMatchAt(in _state, p);
     }
     
-    // Helper to swap tiles (Logic & Visual Position)
+    // Helper to swap tiles (Logic only, keep visual positions for animation)
     private void SwapTiles(ref GameState state, Position a, Position b)
     {
         var idxA = a.Y * state.Width + a.X;
         var idxB = b.Y * state.Width + b.X;
-        var tA = state.Grid[idxA];
-        var tB = state.Grid[idxB];
-        
-        // Swap Grid Data
-        state.Grid[idxA] = tB;
-        state.Grid[idxB] = tA;
-        
-        var tempPos = tA.Position;
-        tA.Position = tB.Position;
-        tB.Position = tempPos;
-        
-        // Write back
-        state.Grid[idxA] = tB;
-        state.Grid[idxB] = tA;
+
+        // Only swap grid data, keep visual Position unchanged
+        // AnimationSystem will animate tiles from their current Position to new grid position
+        var temp = state.Grid[idxA];
+        state.Grid[idxA] = state.Grid[idxB];
+        state.Grid[idxB] = temp;
     }
     
     // Helpers exposed for tests/debug
