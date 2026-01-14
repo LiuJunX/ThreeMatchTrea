@@ -24,11 +24,10 @@ This project uses shared coding standards maintained in `.trae/rules/project_rul
 - Atomic commits: separate config/logic/docs changes
 
 ### Testing Requirements (MUST READ: `docs/testing-guidelines.md`)
-- **New interaction features**: Test ALL directions (Up/Down/Left/Right)
-- **Animation features**: Use `AnimationTestHelper`, verify intermediate frames
-- **Multi-system features**: Add integration tests with REAL systems (not Stub)
-- **Stability checks**: Check BOTH `physics.IsStable()` AND `animation.Animate()` return values
-- **Never only test final state**: Animation tests must verify in-progress behavior
+- **Input variants**: Test ALL possible input variations (directions, positions, edge cases)
+- **Multi-system features**: Add integration tests with REAL systems, not just Stub isolation
+- **Async/multi-frame behavior**: Verify intermediate states, not just final results
+- **Cross-system stability**: When multiple systems interact, check stability conditions from ALL systems
 
 ### Project Structure
 - `Match3.Core` - Pure business logic, no UI dependencies

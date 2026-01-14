@@ -41,8 +41,14 @@ alwaysApply: true
 
 ## 7. Testing Strategy
 - 新增逻辑前优先编写测试（TDD-lite）
-- 修改核心逻辑（MatchFinder, Gravity）后必须运行 `dotnet test`
+- 修改核心逻辑后必须运行 `dotnet test`
 - 保持测试用例的原子性和独立性
+
+### Testing Checklist (MUST READ: `docs/testing-guidelines.md`)
+- **Input variants**: Test ALL possible input variations (directions, positions, edge cases)
+- **Cross-system integration**: Add integration tests with REAL systems, not just Stub isolation
+- **Async/multi-frame behavior**: Verify intermediate states, not just final results
+- **Multi-system stability**: When systems interact, check stability conditions from ALL involved systems
 
 ## 8. Documentation Maintenance
 - **Docs-as-Code**: Documentation lives in `/docs`.
