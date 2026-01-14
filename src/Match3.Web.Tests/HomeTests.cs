@@ -76,9 +76,17 @@ public class HomeTests : TestContext, IDisposable
         var board = cut.Find(".board-container");
         var up = new PointerEventArgs { ClientX = 0, ClientY = 0 };
         board.TriggerEvent("onpointerup", up);
-        
+
+        // Manually trigger frame update to process the TapIntent
+        // (bUnit's async Task.Delay doesn't work properly in test context)
+        var gameService = Services.GetRequiredService<Match3GameService>();
+        gameService.ManualUpdate();
+
+        // Force re-render after engine state update
+        cut.Render();
+
         // Assert: Verify status becomes "Select destination"
-        cut.WaitForAssertion(() => 
+        cut.WaitForAssertion(() =>
         {
             var status = cut.Find("[data-testid='status-message']");
             Assert.Contains("Select destination", status.TextContent);
@@ -87,7 +95,11 @@ public class HomeTests : TestContext, IDisposable
         // Verify a tile has 'selected' class
         // Note: Grid tiles are rendered in State.Grid order, not position order.
         // After clicking, we need to find the tile that has the 'selected' class.
-        var selectedTile = cut.Find(".tile.selected");
-        Assert.NotNull(selectedTile);
+        // Use WaitForAssertion to ensure GridBoard has re-rendered (it uses InvokeAsync).
+        cut.WaitForAssertion(() =>
+        {
+            var selectedTile = cut.Find(".tile.selected");
+            Assert.NotNull(selectedTile);
+        });
     }
 }

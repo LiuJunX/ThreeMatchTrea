@@ -204,8 +204,14 @@ public class Match3GameService : IDisposable
         _inputSystem?.OnPointerUp(sx, sy);
     }
 
-    // public void OnTap(int x, int y) => _engine?.OnTap(new Position(x, y));
-    // public void OnSwipe(Position from, Direction dir) => _engine?.OnSwipe(from, dir);
+    /// <summary>
+    /// Manually process one frame update. For testing purposes only.
+    /// Does not trigger render notification (caller should handle re-render).
+    /// </summary>
+    public void ManualUpdate(float dt = 1f / 60f)
+    {
+        _engine?.Update(dt);
+    }
 
     public void SetLastMatches(int count)
     {
