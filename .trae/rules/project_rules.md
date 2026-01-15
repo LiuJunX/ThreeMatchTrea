@@ -1,7 +1,9 @@
 ---
 alwaysApply: true
 ---
-# Project Rules (Trae)
+# Project Rules (AI Instructions)
+
+本文件是 AI 助手的行为指南。技术规范详见领域文档（真源）。
 
 ## 0. Interaction Protocol (Highest Priority)
 - **Confirm Before Action**: For any ambiguous or uncertain requirements, the AI MUST pause and ask the user for confirmation before proceeding.
@@ -14,75 +16,77 @@ alwaysApply: true
 - `Match3.Web` - Blazor 应用与视图层（IGameView、输入意图）
 - `Match3.Editor` - 跨平台编辑器逻辑（无 UI 框架依赖）
 - `Match3.ConfigTool` - 配置工具
-- `Match3.*.Tests` - 各模块对应的测试项目（Core.Tests、Editor.Tests、Web.Tests、Random.Tests）
+- `Match3.*.Tests` - 各模块对应的测试项目
 
 ## 2. Code Style & Conventions
-- 4 空格缩进；Allman 大括号；文件级命名空间；私有字段 _camelCase；公共成员/类型 PascalCase；接口 I 前缀；类型明显用 var
+遵循 `docs/02-guides/coding-standards.md`（真源）
 
 ## 3. Design Patterns
 - 模型驱动：Core 为唯一真源；坐标实时；用 Update/Tick 推进
 - 视图只渲染：禁止插值/物理/独立计时（禁用 CSS 过渡/Task.Delay 位移）
-- 分层职责：Controller 管理逻辑与状态；IGameView 仅渲染与输入意图；依赖注入用构造函数
-- **DDD (Domain-Driven Design)**: Use ubiquitous language (e.g., Gravity, Matching). High Cohesion: Code that changes together stays together.
+- 分层职责：Controller 管理逻辑与状态；IGameView 仅渲染与输入意图
+- DDD：使用领域语言（Gravity、Matching）；高内聚
 
 ## 4. Best Practices
 - 先看上下文：修改/新增前检索既有文件与约定
 - 复用现有结构：如 Position、GameBoard
 - 安全：空值检查，Try* 模式
-- 注释：公共 API 用 XML；复杂说明“为何/如何”；简单不注
 - 验证：实现后运行测试并确认行为
 
 ## 5. Git
-- 提交信息用祈使句且具体；原子提交，配置/逻辑/文档分开，避免混合变更
+- 提交信息用祈使句且具体；原子提交，配置/逻辑/文档分开
 
-## 6. Autonomous Workflow（面向助手）
+## 6. Autonomous Workflow
 - 规划 → 测试 → 实现 → dotnet test → 通过交付；失败修复
-- 遇到复杂逻辑（>50行）时，主动拆分为小方法以降低认知负担
+- 复杂逻辑（>50行）主动拆分为小方法
 
 ## 7. Testing Strategy
+遵循 `docs/testing-guidelines.md`（真源）
 - 新增逻辑前优先编写测试（TDD-lite）
 - 修改核心逻辑后必须运行 `dotnet test`
-- 保持测试用例的原子性和独立性
-
-### Testing Checklist (MUST READ: `docs/testing-guidelines.md`)
-- **Input variants**: Test ALL possible input variations (directions, positions, edge cases)
-- **Cross-system integration**: Add integration tests with REAL systems, not just Stub isolation
-- **Async/multi-frame behavior**: Verify intermediate states, not just final results
-- **Multi-system stability**: When systems interact, check stability conditions from ALL involved systems
 
 ## 8. Documentation Maintenance
 - **Docs-as-Code**: Documentation lives in `/docs`.
 - **Sync Rule**: Update `docs/01-architecture/overview.md` when changing core components.
-- **ADR Required**: Create a new ADR in `docs/04-adr` for major architectural decisions (e.g., adding a new dependency).
-- **API Docs**: All core interfaces (`Match3.Core/Systems/*/I*.cs`) MUST have XML comments.
+- **ADR Required**: Create ADR in `docs/04-adr` for major architectural decisions.
 
-## 9. AI Context Guidelines (For AI Agents)
-### Core Services Whitelist
-- **Object Creation**: MUST use `Pools.ObtainList<T>()`, `Pools.ObtainHashSet<T>()`, `Pools.ObtainQueue<T>()` for hot-path collections. Release with `Pools.Release(collection)`. PROHIBITED: `new List<T>()` inside loops.
-- **Logging**: MUST use `IGameLogger.LogInfo<T>()` with templates. PROHIBITED: `Console.WriteLine` or `$"..."` interpolation in hot paths.
-- **String Ops**: Avoid string operations in hot paths (Update/Tick). ToString() and logging in non-hot paths are acceptable.
-- **Randomness**: MUST use `Match3.Random` interfaces. PROHIBITED: `System.Random`.
+## 9. Quick Prohibitions (Must Memorize)
+遵循 `docs/01-architecture/core-patterns.md`（真源）
 
-### Architecture Red Lines
-- **No UI in Core**: `Match3.Core` must NEVER reference `Match3.Web`.
-- **Stateless Logic**: Logic classes must remain stateless. State belongs in `Structs`.
-- **Reference**: See `docs/01-architecture/core-patterns.md` for detailed architectural constraints.
+以下为快速禁令，详细说明见真源文档：
+- **PROHIBITED**: `new List<T>()` in hot paths → Use `Pools.ObtainList<T>()`
+- **PROHIBITED**: `$"..."` interpolation in hot paths → Use template logging
+- **PROHIBITED**: `Console.WriteLine` → Use `IGameLogger`
+- **PROHIBITED**: `System.Random` → Use `Match3.Random`
+- **PROHIBITED**: `Match3.Core` referencing `Match3.Web`
+- **PROHIBITED**: State in Logic classes → State belongs in Structs
 
-## 10. Mandatory Modularization (Priority: ★★★★★)
-All new features MUST be implemented as independent Systems.
-1.  **Define Interface**: `I{Name}System` in `Match3.Core/Systems/{Domain}/` (co-located with implementation).
-2.  **Implement System**: `{Name}System` in same directory as interface.
-3.  **Inject**: Pass via constructor to `Match3Engine` or relevant coordinator.
-4.  **No God Classes**: Coordinators must only orchestrate; they must not contain business logic.
+## 10. Modularization
+遵循 `docs/01-architecture/core-patterns.md` §6（真源）
 
-## 11. Cross-Platform Portability (Priority: ★★★★★)
-Ensure all core logic and editor tools are portable to Unity and other platforms.
-1.  **Dependency Rule**: 
-    - Inner layers (Core/Editor Logic) MUST NOT depend on outer layers (Web/Unity/UI/IO).
-    - `Match3.Editor` MUST NOT reference `System.IO`, `System.Console`, `Microsoft.AspNetCore`, or `UnityEngine`.
-2.  **State Management**:
-    - UI MUST be stateless and serve only as a projection of the ViewModel.
-    - View layers (Razor/MonoBehaviour) MUST NOT hold business state (e.g., `LevelConfig`).
-3.  **Abstractions**:
-    - All side effects (File IO, Alerts, Clipboard, Time) MUST be accessed via interfaces (e.g., `IFileSystemService`, `IPlatformService`).
+新功能必须实现为独立 System：
+1. 定义接口 `I{Name}System` 在 `Match3.Core/Systems/{Domain}/`
+2. 实现 `{Name}System` 在同目录
+3. 通过构造函数注入
+
+## 11. Cross-Platform Portability
+- Inner layers (Core/Editor) MUST NOT depend on outer layers (Web/Unity/UI/IO)
+- `Match3.Editor` MUST NOT reference `System.IO`, `System.Console`, `Microsoft.AspNetCore`
+- All side effects via interfaces (`IFileSystemService`, `IPlatformService`)
+
+## 12. Single Source of Truth (Documentation)
+真源文档标识：`<!-- SOURCE_OF_TRUTH: xxx -->`
+
+### 真源文档列表
+| 领域 | 真源文档 |
+|------|----------|
+| 代码风格 | `docs/02-guides/coding-standards.md` |
+| 架构/性能 | `docs/01-architecture/core-patterns.md` |
+| 测试要求 | `docs/testing-guidelines.md` |
+
+### 规范
+- **新增规范前**：先检查是否已有真源，有则引用
+- **引用格式**：`遵循 docs/xxx.md（真源）`
+- **禁止复制**：不得将真源内容复制到其他文件
+- **修改规范**：只修改真源文档，引用处自动生效
 

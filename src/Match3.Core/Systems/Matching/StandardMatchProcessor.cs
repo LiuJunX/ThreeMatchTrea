@@ -10,7 +10,6 @@ using Match3.Core.View;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
-using Match3.Core.Systems.PowerUps;
 using Match3.Core.Utility.Pools;
 
 namespace Match3.Core.Systems.Matching;

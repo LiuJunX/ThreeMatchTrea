@@ -1,6 +1,11 @@
+<!-- SOURCE_OF_TRUTH: 架构约束、性能规范 -->
+<!-- 其他文档应引用此文件，不应复制内容 -->
+
 # Match3 Core Patterns & Services
 
-All logic implementation must adhere to these patterns to ensure performance and AI-compatibility.
+本文件是架构约束和性能规范的**真源文档**。
+
+All logic implementation must adhere to these patterns to ensure performance and portability.
 
 ## 1. Object Pooling (Memory Management)
 *   **Why**: To avoid GC spikes during the game loop (60fps).
@@ -52,7 +57,28 @@ To ensure long-term maintainability and AI-collaboration efficiency, all new fea
     *   Systems must communicate via method calls or event bus, never by sharing mutable state objects (except `ref GameState`).
 
 ### Implementation Checklist
-1.  **Define Interface**: Create `I{Feature}System` in `Match3.Core.Interfaces`.
-2.  **Implement System**: Create `{Feature}System` in `Match3.Core.Systems`.
-3.  **Register**: Add to `Match3Controller` constructor and `Match3GameService`.
+1.  **Define Interface**: Create `I{Feature}System` in `Match3.Core/Systems/{Domain}/`.
+2.  **Implement System**: Create `{Feature}System` in same directory as interface.
+3.  **Register**: Inject via constructor to `Match3Engine` or relevant coordinator.
 4.  **Test**: Create specific unit tests for the System in isolation.
+
+## 7. Architecture Red Lines
+
+### Layer Dependencies
+*   **No UI in Core**: `Match3.Core` must NEVER reference `Match3.Web` or `UnityEngine`.
+*   **Inner/Outer Rule**: Inner layers (Core/Editor) MUST NOT depend on outer layers (Web/Unity/UI/IO).
+*   **Editor Restrictions**: `Match3.Editor` MUST NOT reference `System.IO`, `System.Console`, `Microsoft.AspNetCore`.
+
+### State Management
+*   **Stateless Logic**: Logic classes must remain stateless. State belongs in Structs.
+*   **No Logic in State**: State structs must not contain business logic.
+*   **View Stateless**: UI/View layers must be stateless projections of ViewModel.
+
+### Side Effects
+*   All side effects (File IO, Alerts, Clipboard, Time) MUST be accessed via interfaces:
+    *   `IFileSystemService` for file operations
+    *   `IPlatformService` for platform-specific features
+
+## Related Documents
+*   Code Style: `docs/02-guides/coding-standards.md`
+*   Testing Guidelines: `docs/testing-guidelines.md`
