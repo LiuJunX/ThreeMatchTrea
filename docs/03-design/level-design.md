@@ -25,18 +25,30 @@
 }
 ```
 
+### 核心字段
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | string | ✓ | 关卡唯一标识 |
+| width | int | ✓ | 棋盘宽度 (5-11) |
+| height | int | ✓ | 棋盘高度 (5-11) |
+| moves | int | ✓ | 步数限制 |
+| colorCount | int | ✓ | 颜色种类数 (4-7) |
+| goals | array | ✓ | 通关目标（最多 3 个） |
+| initialBoard | array | | 初始棋盘布局 |
+| blockers | array | | 障碍物配置 |
+| spawners | array | | 生成点配置 |
+| boardShape | string | | 棋盘形状，默认 rectangle |
+
+### 元数据字段（可选）
+
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| id | string | 关卡唯一标识 |
-| width | int | 棋盘宽度 (5-11) |
-| height | int | 棋盘高度 (5-11) |
-| moves | int | 步数限制 |
-| colorCount | int | 颜色种类数 (4-7) |
-| goals | array | 通关目标（最多 3 个） |
-| initialBoard | array | 初始棋盘布局（可选） |
-| blockers | array | 障碍物配置 |
-| spawners | array | 生成点配置 |
-| boardShape | string | 棋盘形状 |
+| title | string | 关卡显示名称 |
+| category | string | 分类：tutorial / normal / challenge / boss |
+| difficulty | string | 难度标签：easy / medium / hard / very_hard |
+| hint | string | 提示文案 |
+| designNotes | string | 设计意图说明（仅供内部参考） |
 
 ---
 
@@ -141,7 +153,25 @@
 蔓延障碍：chocolate = 4.0（时间压力）
 ```
 
-### 5.3 障碍物放置原则
+### 5.3 位置配置格式
+
+障碍物的 `positions` 字段支持两种格式：
+
+**精确坐标**（适合精细控制）：
+```json
+"positions": [[3,3], [4,3], [5,3], [3,4], [4,4]]
+```
+
+**预设模式**（适合快速设计）：
+```json
+"positions": "center_3x3"      // 中央 3x3 区域
+"positions": "border"          // 边缘一圈
+"positions": "corners"         // 四个角落
+"positions": "scattered_20"    // 随机分散 20 个位置
+"positions": "top_half"        // 上半部分
+```
+
+### 5.4 障碍物放置原则
 
 **宜**：
 - 将多层障碍放在连锁容易波及的位置
