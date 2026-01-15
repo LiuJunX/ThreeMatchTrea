@@ -38,7 +38,7 @@ public class InteractionSystem : IInteractionSystem
         if (!state.IsValid(p)) return false;
         if (!isBoardInteractive) return false;
 
-        _logger.LogInfo($"OnTap: {p}");
+        _logger.LogInfo("OnTap: {0}", p);
 
         if (state.SelectedPosition == Position.Invalid)
         {
