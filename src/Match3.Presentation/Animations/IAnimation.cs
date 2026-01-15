@@ -38,6 +38,11 @@ public interface IAnimation
     int Priority { get; }
 
     /// <summary>
+    /// The tile ID this animation targets, or -1 if not tile-specific.
+    /// </summary>
+    long TargetTileId { get; }
+
+    /// <summary>
     /// Update the animation state.
     /// </summary>
     /// <param name="currentTime">Current timeline time.</param>

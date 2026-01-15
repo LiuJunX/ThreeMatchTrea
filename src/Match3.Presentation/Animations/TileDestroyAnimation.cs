@@ -15,6 +15,14 @@ public sealed class TileDestroyAnimation : AnimationBase
     /// </summary>
     public const float DefaultDuration = 0.2f;
 
+    /// <inheritdoc />
+    public override long TargetTileId => _tileId;
+
+    /// <summary>
+    /// The grid position where this destruction is happening.
+    /// </summary>
+    public Vector2 GridPosition => _position;
+
     /// <summary>
     /// Creates a new tile destroy animation.
     /// </summary>
@@ -36,8 +44,8 @@ public sealed class TileDestroyAnimation : AnimationBase
     /// <inheritdoc />
     protected override float ApplyEasing(float t)
     {
-        // Ease-in for dramatic effect
-        return t * t;
+        // Ease-out: fast start, slow end - player quickly sees destruction begin
+        return 1f - (1f - t) * (1f - t);
     }
 
     /// <inheritdoc />

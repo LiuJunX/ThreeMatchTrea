@@ -26,6 +26,9 @@ public abstract class AnimationBase : IAnimation
     /// <inheritdoc />
     public virtual int Priority => 0;
 
+    /// <inheritdoc />
+    public virtual long TargetTileId => -1;
+
     /// <summary>
     /// Creates a new animation.
     /// </summary>

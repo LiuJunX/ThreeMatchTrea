@@ -74,3 +74,33 @@
         -1px  1px 0 #fff,
          1px  1px 0 #fff;
 }
+
+.projectile {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 30; /* Above tiles */
+    pointer-events: none; /* Let clicks pass through */
+    font-size: 2.5rem;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+    transition: transform 0.05s linear; /* Smooth out small jitters if any */
+}
+
+.visual-effect {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 40; /* Above everything */
+    pointer-events: none;
+    font-size: 2.5rem;
+}
+
+.visual-effect.explosion {
+    font-size: 3.5rem;
+}

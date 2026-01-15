@@ -147,17 +147,76 @@ public sealed class AnimationTimeline
     {
         foreach (var anim in _animations)
         {
-            if (anim is TileMoveAnimation move && GetTileId(move) == tileId)
-                yield return anim;
-            else if (anim is TileDestroyAnimation destroy && GetTileId(destroy) == tileId)
+            if (anim.TargetTileId == tileId)
                 yield return anim;
         }
     }
 
-    // Helper to extract tile ID from animation (would need reflection or interface in real impl)
-    private static long GetTileId(IAnimation animation)
+    /// <summary>
+    /// Check if a specific tile has any active animations.
+    /// </summary>
+    public bool HasAnimationForTile(long tileId)
     {
-        // In a real implementation, animations would expose their target IDs
-        return -1;
+        foreach (var anim in _animations)
+        {
+            if (anim.TargetTileId == tileId)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Get the latest destroy animation end time for a specific column (at or above a row).
+    /// Used to delay fall animations until destruction completes.
+    /// </summary>
+    /// <param name="column">The column (x coordinate).</param>
+    /// <param name="maxRow">The maximum row to check (inclusive).</param>
+    /// <returns>The end time of the latest destroy animation, or current time if none.</returns>
+    public float GetDestroyEndTimeForColumn(int column, int maxRow)
+    {
+        float latestEnd = _currentTime;
+
+        foreach (var anim in _animations)
+        {
+            if (anim is TileDestroyAnimation destroy)
+            {
+                int animX = (int)destroy.GridPosition.X;
+                int animY = (int)destroy.GridPosition.Y;
+
+                // Check if this destroy animation is in the same column and at or above maxRow
+                if (animX == column && animY <= maxRow)
+                {
+                    float endTime = anim.StartTime + anim.Duration;
+                    if (endTime > latestEnd)
+                    {
+                        latestEnd = endTime;
+                    }
+                }
+            }
+        }
+
+        return latestEnd;
+    }
+
+    /// <summary>
+    /// Get the latest destroy animation end time across all active destroy animations.
+    /// </summary>
+    public float GetLatestDestroyEndTime()
+    {
+        float latestEnd = _currentTime;
+
+        foreach (var anim in _animations)
+        {
+            if (anim is TileDestroyAnimation)
+            {
+                float endTime = anim.StartTime + anim.Duration;
+                if (endTime > latestEnd)
+                {
+                    latestEnd = endTime;
+                }
+            }
+        }
+
+        return latestEnd;
     }
 }

@@ -135,7 +135,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
     private TargetInfo DetermineTarget(ref GameState state, int x, int y)
     {
         int checkY = y + 1;
-        
+
         // 1. Try Vertical Move
         if (checkY < state.Height)
         {
@@ -143,10 +143,14 @@ public class RealtimeGravitySystem : IPhysicsSimulation
             {
                 return FindLowestVerticalTarget(ref state, x, checkY);
             }
-            
+
             // 2. Try Follow Falling Blocker
+            // Only follow if below tile is actually moving DOWN (positive Y velocity)
+            // This prevents incorrect following during swaps where a tile needs to move UP
+            // (swap tiles are handled by AnimationSystem with no velocity)
             var below = state.GetTile(x, checkY);
-            if (below.Type != TileType.None && below.IsFalling)
+            if (below.Type != TileType.None && below.IsFalling &&
+                below.Velocity.Y > 0)
             {
                 return new TargetInfo(
                     new Vector2(x, below.Position.Y - FallingFollowDistance),

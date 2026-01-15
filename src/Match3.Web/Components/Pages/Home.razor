@@ -13,7 +13,7 @@
         <ScorePanel />
     </div>
 
-    @if (GameService.Engine != null)
+    @if (GameService.VisualState != null)
     {
         <GridBoard />
         <GameControls />
@@ -28,13 +28,13 @@
     protected override void OnInitialized()
     {
         // Start game if not already started
-        if (GameService.Engine == null)
+        if (GameService.VisualState == null)
         {
             GameService.StartNewGame();
         }
         GameService.OnChange += StateHasChanged;
     }
-    
+
     public void Dispose()
     {
         GameService.OnChange -= StateHasChanged;

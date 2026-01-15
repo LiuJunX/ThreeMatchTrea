@@ -16,6 +16,9 @@ public sealed class TileMoveAnimation : AnimationBase
     /// </summary>
     public const float DefaultDuration = 0.15f;
 
+    /// <inheritdoc />
+    public override long TargetTileId => _tileId;
+
     /// <summary>
     /// Creates a new tile move animation.
     /// </summary>

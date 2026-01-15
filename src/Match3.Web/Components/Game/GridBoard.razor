@@ -2,12 +2,14 @@
 @using Match3.Core.Models.Grid
 @using Match3.Core.Models.Enums
 @using Match3.Web.Services
+@using Match3.Presentation
 @using System.Numerics
+@using System.Globalization
 
-@if (GameService.Engine != null)
+@if (GameService.VisualState != null)
 {
     <div class="board-wrapper">
-        <div class="board-container" 
+        <div class="board-container"
              style="width: @(GameService.Width * Match3GameService.CellSize)px; height: @(GameService.Height * Match3GameService.CellSize)px;"
              @onpointerup="HandlePointerUp">
             <!-- Background Grid -->
@@ -17,7 +19,7 @@
                 {
                     var px = x;
                     var py = y;
-                    <div class="cell-bg" 
+                    <div class="cell-bg"
                          style="left: @(x * Match3GameService.CellSize)px; top: @(y * Match3GameService.CellSize)px;"
                          @onpointerdown="e => HandlePointerDown(e, px, py)"
                          @onpointerup="HandlePointerUp">
@@ -25,28 +27,68 @@
                 }
             }
 
-            <!-- Active Tiles -->
-            @foreach (var tile in GameService.Engine.State.Grid)
+            <!-- Active Tiles from VisualState -->
+            @foreach (var kvp in GameService.VisualState.Tiles)
             {
-                if (tile.Type != TileType.None)
+                var visual = kvp.Value;
+                @if (visual.IsVisible && visual.Alpha > 0.01f)
                 {
-                    var isSelected = GameService.Engine.SelectedPosition.IsValid && 
-                                   Math.Abs(tile.Position.X - GameService.Engine.SelectedPosition.X) < 0.1f && 
-                                   Math.Abs(tile.Position.Y - GameService.Engine.SelectedPosition.Y) < 0.1f;
-                    
-                    <div @key="tile.Id" class="tile @(isSelected ? "selected" : "")" 
-                         style="transform: translate(@(tile.Position.X * Match3GameService.CellSize)px, @(tile.Position.Y * Match3GameService.CellSize)px);"
-                         @onpointerdown="e => HandlePointerDown(e, (int)Math.Round(tile.Position.X), (int)Math.Round(tile.Position.Y))"
+                    var scaleX = visual.Scale.X.ToString("F3", CultureInfo.InvariantCulture);
+                    var scaleY = visual.Scale.Y.ToString("F3", CultureInfo.InvariantCulture);
+                    var alpha = visual.Alpha.ToString("F2", CultureInfo.InvariantCulture);
+                    var posX = (visual.Position.X * Match3GameService.CellSize).ToString("F1", CultureInfo.InvariantCulture);
+                    var posY = (visual.Position.Y * Match3GameService.CellSize).ToString("F1", CultureInfo.InvariantCulture);
+
+                    <div @key="kvp.Key" class="tile"
+                         style="transform: translate(@(posX)px, @(posY)px) scale(@scaleX, @scaleY); opacity: @alpha;"
+                         @onpointerdown="e => HandlePointerDown(e, (int)Math.Round(visual.Position.X), (int)Math.Round(visual.Position.Y))"
                          @onpointerup="HandlePointerUp">
                          <div class="tile-inner">
-                            <span class="tile-base">@GetTileBaseIcon(tile)</span>
-                            @if (HasBombOverlay(tile))
-                            {
-                                <span class="tile-overlay">@GetBombOverlayIcon(tile)</span>
-                            }
+                            <span class="tile-base">@GetTileIcon(visual)</span>
                          </div>
                     </div>
                 }
+            }
+
+            <!-- Active Projectiles -->
+            @foreach (var kvp in GameService.VisualState.Projectiles)
+            {
+                var p = kvp.Value;
+                if (p.IsVisible)
+                {
+                    var posX = (p.Position.X * Match3GameService.CellSize).ToString("F1", CultureInfo.InvariantCulture);
+                    var posY = (p.Position.Y * Match3GameService.CellSize).ToString("F1", CultureInfo.InvariantCulture);
+                    var rot = p.Rotation.ToString("F1", CultureInfo.InvariantCulture);
+
+                    <div @key="p.Id" class="projectile"
+                         style="transform: translate(@(posX)px, @(posY)px) rotate(@(rot)deg);">
+                        <div class="projectile-inner">🛸</div>
+                    </div>
+                }
+            }
+
+            <!-- Visual Effects -->
+            @foreach (var effect in GameService.VisualState.Effects)
+            {
+                 var posX = (effect.Position.X * Match3GameService.CellSize).ToString("F1", CultureInfo.InvariantCulture);
+                 var posY = (effect.Position.Y * Match3GameService.CellSize).ToString("F1", CultureInfo.InvariantCulture);
+                 var opacity = (1f - effect.Progress).ToString("F2", CultureInfo.InvariantCulture);
+                 
+                 <div class="visual-effect @effect.EffectType"
+                      style="transform: translate(@(posX)px, @(posY)px); opacity: @opacity;">
+                     @if (effect.EffectType.Contains("explosion") || effect.EffectType.Contains("hit")) 
+                     {
+                         <span>💥</span>
+                     }
+                     else if (effect.EffectType.Contains("pop") || effect.EffectType.Contains("highlight"))
+                     {
+                         <span>✨</span>
+                     }
+                     else 
+                     {
+                         <span>✨</span>
+                     }
+                 </div>
             }
         </div>
     </div>

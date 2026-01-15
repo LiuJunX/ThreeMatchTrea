@@ -371,6 +371,34 @@ public sealed class SimulationEngine : IDisposable
 
             if (stableGroups.Count > 0)
             {
+                // Emit destruction events before tiles are cleared
+                if (_eventCollector.IsEnabled)
+                {
+                    foreach (var group in stableGroups)
+                    {
+                        foreach (var pos in group.Positions)
+                        {
+                            // Skip position that will spawn a bomb
+                            if (group.BombOrigin.HasValue && group.BombOrigin.Value == pos)
+                                continue;
+
+                            var tile = state.GetTile(pos.X, pos.Y);
+                            if (tile.Type == TileType.None) continue;
+
+                            _eventCollector.Emit(new TileDestroyedEvent
+                            {
+                                Tick = _currentTick,
+                                SimulationTime = _elapsedTime,
+                                TileId = tile.Id,
+                                GridPosition = pos,
+                                Type = tile.Type,
+                                Bomb = tile.Bomb,
+                                Reason = DestroyReason.Match
+                            });
+                        }
+                    }
+                }
+
                 processed = stableGroups.Count;
                 _matchProcessor.ProcessMatches(ref state, stableGroups);
                 _cascadeDepth++;

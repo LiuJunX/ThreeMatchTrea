@@ -41,8 +41,13 @@ public sealed class Match3Engine : IDisposable
     private readonly Queue<InputIntent> _inputQueue = new();
 
     // Pending move for swap animation validation
+    // When a swap is executed, we need to wait for animation to complete before deciding
+    // whether to swap back (invalid move) or keep the swap (valid move).
+    // IMPORTANT: Match detection must happen at swap time, not after animation completes,
+    // because tiles may have been eliminated by the game loop during animation.
     private Move? _pendingMove;
     private bool _pendingMoveNeedsValidation;
+    private bool _pendingMoveHadMatch; // Captured at swap time to avoid race with match processing
 
     public GameState State => _state;
     public Position SelectedPosition => _state.SelectedPosition;
@@ -111,10 +116,12 @@ public sealed class Match3Engine : IDisposable
             !_animationSystem.IsVisualAtTarget(in _state, move.To))
             return;
 
-        // Animation complete, now check for matches
+        // Animation complete
         _pendingMoveNeedsValidation = false;
 
-        if (!HasMatch(move.From) && !HasMatch(move.To))
+        // Use the match result captured at swap time, not current state
+        // (tiles may have been eliminated by now if there was a match)
+        if (!_pendingMoveHadMatch)
         {
             // Invalid swap - swap back (this will trigger another animation)
             SwapTiles(ref _state, move.From, move.To);
@@ -194,6 +201,10 @@ public sealed class Match3Engine : IDisposable
             return;
 
         SwapTiles(ref _state, move.From, move.To);
+
+        // Check for matches IMMEDIATELY after swap, before any game loop update
+        // This ensures we capture the match state before tiles get eliminated
+        _pendingMoveHadMatch = HasMatch(move.From) || HasMatch(move.To);
 
         // Mark as pending - validation will happen after animation completes
         _pendingMove = move;
