@@ -1,20 +1,13 @@
-using System;
-using Match3.Core.Systems.Core;
-using Match3.Core.Systems.Generation;
-using Match3.Core.Systems.Input;
-using Match3.Core.Systems.Matching;
-using Match3.Core.Systems.Physics;
-using Match3.Core.Systems.PowerUps;
-using Match3.Core.Systems.Scoring;
-using Match3.Core.View;
 using Match3.Core.Models.Enums;
-using Match3.Core.Models.Grid;
 using Match3.Core.Models.Gameplay;
+using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Matching;
 
 namespace Match3.Core.Systems.Input;
 
 public class BotSystem : IBotSystem
 {
+    private static readonly Direction[] Directions = { Direction.Up, Direction.Down, Direction.Left, Direction.Right };
     private readonly IMatchFinder _matchFinder;
 
     public BotSystem(IMatchFinder matchFinder)
@@ -38,8 +31,7 @@ public class BotSystem : IBotSystem
             var p = new Position(x, y);
             
             // Try 4 directions
-            var directions = new[] { Direction.Up, Direction.Down, Direction.Left, Direction.Right };
-            foreach (var d in directions)
+            foreach (var d in Directions)
             {
                 // Simulate swipe
                 if (interactionSystem.TryHandleSwipe(ref state, p, d, true, out var candidate))
@@ -70,14 +62,13 @@ public class BotSystem : IBotSystem
         var idxB = b.Y * state.Width + b.X;
         var tA = state.Grid[idxA];
         var tB = state.Grid[idxB];
-        
-        state.Grid[idxA] = tB;
-        state.Grid[idxB] = tA;
-        
+
+        // Swap positions
         var tempPos = tA.Position;
         tA.Position = tB.Position;
         tB.Position = tempPos;
-        
+
+        // Swap in grid
         state.Grid[idxA] = tB;
         state.Grid[idxB] = tA;
     }

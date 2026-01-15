@@ -83,59 +83,55 @@ public class PowerUpHandler : IPowerUpHandler
     }
 
     /// <summary>
-    /// 清除所有受影响的方块（支持递归连锁爆炸）
+    /// 清除所有受影响的方块（支持连锁爆炸，使用队列避免递归分配）
     /// </summary>
     private void ClearAffectedTiles(ref GameState state, HashSet<Position> affected)
     {
-        foreach (var pos in affected)
+        var queue = Pools.ObtainQueue<Position>();
+        var chainEffect = Pools.ObtainHashSet<Position>();
+        try
         {
-            ClearTileWithChain(ref state, pos);
-        }
-    }
-
-    /// <summary>
-    /// 清除单个方块，如果是炸弹则触发连锁爆炸
-    /// </summary>
-    private void ClearTileWithChain(ref GameState state, Position pos)
-    {
-        if (pos.X < 0 || pos.X >= state.Width || pos.Y < 0 || pos.Y >= state.Height)
-            return;
-
-        var tile = state.GetTile(pos.X, pos.Y);
-
-        // 已经是空的，跳过
-        if (tile.Type == TileType.None)
-            return;
-
-        // 如果是炸弹，触发连锁爆炸
-        if (tile.Bomb != BombType.None)
-        {
-            // 先清除炸弹本身（防止重复触发）
-            state.SetTile(pos.X, pos.Y, new Tile(0, TileType.None, pos.X, pos.Y));
-
-            // 触发炸弹效果
-            if (_effectRegistry.TryGetEffect(tile.Bomb, out var effect))
+            // 初始化队列
+            foreach (var pos in affected)
             {
-                var chainAffected = Pools.ObtainHashSet<Position>();
-                try
+                queue.Enqueue(pos);
+            }
+
+            // BFS处理所有方块（包括连锁爆炸）
+            while (queue.Count > 0)
+            {
+                var pos = queue.Dequeue();
+
+                if (pos.X < 0 || pos.X >= state.Width || pos.Y < 0 || pos.Y >= state.Height)
+                    continue;
+
+                var tile = state.GetTile(pos.X, pos.Y);
+
+                // 已经是空的，跳过
+                if (tile.Type == TileType.None)
+                    continue;
+
+                // 清除方块
+                state.SetTile(pos.X, pos.Y, new Tile(0, TileType.None, pos.X, pos.Y));
+
+                // 如果是炸弹，触发连锁爆炸
+                if (tile.Bomb != BombType.None && _effectRegistry.TryGetEffect(tile.Bomb, out var effect))
                 {
-                    effect!.Apply(in state, pos, chainAffected);
-                    // 递归清除连锁受影响的方块
-                    foreach (var chainPos in chainAffected)
+                    chainEffect.Clear();
+                    effect!.Apply(in state, pos, chainEffect);
+
+                    // 将连锁位置加入队列
+                    foreach (var chainPos in chainEffect)
                     {
-                        ClearTileWithChain(ref state, chainPos);
+                        queue.Enqueue(chainPos);
                     }
-                }
-                finally
-                {
-                    Pools.Release(chainAffected);
                 }
             }
         }
-        else
+        finally
         {
-            // 普通方块，直接清除
-            state.SetTile(pos.X, pos.Y, new Tile(0, TileType.None, pos.X, pos.Y));
+            Pools.Release(chainEffect);
+            Pools.Release(queue);
         }
     }
 }

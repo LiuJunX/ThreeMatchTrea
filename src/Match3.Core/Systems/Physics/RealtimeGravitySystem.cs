@@ -1,18 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using System.Runtime.CompilerServices;
 using Match3.Core.Config;
-using Match3.Core.Systems.Core;
-using Match3.Core.Systems.Generation;
-using Match3.Core.Systems.Input;
-using Match3.Core.Systems.Matching;
-using Match3.Core.Systems.Physics;
-using Match3.Core.Systems.PowerUps;
-using Match3.Core.Systems.Scoring;
-using Match3.Core.View;
 using Match3.Core.Models.Enums;
-using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
 using Match3.Core.Utility.Pools;
 using Match3.Random;
@@ -22,10 +12,6 @@ namespace Match3.Core.Systems.Physics;
 public class RealtimeGravitySystem : IPhysicsSimulation
 {
     private const float SnapThreshold = 0.01f;
-
-    // 调试日志开关 - 设为 true 启用掉落日志
-    public static bool DebugLogEnabled = false;
-    private static int _frameCount = 0;
     // Reduced from 0.05f to 0.001f to prevent premature snapping to temporary targets (Phantom Blocks)
     // when running at low game speeds (small deltaTime).
     private const float FloorSnapDistance = 0.001f;
@@ -60,14 +46,8 @@ public class RealtimeGravitySystem : IPhysicsSimulation
         _random = random;
     }
 
-    private RealtimeGravitySystem()
-    {
-        throw new NotSupportedException("Constructor without parameters is not supported.");
-    }
-
     public void Update(ref GameState state, float deltaTime)
     {
-        if (DebugLogEnabled) _frameCount++;
         ResetFrameBuffers();
         ProcessShuffledColumns(ref state, deltaTime);
     }
@@ -255,17 +235,8 @@ public class RealtimeGravitySystem : IPhysicsSimulation
 
     private void SimulatePhysics(ref Tile tile, TargetInfo target, float dt)
     {
-        float oldY = tile.Position.Y;
-        float oldVelY = tile.Velocity.Y;
-
         ApplyHorizontalMotion(ref tile, target.Position.X, dt);
         ApplyVerticalMotion(ref tile, target, dt);
-
-        // 调试日志：输出掉落中宝石的状态
-        if (DebugLogEnabled && (tile.IsFalling || Math.Abs(tile.Position.Y - oldY) > 0.001f))
-        {
-            Console.WriteLine($"[F{_frameCount:D4}] Tile#{tile.Id} dt={dt:F4} | Y: {oldY:F3} -> {tile.Position.Y:F3} (target={target.Position.Y:F1}) | Vel: {oldVelY:F2} -> {tile.Velocity.Y:F2} | Falling={tile.IsFalling}");
-        }
     }
 
     private void ApplyHorizontalMotion(ref Tile tile, float targetX, float dt)
