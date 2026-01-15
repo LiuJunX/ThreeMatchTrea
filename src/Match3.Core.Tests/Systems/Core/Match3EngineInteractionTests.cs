@@ -118,8 +118,17 @@ public class Match3EngineInteractionTests
     private class StubMatchFinder : IMatchFinder
     {
         public bool HasMatchResult { get; set; } = true;
+        public HashSet<Position>? MatchPositions { get; set; } = null; // If set, only these positions have matches
+
         public List<MatchGroup> FindMatchGroups(in GameState state, IEnumerable<Position>? foci = null) => new List<MatchGroup>();
-        public bool HasMatchAt(in GameState state, Position p) => HasMatchResult;
+
+        public bool HasMatchAt(in GameState state, Position p)
+        {
+            if (MatchPositions != null)
+                return MatchPositions.Contains(p);
+            return HasMatchResult;
+        }
+
         public bool HasMatches(in GameState state) => HasMatchResult;
     }
 
@@ -352,6 +361,118 @@ public class Match3EngineInteractionTests
         // 视觉位置应该保持原来的值，AnimationSystem 会将它们动画到新位置
         Assert.Equal(new Vector2(1, 0), tileAt00.Position); // Blue 的视觉位置仍在 (1,0)
         Assert.Equal(new Vector2(0, 0), tileAt10.Position); // Red 的视觉位置仍在 (0,0)
+    }
+
+    [Fact]
+    public void OnSwipe_ShouldNotSwapBack_WhenOnlyFromPositionMatches()
+    {
+        // Arrange - 测试 Bug 修复：A和B交换，如果A可以匹配消除，B不可以，
+        // 这种情况是有效交换，B不应该回到原位
+        var config = new Match3Config(8, 8, 5);
+        var gameLoopStub = new StubAsyncGameLoopSystem();
+        var interactionStub = new StubInteractionSystem();
+        var animationStub = new StubAnimationSystem();
+        var boardInitStub = new StubBoardInitializer();
+        var matchFinderStub = new StubMatchFinder
+        {
+            // 只有 (0,0) 位置（交换后的目标位置）有匹配
+            MatchPositions = new HashSet<Position> { new Position(0, 0) }
+        };
+        var botSystemStub = new StubBotSystem();
+
+        var random = new StubRandom();
+        var view = new StubGameView();
+        var logger = new StubLogger();
+
+        // Setup Interaction to return a valid move: (0,0) <-> (1,0)
+        interactionStub.MoveToReturn = new Move(new Position(0, 0), new Position(1, 0));
+
+        var engine = new Match3Engine(
+            config, random, view, logger,
+            gameLoopStub, interactionStub, animationStub, boardInitStub, matchFinderStub, botSystemStub
+        );
+
+        // Inject tiles with different colors
+        var stateField = typeof(Match3Engine).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
+        var state = (GameState)stateField!.GetValue(engine)!;
+
+        var t1 = new Tile(1, TileType.Red, 0, 0);
+        t1.Position = new Vector2(0, 0);
+        var t2 = new Tile(2, TileType.Blue, 1, 0);
+        t2.Position = new Vector2(1, 0);
+        state.SetTile(0, 0, t1);
+        state.SetTile(1, 0, t2);
+
+        // Act - 执行交换
+        engine.OnSwipe(new Position(0, 0), Direction.Right);
+
+        // 交换后立即检查 - tiles 应该已经交换
+        Assert.Equal(TileType.Blue, engine.State.GetTile(0, 0).Type);
+        Assert.Equal(TileType.Red, engine.State.GetTile(1, 0).Type);
+
+        // 运行 Update 来触发验证
+        engine.Update(0.016f);
+
+        // Assert - 因为 From 位置 (0,0) 有匹配，这是有效交换，不应该回退
+        var tileAt00 = engine.State.GetTile(0, 0);
+        var tileAt10 = engine.State.GetTile(1, 0);
+
+        // Tiles should remain swapped (NOT swapped back)
+        Assert.Equal(TileType.Blue, tileAt00.Type);
+        Assert.Equal(TileType.Red, tileAt10.Type);
+    }
+
+    [Fact]
+    public void OnSwipe_ShouldNotSwapBack_WhenOnlyToPositionMatches()
+    {
+        // Arrange - 测试：A和B交换，如果B可以匹配消除，A不可以，
+        // 这种情况也是有效交换，A不应该回到原位
+        var config = new Match3Config(8, 8, 5);
+        var gameLoopStub = new StubAsyncGameLoopSystem();
+        var interactionStub = new StubInteractionSystem();
+        var animationStub = new StubAnimationSystem();
+        var boardInitStub = new StubBoardInitializer();
+        var matchFinderStub = new StubMatchFinder
+        {
+            // 只有 (1,0) 位置（交换后的目标位置）有匹配
+            MatchPositions = new HashSet<Position> { new Position(1, 0) }
+        };
+        var botSystemStub = new StubBotSystem();
+
+        var random = new StubRandom();
+        var view = new StubGameView();
+        var logger = new StubLogger();
+
+        // Setup Interaction to return a valid move: (0,0) <-> (1,0)
+        interactionStub.MoveToReturn = new Move(new Position(0, 0), new Position(1, 0));
+
+        var engine = new Match3Engine(
+            config, random, view, logger,
+            gameLoopStub, interactionStub, animationStub, boardInitStub, matchFinderStub, botSystemStub
+        );
+
+        // Inject tiles with different colors
+        var stateField = typeof(Match3Engine).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
+        var state = (GameState)stateField!.GetValue(engine)!;
+
+        var t1 = new Tile(1, TileType.Red, 0, 0);
+        t1.Position = new Vector2(0, 0);
+        var t2 = new Tile(2, TileType.Blue, 1, 0);
+        t2.Position = new Vector2(1, 0);
+        state.SetTile(0, 0, t1);
+        state.SetTile(1, 0, t2);
+
+        // Act - 执行交换
+        engine.OnSwipe(new Position(0, 0), Direction.Right);
+        engine.Update(0.016f);
+
+        // Assert - 因为 To 位置 (1,0) 有匹配，这是有效交换，不应该回退
+        var tileAt00 = engine.State.GetTile(0, 0);
+        var tileAt10 = engine.State.GetTile(1, 0);
+
+        // Tiles should remain swapped (NOT swapped back)
+        Assert.Equal(TileType.Blue, tileAt00.Type);
+        Assert.Equal(TileType.Red, tileAt10.Type);
     }
 
     #endregion
