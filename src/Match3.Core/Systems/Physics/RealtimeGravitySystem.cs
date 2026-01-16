@@ -234,12 +234,10 @@ public class RealtimeGravitySystem : IPhysicsSimulation
     private bool IsTileStable(Tile tile, int x, int y)
     {
         if (tile.Type == TileType.None) return true;
-        
-        return Math.Abs(tile.Velocity.Y) <= SnapThreshold && 
-               Math.Abs(tile.Velocity.X) <= SnapThreshold && 
-               Math.Abs(tile.Position.Y - y) <= SnapThreshold && 
+
+        return Math.Abs(tile.Velocity.Y) <= SnapThreshold &&
+               Math.Abs(tile.Velocity.X) <= SnapThreshold &&
+               Math.Abs(tile.Position.Y - y) <= SnapThreshold &&
                Math.Abs(tile.Position.X - x) <= SnapThreshold;
     }
-
 }
-    
