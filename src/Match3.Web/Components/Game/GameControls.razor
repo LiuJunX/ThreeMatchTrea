@@ -22,6 +22,9 @@
     <button @onclick="ToggleAutoPlay" class="btn-reset" style="margin-left: 10px; background-color: #3b82f6;">
         @(GameService.IsAutoPlaying ? "Stop Auto" : "Auto Play")
     </button>
+    <button @onclick="TogglePause" class="btn-reset" style="margin-left: 10px; background-color: @(GameService.IsPaused ? "#10b981" : "#f59e0b");">
+        @(GameService.IsPaused ? "Continue" : "Pause")
+    </button>
     <div style="margin-top: 15px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
         <label for="speedSlider" style="font-weight: 600; color: #4b5563;">Game Speed: @GameService.GameSpeed.ToString("0.0")x</label>
         <input id="speedSlider" type="range" min="0.1" max="5.0" step="0.1" @bind="GameService.GameSpeed" @bind:event="oninput" style="width: 200px; cursor: pointer;" />
@@ -128,6 +131,7 @@
     }
     
     private void ToggleAutoPlay() => GameService.ToggleAutoPlay();
+    private void TogglePause() => GameService.TogglePause();
 
     // Gravity slider handlers
     private void OnInitialSpeedChanged(ChangeEventArgs e)

@@ -39,14 +39,6 @@ public partial class GridBoard : IDisposable
         GameService.HandlePointerUp(e.ClientX, e.ClientY);
     }
 
-    private void HandleKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == " " || e.Code == "Space")
-        {
-            GameService.TogglePause();
-        }
-    }
-
     /// <summary>
     /// Get the emoji icon for a tile visual.
     /// </summary>
