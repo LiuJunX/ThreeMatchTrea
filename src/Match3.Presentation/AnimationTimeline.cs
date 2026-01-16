@@ -256,6 +256,52 @@ public sealed class AnimationTimeline
     }
 
     /// <summary>
+    /// Get the time when a tile in the column crosses the half-cell threshold (0.5 cells moved).
+    /// This is used to start the above tile's animation when the below tile clears enough space.
+    /// </summary>
+    /// <param name="column">The column (x coordinate).</param>
+    /// <param name="minRow">The minimum row to check (tiles moving through or to this row).</param>
+    /// <returns>The time when a tile crosses the 0.5 cell threshold, or current time if none.</returns>
+    public float GetMoveHalfCellTimeForColumn(int column, int minRow)
+    {
+        float latestHalfTime = _currentTime;
+
+        foreach (var anim in _animations)
+        {
+            if (anim is TileMoveAnimation move)
+            {
+                int animX = (int)move.ToPosition.X;
+                int toY = (int)move.ToPosition.Y;
+                float fromY = move.FromPosition.Y;
+
+                // Check if this move animation is in the same column and passes through or ends at/below minRow
+                if (animX == column && toY >= minRow)
+                {
+                    // Calculate how far the tile moves
+                    float totalDistance = move.ToPosition.Y - fromY;
+
+                    if (totalDistance > 0)
+                    {
+                        // Calculate the time ratio to move 0.5 cells from the starting position
+                        // This is when the tile "clears" its original cell
+                        float halfCellRatio = 0.5f / totalDistance;
+                        halfCellRatio = System.Math.Min(halfCellRatio, 1.0f); // Cap at 100%
+
+                        float halfCellTime = anim.StartTime + anim.Duration * halfCellRatio;
+
+                        if (halfCellTime > latestHalfTime)
+                        {
+                            latestHalfTime = halfCellTime;
+                        }
+                    }
+                }
+            }
+        }
+
+        return latestHalfTime;
+    }
+
+    /// <summary>
     /// Get the latest destroy animation end time across all active destroy animations.
     /// </summary>
     public float GetLatestDestroyEndTime()

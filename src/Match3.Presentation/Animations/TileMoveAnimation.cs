@@ -20,6 +20,11 @@ public sealed class TileMoveAnimation : AnimationBase
     public override long TargetTileId => _tileId;
 
     /// <summary>
+    /// Starting position for the animation.
+    /// </summary>
+    public Vector2 FromPosition => _fromPosition;
+
+    /// <summary>
     /// Target position for the animation.
     /// </summary>
     public Vector2 ToPosition => _toPosition;

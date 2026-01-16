@@ -91,10 +91,10 @@ public sealed class VisualStateSynchronizer
             startPos
         );
 
-        // Wait for destroy animations and move animations below this position
+        // Wait for destroy animations and for tiles below to clear 0.5 cell
         float destroyEndTime = _timeline.GetDestroyEndTimeForColumn(x, y);
-        float moveEndTime = _timeline.GetMoveEndTimeForColumn(x, y + 1);
-        float startTime = Math.Max(destroyEndTime, moveEndTime);
+        float moveHalfTime = _timeline.GetMoveHalfCellTimeForColumn(x, y + 1);
+        float startTime = Math.Max(destroyEndTime, moveHalfTime);
 
         var animation = new TileMoveAnimation(
             _timeline.GenerateAnimationId(),
@@ -140,10 +140,10 @@ public sealed class VisualStateSynchronizer
         else if ((int)currentPos.Y != y)
         {
             // No active animation, but position changed - create new animation
-            // Wait for destroy animations and move animations below this position
+            // Wait for destroy animations and for tiles below to clear 0.5 cell
             float destroyEndTime = _timeline.GetDestroyEndTimeForColumn(x, y);
-            float moveEndTime = _timeline.GetMoveEndTimeForColumn(x, y + 1);
-            float startTime = Math.Max(destroyEndTime, moveEndTime);
+            float moveHalfTime = _timeline.GetMoveHalfCellTimeForColumn(x, y + 1);
+            float startTime = Math.Max(destroyEndTime, moveHalfTime);
 
             var animation = new TileMoveAnimation(
                 _timeline.GenerateAnimationId(),

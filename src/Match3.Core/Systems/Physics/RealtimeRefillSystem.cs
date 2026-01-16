@@ -39,23 +39,9 @@ public class RealtimeRefillSystem : IRefillSystem
                 var type = _spawnModel.Predict(ref state, x, in context);
                 var tile = new Tile(state.NextTileId++, type, x, 0);
                 
-                // Calculate start position
-                // Default: Just above the board (-1.0f)
-                float startY = -1.0f;
-
-                // Optimization: If there's a falling tile immediately below, spawn relative to it
-                // to create a continuous stream without gaps.
-                if (state.Height > 1)
-                {
-                    var tileBelow = state.GetTile(x, 1);
-                    if (tileBelow.Type != TileType.None && tileBelow.IsFalling)
-                    {
-                        // Maintain 1.0 distance
-                        startY = tileBelow.Position.Y - 1.0f;
-                    }
-                }
-
-                tile.Position = new Vector2(x, startY);
+                // Start position: Just above the board (-1.0f)
+                // The gravity system will handle following behavior via GravityTargetResolver
+                tile.Position = new Vector2(x, -1.0f);
                 tile.Velocity = new Vector2(0, 2.0f); // Initial downward velocity
                 tile.IsFalling = true;
 

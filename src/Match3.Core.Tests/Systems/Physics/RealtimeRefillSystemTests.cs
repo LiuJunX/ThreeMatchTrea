@@ -168,7 +168,7 @@ public class RealtimeRefillSystemTests
     }
 
     [Fact]
-    public void Update_SpawnedTile_ShouldFollowFallingTileBelow()
+    public void Update_SpawnedTile_ShouldSpawnAtFixedPosition()
     {
         // Arrange
         var state = new GameState(1, 3, 5, new StubRandom());
@@ -189,11 +189,11 @@ public class RealtimeRefillSystemTests
         // Act
         refill.Update(ref state);
 
-        // Assert - New tile should spawn relative to falling tile below
+        // Assert - New tile always spawns at fixed position -1.0
+        // (Gravity system handles following via GravityTargetResolver)
         var newTile = state.GetTile(0, 0);
         Assert.Equal(TileType.Red, newTile.Type);
-        // Should be 1.0 unit above the falling tile (0.5 - 1.0 = -0.5)
-        Assert.Equal(-0.5f, newTile.Position.Y, 0.01f);
+        Assert.Equal(-1.0f, newTile.Position.Y, 0.01f);
     }
 
     #endregion

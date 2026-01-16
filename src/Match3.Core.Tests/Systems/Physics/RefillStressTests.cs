@@ -83,7 +83,7 @@ public class RefillStressTests
     }
 
     [Fact]
-    public void Refill_ShouldSpawnContinuouslyRelativeToTileBelow()
+    public void Refill_ShouldSpawnAtFixedPosition()
     {
         // 1. Setup board with a falling tile at (0, 1)
         int height = 5;
@@ -106,9 +106,9 @@ public class RefillStressTests
         // 3. Check new tile at (0, 0)
         var newTile = state.GetTile(0, 0);
         Assert.NotEqual(TileType.None, newTile.Type);
-        
-        // Expected: 0.5f - 1.0f = -0.5f
-        Assert.Equal(-0.5f, newTile.Position.Y, 0.001f);
+
+        // New behavior: Always spawn at -1.0f, gravity system handles following
+        Assert.Equal(-1.0f, newTile.Position.Y, 0.001f);
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public class RefillStressTests
     }
 
     [Fact]
-    public void Refill_ShouldMaintainSpacing_OverMultipleFrames()
+    public void Refill_NewTileFollowsAfterHalfCell()
     {
         // 1. Setup board with a falling tile at (0, 1)
         int height = 5;
@@ -152,44 +152,33 @@ public class RefillStressTests
         var refill = new RealtimeRefillSystem(new StubSpawnModel());
         var gravity = new RealtimeGravitySystem(new Match3Config(), new StubRandom());
 
-        // Place a tile at (0, 1) falling at speed 2.0f (matching spawn speed)
-        // Logical position (0, 1), Physical Y = 0.5f
+        // Place a tile at (0, 1) that has already crossed 0.5 cells
+        // Position.Y = 1.6 means it has moved 0.6 cells from row 1
         var fallingTile = new Tile(100, TileType.Red, 0, 1);
-        fallingTile.Position = new Vector2(0, 0.5f);
-        fallingTile.Velocity = new Vector2(0, 2.0f); // Match spawn velocity
+        fallingTile.Position = new Vector2(0, 1.6f);
+        fallingTile.Velocity = new Vector2(0, 10.0f);
         fallingTile.IsFalling = true;
         state.SetTile(0, 1, fallingTile);
 
         // Ensure (0, 0) is empty
         state.SetTile(0, 0, new Tile(0, TileType.None, 0, 0));
 
-        // 2. Run Refill once to spawn the new tile
+        // 2. Run Refill to spawn the new tile
         refill.Update(ref state);
         var newTile = state.GetTile(0, 0);
 
-        // Initial check
+        // New tile always spawns at -1.0f
         Assert.NotEqual(TileType.None, newTile.Type);
-        Assert.Equal(fallingTile.Position.Y - 1.0f, newTile.Position.Y, 0.001f);
+        Assert.Equal(-1.0f, newTile.Position.Y, 0.001f);
 
-        // Capture tile IDs for tracking (tiles can move to different grid cells)
-        long bottomTileId = 100;
-        long topTileId = newTile.Id;
+        // 3. Run gravity - the new tile should start falling immediately
+        // because the tile below has already crossed the 0.5 threshold
+        gravity.Update(ref state, 0.02f);
 
-        // 3. Run simulation loop for a few frames
-        float dt = 0.016f;
-        // Run just 1 frame first to verify immediate behavior
-        for (int i = 0; i < 5; i++)
-        {
-            refill.Update(ref state);
-            gravity.Update(ref state, dt);
-
-            // Find tiles by ID since they can move to different grid cells
-            var bottom = GetTileById(state, bottomTileId);
-            var top = GetTileById(state, topTileId);
-
-            float distance = bottom.Position.Y - top.Position.Y;
-            Assert.True(Math.Abs(distance - 1.0f) < 0.1f, $"Frame {i}: Distance {distance} (Top {top.Position.Y}, Bot {bottom.Position.Y})");
-        }
+        // Find new tile again (may have moved)
+        var updatedTile = state.GetTile(0, 0);
+        Assert.True(updatedTile.IsFalling, "New tile should start falling after gravity update");
+        Assert.True(updatedTile.Position.Y > -1.0f, "New tile should have moved from spawn position");
     }
 
     private bool IsBoardFullAndStable(GameState state)
