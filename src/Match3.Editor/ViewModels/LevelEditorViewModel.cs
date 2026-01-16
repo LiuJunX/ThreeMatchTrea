@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Match3.Core.Config;
@@ -18,6 +17,7 @@ namespace Match3.Editor.ViewModels
         private readonly IPlatformService _platform;
         private readonly IJsonService _jsonService;
         private readonly IScenarioService _scenarioService;
+        private readonly IFileSystemService _fileSystem;
 
         private readonly EditorSession _session;
         private readonly GridManipulator _gridManipulator;
@@ -210,11 +210,13 @@ namespace Match3.Editor.ViewModels
         public LevelEditorViewModel(
             IPlatformService platform,
             IJsonService jsonService,
-            IScenarioService scenarioService)
+            IScenarioService scenarioService,
+            IFileSystemService fileSystem)
         {
             _platform = platform;
             _jsonService = jsonService;
             _scenarioService = scenarioService;
+            _fileSystem = fileSystem;
 
             _session = new EditorSession();
             _gridManipulator = new GridManipulator();
@@ -424,13 +426,13 @@ namespace Match3.Editor.ViewModels
                 }
             }
 
-            try 
+            try
             {
                 var json = _scenarioService.ReadScenarioJson(path);
                 JsonOutput = json;
-                ImportJson(keepScenarioMode: true); 
+                ImportJson(keepScenarioMode: true);
                 CurrentFilePath = path;
-                SetScenarioName(Path.GetFileNameWithoutExtension(path));
+                SetScenarioName(_fileSystem.GetFileNameWithoutExtension(path));
             }
             catch(Exception ex)
             {
@@ -444,19 +446,19 @@ namespace Match3.Editor.ViewModels
 
             try
             {
-                var currentName = Path.GetFileNameWithoutExtension(CurrentFilePath);
+                var currentName = _fileSystem.GetFileNameWithoutExtension(CurrentFilePath);
                 if (!string.Equals(currentName, ScenarioName, StringComparison.Ordinal))
                 {
                      _scenarioService.RenameScenario(CurrentFilePath, ScenarioName);
-                     
+
                      var stem = ScenarioFileName.SanitizeFileStem(ScenarioName);
                      SetScenarioName(stem);
 
-                     var dir = Path.GetDirectoryName(CurrentFilePath);
-                     var newPath = string.IsNullOrEmpty(dir) 
-                         ? stem + ".json" 
-                         : Path.Combine(dir, stem + ".json");
-                     CurrentFilePath = newPath.Replace('\\', '/');
+                     var dir = _fileSystem.GetDirectoryName(CurrentFilePath);
+                     var newPath = string.IsNullOrEmpty(dir)
+                         ? stem + ".json"
+                         : _fileSystem.CombinePath(dir, stem + ".json");
+                     CurrentFilePath = _fileSystem.NormalizePath(newPath);
                 }
 
                 ExportJson();
@@ -498,9 +500,9 @@ namespace Match3.Editor.ViewModels
 
         public async Task DuplicateScenarioAsync(string path)
         {
-            try 
+            try
             {
-                _scenarioService.DuplicateScenario(path, Path.GetFileNameWithoutExtension(path) + "_Copy");
+                _scenarioService.DuplicateScenario(path, _fileSystem.GetFileNameWithoutExtension(path) + "_Copy");
                 RefreshScenarioList();
             }
             catch(Exception ex) 
@@ -511,7 +513,7 @@ namespace Match3.Editor.ViewModels
 
         public async Task DeleteFileAsync(string path, bool isFolder)
         {
-            var confirm = await _platform.ConfirmAsync("Delete", $"Are you sure you want to delete '{Path.GetFileName(path)}'?");
+            var confirm = await _platform.ConfirmAsync("Delete", "Are you sure you want to delete '" + _fileSystem.GetFileName(path) + "'?");
             if (!confirm) return;
 
             try

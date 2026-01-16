@@ -66,6 +66,13 @@ namespace Match3.Web.Services.EditorAdapters
         public bool FileExists(string path) => File.Exists(ResolvePath(path));
         public bool DirectoryExists(string path) => Directory.Exists(ResolvePath(path));
 
+        // Path operations
+        public string GetFileName(string path) => Path.GetFileName(path);
+        public string GetFileNameWithoutExtension(string path) => Path.GetFileNameWithoutExtension(path);
+        public string GetDirectoryName(string path) => Path.GetDirectoryName(path) ?? string.Empty;
+        public string CombinePath(string path1, string path2) => Path.Combine(path1, path2);
+        public string NormalizePath(string path) => path.Replace('\\', '/');
+
         private string ResolvePath(string path)
         {
             if (Path.IsPathRooted(path)) return path;

@@ -18,5 +18,12 @@ namespace Match3.Editor.Interfaces
         bool FileExists(string path);
         bool DirectoryExists(string path);
         string GetStorageRoot(); // Root directory for data
+
+        // Path operations (abstracts System.IO.Path)
+        string GetFileName(string path);
+        string GetFileNameWithoutExtension(string path);
+        string GetDirectoryName(string path);
+        string CombinePath(string path1, string path2);
+        string NormalizePath(string path);
     }
 }
