@@ -72,7 +72,64 @@ public class ClassicMatchFinder : IMatchFinder
             if (state.CanMatch(x, i) && state.GetType(x, i) == type) vCount++;
             else break;
         }
-        return vCount >= 3;
+        if (vCount >= 3) return true;
+
+        // Check 2x2 square (position can be any of the 4 corners)
+        return Has2x2SquareAt(in state, x, y, type);
+    }
+
+    /// <summary>
+    /// Checks if the position (x,y) is part of a 2x2 square of the same type.
+    /// The position can be any of the 4 corners of the square.
+    /// </summary>
+    private static bool Has2x2SquareAt(in GameState state, int x, int y, TileType type)
+    {
+        int w = state.Width;
+        int h = state.Height;
+
+        // Check 4 possible 2x2 squares that include (x, y)
+        // 1. (x,y) is top-left
+        if (x + 1 < w && y + 1 < h &&
+            IsMatchableType(in state, x + 1, y, type) &&
+            IsMatchableType(in state, x, y + 1, type) &&
+            IsMatchableType(in state, x + 1, y + 1, type))
+        {
+            return true;
+        }
+
+        // 2. (x,y) is top-right
+        if (x - 1 >= 0 && y + 1 < h &&
+            IsMatchableType(in state, x - 1, y, type) &&
+            IsMatchableType(in state, x - 1, y + 1, type) &&
+            IsMatchableType(in state, x, y + 1, type))
+        {
+            return true;
+        }
+
+        // 3. (x,y) is bottom-left
+        if (x + 1 < w && y - 1 >= 0 &&
+            IsMatchableType(in state, x, y - 1, type) &&
+            IsMatchableType(in state, x + 1, y - 1, type) &&
+            IsMatchableType(in state, x + 1, y, type))
+        {
+            return true;
+        }
+
+        // 4. (x,y) is bottom-right
+        if (x - 1 >= 0 && y - 1 >= 0 &&
+            IsMatchableType(in state, x - 1, y - 1, type) &&
+            IsMatchableType(in state, x, y - 1, type) &&
+            IsMatchableType(in state, x - 1, y, type))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsMatchableType(in GameState state, int x, int y, TileType type)
+    {
+        return state.CanMatch(x, y) && state.GetType(x, y) == type;
     }
 
     public List<MatchGroup> FindMatchGroups(in GameState state, IEnumerable<Position>? foci = null)

@@ -177,6 +177,98 @@ public class ClassicMatchFinderTests
         Assert.True(finder.HasMatchAt(in state, new Position(3, 0)));
     }
 
+    [Fact]
+    public void HasMatchAt_2x2Square_ReturnsTrue()
+    {
+        // Arrange: 2x2 方块应该被识别为有效匹配
+        // A A
+        // A A
+        var state = CreateEmptyState();
+        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
+        state.SetTile(0, 1, new Tile(3, TileType.Red, 0, 1));
+        state.SetTile(1, 1, new Tile(4, TileType.Red, 1, 1));
+
+        var finder = CreateMatchFinder();
+
+        // Act & Assert: 所有4个位置都应该返回true
+        Assert.True(finder.HasMatchAt(in state, new Position(0, 0)), "Top-left should match");
+        Assert.True(finder.HasMatchAt(in state, new Position(1, 0)), "Top-right should match");
+        Assert.True(finder.HasMatchAt(in state, new Position(0, 1)), "Bottom-left should match");
+        Assert.True(finder.HasMatchAt(in state, new Position(1, 1)), "Bottom-right should match");
+    }
+
+    [Fact]
+    public void HasMatchAt_2x2SquareAfterSwap_ReturnsTrue()
+    {
+        // Arrange: 用户报告的bug场景
+        // A A
+        // A B A  <- 交换 B 和右边的 A 后形成 2x2
+        var state = CreateEmptyState();
+        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
+        state.SetTile(0, 1, new Tile(3, TileType.Red, 0, 1));
+        state.SetTile(1, 1, new Tile(4, TileType.Red, 1, 1)); // 交换后这里是A
+        state.SetTile(2, 1, new Tile(5, TileType.Blue, 2, 1)); // 交换后这里是B
+
+        var finder = CreateMatchFinder();
+
+        // Act & Assert: 交换位置 (1,1) 应该识别为有效匹配
+        Assert.True(finder.HasMatchAt(in state, new Position(1, 1)), "Swapped position should form 2x2 match");
+    }
+
+    [Fact]
+    public void HasMatchAt_2x2SquareAtCorner_ReturnsTrue()
+    {
+        // Arrange: 2x2 在棋盘右下角
+        var state = CreateEmptyState(8, 8);
+        state.SetTile(6, 6, new Tile(1, TileType.Green, 6, 6));
+        state.SetTile(7, 6, new Tile(2, TileType.Green, 7, 6));
+        state.SetTile(6, 7, new Tile(3, TileType.Green, 6, 7));
+        state.SetTile(7, 7, new Tile(4, TileType.Green, 7, 7));
+
+        var finder = CreateMatchFinder();
+
+        // Act & Assert
+        Assert.True(finder.HasMatchAt(in state, new Position(7, 7)), "Corner 2x2 should match");
+    }
+
+    [Fact]
+    public void HasMatchAt_2x2SquareAtTopLeft_ReturnsTrue()
+    {
+        // Arrange: 2x2 在棋盘左上角
+        var state = CreateEmptyState(8, 8);
+        state.SetTile(0, 0, new Tile(1, TileType.Blue, 0, 0));
+        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0));
+        state.SetTile(0, 1, new Tile(3, TileType.Blue, 0, 1));
+        state.SetTile(1, 1, new Tile(4, TileType.Blue, 1, 1));
+
+        var finder = CreateMatchFinder();
+
+        // Act & Assert
+        Assert.True(finder.HasMatchAt(in state, new Position(0, 0)), "Top-left corner 2x2 should match");
+    }
+
+    [Fact]
+    public void HasMatchAt_Incomplete2x2_ReturnsFalse()
+    {
+        // Arrange: 只有3个相同颜色，不足以形成2x2
+        // A A
+        // A B
+        var state = CreateEmptyState();
+        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
+        state.SetTile(0, 1, new Tile(3, TileType.Red, 0, 1));
+        state.SetTile(1, 1, new Tile(4, TileType.Blue, 1, 1)); // 不同颜色
+
+        var finder = CreateMatchFinder();
+
+        // Act & Assert: 没有3连也没有2x2，应该返回false
+        Assert.False(finder.HasMatchAt(in state, new Position(0, 0)));
+        Assert.False(finder.HasMatchAt(in state, new Position(1, 0)));
+        Assert.False(finder.HasMatchAt(in state, new Position(0, 1)));
+    }
+
     #endregion
 
     #region HasMatches Tests

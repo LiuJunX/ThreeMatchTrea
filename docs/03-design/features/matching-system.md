@@ -183,7 +183,11 @@ private HashSet<Position> GetConnectedComponent(in GameState state, Position sta
 
 ### 4.3 单点匹配检测
 
-`HasMatchAt` 提供快速的单点检测，用于验证交换是否有效：
+`HasMatchAt` 提供快速的单点检测，用于验证交换是否有效。
+
+支持的匹配类型：
+- **直线匹配**：横向或纵向 3+ 连续相同颜色
+- **2x2 方块匹配**：形成 2x2 正方形（生成 UFO）
 
 ```csharp
 public bool HasMatchAt(in GameState state, Position p)
@@ -191,21 +195,38 @@ public bool HasMatchAt(in GameState state, Position p)
     var type = state.GetType(p.X, p.Y);
     if (type == TileType.None) return false;
 
-    // 检查横向
+    // 检查横向 3+
     int hCount = 1;
     for (int i = p.X - 1; i >= 0 && state.GetType(i, p.Y) == type; i--) hCount++;
     for (int i = p.X + 1; i < w && state.GetType(i, p.Y) == type; i++) hCount++;
     if (hCount >= 3) return true;
 
-    // 检查纵向
+    // 检查纵向 3+
     int vCount = 1;
     for (int i = p.Y - 1; i >= 0 && state.GetType(p.X, i) == type; i--) vCount++;
     for (int i = p.Y + 1; i < h && state.GetType(p.X, i) == type; i++) vCount++;
-    return vCount >= 3;
+    if (vCount >= 3) return true;
+
+    // 检查 2x2 方块（位置可能是方块的任意一个角）
+    return Has2x2SquareAt(in state, p.X, p.Y, type);
 }
 ```
 
-**复杂度：** O(W + H)，仅扫描十字形区域。
+**2x2 检测算法**：检查目标位置作为 4 个角时，是否能形成 2x2 方块：
+
+```
+位置 p 可能是:           检查的 4 种情况:
+                        ┌───┬───┐   ┌───┬───┐
+  (1) 左上角:  p ■      │ p │   │   │   │ p │  (2) 右上角
+               ■ ■      │   │   │   │   │   │
+                        └───┴───┘   └───┴───┘
+                        ┌───┬───┐   ┌───┬───┐
+  (3) 左下角:  ■ ■      │   │   │   │   │   │  (4) 右下角
+               p ■      │ p │   │   │   │ p │
+                        └───┴───┘   └───┴───┘
+```
+
+**复杂度：** O(W + H) 直线扫描 + O(1) 方块检测。
 
 ---
 
