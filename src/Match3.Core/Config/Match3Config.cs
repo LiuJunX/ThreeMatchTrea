@@ -11,7 +11,7 @@ public class Match3Config
     public const int DefaultHeight = 8;
     public const int DefaultTileTypesCount = 6;
     public const float DefaultSwapSpeed = 15.0f;
-    public const float DefaultInitialFallSpeed = 8.0f;
+    public const float DefaultInitialFallSpeed = 12.0f;
     public const float DefaultGravitySpeed = 20.0f;
     public const float DefaultMaxFallSpeed = 25.0f;
 
