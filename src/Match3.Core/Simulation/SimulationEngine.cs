@@ -40,6 +40,10 @@ public sealed class SimulationEngine : IDisposable
     private PendingMoveState _pendingMoveState;
     private const float SwapAnimationDuration = 0.15f; // Match EventInterpreter.MoveDuration
 
+    // Swap positions for bomb generation (cleared after first match processing)
+    private Position _lastSwapFrom = Position.Invalid;
+    private Position _lastSwapTo = Position.Invalid;
+
     /// <summary>
     /// Current game state.
     /// </summary>
@@ -188,11 +192,21 @@ public sealed class SimulationEngine : IDisposable
         // 4. Process stable matches (skip during swap animation to let tiles visually complete swap)
         if (!_pendingMoveState.NeedsValidation)
         {
-            var matchCount = _matchHandler.ProcessStableMatches(ref state, _currentTick, _elapsedTime, _eventCollector);
+            // Pass swap positions as foci for bomb generation priority
+            Position[]? foci = null;
+            if (_lastSwapFrom != Position.Invalid && _lastSwapTo != Position.Invalid)
+            {
+                foci = new[] { _lastSwapFrom, _lastSwapTo };
+            }
+
+            var matchCount = _matchHandler.ProcessStableMatches(ref state, _currentTick, _elapsedTime, _eventCollector, foci);
             if (matchCount > 0)
             {
                 _matchesProcessed += matchCount;
                 _cascadeDepth++;
+                // Clear swap foci after first match processing (cascade matches don't use swap priority)
+                _lastSwapFrom = Position.Invalid;
+                _lastSwapTo = Position.Invalid;
             }
         }
 
@@ -292,6 +306,15 @@ public sealed class SimulationEngine : IDisposable
             NeedsValidation = true,
             AnimationTime = 0f
         };
+
+        // Save swap positions for bomb generation priority
+        // Note: 'from' is where player started drag, 'to' is destination
+        // After swap, tiles have swapped places, so:
+        // - Original tile at 'from' is now at 'to'
+        // - Original tile at 'to' is now at 'from'
+        // Per bomb-generation.md: bomb should spawn at player's "touched" positions
+        _lastSwapFrom = from;
+        _lastSwapTo = to;
 
         // Emit swap event
         if (_eventCollector.IsEnabled)

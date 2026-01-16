@@ -35,14 +35,16 @@ internal sealed class SimulationMatchHandler
     /// <summary>
     /// Process stable matches and emit events.
     /// </summary>
+    /// <param name="foci">Optional positions to prioritize for bomb spawn (e.g., swap positions).</param>
     /// <returns>Number of match groups processed.</returns>
     public int ProcessStableMatches(
         ref GameState state,
         long currentTick,
         float elapsedTime,
-        IEventCollector eventCollector)
+        IEventCollector eventCollector,
+        IEnumerable<Position>? foci = null)
     {
-        var allMatches = _matchFinder.FindMatchGroups(state);
+        var allMatches = _matchFinder.FindMatchGroups(state, foci);
         if (allMatches.Count == 0) return 0;
 
         var stableGroups = Pools.ObtainList<MatchGroup>();
