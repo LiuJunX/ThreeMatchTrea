@@ -1,12 +1,4 @@
 using Match3.Core.Config;
-using Match3.Core.Systems.Core;
-using Match3.Core.Systems.Generation;
-using Match3.Core.Systems.Input;
-using Match3.Core.Systems.Matching;
-using Match3.Core.Systems.Physics;
-using Match3.Core.Systems.PowerUps;
-using Match3.Core.Systems.Scoring;
-using Match3.Core.View;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 
@@ -33,9 +25,10 @@ public class BoardInitializer : IBoardInitializer
             {
                 int x = i % levelConfig.Width;
                 int y = i / levelConfig.Width;
-                
+
                 if (x < state.Width && y < state.Height)
                 {
+                    // Initialize Tile layer
                     var type = levelConfig.Grid[i];
                     var bomb = BombType.None;
                     if (levelConfig.Bombs != null && i < levelConfig.Bombs.Length)
@@ -43,6 +36,37 @@ public class BoardInitializer : IBoardInitializer
                         bomb = levelConfig.Bombs[i];
                     }
                     state.SetTile(x, y, new Tile(state.NextTileId++, type, x, y, bomb));
+
+                    // Initialize Ground layer
+                    if (levelConfig.Grounds != null && i < levelConfig.Grounds.Length)
+                    {
+                        var groundType = levelConfig.Grounds[i];
+                        if (groundType != GroundType.None)
+                        {
+                            byte health = GroundRules.GetDefaultHealth(groundType);
+                            if (levelConfig.GroundHealths != null && i < levelConfig.GroundHealths.Length && levelConfig.GroundHealths[i] > 0)
+                            {
+                                health = levelConfig.GroundHealths[i];
+                            }
+                            state.SetGround(x, y, new Ground(groundType, health));
+                        }
+                    }
+
+                    // Initialize Cover layer
+                    if (levelConfig.Covers != null && i < levelConfig.Covers.Length)
+                    {
+                        var coverType = levelConfig.Covers[i];
+                        if (coverType != CoverType.None)
+                        {
+                            byte health = CoverRules.GetDefaultHealth(coverType);
+                            if (levelConfig.CoverHealths != null && i < levelConfig.CoverHealths.Length && levelConfig.CoverHealths[i] > 0)
+                            {
+                                health = levelConfig.CoverHealths[i];
+                            }
+                            bool isDynamic = CoverRules.IsDynamicType(coverType);
+                            state.SetCover(x, y, new Cover(coverType, health, isDynamic));
+                        }
+                    }
                 }
             }
         }
@@ -54,6 +78,7 @@ public class BoardInitializer : IBoardInitializer
                 {
                     var type = _tileGenerator.GenerateNonMatchingTile(ref state, x, y);
                     state.SetTile(x, y, new Tile(state.NextTileId++, type, x, y));
+                    // Ground and Cover layers are already initialized to empty in GameState constructor
                 }
             }
         }

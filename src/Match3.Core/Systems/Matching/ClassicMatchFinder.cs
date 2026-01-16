@@ -1,12 +1,4 @@
 using System.Collections.Generic;
-using Match3.Core.Systems.Core;
-using Match3.Core.Systems.Generation;
-using Match3.Core.Systems.Input;
-using Match3.Core.Systems.Matching;
-using Match3.Core.Systems.Physics;
-using Match3.Core.Systems.PowerUps;
-using Match3.Core.Systems.Scoring;
-using Match3.Core.View;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
@@ -17,26 +9,7 @@ namespace Match3.Core.Systems.Matching;
 public class ClassicMatchFinder : IMatchFinder
 {
     private readonly IBombGenerator _bombGenerator;
-    
-    // Local pool for MatchGroup to keep it internal and simple
-    // Note: If BombGenerator also pools MatchGroups, we should share or delegate.
-    // BombGenerator returns new lists of MatchGroups.
-    // We should probably rely on BombGenerator to return pooled objects if it wants to.
-    // But currently BombGenerator uses Pools.Obtain<MatchGroup>.
-    // So we don't need this local pool anymore for creation, 
-    // BUT we need a way to release them.
-    // The static ReleaseGroups method uses _matchGroupPool.Return(g).
-    // This implies we MUST obtain them from _matchGroupPool.
-    // So BombGenerator MUST use the same pool or we should change how we release.
-    // Since BombGenerator is in Core, it uses the global Pools.Obtain<MatchGroup>.
-    // ClassicMatchFinder uses a local private pool _matchGroupPool.
-    // This is a mismatch.
-    // We should switch ClassicMatchFinder to use the global Pools for MatchGroup too,
-    // or inject the pool into BombGenerator.
-    // Given the architecture, using Global Pools is standard.
-    // ClassicMatchFinder's private pool seems like an optimization or legacy.
-    // I will switch to using Global Pools for everything to be consistent.
-    
+
     public ClassicMatchFinder(IBombGenerator bombGenerator)
     {
         _bombGenerator = bombGenerator;
@@ -54,6 +27,9 @@ public class ClassicMatchFinder : IMatchFinder
 
     public bool HasMatchAt(in GameState state, Position p)
     {
+        // Check if this position can participate in matching
+        if (!state.CanMatch(p)) return false;
+
         var type = state.GetType(p.X, p.Y);
         if (type == TileType.None || type == TileType.Rainbow || type == TileType.Bomb) return false;
 
@@ -67,13 +43,13 @@ public class ClassicMatchFinder : IMatchFinder
         // Look left
         for (int i = x - 1; i >= 0; i--)
         {
-            if (state.GetType(i, y) == type) hCount++;
+            if (state.CanMatch(i, y) && state.GetType(i, y) == type) hCount++;
             else break;
         }
         // Look right
         for (int i = x + 1; i < w; i++)
         {
-            if (state.GetType(i, y) == type) hCount++;
+            if (state.CanMatch(i, y) && state.GetType(i, y) == type) hCount++;
             else break;
         }
         if (hCount >= 3) return true;
@@ -83,13 +59,13 @@ public class ClassicMatchFinder : IMatchFinder
         // Look up
         for (int i = y - 1; i >= 0; i--)
         {
-            if (state.GetType(x, i) == type) vCount++;
+            if (state.CanMatch(x, i) && state.GetType(x, i) == type) vCount++;
             else break;
         }
         // Look down
         for (int i = y + 1; i < h; i++)
         {
-            if (state.GetType(x, i) == type) vCount++;
+            if (state.CanMatch(x, i) && state.GetType(x, i) == type) vCount++;
             else break;
         }
         return vCount >= 3;
@@ -99,7 +75,7 @@ public class ClassicMatchFinder : IMatchFinder
     {
         var groups = Pools.ObtainList<MatchGroup>();
         var visited = Pools.ObtainHashSet<Position>();
-        
+
         try
         {
             int w = state.Width;
@@ -111,7 +87,10 @@ public class ClassicMatchFinder : IMatchFinder
                 {
                     var p = new Position(x, y);
                     if (visited.Contains(p)) continue;
-                    
+
+                    // Skip if cover blocks matching
+                    if (!state.CanMatch(p)) continue;
+
                     var type = state.GetType(x, y);
                     if (type == TileType.None || type == TileType.Rainbow || type == TileType.Bomb) continue;
 
@@ -125,7 +104,7 @@ public class ClassicMatchFinder : IMatchFinder
                         {
                             g.Type = type; // Ensure type is set
                             groups.Add(g);
-                            foreach(var mp in g.Positions) visited.Add(mp);
+                            foreach (var mp in g.Positions) visited.Add(mp);
                         }
                     }
                     finally
@@ -146,13 +125,13 @@ public class ClassicMatchFinder : IMatchFinder
     {
         var component = Pools.ObtainHashSet<Position>();
         var queue = Pools.ObtainQueue<Position>();
-        
-        try 
+
+        try
         {
             queue.Enqueue(start);
             component.Add(start);
-            
-            while(queue.Count > 0)
+
+            while (queue.Count > 0)
             {
                 var curr = queue.Dequeue();
                 CheckNeighbor(state, curr.X + 1, curr.Y, type, component, queue);
@@ -172,10 +151,14 @@ public class ClassicMatchFinder : IMatchFinder
             Pools.Release(queue);
         }
     }
-    
+
     private void CheckNeighbor(in GameState state, int x, int y, TileType type, HashSet<Position> component, Queue<Position> queue)
     {
         if (x < 0 || x >= state.Width || y < 0 || y >= state.Height) return;
+
+        // Check if cover blocks matching at this position
+        if (!state.CanMatch(x, y)) return;
+
         if (state.GetType(x, y) == type)
         {
             var p = new Position(x, y);
@@ -189,15 +172,9 @@ public class ClassicMatchFinder : IMatchFinder
 
     public static void ReleaseGroups(List<MatchGroup> groups)
     {
-        foreach(var g in groups)
+        foreach (var g in groups)
         {
-            // Use global pool release since BombGenerator uses global pool
-            // If we used a local pool, we would need to know where it came from.
-            // Assuming BombGenerator uses Pools.Obtain<MatchGroup>(), we use Pools.Release(g).
-            // But wait, Pools.Release<T> is for collections usually?
-            // No, Pools.Release(obj) exists if T : class, new() or pooled.
-            // Match3.Core.Utility.Pools has Release<T>(T obj).
-            Pools.Release(g); 
+            Pools.Release(g);
         }
         Pools.Release(groups);
     }

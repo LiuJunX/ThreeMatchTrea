@@ -10,6 +10,27 @@ public class LevelConfig
     public int Height { get; set; } = 8;
     public TileType[] Grid { get; set; }
     public BombType[] Bombs { get; set; }
+
+    /// <summary>
+    /// Ground layer configuration.
+    /// </summary>
+    public GroundType[] Grounds { get; set; }
+
+    /// <summary>
+    /// Ground health values (optional, defaults to type's default health).
+    /// </summary>
+    public byte[] GroundHealths { get; set; }
+
+    /// <summary>
+    /// Cover layer configuration.
+    /// </summary>
+    public CoverType[] Covers { get; set; }
+
+    /// <summary>
+    /// Cover health values (optional, defaults to type's default health).
+    /// </summary>
+    public byte[] CoverHealths { get; set; }
+
     public int MoveLimit { get; set; } = 20;
 
     /// <summary>
@@ -20,15 +41,25 @@ public class LevelConfig
 
     public LevelConfig()
     {
-        Grid = new TileType[Width * Height];
-        Bombs = new BombType[Width * Height];
+        var size = Width * Height;
+        Grid = new TileType[size];
+        Bombs = new BombType[size];
+        Grounds = new GroundType[size];
+        GroundHealths = new byte[size];
+        Covers = new CoverType[size];
+        CoverHealths = new byte[size];
     }
 
     public LevelConfig(int width, int height)
     {
         Width = width;
         Height = height;
-        Grid = new TileType[width * height];
-        Bombs = new BombType[width * height];
+        var size = width * height;
+        Grid = new TileType[size];
+        Bombs = new BombType[size];
+        Grounds = new GroundType[size];
+        GroundHealths = new byte[size];
+        Covers = new CoverType[size];
+        CoverHealths = new byte[size];
     }
 }

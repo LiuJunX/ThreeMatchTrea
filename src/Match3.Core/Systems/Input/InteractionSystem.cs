@@ -2,14 +2,6 @@ using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
 using Match3.Core.Utility;
-using Match3.Core.Systems.Core;
-using Match3.Core.Systems.Generation;
-using Match3.Core.Systems.Input;
-using Match3.Core.Systems.Matching;
-using Match3.Core.Systems.Physics;
-using Match3.Core.Systems.PowerUps;
-using Match3.Core.Systems.Scoring;
-using Match3.Core.View;
 using System;
 
 namespace Match3.Core.Systems.Input;
@@ -38,6 +30,13 @@ public class InteractionSystem : IInteractionSystem
         if (!state.IsValid(p)) return false;
         if (!isBoardInteractive) return false;
 
+        // Check if the position can be interacted with (no blocking cover)
+        if (!state.CanInteract(p))
+        {
+            StatusMessage = "Blocked by cover";
+            return false;
+        }
+
         _logger.LogInfo("OnTap: {0}", p);
 
         if (state.SelectedPosition == Position.Invalid)
@@ -58,6 +57,14 @@ public class InteractionSystem : IInteractionSystem
             {
                 if (IsNeighbor(state.SelectedPosition, p))
                 {
+                    // Check if both positions can be interacted with
+                    if (!state.CanInteract(state.SelectedPosition))
+                    {
+                        state.SelectedPosition = p;
+                        StatusMessage = "Previous selection blocked";
+                        return false;
+                    }
+
                     move = new Move(state.SelectedPosition, p);
                     state.SelectedPosition = Position.Invalid;
                     StatusMessage = "Swapping...";
@@ -84,9 +91,23 @@ public class InteractionSystem : IInteractionSystem
         if (!state.IsValid(from)) return false;
         if (!isBoardInteractive) return false;
 
+        // Check if the 'from' position can be interacted with
+        if (!state.CanInteract(from))
+        {
+            StatusMessage = "Blocked by cover";
+            return false;
+        }
+
         Position to = from.GetNeighbor(direction);
         if (!state.IsValid(to)) return false;
-        
+
+        // Check if the 'to' position can be interacted with
+        if (!state.CanInteract(to))
+        {
+            StatusMessage = "Target blocked by cover";
+            return false;
+        }
+
         // Swipe doesn't use selection state, but clears it if any
         state.SelectedPosition = Position.Invalid;
 

@@ -1,8 +1,10 @@
 using System.Collections.Generic;
+using Match3.Core.Events;
+using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.Scoring;
-using Match3.Core.Systems.PowerUps.Effects;
 using Match3.Core.Utility.Pools;
 
 namespace Match3.Core.Systems.PowerUps;
@@ -12,23 +14,42 @@ public class PowerUpHandler : IPowerUpHandler
     private readonly IScoreSystem _scoreSystem;
     private readonly BombComboHandler _comboHandler;
     private readonly BombEffectRegistry _effectRegistry;
+    private readonly ICoverSystem _coverSystem;
+    private readonly IGroundSystem _groundSystem;
 
     public PowerUpHandler(IScoreSystem scoreSystem)
-        : this(scoreSystem, new BombComboHandler(), BombEffectRegistry.CreateDefault())
+        : this(scoreSystem, new BombComboHandler(), BombEffectRegistry.CreateDefault(),
+               new CoverSystem(), new GroundSystem())
     {
     }
 
     public PowerUpHandler(
-        IScoreSystem scoreSystem, 
-        BombComboHandler comboHandler, 
-        BombEffectRegistry effectRegistry)
+        IScoreSystem scoreSystem,
+        BombComboHandler comboHandler,
+        BombEffectRegistry effectRegistry,
+        ICoverSystem coverSystem,
+        IGroundSystem groundSystem)
     {
         _scoreSystem = scoreSystem;
         _comboHandler = comboHandler;
         _effectRegistry = effectRegistry;
+        _coverSystem = coverSystem;
+        _groundSystem = groundSystem;
     }
 
     public void ProcessSpecialMove(ref GameState state, Position p1, Position p2, out int points)
+    {
+        ProcessSpecialMove(ref state, p1, p2, 0, 0f, NullEventCollector.Instance, out points);
+    }
+
+    public void ProcessSpecialMove(
+        ref GameState state,
+        Position p1,
+        Position p2,
+        long tick,
+        float simTime,
+        IEventCollector events,
+        out int points)
     {
         points = 0;
         var t1 = state.GetTile(p1.X, p1.Y);
@@ -37,13 +58,13 @@ public class PowerUpHandler : IPowerUpHandler
         // Calculate score before modifying state (tiles might be cleared)
         points = _scoreSystem.CalculateSpecialMoveScore(t1.Type, t1.Bomb, t2.Type, t2.Bomb);
 
-        // 使用 BombComboHandler 处理组合
+        // Use BombComboHandler to process combos
         var affected = Pools.ObtainHashSet<Position>();
         try
         {
             if (_comboHandler.TryApplyCombo(ref state, p1, p2, affected))
             {
-                ClearAffectedTiles(ref state, affected);
+                ClearAffectedTiles(ref state, affected, tick, simTime, events);
                 return;
             }
         }
@@ -58,24 +79,46 @@ public class PowerUpHandler : IPowerUpHandler
 
     public void ActivateBomb(ref GameState state, Position p)
     {
+        ActivateBomb(ref state, p, 0, 0f, NullEventCollector.Instance);
+    }
+
+    public void ActivateBomb(ref GameState state, Position p, long tick, float simTime, IEventCollector events)
+    {
         var t = state.GetTile(p.X, p.Y);
         if (t.Bomb == BombType.None) return;
 
         var affected = Pools.ObtainHashSet<Position>();
         try
         {
-            // 使用 BombEffectRegistry 获取单个炸弹效果
+            // Use BombEffectRegistry to get single bomb effect
             if (_effectRegistry.TryGetEffect(t.Bomb, out var effect))
             {
                 effect!.Apply(in state, p, affected);
-                ClearAffectedTiles(ref state, affected);
+                ClearAffectedTiles(ref state, affected, tick, simTime, events);
             }
 
-            // 确保炸弹本身被清除
+            // Ensure the bomb itself is cleared
             var currentT = state.GetTile(p.X, p.Y);
             if (currentT.Type != TileType.None)
             {
+                if (events.IsEnabled)
+                {
+                    events.Emit(new TileDestroyedEvent
+                    {
+                        Tick = tick,
+                        SimulationTime = simTime,
+                        TileId = currentT.Id,
+                        GridPosition = p,
+                        Type = currentT.Type,
+                        Bomb = currentT.Bomb,
+                        Reason = DestroyReason.BombEffect
+                    });
+                }
+
                 state.SetTile(p.X, p.Y, new Tile(0, TileType.None, p.X, p.Y));
+
+                // Notify ground layer
+                _groundSystem.OnTileDestroyed(ref state, p, tick, simTime, events);
             }
         }
         finally
@@ -85,21 +128,27 @@ public class PowerUpHandler : IPowerUpHandler
     }
 
     /// <summary>
-    /// 清除所有受影响的方块（支持连锁爆炸，使用队列避免递归分配）
+    /// Clears all affected tiles (supports chain explosions using queue to avoid recursion)
     /// </summary>
-    private void ClearAffectedTiles(ref GameState state, HashSet<Position> affected)
+    private void ClearAffectedTiles(
+        ref GameState state,
+        HashSet<Position> affected,
+        long tick,
+        float simTime,
+        IEventCollector events)
     {
         var queue = Pools.ObtainQueue<Position>();
         var chainEffect = Pools.ObtainHashSet<Position>();
+        var processed = Pools.ObtainHashSet<Position>();
         try
         {
-            // 初始化队列
+            // Initialize queue
             foreach (var pos in affected)
             {
                 queue.Enqueue(pos);
             }
 
-            // BFS处理所有方块（包括连锁爆炸）
+            // BFS process all tiles (including chain explosions)
             while (queue.Count > 0)
             {
                 var pos = queue.Dequeue();
@@ -107,31 +156,64 @@ public class PowerUpHandler : IPowerUpHandler
                 if (pos.X < 0 || pos.X >= state.Width || pos.Y < 0 || pos.Y >= state.Height)
                     continue;
 
+                if (processed.Contains(pos))
+                    continue;
+
+                processed.Add(pos);
+
+                // Check cover layer first
+                if (_coverSystem.IsTileProtected(in state, pos))
+                {
+                    // Damage the cover, tile is protected this round
+                    _coverSystem.TryDamageCover(ref state, pos, tick, simTime, events);
+                    continue;
+                }
+
                 var tile = state.GetTile(pos.X, pos.Y);
 
-                // 已经是空的，跳过
+                // Already empty, skip
                 if (tile.Type == TileType.None)
                     continue;
 
-                // 清除方块
-                state.SetTile(pos.X, pos.Y, new Tile(0, TileType.None, pos.X, pos.Y));
-
-                // 如果是炸弹，触发连锁爆炸
+                // If it's a bomb, trigger chain explosion
                 if (tile.Bomb != BombType.None && _effectRegistry.TryGetEffect(tile.Bomb, out var effect))
                 {
                     chainEffect.Clear();
                     effect!.Apply(in state, pos, chainEffect);
 
-                    // 将连锁位置加入队列
+                    // Add chain positions to queue
                     foreach (var chainPos in chainEffect)
                     {
-                        queue.Enqueue(chainPos);
+                        if (!processed.Contains(chainPos))
+                            queue.Enqueue(chainPos);
                     }
                 }
+
+                // Emit event
+                if (events.IsEnabled)
+                {
+                    events.Emit(new TileDestroyedEvent
+                    {
+                        Tick = tick,
+                        SimulationTime = simTime,
+                        TileId = tile.Id,
+                        GridPosition = pos,
+                        Type = tile.Type,
+                        Bomb = tile.Bomb,
+                        Reason = DestroyReason.BombEffect
+                    });
+                }
+
+                // Clear the tile
+                state.SetTile(pos.X, pos.Y, new Tile(0, TileType.None, pos.X, pos.Y));
+
+                // Notify ground layer
+                _groundSystem.OnTileDestroyed(ref state, pos, tick, simTime, events);
             }
         }
         finally
         {
+            Pools.Release(processed);
             Pools.Release(chainEffect);
             Pools.Release(queue);
         }

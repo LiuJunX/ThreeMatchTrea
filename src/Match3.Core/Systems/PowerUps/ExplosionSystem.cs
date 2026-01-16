@@ -4,7 +4,7 @@ using Match3.Core.Events;
 using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
-using Match3.Core.Models.Gameplay;
+using Match3.Core.Systems.Layers;
 using Match3.Core.Utility.Pools;
 
 namespace Match3.Core.Systems.PowerUps;
@@ -13,9 +13,22 @@ public class ExplosionSystem : IExplosionSystem
 {
     private readonly List<Explosion> _activeExplosions = new();
     private readonly List<Explosion> _explosionsToRemove = new();
-    
+    private readonly ICoverSystem _coverSystem;
+    private readonly IGroundSystem _groundSystem;
+
     // Config
     private const float WaveInterval = 0.1f; // 100ms per wave
+
+    public ExplosionSystem()
+        : this(new CoverSystem(), new GroundSystem())
+    {
+    }
+
+    public ExplosionSystem(ICoverSystem coverSystem, IGroundSystem groundSystem)
+    {
+        _coverSystem = coverSystem;
+        _groundSystem = groundSystem;
+    }
 
     public bool HasActiveExplosions => _activeExplosions.Count > 0;
 
@@ -23,7 +36,7 @@ public class ExplosionSystem : IExplosionSystem
     {
         var explosion = Pools.Obtain<Explosion>();
         explosion.Initialize(origin, radius, WaveInterval);
-        
+
         // Calculate affected area and suspend tiles
         int width = state.Width;
         int height = state.Height;
@@ -36,31 +49,18 @@ public class ExplosionSystem : IExplosionSystem
                 {
                     var pos = new Position(x, y);
                     explosion.AffectedArea.Add(pos);
-                    
+
                     // Suspend the tile immediately to block falling
                     var tile = state.GetTile(x, y);
-                    // Even if it's empty, we suspend it to "reserve" the space
-                    // Wait, if it's None, ShouldSkipTile returns true anyway.
-                    // But we want to block falling INTO it?
-                    // If it is None, tiles fall into it.
-                    // So we must ensure it is NOT falling into.
-                    // The tile ABOVE checks "CanMoveTo".
-                    // CanMoveTo checks "Type == None".
-                    // So if we want to block falling, we must keep Type != None OR ensure CanMoveTo fails.
-                    // But we can't change CanMoveTo easily.
-                    // So we rely on the fact that the tile is NOT cleared yet.
-                    // So we just set IsSuspended = true.
                     if (tile.Type != TileType.None)
                     {
                         tile.IsSuspended = true;
                         state.SetTile(x, y, tile);
                     }
-                    // If it is None, we can't really block falling into it unless we change it to a blocker.
-                    // But typically explosions happen on filled grids.
                 }
             }
         }
-        
+
         _activeExplosions.Add(explosion);
     }
 
@@ -71,7 +71,7 @@ public class ExplosionSystem : IExplosionSystem
         foreach (var pos in targets)
         {
             int dist = Math.Max(
-                Math.Abs(pos.X - origin.X), 
+                Math.Abs(pos.X - origin.X),
                 Math.Abs(pos.Y - origin.Y)
             );
             if (dist > maxRadius) maxRadius = dist;
@@ -96,24 +96,24 @@ public class ExplosionSystem : IExplosionSystem
                 }
             }
         }
-        
+
         _activeExplosions.Add(explosion);
     }
 
     public void Update(
-        ref GameState state, 
-        float deltaTime, 
-        long tick, 
-        float simTime, 
+        ref GameState state,
+        float deltaTime,
+        long tick,
+        float simTime,
         IEventCollector eventCollector,
         List<Position> triggeredBombs)
     {
         _explosionsToRemove.Clear();
-        
+
         foreach (var explosion in _activeExplosions)
         {
             explosion.Timer += deltaTime;
-            
+
             // Process as many waves as time allows (to handle lag spikes)
             while (explosion.Timer >= explosion.WaveInterval && !explosion.IsFinished)
             {
@@ -126,7 +126,7 @@ public class ExplosionSystem : IExplosionSystem
                 _explosionsToRemove.Add(explosion);
             }
         }
-        
+
         foreach (var ex in _explosionsToRemove)
         {
             _activeExplosions.Remove(ex);
@@ -136,28 +136,44 @@ public class ExplosionSystem : IExplosionSystem
     }
 
     private void ProcessWave(
-        ref GameState state, 
-        Explosion explosion, 
-        long tick, 
-        float simTime, 
+        ref GameState state,
+        Explosion explosion,
+        long tick,
+        float simTime,
         IEventCollector eventCollector,
         List<Position> triggeredBombs)
     {
         int currentWave = explosion.CurrentWaveRadius;
-        
+
         // Iterate through affected area and process tiles at current wave distance
         foreach (var pos in explosion.AffectedArea)
         {
             // Chebyshev distance for Square
             int dist = Math.Max(
-                Math.Abs(pos.X - explosion.Origin.X), 
+                Math.Abs(pos.X - explosion.Origin.X),
                 Math.Abs(pos.Y - explosion.Origin.Y)
             );
 
             if (dist == currentWave)
             {
+                // Check cover layer first
+                if (_coverSystem.IsTileProtected(in state, pos))
+                {
+                    // Damage the cover, tile is protected this round
+                    _coverSystem.TryDamageCover(ref state, pos, tick, simTime, eventCollector);
+
+                    // Clear suspended flag on the tile (cover absorbed the hit)
+                    var suspendedTile = state.GetTile(pos.X, pos.Y);
+                    if (suspendedTile.Type != TileType.None)
+                    {
+                        suspendedTile.IsSuspended = false;
+                        state.SetTile(pos.X, pos.Y, suspendedTile);
+                    }
+                    continue;
+                }
+
                 var tile = state.GetTile(pos.X, pos.Y);
-                
+
                 // If tile exists
                 if (tile.Type != TileType.None)
                 {
@@ -166,7 +182,9 @@ public class ExplosionSystem : IExplosionSystem
                     if (tile.Bomb != BombType.None && !(pos.X == explosion.Origin.X && pos.Y == explosion.Origin.Y))
                     {
                         triggeredBombs.Add(pos);
-                        // Do not destroy here; let the triggered activation handle it
+                        // Clear suspended flag but don't destroy - let triggered activation handle it
+                        tile.IsSuspended = false;
+                        state.SetTile(pos.X, pos.Y, tile);
                         continue;
                     }
 
@@ -187,6 +205,9 @@ public class ExplosionSystem : IExplosionSystem
 
                     // Destroy (Set to None, clears IsSuspended)
                     state.SetTile(pos.X, pos.Y, new Tile(0, TileType.None, pos.X, pos.Y));
+
+                    // Notify ground layer
+                    _groundSystem.OnTileDestroyed(ref state, pos, tick, simTime, eventCollector);
                 }
                 else
                 {
@@ -196,13 +217,13 @@ public class ExplosionSystem : IExplosionSystem
                 }
             }
         }
-        
+
         explosion.CurrentWaveRadius++;
     }
 
     public void Reset()
     {
-        foreach(var ex in _activeExplosions)
+        foreach (var ex in _activeExplosions)
         {
             ex.Release();
             Pools.Release(ex);

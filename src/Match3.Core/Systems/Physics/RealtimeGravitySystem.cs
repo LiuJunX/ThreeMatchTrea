@@ -45,7 +45,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
         {
             for (int y = 0; y < state.Height; y++)
             {
-                if (!IsTileStable(state.GetTile(x, y), x, y))
+                if (!IsTileStable(in state, x, y))
                 {
                     return false;
                 }
@@ -102,7 +102,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
         {
             var tile = state.GetTile(x, y);
 
-            if (ShouldSkipTile(tile, x, y, state.Width)) continue;
+            if (ShouldSkipTile(in state, tile, x, y)) continue;
 
             var target = _targetResolver.DetermineTarget(ref state, x, y);
             SimulatePhysics(ref tile, target, dt);
@@ -111,11 +111,16 @@ public class RealtimeGravitySystem : IPhysicsSimulation
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private bool ShouldSkipTile(Tile tile, int x, int y, int width)
+    private bool ShouldSkipTile(in GameState state, Tile tile, int x, int y)
     {
-        return tile.Type == TileType.None || 
-               tile.IsSuspended || 
-               _newlyOccupiedSlots.Contains(y * width + x);
+        if (tile.Type == TileType.None) return true;
+        if (tile.IsSuspended) return true;
+        if (_newlyOccupiedSlots.Contains(y * state.Width + x)) return true;
+
+        // Check if static cover blocks movement
+        if (!state.CanMove(x, y)) return true;
+
+        return false;
     }
 
     private void SimulatePhysics(ref Tile tile, GravityTargetResolver.TargetInfo target, float dt)
@@ -131,7 +136,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
         {
             float moveX = Math.Sign(diffX) * SlideSpeedMultiplier * dt;
             if (Math.Abs(moveX) > Math.Abs(diffX)) moveX = diffX;
-            
+
             tile.Position.X += moveX;
             tile.Velocity.X = Math.Sign(diffX) * SlideSpeedMultiplier;
             tile.IsFalling = true;
@@ -150,23 +155,19 @@ public class RealtimeGravitySystem : IPhysicsSimulation
             // Apply Gravity
             tile.IsFalling = true;
 
-            // 如果速度接近0，应用初始速度（解决"前半格慢"问题）
             if (tile.Velocity.Y < _config.InitialFallSpeed)
             {
                 tile.Velocity.Y = _config.InitialFallSpeed;
             }
 
-            // Reduce gravity when sliding to create a smoother arc
             float gravityScale = (Math.Abs(tile.Velocity.X) > SnapThreshold) ? SlideGravityFactor : 1.0f;
             tile.Velocity.Y += _config.GravitySpeed * gravityScale * dt;
 
             if (tile.Velocity.Y > _config.MaxFallSpeed)
                 tile.Velocity.Y = _config.MaxFallSpeed;
 
-            // 先更新位置，再更新速度（修正积分顺序）
             tile.Position.Y += tile.Velocity.Y * dt;
 
-            // Collision Check
             if (tile.Position.Y >= target.Position.Y)
             {
                 SnapToTargetY(ref tile, target);
@@ -174,7 +175,6 @@ public class RealtimeGravitySystem : IPhysicsSimulation
         }
         else
         {
-            // Stable or Near Floor
             if (tile.IsFalling || Math.Abs(tile.Position.Y - target.Position.Y) > float.Epsilon)
             {
                 SnapToTargetY(ref tile, target);
@@ -185,7 +185,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
     private void SnapToTargetY(ref Tile tile, GravityTargetResolver.TargetInfo target)
     {
         tile.Position.Y = target.Position.Y;
-        
+
         if (target.FoundDynamicTarget)
         {
             tile.Velocity.Y = target.InheritedVelocityY;
@@ -208,19 +208,35 @@ public class RealtimeGravitySystem : IPhysicsSimulation
             var targetSlot = state.GetTile(visualX, visualY);
             if (targetSlot.Type == TileType.None)
             {
+                // Move tile to new position
                 state.SetTile(visualX, visualY, tile);
                 state.SetTile(currentX, currentY, new Tile(0, TileType.None, currentX, currentY));
-                
-                // Mark new slot as occupied to prevent double-processing in the same frame
-                // (e.g., if we process columns in random order and this tile moves to a later column)
+
+                // Sync dynamic cover with the tile
+                SyncDynamicCover(ref state, currentX, currentY, visualX, visualY);
+
                 _newlyOccupiedSlots.Add(visualY * state.Width + visualX);
-                
-                return; // State updated, loop continues with next tile
+
+                return;
             }
         }
 
-        // Update tile in current slot (e.g. position change within cell)
         state.SetTile(currentX, currentY, tile);
+    }
+
+    /// <summary>
+    /// Sync dynamic cover when a tile moves to a new position.
+    /// </summary>
+    private void SyncDynamicCover(ref GameState state, int fromX, int fromY, int toX, int toY)
+    {
+        var cover = state.GetCover(fromX, fromY);
+
+        // Only move if cover is dynamic
+        if (cover.Type != CoverType.None && cover.IsDynamic)
+        {
+            state.SetCover(toX, toY, cover);
+            state.SetCover(fromX, fromY, Cover.Empty);
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -231,9 +247,14 @@ public class RealtimeGravitySystem : IPhysicsSimulation
                visualY >= 0 && visualY < state.Height;
     }
 
-    private bool IsTileStable(Tile tile, int x, int y)
+    private bool IsTileStable(in GameState state, int x, int y)
     {
+        var tile = state.GetTile(x, y);
+
         if (tile.Type == TileType.None) return true;
+
+        // Tiles blocked by static cover are considered stable
+        if (!state.CanMove(x, y)) return true;
 
         return Math.Abs(tile.Velocity.Y) <= SnapThreshold &&
                Math.Abs(tile.Velocity.X) <= SnapThreshold &&

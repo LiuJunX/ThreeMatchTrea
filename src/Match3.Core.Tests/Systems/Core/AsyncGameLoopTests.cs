@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
@@ -41,6 +42,12 @@ public class AsyncGameLoopTests
     {
         public bool ProcessMatchesCalled { get; private set; }
         public int ProcessMatches(ref GameState state, List<MatchGroup> groups)
+        {
+            ProcessMatchesCalled = true;
+            return 0;
+        }
+
+        public int ProcessMatches(ref GameState state, List<MatchGroup> groups, long tick, float simTime, IEventCollector events)
         {
             ProcessMatchesCalled = true;
             return 0;

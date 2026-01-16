@@ -302,6 +302,10 @@ public sealed class AIService : IAIService
         if (tileFrom.IsFalling || tileTo.IsFalling)
             return false;
 
+        // Can't swap tiles blocked by cover
+        if (!state.CanInteract(from) || !state.CanInteract(to))
+            return false;
+
         // Check if swap would create a match
         // (simplified: we use preview for accurate check)
         return true;

@@ -141,8 +141,8 @@ public class ExplosionSystemTests : IDisposable
         var tileAfter = state.GetTile(bombPos.X, bombPos.Y);
         Assert.Equal(BombType.Horizontal, tileAfter.Bomb);
         Assert.NotEqual(TileType.None, tileAfter.Type);
-        // It remains suspended until something else (BombActivationSystem) handles it
-        Assert.True(tileAfter.IsSuspended);
+        // Suspended flag is cleared when bomb is triggered (BombActivationSystem will handle it)
+        Assert.False(tileAfter.IsSuspended);
     }
 
     [Fact]
