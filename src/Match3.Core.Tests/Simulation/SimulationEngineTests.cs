@@ -551,6 +551,197 @@ public class SimulationEngineTests
 
     #endregion
 
+    #region Bomb Swap Tests (No Revert)
+
+    /// <summary>
+    /// 炸弹与普通元素交换（无匹配）：应该不回退，炸弹应该激活。
+    /// 文档规定：炸弹与普通棋子交换 → 炸弹在目标位置触发单体效果。
+    /// </summary>
+    [Fact]
+    public void ApplyMove_BombSwapWithNormal_NoMatch_ShouldNotRevert()
+    {
+        // Arrange: 创建无匹配的棋盘，放置一个横向火箭
+        var state = CreateNoMatchSwapState();
+
+        // 在 (0,0) 放置横向火箭
+        var bombTile = state.GetTile(0, 0);
+        bombTile.Bomb = BombType.Horizontal;
+        state.SetTile(0, 0, bombTile);
+
+        var engine = CreateEngine(state);
+
+        // 记录交换前的类型
+        var bombType = engine.State.GetTile(0, 0).Type;
+        var normalType = engine.State.GetTile(1, 0).Type;
+
+        // Act: 交换炸弹和普通元素（不会产生匹配）
+        engine.ApplyMove(new Position(0, 0), new Position(1, 0));
+
+        // 运行足够的 tick 让动画完成
+        for (int i = 0; i < 20; i++)
+        {
+            engine.Tick();
+        }
+
+        // Assert: 不应该回退，炸弹应该被激活（整行被清除）
+        // 如果回退了，(0,0) 会是原来的炸弹类型
+        var tileAt00 = engine.State.GetTile(0, 0);
+        var tileAt10 = engine.State.GetTile(1, 0);
+
+        // 交换不应该回退
+        Assert.NotEqual(bombType, tileAt00.Type);
+    }
+
+    /// <summary>
+    /// 炸弹与炸弹交换：应该不回退，应该触发组合效果。
+    /// 文档规定：两个炸弹互相交换 → 触发强力的组合效果。
+    /// </summary>
+    [Fact]
+    public void ApplyMove_BombSwapWithBomb_ShouldNotRevert_AndTriggerCombo()
+    {
+        // Arrange: 创建棋盘，放置两个相邻的炸弹
+        var state = CreateNoMatchSwapState();
+
+        // 在 (0,0) 放置横向火箭
+        var hBomb = state.GetTile(0, 0);
+        hBomb.Bomb = BombType.Horizontal;
+        state.SetTile(0, 0, hBomb);
+
+        // 在 (1,0) 放置纵向火箭
+        var vBomb = state.GetTile(1, 0);
+        vBomb.Bomb = BombType.Vertical;
+        state.SetTile(1, 0, vBomb);
+
+        var collector = new BufferedEventCollector();
+        var engine = CreateEngine(state, collector);
+
+        // Act: 交换两个炸弹
+        engine.ApplyMove(new Position(0, 0), new Position(1, 0));
+
+        // Assert: 验证组合效果 - 通过检查 TileDestroyedEvent
+        // 火箭+火箭=十字消除，应该触发多个 TileDestroyedEvent
+        var destroyedEvents = collector.GetEvents().OfType<TileDestroyedEvent>().ToList();
+
+        // 十字消除应该消除整行 y=0 (5个) + 整列 x=1 (5个) - 重复的 (1,0) = 9 个
+        // 但实际上两个炸弹本身会先被消除，所以至少应该有 7+ 个
+        Assert.True(destroyedEvents.Count >= 7,
+            $"火箭+火箭组合应该触发十字消除，预期至少 7 个 TileDestroyedEvent，实际 {destroyedEvents.Count} 个");
+
+        // 验证第 0 行的方块被消除（ApplyMove 后立即检查，不运行 tick 避免 refill）
+        bool row0Cleared = true;
+        for (int x = 0; x < 5; x++)
+        {
+            if (engine.State.GetTile(x, 0).Type != TileType.None)
+            {
+                row0Cleared = false;
+                break;
+            }
+        }
+        Assert.True(row0Cleared, "火箭+火箭组合应该触发十字消除，第0行应该被清除");
+    }
+
+    /// <summary>
+    /// 彩球与普通元素交换：应该不回退，应该消除指定颜色。
+    /// 文档规定：手动交换彩球 + 普通方块 → 消除指定颜色（被交换方块的颜色）。
+    /// </summary>
+    [Fact]
+    public void ApplyMove_ColorBombSwapWithNormal_ShouldNotRevert_AndClearColor()
+    {
+        // Arrange: 创建棋盘，放置彩球和多个同色方块
+        var state = new GameState(5, 5, 4, new StubRandom());
+
+        // 在 (0,0) 放置彩球
+        state.SetTile(0, 0, new Tile(1, TileType.Rainbow, 0, 0) { Bomb = BombType.Color });
+
+        // 在 (1,0) 放置蓝色普通方块（将被交换）
+        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0));
+
+        // 放置更多蓝色方块（应该被消除）
+        state.SetTile(2, 0, new Tile(3, TileType.Blue, 2, 0));
+        state.SetTile(0, 1, new Tile(4, TileType.Blue, 0, 1));
+        state.SetTile(2, 2, new Tile(5, TileType.Blue, 2, 2));
+
+        // 放置红色方块（不应该被消除）
+        state.SetTile(3, 0, new Tile(6, TileType.Red, 3, 0));
+        state.SetTile(4, 0, new Tile(7, TileType.Red, 4, 0));
+        state.SetTile(3, 1, new Tile(8, TileType.Red, 3, 1));
+
+        // 填充其余位置
+        var types = new[] { TileType.Green, TileType.Yellow, TileType.Purple };
+        int id = 100;
+        for (int y = 0; y < 5; y++)
+        {
+            for (int x = 0; x < 5; x++)
+            {
+                if (state.GetTile(x, y).Type == TileType.None)
+                {
+                    state.SetTile(x, y, new Tile(id++, types[(x + y) % types.Length], x, y));
+                }
+            }
+        }
+
+        var collector = new BufferedEventCollector();
+        var engine = CreateEngine(state, collector);
+
+        // Act: 交换彩球和蓝色方块
+        engine.ApplyMove(new Position(0, 0), new Position(1, 0));
+
+        // Assert: 验证组合效果 - 通过检查 TileDestroyedEvent
+        var destroyedEvents = collector.GetEvents().OfType<TileDestroyedEvent>().ToList();
+
+        // 彩球+蓝色 应该消除所有蓝色方块 (4个) + 彩球 (1个) = 5 个
+        Assert.True(destroyedEvents.Count >= 5,
+            $"彩球+普通方块组合应该消除指定颜色，预期至少 5 个 TileDestroyedEvent，实际 {destroyedEvents.Count} 个");
+
+        // 验证蓝色位置被清除（ApplyMove 后立即检查）
+        Assert.Equal(TileType.None, engine.State.GetTile(1, 0).Type); // 被交换的蓝色
+        Assert.Equal(TileType.None, engine.State.GetTile(2, 0).Type); // 蓝色
+        Assert.Equal(TileType.None, engine.State.GetTile(0, 1).Type); // 蓝色
+        Assert.Equal(TileType.None, engine.State.GetTile(2, 2).Type); // 蓝色
+
+        // 红色不应该被消除（立即检查，不受 refill 影响）
+        Assert.Equal(TileType.Red, engine.State.GetTile(3, 0).Type);
+        Assert.Equal(TileType.Red, engine.State.GetTile(4, 0).Type);
+        Assert.Equal(TileType.Red, engine.State.GetTile(3, 1).Type);
+    }
+
+    /// <summary>
+    /// 炸弹与普通元素交换（无匹配）：验证不会发出回退事件。
+    /// </summary>
+    [Fact]
+    public void ApplyMove_BombSwapWithNormal_NoMatch_ShouldNotEmitRevertEvent()
+    {
+        // Arrange
+        var state = CreateNoMatchSwapState();
+
+        // 在 (0,0) 放置纵向火箭
+        var bombTile = state.GetTile(0, 0);
+        bombTile.Bomb = BombType.Vertical;
+        state.SetTile(0, 0, bombTile);
+
+        var collector = new BufferedEventCollector();
+        var engine = CreateEngine(state, collector);
+
+        // Act: 交换炸弹和普通元素
+        engine.ApplyMove(new Position(0, 0), new Position(1, 0));
+
+        // 清除初始交换事件
+        collector.Clear();
+
+        // 运行足够的 tick
+        for (int i = 0; i < 20; i++)
+        {
+            engine.Tick();
+        }
+
+        // Assert: 不应该有回退事件
+        var events = collector.GetEvents();
+        var revertEvent = events.OfType<TilesSwappedEvent>().FirstOrDefault(e => e.IsRevert);
+        Assert.Null(revertEvent);
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private GameState CreateStableState()

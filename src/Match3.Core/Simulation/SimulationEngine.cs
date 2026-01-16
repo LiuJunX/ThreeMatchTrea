@@ -267,15 +267,31 @@ public sealed class SimulationEngine : IDisposable
         if (!state.IsValid(from) || !state.IsValid(to))
             return false;
 
-        // Get tile IDs before swap
-        var tileAId = state.GetTile(from.X, from.Y).Id;
-        var tileBId = state.GetTile(to.X, to.Y).Id;
+        // Get tile info BEFORE swap
+        var tileA = state.GetTile(from.X, from.Y);
+        var tileB = state.GetTile(to.X, to.Y);
+        var tileAId = tileA.Id;
+        var tileBId = tileB.Id;
+
+        // Check if either tile is a bomb or color bomb (before swap)
+        bool tileAIsBomb = tileA.Bomb != BombType.None;
+        bool tileBIsBomb = tileB.Bomb != BombType.None;
+        bool tileAIsColorBomb = tileA.Type == TileType.Rainbow;
+        bool tileBIsColorBomb = tileB.Type == TileType.Rainbow;
+        bool hasSpecialMove = tileAIsBomb || tileBIsBomb || tileAIsColorBomb || tileBIsColorBomb;
 
         // Swap tiles in grid using shared operations
         _swapOperations.SwapTiles(ref state, from, to);
 
         // Check if swap creates a match (check both positions)
         var hadMatch = _swapOperations.HasMatch(in state, from) || _swapOperations.HasMatch(in state, to);
+
+        // If there's a bomb involved, treat as valid move (no revert) and process bomb effects
+        if (hasSpecialMove)
+        {
+            hadMatch = true;
+            ProcessBombSwap(ref state, from, to, tileAIsBomb, tileBIsBomb, tileAIsColorBomb, tileBIsColorBomb);
+        }
 
         // Track pending move for potential revert
         _pendingMoveState = new PendingMoveState
@@ -315,6 +331,51 @@ public sealed class SimulationEngine : IDisposable
 
         State = state;
         return true;
+    }
+
+    /// <summary>
+    /// Process bomb swap effects (combo or single bomb activation).
+    /// </summary>
+    private void ProcessBombSwap(
+        ref GameState state,
+        Position from,
+        Position to,
+        bool tileAIsBomb,
+        bool tileBIsBomb,
+        bool tileAIsColorBomb,
+        bool tileBIsColorBomb)
+    {
+        // After swap:
+        // - Original tile A (from) is now at position 'to'
+        // - Original tile B (to) is now at position 'from'
+
+        // Try combo first (handles: 彩球+普通, 炸弹+炸弹, 彩球+炸弹)
+        _powerUpHandler.ProcessSpecialMove(
+            ref state, from, to, _currentTick, _elapsedTime, _eventCollector, out int points);
+
+        if (points > 0)
+        {
+            // Combo was processed
+            _bombsActivated++;
+            return;
+        }
+
+        // If no combo, activate single bomb
+        // After swap:
+        // - If tileA was bomb, it's now at 'to'
+        // - If tileB was bomb, it's now at 'from'
+        if (tileAIsBomb && !tileBIsBomb && !tileBIsColorBomb)
+        {
+            // Single bomb A + normal B: activate bomb at 'to' (where A is now)
+            _powerUpHandler.ActivateBomb(ref state, to, _currentTick, _elapsedTime, _eventCollector);
+            _bombsActivated++;
+        }
+        else if (tileBIsBomb && !tileAIsBomb && !tileAIsColorBomb)
+        {
+            // Single bomb B + normal A: activate bomb at 'from' (where B is now)
+            _powerUpHandler.ActivateBomb(ref state, from, _currentTick, _elapsedTime, _eventCollector);
+            _bombsActivated++;
+        }
     }
 
     /// <summary>
