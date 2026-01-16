@@ -47,13 +47,7 @@
                          @onpointerup="HandlePointerUp"
                          @onpointerdown:stopPropagation>
                          <div class="tile-inner">
-                            @{
-                                var imgPath = GetTileImagePath(visual);
-                            }
-                            @if (imgPath != null)
-                            {
-                                <img src="@imgPath" alt="tile" class="tile-image" draggable="false" />
-                            }
+                            <span class="tile-base">@GetTileIcon(visual)</span>
                          </div>
                     </div>
                 }

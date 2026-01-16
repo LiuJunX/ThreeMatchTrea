@@ -48,37 +48,35 @@ public partial class GridBoard : IDisposable
     }
 
     /// <summary>
-    /// Get the image path for a tile visual.
+    /// Get the emoji icon for a tile visual.
     /// </summary>
-    private string? GetTileImagePath(TileVisual visual)
+    private string GetTileIcon(TileVisual visual)
     {
-        const string basePath = "assets/tiles";
-
         // Bomb types take priority
         if (visual.BombType != BombType.None)
         {
             return visual.BombType switch
             {
-                BombType.Horizontal => $"{basePath}/bomb_horizontal.png",
-                BombType.Vertical => $"{basePath}/bomb_vertical.png",
-                BombType.Ufo => $"{basePath}/bomb_ufo.png",
-                BombType.Square5x5 => $"{basePath}/bomb_square_bomb.png",
-                BombType.Color => $"{basePath}/bomb_color_bomb.png",
-                _ => null
+                BombType.Horizontal => "↔️",
+                BombType.Vertical => "↕️",
+                BombType.Ufo => "🛸",
+                BombType.Square5x5 => "💣",
+                BombType.Color => "🌈",
+                _ => ""
             };
         }
 
         // Rainbow tile
-        if (visual.TileType.HasFlag(TileType.Rainbow)) return $"{basePath}/color_rainbow.png";
+        if (visual.TileType.HasFlag(TileType.Rainbow)) return "🌈";
 
         // Regular tile colors
-        if (visual.TileType.HasFlag(TileType.Red)) return $"{basePath}/color_red.png";
-        if (visual.TileType.HasFlag(TileType.Green)) return $"{basePath}/color_green.png";
-        if (visual.TileType.HasFlag(TileType.Blue)) return $"{basePath}/color_blue.png";
-        if (visual.TileType.HasFlag(TileType.Yellow)) return $"{basePath}/color_yellow.png";
-        if (visual.TileType.HasFlag(TileType.Purple)) return $"{basePath}/color_purple.png";
-        if (visual.TileType.HasFlag(TileType.Orange)) return $"{basePath}/color_orange.png";
+        if (visual.TileType.HasFlag(TileType.Red)) return "🔴";
+        if (visual.TileType.HasFlag(TileType.Green)) return "🟢";
+        if (visual.TileType.HasFlag(TileType.Blue)) return "🔵";
+        if (visual.TileType.HasFlag(TileType.Yellow)) return "🟡";
+        if (visual.TileType.HasFlag(TileType.Purple)) return "🟣";
+        if (visual.TileType.HasFlag(TileType.Orange)) return "🟠";
 
-        return null;
+        return "";
     }
 }
