@@ -90,33 +90,15 @@ public sealed class VisualState : IVisualState
 
                 if (_tiles.TryGetValue(tile.Id, out var visual))
                 {
-                    if (tile.IsFalling)
+                    // Skip tiles being controlled by Player animation
+                    if (visual.IsBeingAnimated)
                     {
-                        // Sync position for falling tiles (physics-driven movement)
-                        visual.Position = tile.Position;
-                        visual.GridPosition = new Position(x, y);
+                        continue;
                     }
-                    else
-                    {
-                        // Tile is not falling - check if we should snap to grid center
-                        // Only snap if position is close to grid (just landed)
-                        // Don't snap if far from grid (e.g., swap animation in progress)
-                        float targetX = x;
-                        float targetY = y;
-                        float diffX = System.Math.Abs(visual.Position.X - targetX);
-                        float diffY = System.Math.Abs(visual.Position.Y - targetY);
 
-                        const float snapThreshold = 0.5f;  // Only snap if within half a cell
-                        const float epsilon = 0.001f;      // Already at target
-
-                        if (diffX < snapThreshold && diffY < snapThreshold &&
-                            (diffX > epsilon || diffY > epsilon))
-                        {
-                            // Close to grid but not exactly there - snap
-                            visual.Position = new Vector2(targetX, targetY);
-                        }
-                        visual.GridPosition = new Position(x, y);
-                    }
+                    // Sync position from physics/game state
+                    visual.Position = tile.Position;
+                    visual.GridPosition = new Position(x, y);
                 }
                 else
                 {
@@ -344,6 +326,12 @@ public sealed class TileVisual
 
     /// <summary>Grid position.</summary>
     public Position GridPosition { get; set; }
+
+    /// <summary>
+    /// Whether the tile's position is being controlled by Player animation.
+    /// When true, physics sync should not overwrite the position.
+    /// </summary>
+    public bool IsBeingAnimated { get; set; }
 }
 
 /// <summary>

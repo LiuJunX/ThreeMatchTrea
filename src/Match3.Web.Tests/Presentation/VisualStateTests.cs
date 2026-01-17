@@ -14,7 +14,7 @@ public class VisualStateTests
     #region SyncFallingTilesFromGameState Tests
 
     [Fact]
-    public void SyncFallingTiles_UpdatesExistingTilePositions_WhenFalling()
+    public void SyncFallingTiles_UpdatesExistingTilePositions_WhenNotBeingAnimated()
     {
         var visualState = new VisualState();
         var state = CreateGameState(8, 8);
@@ -23,12 +23,12 @@ public class VisualStateTests
         var tile = CreateTile(TileType.Red, 2, 3);
         // Simulate falling: tile's visual position is above its grid slot
         tile.Position = new Vector2(2, 1.5f);
-        tile.IsFalling = true;  // Mark as falling
         // SetTile after modifying (Tile is a struct)
         state.SetTile(2, 3, tile);
 
-        // Add same tile to visual state at old position
+        // Add same tile to visual state at old position, NOT being animated
         visualState.AddTile(tile.Id, TileType.Red, BombType.None, new Position(2, 0), new Vector2(2, 0));
+        // IsBeingAnimated defaults to false
 
         // Sync
         visualState.SyncFallingTilesFromGameState(in state);
@@ -43,53 +43,51 @@ public class VisualStateTests
     }
 
     [Fact]
-    public void SyncFallingTiles_DoesNotUpdatePosition_WhenNotFalling_AndFarFromGrid()
+    public void SyncFallingTiles_SkipsTile_WhenIsBeingAnimated()
     {
         var visualState = new VisualState();
         var state = CreateGameState(8, 8);
 
-        // Add tile to game state (not falling - e.g., during swap animation)
+        // Add tile to game state
         var tile = CreateTile(TileType.Red, 2, 3);
         tile.Position = new Vector2(2, 3);  // At grid position
-        tile.IsFalling = false;  // Not falling (swap animation in progress)
         state.SetTile(2, 3, tile);
 
-        // Add same tile to visual state at animation position (far from grid - swap in progress)
-        visualState.AddTile(tile.Id, TileType.Red, BombType.None, new Position(2, 3), new Vector2(1.4f, 3));
+        // Add same tile to visual state at animation position, marked as being animated
+        visualState.AddTile(tile.Id, TileType.Red, BombType.None, new Position(2, 3), new Vector2(1.5f, 3));
+        var visual = visualState.GetTile(tile.Id);
+        visual!.IsBeingAnimated = true;  // Being controlled by Player animation
 
         // Sync
         visualState.SyncFallingTilesFromGameState(in state);
 
-        // Visual position should NOT be overwritten (> 0.5 from grid = swap animation)
-        var visual = visualState.GetTile(tile.Id);
-        Assert.NotNull(visual);
-        Assert.Equal(1.4f, visual.Position.X, 0.001f);  // Still at animation position
+        // Visual position should NOT be overwritten (IsBeingAnimated = true)
+        Assert.Equal(1.5f, visual.Position.X, 0.001f);  // Still at animation position
         Assert.Equal(3f, visual.Position.Y, 0.001f);
     }
 
     [Fact]
-    public void SyncFallingTiles_SnapsToGrid_WhenNotFalling_AndCloseToGrid()
+    public void SyncFallingTiles_SyncsPosition_WhenNotBeingAnimated()
     {
         var visualState = new VisualState();
         var state = CreateGameState(8, 8);
 
-        // Add tile to game state (just landed)
+        // Add tile to game state with specific position
         var tile = CreateTile(TileType.Red, 2, 3);
         tile.Position = new Vector2(2, 3);  // At grid position
-        tile.IsFalling = false;  // Just landed
         state.SetTile(2, 3, tile);
 
-        // Add same tile to visual state at position close to grid (just landed, needs snap)
-        visualState.AddTile(tile.Id, TileType.Red, BombType.None, new Position(2, 3), new Vector2(2, 2.95f));
+        // Add same tile to visual state at different position, not being animated
+        visualState.AddTile(tile.Id, TileType.Red, BombType.None, new Position(2, 0), new Vector2(2, 2.5f));
+        var visual = visualState.GetTile(tile.Id);
+        visual!.IsBeingAnimated = false;  // Not being animated
 
         // Sync
         visualState.SyncFallingTilesFromGameState(in state);
 
-        // Visual position should be snapped to grid center (close to grid = just landed)
-        var visual = visualState.GetTile(tile.Id);
-        Assert.NotNull(visual);
+        // Visual position should be synced to game state position
         Assert.Equal(2f, visual.Position.X, 0.001f);
-        Assert.Equal(3f, visual.Position.Y, 0.001f);  // Snapped to grid
+        Assert.Equal(3f, visual.Position.Y, 0.001f);  // Synced to game state
     }
 
     [Fact]

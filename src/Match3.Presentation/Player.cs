@@ -244,6 +244,9 @@ public sealed class Player
                 break;
         }
 
+        // Mark tiles as being animated for position-affecting commands
+        MarkTilesAnimating(cmd, true);
+
         // Add to active commands if duration > 0
         if (cmd.Duration > 0)
         {
@@ -253,6 +256,8 @@ public sealed class Player
         {
             // Instant commands - execute immediately
             ExecuteInstantCommand(cmd);
+            // Clear animation flag for instant commands
+            MarkTilesAnimating(cmd, false);
         }
     }
 
@@ -346,6 +351,34 @@ public sealed class Player
 
             case ImpactProjectileCommand impact:
                 _visualState.SetProjectileVisible(impact.ProjectileId, false);
+                break;
+        }
+
+        // Clear animation flag when animation completes
+        MarkTilesAnimating(cmd, false);
+    }
+
+    /// <summary>
+    /// Mark tiles as being animated or not.
+    /// This prevents physics sync from overwriting animated positions.
+    /// </summary>
+    private void MarkTilesAnimating(RenderCommand cmd, bool isAnimating)
+    {
+        switch (cmd)
+        {
+            case MoveTileCommand move:
+                var moveTile = _visualState.GetTile(move.TileId);
+                if (moveTile != null)
+                    moveTile.IsBeingAnimated = isAnimating;
+                break;
+
+            case SwapTilesCommand swap:
+                var tileA = _visualState.GetTile(swap.TileAId);
+                var tileB = _visualState.GetTile(swap.TileBId);
+                if (tileA != null)
+                    tileA.IsBeingAnimated = isAnimating;
+                if (tileB != null)
+                    tileB.IsBeingAnimated = isAnimating;
                 break;
         }
     }
