@@ -1,6 +1,11 @@
 using System;
+using System.Collections.Generic;
 using Match3.Core.Config;
 using Match3.Core.Events;
+using Match3.Core.Models.Enums;
+using Match3.Core.Models.Gameplay;
+using Match3.Core.Models.Grid;
+using Match3.Core.Models.Input;
 using Match3.Core.Systems.Core;
 using Match3.Core.Systems.Generation;
 using Match3.Core.Systems.Input;
@@ -8,16 +13,11 @@ using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
+using Match3.Core.Systems.Selection;
 using Match3.Core.Systems.Swap;
-using Match3.Core.View;
-using Match3.Core.Models.Enums;
-using Match3.Core.Models.Gameplay;
-using Match3.Core.Models.Grid;
 using Match3.Core.Utility;
+using Match3.Core.View;
 using Match3.Random;
-
-using System.Collections.Generic;
-using Match3.Core.Models.Input;
 
 namespace Match3.Core;
 
@@ -37,7 +37,7 @@ public sealed class Match3Engine : IDisposable
     private readonly IAnimationSystem _animationSystem;
     private readonly IAsyncGameLoopSystem _gameLoopSystem;
     private readonly IMatchFinder _matchFinder;
-    private readonly IBotSystem _botSystem;
+    private readonly IMoveSelector _moveSelector;
     private readonly ISwapOperations _swapOperations;
 
     // Input Queue
@@ -65,7 +65,7 @@ public sealed class Match3Engine : IDisposable
         IAnimationSystem animationSystem,
         IBoardInitializer boardInitializer,
         IMatchFinder matchFinder,
-        IBotSystem botSystem,
+        IMoveSelector moveSelector,
         LevelConfig? levelConfig = null)
     {
         _config = config;
@@ -75,7 +75,7 @@ public sealed class Match3Engine : IDisposable
         _interactionSystem = interactionSystem;
         _animationSystem = animationSystem;
         _matchFinder = matchFinder;
-        _botSystem = botSystem;
+        _moveSelector = moveSelector;
 
         // Initialize shared swap operations with animated context
         var swapContext = new AnimatedSwapContext(animationSystem);
@@ -167,13 +167,13 @@ public sealed class Match3Engine : IDisposable
 
     public bool TryMakeRandomMove()
     {
-        if (_botSystem.TryGetRandomMove(ref _state, _interactionSystem, out var move))
+        if (_moveSelector.TryGetMove(in _state, out var action))
         {
              // For bot moves, we can either execute directly or queue an intent.
              // Queuing ensures consistent processing order.
-             // However, BotSystem returns a Move (already resolved), not an Intent.
+             // MoveSelector returns a MoveAction, convert to Move.
              // Let's execute directly for now as it's a resolved move.
-             ExecuteMove(move);
+             ExecuteMove(action.ToMove());
              return true;
         }
         return false;
