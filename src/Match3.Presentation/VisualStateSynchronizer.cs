@@ -80,8 +80,28 @@ public sealed class VisualStateSynchronizer
 
     private void SpawnNewTile(in Tile tile, int x, int y)
     {
-        var startPos = new Vector2(x, y - 1);
         var endPos = new Vector2(x, y);
+
+        // Check if tile was created in-place (e.g., bomb from match) vs falling from above (e.g., refill)
+        // Tiles created in-place have Position.Y == y, falling tiles have Position.Y < y (e.g., -1 or y-1)
+        bool isInPlaceCreation = tile.Position.Y >= y - 0.1f;
+
+        if (isInPlaceCreation)
+        {
+            // In-place creation (bombs from match, initial board setup)
+            // Appear directly at final position, no fall animation
+            _visualState.AddTile(
+                tile.Id,
+                tile.Type,
+                tile.Bomb,
+                new Position(x, y),
+                endPos  // Start at final position
+            );
+            return;
+        }
+
+        // Falling tile (refill from above)
+        var startPos = new Vector2(x, y - 1);
 
         _visualState.AddTile(
             tile.Id,

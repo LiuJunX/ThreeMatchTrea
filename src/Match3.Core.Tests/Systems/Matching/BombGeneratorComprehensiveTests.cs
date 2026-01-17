@@ -1213,5 +1213,119 @@ namespace Match3.Core.Tests.Systems.Matching
         }
 
         #endregion
+
+        #region Foci Priority - Bomb Placement at Swap Position
+
+        [Fact]
+        public void Square2x2WithScrap_Foci_ShouldPlaceBombAtSwapPosition()
+        {
+            // Bug repro: Swap leftmost A with middle B to form UFO
+            // Board after swap (5 connected A cells):
+            //   A       -> (1, 0) - scrap cell that gets absorbed
+            // B A A     -> B(0,1), A(1,1), A(2,1)
+            //   A A     -> A(1,2), A(2,2)
+            //
+            // The 2x2 square is at (1,1), (2,1), (1,2), (2,2)
+            // Foci = [(0,1), (1,1)] - the swap positions
+            // Expected: BombOrigin should be (1,1) because it's in foci AND in the square
+            // Bug: BombOrigin was incorrectly placed at (1,0) because ScrapAbsorber
+            //      added (1,0) to shapeCells and then it was selected by Y-coordinate sorting
+
+            var component = new HashSet<Position>
+            {
+                new Position(1, 0), // scrap cell (will be absorbed)
+                new Position(1, 1), // swap destination - should be bomb origin
+                new Position(2, 1),
+                new Position(1, 2),
+                new Position(2, 2)
+            };
+
+            // Foci: swap from (0,1) to (1,1)
+            var foci = new[] { new Position(0, 1), new Position(1, 1) };
+
+            var results = _generator.Generate(component, foci);
+
+            Assert.Single(results);
+            Assert.Equal(BombType.Ufo, results[0].SpawnBombType);
+
+            // The bomb should be placed at (1,1) - the swap destination that's in the square
+            // NOT at (1,0) which is just an absorbed scrap
+            Assert.Equal(new Position(1, 1), results[0].BombOrigin);
+        }
+
+        [Fact]
+        public void Square2x2_Foci_OneInSquare_ShouldUseThatPosition()
+        {
+            // Simple 2x2 square where one foci is in the square
+            // A A
+            // A A
+            var component = new HashSet<Position>
+            {
+                new Position(0, 0),
+                new Position(1, 0),
+                new Position(0, 1),
+                new Position(1, 1)
+            };
+
+            // Foci: one inside (1,1), one outside (2,1)
+            var foci = new[] { new Position(2, 1), new Position(1, 1) };
+
+            var results = _generator.Generate(component, foci);
+
+            Assert.Single(results);
+            Assert.Equal(BombType.Ufo, results[0].SpawnBombType);
+            Assert.Equal(new Position(1, 1), results[0].BombOrigin);
+        }
+
+        [Fact]
+        public void Square2x2_Foci_BothInSquare_ShouldUseOneOfThem()
+        {
+            // 2x2 square where both foci are in the square
+            // A A
+            // A A
+            var component = new HashSet<Position>
+            {
+                new Position(0, 0),
+                new Position(1, 0),
+                new Position(0, 1),
+                new Position(1, 1)
+            };
+
+            // Foci: both inside the square
+            var foci = new[] { new Position(0, 0), new Position(1, 0) };
+
+            var results = _generator.Generate(component, foci);
+
+            Assert.Single(results);
+            Assert.Equal(BombType.Ufo, results[0].SpawnBombType);
+
+            // Should be one of the foci positions
+            Assert.True(
+                results[0].BombOrigin == new Position(0, 0) ||
+                results[0].BombOrigin == new Position(1, 0),
+                $"Expected BombOrigin to be (0,0) or (1,0), but was {results[0].BombOrigin}");
+        }
+
+        [Fact]
+        public void Square2x2_NoFoci_ShouldUseDefaultSelection()
+        {
+            // 2x2 square without foci - should use default selection logic
+            var component = new HashSet<Position>
+            {
+                new Position(0, 0),
+                new Position(1, 0),
+                new Position(0, 1),
+                new Position(1, 1)
+            };
+
+            var results = _generator.Generate(component, foci: null);
+
+            Assert.Single(results);
+            Assert.Equal(BombType.Ufo, results[0].SpawnBombType);
+            Assert.NotNull(results[0].BombOrigin);
+            Assert.Contains(results[0].BombOrigin!.Value, component);
+        }
+
+        #endregion
     }
 }
