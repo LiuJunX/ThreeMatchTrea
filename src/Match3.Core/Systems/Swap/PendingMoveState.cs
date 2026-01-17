@@ -43,6 +43,31 @@ public struct PendingMoveState
     public float AnimationTime;
 
     /// <summary>
+    /// Whether this is a bomb swap that needs processing after animation.
+    /// </summary>
+    public bool IsBombSwap;
+
+    /// <summary>
+    /// Bomb swap details: whether tile A is a bomb.
+    /// </summary>
+    public bool TileAIsBomb;
+
+    /// <summary>
+    /// Bomb swap details: whether tile B is a bomb.
+    /// </summary>
+    public bool TileBIsBomb;
+
+    /// <summary>
+    /// Bomb swap details: whether tile A is a color bomb (rainbow).
+    /// </summary>
+    public bool TileAIsColorBomb;
+
+    /// <summary>
+    /// Bomb swap details: whether tile B is a color bomb (rainbow).
+    /// </summary>
+    public bool TileBIsColorBomb;
+
+    /// <summary>
     /// Empty state representing no pending move.
     /// </summary>
     public static PendingMoveState None => new() { NeedsValidation = false };

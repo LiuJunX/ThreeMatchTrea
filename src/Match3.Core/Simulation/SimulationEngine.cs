@@ -139,6 +139,11 @@ public sealed class SimulationEngine : IDisposable
         var state = State;
 
         // 0. Validate pending move (check for invalid swap revert)
+        // Capture bomb swap info before validation clears it
+        var pendingBombSwap = _pendingMoveState.IsBombSwap && _pendingMoveState.NeedsValidation
+            ? _pendingMoveState
+            : (PendingMoveState?)null;
+
         _swapOperations.ValidatePendingMove(
             ref state,
             ref _pendingMoveState,
@@ -146,6 +151,14 @@ public sealed class SimulationEngine : IDisposable
             _currentTick,
             _elapsedTime,
             _eventCollector);
+
+        // Process bomb swap AFTER animation completes (validation cleared NeedsValidation)
+        if (pendingBombSwap.HasValue && !_pendingMoveState.NeedsValidation)
+        {
+            var bomb = pendingBombSwap.Value;
+            ProcessBombSwap(ref state, bomb.From, bomb.To,
+                bomb.TileAIsBomb, bomb.TileBIsBomb, bomb.TileAIsColorBomb, bomb.TileBIsColorBomb);
+        }
 
         // 1. Refill empty columns
         _orchestrator.ProcessRefill(ref state);
@@ -286,14 +299,14 @@ public sealed class SimulationEngine : IDisposable
         // Check if swap creates a match (check both positions)
         var hadMatch = _swapOperations.HasMatch(in state, from) || _swapOperations.HasMatch(in state, to);
 
-        // If there's a bomb involved, treat as valid move (no revert) and process bomb effects
+        // If there's a bomb involved, treat as valid move (no revert)
+        // Bomb effects will be processed AFTER swap animation completes
         if (hasSpecialMove)
         {
             hadMatch = true;
-            ProcessBombSwap(ref state, from, to, tileAIsBomb, tileBIsBomb, tileAIsColorBomb, tileBIsColorBomb);
         }
 
-        // Track pending move for potential revert
+        // Track pending move for potential revert (or bomb processing)
         _pendingMoveState = new PendingMoveState
         {
             From = from,
@@ -302,7 +315,13 @@ public sealed class SimulationEngine : IDisposable
             TileBId = tileBId,
             HadMatch = hadMatch,
             NeedsValidation = true,
-            AnimationTime = 0f
+            AnimationTime = 0f,
+            // Store bomb swap info for delayed processing
+            IsBombSwap = hasSpecialMove,
+            TileAIsBomb = tileAIsBomb,
+            TileBIsBomb = tileBIsBomb,
+            TileAIsColorBomb = tileAIsColorBomb,
+            TileBIsColorBomb = tileBIsColorBomb
         };
 
         // Save swap positions for bomb generation priority
