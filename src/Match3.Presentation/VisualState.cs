@@ -74,6 +74,73 @@ public sealed class VisualState : IVisualState
     }
 
     /// <summary>
+    /// Sync falling tile positions from game state.
+    /// Call this each frame to update positions of tiles being moved by physics.
+    /// This handles gravity-based movement that doesn't go through the event system.
+    /// </summary>
+    public void SyncFallingTilesFromGameState(in GameState state)
+    {
+        for (int y = 0; y < state.Height; y++)
+        {
+            for (int x = 0; x < state.Width; x++)
+            {
+                var tile = state.GetTile(x, y);
+                if (tile.Type == TileType.None) continue;
+
+                // Only sync tiles that are falling (being moved by physics)
+                // or tiles that don't exist in visual state yet
+                if (_tiles.TryGetValue(tile.Id, out var visual))
+                {
+                    // Update position from physics simulation
+                    visual.Position = tile.Position;
+                    visual.GridPosition = new Position(x, y);
+                }
+                else
+                {
+                    // Tile exists in game state but not in visual state - add it
+                    _tiles[tile.Id] = new TileVisual
+                    {
+                        Id = tile.Id,
+                        Position = tile.Position,
+                        Scale = Vector2.One,
+                        Alpha = 1f,
+                        IsVisible = true,
+                        TileType = tile.Type,
+                        BombType = tile.Bomb,
+                        GridPosition = new Position(x, y)
+                    };
+                }
+            }
+        }
+
+        // Remove tiles that no longer exist in game state
+        var tilesToRemove = new List<long>();
+        foreach (var kvp in _tiles)
+        {
+            bool found = false;
+            for (int y = 0; y < state.Height && !found; y++)
+            {
+                for (int x = 0; x < state.Width && !found; x++)
+                {
+                    var tile = state.GetTile(x, y);
+                    if (tile.Id == kvp.Key && tile.Type != TileType.None)
+                    {
+                        found = true;
+                    }
+                }
+            }
+            if (!found)
+            {
+                tilesToRemove.Add(kvp.Key);
+            }
+        }
+        foreach (var id in tilesToRemove)
+        {
+            _tiles.Remove(id);
+        }
+    }
+
+    /// <summary>
     /// Add a new tile visual (for spawned tiles).
     /// </summary>
     public void AddTile(long tileId, TileType type, BombType bomb, Position gridPos, Vector2 spawnPos)

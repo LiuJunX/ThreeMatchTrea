@@ -204,6 +204,10 @@ public class Match3GameService : IDisposable
                 // Update player (execute commands, update visual state)
                 _player.Tick(dt);
 
+                // Sync falling tile positions from physics simulation
+                // This handles gravity-based movement that doesn't go through the event system
+                _player.VisualState.SyncFallingTilesFromGameState(session.Engine.State);
+
                 // Update visual effects
                 _player.VisualState.UpdateEffects(dt);
 
