@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Numerics;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
-using Match3.Presentation.Animations;
 
 namespace Match3.Presentation;
 

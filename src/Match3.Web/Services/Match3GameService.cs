@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Match3.Core;
+using Match3.Core.Choreography;
 using Match3.Core.Config;
 using Match3.Core.DependencyInjection;
 using Match3.Core.Events;
@@ -32,8 +33,9 @@ public class Match3GameService : IDisposable
     // Game Session (from factory)
     private GameSession? _gameSession;
 
-    // Presentation Layer
-    private PresentationController? _presentationController;
+    // Presentation Layer (Pure Player Architecture)
+    private Choreographer? _choreographer;
+    private Player? _player;
 
     // Auto-play move selector (Core 层实现)
     private WeightedMoveSelector? _autoPlaySelector;
@@ -48,9 +50,10 @@ public class Match3GameService : IDisposable
 
     public SimulationEngine? SimulationEngine => _gameSession?.Engine;
     public Match3Config? Config => _config;
-    public VisualState? VisualState => _presentationController?.VisualState;
+    public VisualState? VisualState => _player?.VisualState;
     public bool IsAutoPlaying => _isAutoPlaying;
     public bool IsPaused => _gameSession?.Engine.IsPaused ?? false;
+    public bool HasActiveAnimations => _player?.HasActiveAnimations ?? false;
 
     public string StatusMessage
     {
@@ -59,7 +62,7 @@ public class Match3GameService : IDisposable
             var engine = _gameSession?.Engine;
             if (engine == null) return "Loading...";
             if (engine.IsPaused) return "Paused";
-            if (_presentationController?.HasActiveAnimations == true) return "Animating...";
+            if (HasActiveAnimations) return "Animating...";
             if (!engine.IsStable()) return "Processing...";
             return "Ready";
         }
@@ -104,9 +107,10 @@ public class Match3GameService : IDisposable
 
         _config = new Match3Config(Width, Height, 6);
 
-        // Presentation layer
-        _presentationController = new PresentationController();
-        _presentationController.Initialize(_gameSession.Engine.State);
+        // Presentation layer (Pure Player Architecture)
+        _choreographer = new Choreographer();
+        _player = new Player();
+        _player.SyncFromGameState(_gameSession.Engine.State);
 
         // Auto-play selector - create a fresh match finder for the selector
         var matchFinder = new ClassicMatchFinder(new Core.Systems.Matching.Generation.BombGenerator());
@@ -182,19 +186,29 @@ public class Match3GameService : IDisposable
         while (!token.IsCancellationRequested && !_disposed)
         {
             var session = _gameSession;
-            if (session != null && _presentationController != null)
+            if (session != null && _player != null && _choreographer != null)
             {
                 float dt = (FrameMs / 1000.0f) * _gameSpeed;
 
                 // Tick the simulation
                 session.Engine.Tick(dt);
 
-                // Update presentation (events -> animations -> sync)
+                // Convert events to render commands and append to player
                 var events = session.DrainEvents();
-                _presentationController.Update(dt, events, session.Engine.State);
+                if (events.Count > 0)
+                {
+                    var commands = _choreographer.Choreograph(events, _player.CurrentTime);
+                    _player.Append(commands);
+                }
+
+                // Update player (execute commands, update visual state)
+                _player.Tick(dt);
+
+                // Update visual effects
+                _player.VisualState.UpdateEffects(dt);
 
                 // Auto-play: make random move when stable
-                if (_isAutoPlaying && session.Engine.IsStable() && !_presentationController.HasActiveAnimations)
+                if (_isAutoPlaying && session.Engine.IsStable() && !HasActiveAnimations)
                 {
                     TryMakeRandomMove();
                 }
