@@ -8,6 +8,7 @@ using Match3.Core.Simulation;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
+using Match3.Core.Utility;
 using Match3.Core.Utility.Pools;
 using Match3.Random;
 
@@ -289,26 +290,10 @@ public sealed class AIService : IAIService
         return previews;
     }
 
-    private bool IsValidSwap(in GameState state, Position from, Position to)
+    private static bool IsValidSwap(in GameState state, Position from, Position to)
     {
-        var tileFrom = state.GetTile(from.X, from.Y);
-        var tileTo = state.GetTile(to.X, to.Y);
-
-        // Can't swap empty tiles
-        if (tileFrom.Type == TileType.None || tileTo.Type == TileType.None)
-            return false;
-
-        // Can't swap falling tiles
-        if (tileFrom.IsFalling || tileTo.IsFalling)
-            return false;
-
-        // Can't swap tiles blocked by cover
-        if (!state.CanInteract(from) || !state.CanInteract(to))
-            return false;
-
-        // Check if swap would create a match
-        // (simplified: we use preview for accurate check)
-        return true;
+        // 使用共享的有效性验证
+        return GridUtility.IsSwapValid(in state, from, to);
     }
 
 }

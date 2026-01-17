@@ -1,59 +1,48 @@
-using Match3.Core.Models.Enums;
+using System;
+using Match3.Core.Config;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Matching;
-using Match3.Core.Utility;
+using Match3.Core.Systems.Selection;
 
 namespace Match3.Core.Systems.Input;
 
+/// <summary>
+/// Bot 系统实现
+/// 现在内部使用 RandomMoveSelector，保留此类是为了向后兼容
+/// </summary>
+[Obsolete("请使用 RandomMoveSelector 代替。BotSystem 将在后续版本移除。")]
 public class BotSystem : IBotSystem
 {
-    private static readonly Direction[] Directions = { Direction.Up, Direction.Down, Direction.Left, Direction.Right };
-    private readonly IMatchFinder _matchFinder;
+    private readonly RandomMoveSelector _selector;
 
     public BotSystem(IMatchFinder matchFinder)
     {
-        _matchFinder = matchFinder;
+        _selector = new RandomMoveSelector(matchFinder);
     }
 
+    public BotSystem(IMatchFinder matchFinder, MoveSelectionConfig config)
+    {
+        _selector = new RandomMoveSelector(matchFinder, config);
+    }
+
+    /// <summary>
+    /// 获取内部使用的 IMoveSelector
+    /// </summary>
+    public IMoveSelector Selector => _selector;
+
+    [Obsolete("请使用 Selector.TryGetMove() 代替")]
     public bool TryGetRandomMove(ref GameState state, IInteractionSystem interactionSystem, out Move move)
     {
         move = default;
-        // Simple random move logic for AutoPlay
-        // Try random positions and directions
-        int attempts = 20;
-        var w = state.Width;
-        var h = state.Height;
 
-        for (int i = 0; i < attempts; i++)
+        // 使用新的选择器
+        if (_selector.TryGetMove(in state, out var action))
         {
-            int x = state.Random.Next(0, w);
-            int y = state.Random.Next(0, h);
-            var p = new Position(x, y);
-
-            // Try 4 directions
-            foreach (var d in Directions)
-            {
-                // Simulate swipe
-                if (interactionSystem.TryHandleSwipe(ref state, p, d, true, out var candidate))
-                {
-                     if (candidate.HasValue)
-                     {
-                          // Check if this move creates a match
-                          GridUtility.SwapTilesForCheck(ref state, candidate.Value.From, candidate.Value.To);
-                          bool hasMatch = _matchFinder.HasMatchAt(in state, candidate.Value.From) ||
-                                          _matchFinder.HasMatchAt(in state, candidate.Value.To);
-                          GridUtility.SwapTilesForCheck(ref state, candidate.Value.From, candidate.Value.To); // Swap back
-
-                          if (hasMatch)
-                          {
-                              move = candidate.Value;
-                              return true;
-                          }
-                     }
-                }
-            }
+            move = action.ToMove();
+            return true;
         }
+
         return false;
     }
 }
