@@ -85,14 +85,14 @@ public class GroundSystemTests
         // Arrange
         var state = CreateState();
         var pos = new Position(2, 2);
-        state.SetGround(pos, new Ground(GroundType.Jelly, health: 3));
+        state.SetGround(pos, new Ground(GroundType.Ice, health: 3));
         var events = new BufferedEventCollector();
 
         // Act
         _groundSystem.OnTileDestroyed(ref state, pos, tick: 1, simTime: 0.1f, events);
 
         // Assert
-        Assert.Equal(GroundType.Jelly, state.GetGround(pos).Type); // Still exists
+        Assert.Equal(GroundType.Ice, state.GetGround(pos).Type); // Still exists
         Assert.Equal(2, state.GetGround(pos).Health);
         Assert.Empty(events.GetEvents()); // No destroy event yet
     }
@@ -103,7 +103,7 @@ public class GroundSystemTests
         // Arrange
         var state = CreateState();
         var pos = new Position(2, 2);
-        state.SetGround(pos, new Ground(GroundType.Jelly, health: 2));
+        state.SetGround(pos, new Ground(GroundType.Ice, health: 2));
         var events = new BufferedEventCollector();
 
         // Act - First hit
@@ -116,7 +116,7 @@ public class GroundSystemTests
         Assert.Single(events.GetEvents());
         var evt = Assert.IsType<GroundDestroyedEvent>(events.GetEvents()[0]);
         Assert.Equal(pos, evt.GridPosition);
-        Assert.Equal(GroundType.Jelly, evt.Type);
+        Assert.Equal(GroundType.Ice, evt.Type);
     }
 
     [Fact]
@@ -152,7 +152,6 @@ public class GroundSystemTests
 
     [Theory]
     [InlineData(GroundType.Ice)]
-    [InlineData(GroundType.Jelly)]
     [InlineData(GroundType.Honey)]
     public void OnTileDestroyed_AllGroundTypes_HandledCorrectly(GroundType groundType)
     {
@@ -243,14 +242,14 @@ public class GroundSystemTests
     {
         // Arrange
         var state = CreateState();
-        var expected = new Ground(GroundType.Jelly, health: 2);
+        var expected = new Ground(GroundType.Ice, health: 2);
         state.SetGround(3, 3, expected);
 
         // Act
         ref var ground = ref state.GetGround(3, 3);
 
         // Assert
-        Assert.Equal(GroundType.Jelly, ground.Type);
+        Assert.Equal(GroundType.Ice, ground.Type);
         Assert.Equal(2, ground.Health);
     }
 
@@ -394,7 +393,7 @@ public class GroundSystemTests
         var pos1 = new Position(2, 2);
         var pos2 = new Position(4, 4);
         state.SetGround(pos1, new Ground(GroundType.Ice, health: 1));
-        state.SetGround(pos2, new Ground(GroundType.Jelly, health: 2));
+        state.SetGround(pos2, new Ground(GroundType.Ice, health: 2));
         var events = new BufferedEventCollector();
 
         // Act - Destroy first position
@@ -402,7 +401,7 @@ public class GroundSystemTests
 
         // Assert - First destroyed, second untouched
         Assert.Equal(GroundType.None, state.GetGround(pos1).Type);
-        Assert.Equal(GroundType.Jelly, state.GetGround(pos2).Type);
+        Assert.Equal(GroundType.Ice, state.GetGround(pos2).Type);
         Assert.Equal(2, state.GetGround(pos2).Health);
     }
 
@@ -412,7 +411,7 @@ public class GroundSystemTests
         // Arrange
         var state = CreateState();
         var pos = new Position(3, 3);
-        state.SetGround(pos, new Ground(GroundType.Jelly, health: 3));
+        state.SetGround(pos, new Ground(GroundType.Ice, health: 3));
         var events = new BufferedEventCollector();
 
         // Act - Three hits

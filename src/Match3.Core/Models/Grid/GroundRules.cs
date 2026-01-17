@@ -14,7 +14,6 @@ public static class GroundRules
     {
         GroundType.None => 0,
         GroundType.Ice => 1,
-        GroundType.Jelly => 2,   // Jelly needs 2 hits by default
         GroundType.Honey => 1,
         _ => 1
     };

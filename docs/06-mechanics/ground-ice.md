@@ -46,5 +46,4 @@ Ice（冰块）是 Ground 层级障碍物，位于 Tile 下方。玩家需要在
 ## 相关文档
 
 - [Ground/Cover 层级设计](../04-adr/adr-007-ground-cover-layer.md)
-- [Jelly 果冻](./ground-jelly.md)
 - [Honey 蜂蜜](./ground-honey.md)

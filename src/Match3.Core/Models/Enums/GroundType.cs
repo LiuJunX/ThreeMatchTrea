@@ -17,12 +17,7 @@ public enum GroundType : byte
     Ice = 1,
 
     /// <summary>
-    /// Jelly that spreads or needs multiple hits.
-    /// </summary>
-    Jelly = 2,
-
-    /// <summary>
     /// Honey that may have special spreading behavior.
     /// </summary>
-    Honey = 3,
+    Honey = 2,
 }

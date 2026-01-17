@@ -172,6 +172,5 @@ Honey（蜂蜜）是一种 Ground 层级的障碍物，位于 Tile 下方。蜂�
 
 ## 相关文档
 
-- [ADR-007: Ground/Cover 层级扩展设计](../04-adr/adr-007-ground-cover-layer.md)
+- [Ground/Cover 层级设计](../04-adr/adr-007-ground-cover-layer.md)
 - [Ice 冰块](./ground-ice.md)
-- [Jelly 果冻](./ground-jelly.md)
