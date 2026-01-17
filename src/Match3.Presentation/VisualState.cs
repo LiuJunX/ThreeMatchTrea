@@ -90,11 +90,31 @@ public sealed class VisualState : IVisualState
 
                 if (_tiles.TryGetValue(tile.Id, out var visual))
                 {
-                    // Only update position for tiles that are actually falling
-                    // This avoids overwriting positions set by Player animations (e.g., swap)
                     if (tile.IsFalling)
                     {
+                        // Sync position for falling tiles (physics-driven movement)
                         visual.Position = tile.Position;
+                        visual.GridPosition = new Position(x, y);
+                    }
+                    else
+                    {
+                        // Tile is not falling - check if we should snap to grid center
+                        // Only snap if position is close to grid (just landed)
+                        // Don't snap if far from grid (e.g., swap animation in progress)
+                        float targetX = x;
+                        float targetY = y;
+                        float diffX = System.Math.Abs(visual.Position.X - targetX);
+                        float diffY = System.Math.Abs(visual.Position.Y - targetY);
+
+                        const float snapThreshold = 0.5f;  // Only snap if within half a cell
+                        const float epsilon = 0.001f;      // Already at target
+
+                        if (diffX < snapThreshold && diffY < snapThreshold &&
+                            (diffX > epsilon || diffY > epsilon))
+                        {
+                            // Close to grid but not exactly there - snap
+                            visual.Position = new Vector2(targetX, targetY);
+                        }
                         visual.GridPosition = new Position(x, y);
                     }
                 }
