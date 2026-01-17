@@ -549,6 +549,105 @@ public class SimulationEngineTests
         Assert.Contains(new Position(1, 1), matchEvent.Positions);
     }
 
+    /// <summary>
+    /// Verifies UFO bomb spawns at swap position for 2x2 square match.
+    /// Layout:
+    ///   A A
+    ///   A B A  → swap B(1,1) with A(2,1) → A A
+    ///                                      A A B (2x2 formed at 0,0-1,1)
+    /// Position (1,1) is swap position and part of 2x2, UFO should spawn there.
+    /// </summary>
+    [Fact]
+    public void ApplyMove_2x2Square_UfoBombSpawnsAtSwapPosition()
+    {
+        var state = new GameState(5, 5, 5, new StubRandom());
+
+        // Row 0: A A _ _ _
+        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
+
+        // Row 1: A B A _ _
+        state.SetTile(0, 1, new Tile(6, TileType.Red, 0, 1));
+        state.SetTile(1, 1, new Tile(7, TileType.Blue, 1, 1));  // B - will be swapped
+        state.SetTile(2, 1, new Tile(8, TileType.Red, 2, 1));   // A - swap target
+
+        // Fill rest with non-matching pattern to prevent cascades
+        var types = new[] { TileType.Yellow, TileType.Purple, TileType.Orange, TileType.Green };
+        for (int y = 0; y < 5; y++)
+        {
+            for (int x = 0; x < 5; x++)
+            {
+                // Skip already set tiles
+                if ((y == 0 && x <= 1) || (y == 1 && x <= 2)) continue;
+
+                int idx = y * 5 + x + 10;
+                var type = types[(x + y) % types.Length];
+                state.SetTile(x, y, new Tile(idx, type, x, y));
+            }
+        }
+
+        var collector = new BufferedEventCollector();
+        var engine = CreateEngine(state, collector);
+
+        // Act: Swap B(1,1) with A(2,1)
+        // After swap: A(1,1) B(2,1) → forms 2x2 square at (0,0), (1,0), (0,1), (1,1)
+        engine.ApplyMove(new Position(1, 1), new Position(2, 1));
+
+        // Run enough ticks to process the match
+        for (int i = 0; i < 30; i++)
+        {
+            engine.Tick();
+        }
+
+        // Assert: Check that UFO spawned at swap position (1,1)
+        var events = collector.GetEvents();
+        var matchEvent = events.OfType<MatchDetectedEvent>().FirstOrDefault();
+
+        Assert.NotNull(matchEvent);
+        Assert.Equal(4, matchEvent.TileCount); // 2x2 = 4 tiles
+
+        // The swap position (1,1) should be part of the match
+        Assert.Contains(new Position(1, 1), matchEvent.Positions);
+
+        // Check for UFO bomb - it should be at position (1,1) after tiles settle
+        // Since tiles may have fallen, we need to check where the bomb ended up
+        bool ufoFound = false;
+        Position? ufoPosition = null;
+        for (int y = 0; y < 5; y++)
+        {
+            for (int x = 0; x < 5; x++)
+            {
+                var tile = engine.State.GetTile(x, y);
+                if (tile.Bomb == BombType.Ufo)
+                {
+                    ufoFound = true;
+                    ufoPosition = new Position(x, y);
+                    break;
+                }
+            }
+            if (ufoFound) break;
+        }
+
+        Assert.True(ufoFound, "A UFO bomb should have been created from the 2x2 match");
+
+        // The UFO should have spawned at position (1,1) originally
+        // Due to gravity, it may have fallen. But since (1,1) is the bottom-right of the 2x2,
+        // and we have solid tiles below, it should stay at (1,1) or fall to the bottom.
+        // The key assertion is that the UFO was created at a swap position.
+
+        // Check for BombCreatedEvent or verify via the match group's BombOrigin
+        // Since we can't easily access the internal BombOrigin, we verify through the final state.
+        // The UFO should be somewhere in the grid, and one of the swap positions (1,1) or (2,1)
+        // should have been used as the spawn point.
+
+        // Stronger assertion: UFO should have fallen to where (1,1) column lands
+        // Given the setup, tiles at (0,0), (1,0), (0,1), (1,1) are cleared (2x2 match)
+        // New tiles fill from top, and the UFO (originally at 1,1) should fall down
+        // Check that UFO ended up in column 1 (the swap column)
+        Assert.True(ufoPosition.HasValue && ufoPosition.Value.X == 1,
+            $"UFO should be in swap column 1, but found at {ufoPosition}");
+    }
+
     #endregion
 
     #region Bomb Swap Tests (No Revert)
