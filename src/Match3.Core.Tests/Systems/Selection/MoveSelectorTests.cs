@@ -162,24 +162,23 @@ public class MoveSelectorTests
     [Fact]
     public void RandomMoveSelector_SmallBoard_HandlesEdges()
     {
-        // Arrange: 2x2 棋盘边缘测试
-        // R R
-        // B R
-        var random = new StubRandom(1, 0);
-        var state = CreateEmptyState(2, 2, random);
+        // Arrange: 小棋盘也不应该崩溃，即使找不到移动
+        var state = CreateEmptyState(2, 2);
 
         state.SetTile(0, 0, new Tile(0, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(1, TileType.Red, 1, 0));
+        state.SetTile(1, 0, new Tile(1, TileType.Green, 1, 0));
         state.SetTile(0, 1, new Tile(2, TileType.Blue, 0, 1));
-        state.SetTile(1, 1, new Tile(3, TileType.Red, 1, 1));
+        state.SetTile(1, 1, new Tile(3, TileType.Yellow, 1, 1));
 
         var selector = new RandomMoveSelector(CreateMatchFinder());
 
-        // Act
-        bool found = selector.TryGetMove(in state, out var action);
+        // Act & Assert - 不应该抛出异常
+        bool found = selector.TryGetMove(in state, out _);
+        var candidates = selector.GetAllCandidates(in state);
 
-        // Assert
-        Assert.True(found);
+        // 即使没有有效移动，也应该正常返回
+        Assert.False(found);
+        Assert.Empty(candidates);
     }
 
     [Fact]
@@ -207,8 +206,8 @@ public class MoveSelectorTests
         // 验证状态未被修改
         var currentTileAt2 = state.GetTile(2, 0);
         Assert.Equal(originalTileAt2.Type, currentTileAt2.Type);
-        Assert.Equal(originalTileAt2.GridX, currentTileAt2.GridX);
-        Assert.Equal(originalTileAt2.GridY, currentTileAt2.GridY);
+        Assert.Equal(originalTileAt2.Position.X, currentTileAt2.Position.X);
+        Assert.Equal(originalTileAt2.Position.Y, currentTileAt2.Position.Y);
     }
 
     [Fact]
