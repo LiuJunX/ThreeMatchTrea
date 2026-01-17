@@ -25,6 +25,9 @@ public sealed record ProjectileLaunchedEvent : GameEvent
 
     /// <summary>Target tile ID (if tracking a specific tile).</summary>
     public long? TargetTileId { get; init; }
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }
 
 /// <summary>
@@ -43,6 +46,9 @@ public sealed record ProjectileMovedEvent : GameEvent
 
     /// <summary>Current velocity for interpolation.</summary>
     public Vector2 Velocity { get; init; }
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }
 
 /// <summary>
@@ -61,6 +67,9 @@ public sealed record ProjectileRetargetedEvent : GameEvent
 
     /// <summary>Reason for retargeting.</summary>
     public RetargetReason Reason { get; init; }
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }
 
 /// <summary>
@@ -79,6 +88,9 @@ public sealed record ProjectileImpactEvent : GameEvent
 
     /// <summary>All positions affected by the impact.</summary>
     public IReadOnlyCollection<Position> AffectedPositions { get; init; } = Array.Empty<Position>();
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }
 
 /// <summary>

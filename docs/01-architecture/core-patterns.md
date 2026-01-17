@@ -140,7 +140,128 @@ public class MyProjectile : Projectile
 }
 ```
 
+## 11. Factory Pattern (Dependency Injection)
+
+### GameServiceFactory
+Abstracts away the manual assembly of 13+ game systems.
+
+```csharp
+// Builder pattern for configuration
+var factory = new GameServiceBuilder()
+    .WithPhysics((cfg, rng) => new CustomPhysics(cfg, rng))
+    .WithMatchFinder(bombGen => new CustomMatchFinder(bombGen))
+    .Build();
+
+// Factory creates complete sessions
+var session = factory.CreateGameSession(config, levelConfig);
+```
+
+### Configurable Systems
+| System | Factory Signature |
+| :--- | :--- |
+| Physics | `Func<Match3Config, IRandom, IPhysicsSimulation>` |
+| MatchFinder | `Func<IBombGenerator, IMatchFinder>` |
+| MatchProcessor | `Func<IScoreSystem, BombEffectRegistry, IMatchProcessor>` |
+| Refill | `Func<ISpawnModel, IRefillSystem>` |
+| EventCollector | `Func<bool, IEventCollector>` |
+
+### Benefits
+*   **Testability**: Inject mocks for isolated testing
+*   **Flexibility**: Swap implementations without code changes
+*   **Encapsulation**: Hide complex wiring from consumers
+
+## 12. Visitor Pattern (Event Dispatch)
+
+### Purpose
+Compile-time exhaustive handling of all event types, replacing error-prone switch statements.
+
+### Structure
+```csharp
+// 1. Base class with Accept method
+public abstract record GameEvent
+{
+    public abstract void Accept(IEventVisitor visitor);
+}
+
+// 2. Concrete events implement Accept
+public sealed record TileMovedEvent : GameEvent
+{
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
+}
+
+// 3. Visitor interface enforces exhaustive handling
+public interface IEventVisitor
+{
+    void Visit(TileMovedEvent evt);
+    void Visit(TileDestroyedEvent evt);
+    // ... 17 total Visit methods
+}
+
+// 4. Consumers implement the interface
+public class EventInterpreter : IEventVisitor
+{
+    public void Visit(TileMovedEvent evt) { /* create animation */ }
+    public void Visit(TileDestroyedEvent evt) { /* create explosion */ }
+}
+```
+
+### Benefits
+*   **Type Safety**: Compiler error if new event type not handled
+*   **No Casting**: Each Visit method receives correctly typed event
+*   **Extensibility**: Add new visitors without modifying events
+
+## 13. Command Pattern (Replay System)
+
+### Purpose
+Encapsulate player actions as objects for recording and replay.
+
+### Structure
+```csharp
+public interface IGameCommand
+{
+    Guid Id { get; }
+    long IssuedAtTick { get; }
+    bool Execute(SimulationEngine engine);
+    bool CanExecute(in GameState state);
+}
+
+public sealed record SwapCommand : IGameCommand
+{
+    public Position From { get; init; }
+    public Position To { get; init; }
+
+    public bool Execute(SimulationEngine engine)
+        => engine.ApplyMove(From, To);
+}
+```
+
+### Recording & Playback
+```csharp
+// Recording
+var history = new CommandHistory();
+history.Record(new SwapCommand { From = a, To = b, IssuedAtTick = tick });
+
+// Playback
+var recording = new GameRecording
+{
+    InitialState = GameStateSnapshot.FromState(state),
+    RandomSeed = seed,
+    Commands = history.GetCommands()
+};
+
+var controller = new ReplayController(recording, factory);
+controller.Play();
+```
+
+### Benefits
+*   **Determinism**: Same commands + seed = identical replay
+*   **Debugging**: Reproduce bugs by replaying command sequence
+*   **Analytics**: Analyze player behavior patterns
+
+See: `docs/03-design/features/replay-system.md`
+
 ## Related Documents
 *   Code Style: `docs/02-guides/coding-standards.md`
 *   Testing Guidelines: `docs/testing-guidelines.md`
 *   Architecture Overview: `docs/01-architecture/overview.md`
+*   Replay System: `docs/03-design/features/replay-system.md`

@@ -21,48 +21,19 @@ namespace Match3.Core.Tests.Systems.Matching;
 /// </summary>
 public class StandardMatchProcessorTests
 {
-    private class StubRandom : IRandom
-    {
-        public float NextFloat() => 0f;
-        public int Next(int max) => 0;
-        public int Next(int min, int max) => min;
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-    }
-
-    private class StubScoreSystem : IScoreSystem
-    {
-        public int MatchScorePerTile { get; set; } = 10;
-
-        public int CalculateMatchScore(MatchGroup match)
-        {
-            return match.Positions.Count * MatchScorePerTile;
-        }
-
-        public int CalculateSpecialMoveScore(TileType t1, BombType b1, TileType t2, BombType b2)
-        {
-            return 100;
-        }
-    }
-
     private StandardMatchProcessor CreateProcessor()
     {
-        var scoreSystem = new StubScoreSystem();
+        var scoreSystem = new Match3.Core.Tests.TestFixtures.StubScoreSystem();
         var bombRegistry = BombEffectRegistry.CreateDefault();
         return new StandardMatchProcessor(scoreSystem, bombRegistry);
     }
 
     private GameState CreateEmptyState(int width = 8, int height = 8)
     {
-        var state = new GameState(width, height, 6, new StubRandom());
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                state.SetTile(x, y, new Tile(y * width + x, TileType.None, x, y));
-            }
-        }
-        return state;
+        return new Match3.Core.Tests.TestFixtures.GameStateBuilder()
+            .WithSize(width, height)
+            .WithEmptyTiles()
+            .Build();
     }
 
     #region Basic ProcessMatches Tests

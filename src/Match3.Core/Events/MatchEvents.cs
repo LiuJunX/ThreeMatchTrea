@@ -23,6 +23,9 @@ public sealed record MatchDetectedEvent : GameEvent
 
     /// <summary>Number of tiles in the match.</summary>
     public int TileCount { get; init; }
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }
 
 /// <summary>
@@ -41,6 +44,9 @@ public sealed record BombCreatedEvent : GameEvent
 
     /// <summary>Base tile type of the bomb.</summary>
     public TileType BaseType { get; init; }
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }
 
 /// <summary>
@@ -62,6 +68,9 @@ public sealed record BombActivatedEvent : GameEvent
 
     /// <summary>Whether this was triggered by a chain reaction.</summary>
     public bool IsChainReaction { get; init; }
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }
 
 /// <summary>
@@ -83,4 +92,7 @@ public sealed record BombComboEvent : GameEvent
 
     /// <summary>All positions affected by the combo.</summary>
     public IReadOnlyCollection<Position> AffectedPositions { get; init; } = Array.Empty<Position>();
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }

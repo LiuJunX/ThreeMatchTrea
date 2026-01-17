@@ -13,6 +13,9 @@ public sealed record CoverDestroyedEvent : GameEvent
 
     /// <summary>Type of the destroyed cover.</summary>
     public CoverType Type { get; init; }
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }
 
 /// <summary>
@@ -25,4 +28,7 @@ public sealed record GroundDestroyedEvent : GameEvent
 
     /// <summary>Type of the destroyed ground.</summary>
     public GroundType Type { get; init; }
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }

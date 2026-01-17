@@ -17,4 +17,11 @@ public abstract record GameEvent
     /// Used by Presentation layer for animation timing.
     /// </summary>
     public float SimulationTime { get; init; }
+
+    /// <summary>
+    /// Accept a visitor for strong-typed dispatch.
+    /// Each concrete event overrides this method.
+    /// </summary>
+    /// <param name="visitor">The visitor to accept.</param>
+    public abstract void Accept(IEventVisitor visitor);
 }

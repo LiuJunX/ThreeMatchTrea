@@ -49,9 +49,8 @@ namespace Match3.Core.Tests.Architecture
             var result = Types.InAssembly(coreAssembly)
                 .ShouldNot()
                 .HaveDependencyOn("UnityEngine")
-                //.And()
-                //.ShouldNot()
-                //.HaveDependencyOn("Microsoft.AspNetCore")
+                .And()
+                .HaveDependencyOn("Microsoft.AspNetCore")
                 .GetResult();
 
             Assert.True(result.IsSuccessful, "Match3.Core should not depend on Unity or ASP.NET Core");

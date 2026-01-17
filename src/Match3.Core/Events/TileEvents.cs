@@ -21,6 +21,9 @@ public sealed record TileMovedEvent : GameEvent
 
     /// <summary>Reason for the movement.</summary>
     public MoveReason Reason { get; init; }
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }
 
 /// <summary>
@@ -42,6 +45,9 @@ public sealed record TileDestroyedEvent : GameEvent
 
     /// <summary>Reason for destruction.</summary>
     public DestroyReason Reason { get; init; }
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }
 
 /// <summary>
@@ -63,6 +69,9 @@ public sealed record TileSpawnedEvent : GameEvent
 
     /// <summary>Initial spawn position (may be above grid for animation).</summary>
     public Vector2 SpawnPosition { get; init; }
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }
 
 /// <summary>
@@ -84,4 +93,7 @@ public sealed record TilesSwappedEvent : GameEvent
 
     /// <summary>Whether this is a revert (invalid swap).</summary>
     public bool IsRevert { get; init; }
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }

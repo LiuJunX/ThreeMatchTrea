@@ -22,6 +22,9 @@ public sealed record ScoreAddedEvent : GameEvent
 
     /// <summary>Current combo level (if applicable).</summary>
     public int ComboLevel { get; init; }
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }
 
 /// <summary>
@@ -37,6 +40,9 @@ public sealed record ComboChangedEvent : GameEvent
 
     /// <summary>Combo multiplier being applied.</summary>
     public float Multiplier { get; init; }
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }
 
 /// <summary>
@@ -49,4 +55,7 @@ public sealed record MoveCompletedEvent : GameEvent
 
     /// <summary>Remaining moves (if limited).</summary>
     public int? RemainingMoves { get; init; }
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }

@@ -1,3 +1,4 @@
+using Match3.Core.DependencyInjection;
 using Match3.Web.Components;
 using Match3.Web.Services;
 
@@ -7,6 +8,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+// Register game service factory
+builder.Services.AddSingleton<IGameServiceFactory>(_ => new GameServiceBuilder().Build());
 builder.Services.AddScoped<Match3GameService>();
 
 // Editor Services

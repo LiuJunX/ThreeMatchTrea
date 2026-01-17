@@ -9,8 +9,9 @@ namespace Match3.Presentation;
 /// <summary>
 /// Interprets game events and creates corresponding animations.
 /// Bridges the gap between Core simulation events and Presentation animations.
+/// Implements IEventVisitor for compile-time type safety.
 /// </summary>
-public sealed class EventInterpreter
+public sealed class EventInterpreter : IEventVisitor
 {
     private readonly AnimationTimeline _timeline;
     private readonly VisualState _visualState;
@@ -47,53 +48,17 @@ public sealed class EventInterpreter
     {
         foreach (var evt in events)
         {
-            InterpretEvent(evt);
+            evt.Accept(this);
         }
     }
 
     /// <summary>
     /// Interpret a single event and create animations.
+    /// Uses visitor pattern for type-safe dispatch.
     /// </summary>
     public void InterpretEvent(GameEvent evt)
     {
-        switch (evt)
-        {
-            case TileMovedEvent moved:
-                InterpretTileMoved(moved);
-                break;
-
-            case TileDestroyedEvent destroyed:
-                InterpretTileDestroyed(destroyed);
-                break;
-
-            case TileSpawnedEvent spawned:
-                InterpretTileSpawned(spawned);
-                break;
-
-            case TilesSwappedEvent swapped:
-                InterpretTilesSwapped(swapped);
-                break;
-
-            case MatchDetectedEvent match:
-                InterpretMatchDetected(match);
-                break;
-
-            case ProjectileLaunchedEvent launched:
-                InterpretProjectileLaunched(launched);
-                break;
-
-            case ProjectileMovedEvent projectileMoved:
-                InterpretProjectileMoved(projectileMoved);
-                break;
-
-            case ProjectileImpactEvent impact:
-                InterpretProjectileImpact(impact);
-                break;
-
-            case BombActivatedEvent bomb:
-                InterpretBombActivated(bomb);
-                break;
-        }
+        evt.Accept(this);
     }
 
     /// <summary>
@@ -110,7 +75,10 @@ public sealed class EventInterpreter
         return evt.SimulationTime + _eventTimeOffset;
     }
 
-    private void InterpretTileMoved(TileMovedEvent evt)
+    #region IEventVisitor Implementation
+
+    /// <inheritdoc />
+    public void Visit(TileMovedEvent evt)
     {
         float startTime = GetAnimationStartTime(evt);
 
@@ -125,7 +93,8 @@ public sealed class EventInterpreter
         _timeline.AddAnimation(animation);
     }
 
-    private void InterpretTileDestroyed(TileDestroyedEvent evt)
+    /// <inheritdoc />
+    public void Visit(TileDestroyedEvent evt)
     {
         float startTime = GetAnimationStartTime(evt);
         var position = new Vector2(evt.GridPosition.X, evt.GridPosition.Y);
@@ -152,7 +121,8 @@ public sealed class EventInterpreter
         _visualState.AddEffect(effectType, position, DestroyDuration);
     }
 
-    private void InterpretTileSpawned(TileSpawnedEvent evt)
+    /// <inheritdoc />
+    public void Visit(TileSpawnedEvent evt)
     {
         // Add tile to visual state at spawn position
         _visualState.AddTile(
@@ -177,7 +147,8 @@ public sealed class EventInterpreter
         _timeline.AddAnimation(animation);
     }
 
-    private void InterpretTilesSwapped(TilesSwappedEvent evt)
+    /// <inheritdoc />
+    public void Visit(TilesSwappedEvent evt)
     {
         float startTime = GetAnimationStartTime(evt);
         var posA = new Vector2(evt.PositionA.X, evt.PositionA.Y);
@@ -205,7 +176,8 @@ public sealed class EventInterpreter
         _timeline.AddAnimation(animB);
     }
 
-    private void InterpretMatchDetected(MatchDetectedEvent evt)
+    /// <inheritdoc />
+    public void Visit(MatchDetectedEvent evt)
     {
         // Match detection triggers highlight effects before destruction
         foreach (var pos in evt.Positions)
@@ -215,7 +187,59 @@ public sealed class EventInterpreter
         }
     }
 
-    private void InterpretProjectileLaunched(ProjectileLaunchedEvent evt)
+    /// <inheritdoc />
+    public void Visit(BombCreatedEvent evt)
+    {
+        // Bomb creation visual feedback
+        var position = new Vector2(evt.Position.X, evt.Position.Y);
+        _visualState.AddEffect("bomb_created", position, 0.3f);
+    }
+
+    /// <inheritdoc />
+    public void Visit(BombActivatedEvent evt)
+    {
+        var position = new Vector2(evt.Position.X, evt.Position.Y);
+
+        // Add explosion effect
+        _visualState.AddEffect("bomb_explosion", position, 0.4f);
+
+        // Affected tiles will receive their own TileDestroyedEvent
+    }
+
+    /// <inheritdoc />
+    public void Visit(BombComboEvent evt)
+    {
+        var posA = new Vector2(evt.PositionA.X, evt.PositionA.Y);
+        var posB = new Vector2(evt.PositionB.X, evt.PositionB.Y);
+
+        // Add combo explosion effect at both positions
+        _visualState.AddEffect("bomb_combo", posA, 0.5f);
+        _visualState.AddEffect("bomb_combo", posB, 0.5f);
+    }
+
+    /// <inheritdoc />
+    public void Visit(ScoreAddedEvent evt)
+    {
+        // Score events can trigger floating score text
+        // UI layer handles score display
+    }
+
+    /// <inheritdoc />
+    public void Visit(ComboChangedEvent evt)
+    {
+        // Combo change can trigger UI effects
+        // Currently no animation needed
+    }
+
+    /// <inheritdoc />
+    public void Visit(MoveCompletedEvent evt)
+    {
+        // Move completion can trigger UI updates
+        // Currently no animation needed
+    }
+
+    /// <inheritdoc />
+    public void Visit(ProjectileLaunchedEvent evt)
     {
         // Add projectile to visual state
         _visualState.AddProjectile(evt.ProjectileId, evt.Origin);
@@ -236,7 +260,8 @@ public sealed class EventInterpreter
         _timeline.AddAnimation(launchAnim);
     }
 
-    private void InterpretProjectileMoved(ProjectileMovedEvent evt)
+    /// <inheritdoc />
+    public void Visit(ProjectileMovedEvent evt)
     {
         float startTime = GetAnimationStartTime(evt);
 
@@ -256,7 +281,15 @@ public sealed class EventInterpreter
         _timeline.AddAnimation(animation);
     }
 
-    private void InterpretProjectileImpact(ProjectileImpactEvent evt)
+    /// <inheritdoc />
+    public void Visit(ProjectileRetargetedEvent evt)
+    {
+        // Retarget events can trigger a visual indicator
+        // Currently no animation needed
+    }
+
+    /// <inheritdoc />
+    public void Visit(ProjectileImpactEvent evt)
     {
         float startTime = GetAnimationStartTime(evt);
         var position = new Vector2(evt.ImpactPosition.X, evt.ImpactPosition.Y);
@@ -276,13 +309,19 @@ public sealed class EventInterpreter
         // Note: Projectile removal from visual state should happen after animation completes
     }
 
-    private void InterpretBombActivated(BombActivatedEvent evt)
+    /// <inheritdoc />
+    public void Visit(CoverDestroyedEvent evt)
     {
-        var position = new Vector2(evt.Position.X, evt.Position.Y);
-
-        // Add explosion effect
-        _visualState.AddEffect("bomb_explosion", position, 0.4f);
-
-        // Affected tiles will receive their own TileDestroyedEvent
+        var position = new Vector2(evt.GridPosition.X, evt.GridPosition.Y);
+        _visualState.AddEffect("cover_destroyed", position, 0.25f);
     }
+
+    /// <inheritdoc />
+    public void Visit(GroundDestroyedEvent evt)
+    {
+        var position = new Vector2(evt.GridPosition.X, evt.GridPosition.Y);
+        _visualState.AddEffect("ground_destroyed", position, 0.25f);
+    }
+
+    #endregion
 }

@@ -95,6 +95,33 @@ All state changes produce `GameEvent` records for presentation layer consumption
 | `BombActivatedEvent` | Bomb explosion triggered |
 | `ScoreAddedEvent` | Score changed |
 
+### Event Visitor Pattern
+Events use the **Visitor Pattern** for type-safe dispatch, enforcing compile-time exhaustive handling.
+
+```csharp
+// Base event with Accept method
+public abstract record GameEvent
+{
+    public abstract void Accept(IEventVisitor visitor);
+}
+
+// Visitor interface (17 event types)
+public interface IEventVisitor
+{
+    void Visit(TileMovedEvent evt);
+    void Visit(TileDestroyedEvent evt);
+    void Visit(MatchDetectedEvent evt);
+    // ... all 17 event types
+}
+
+// Usage - replaces switch statements
+public class EventInterpreter : IEventVisitor
+{
+    public void InterpretEvent(GameEvent evt) => evt.Accept(this);
+    public void Visit(TileMovedEvent evt) { /* create animation */ }
+}
+```
+
 ### Event Collectors
 - **`BufferedEventCollector`**: Collects events for presentation (human play)
 - **`NullEventCollector`**: Zero-overhead collector for AI simulation
@@ -173,3 +200,101 @@ public interface IAIService
 - **Event Sourcing**: All state changes produce events, enabling replay, AI analysis, and decoupled presentation.
 - **Tick-Based Simulation**: Fixed time step (16ms default) enables deterministic simulation and time-based animations.
 - **Zero-Overhead AI**: `NullEventCollector` allows AI to run simulations without event allocation overhead.
+
+## 9. Dependency Injection (`Match3.Core.DependencyInjection`)
+
+### Overview
+The DI system abstracts away the manual assembly of 13+ game systems, providing a clean factory-based API.
+
+```
+DependencyInjection/
+├── IGameServiceFactory.cs       # Factory interface
+├── GameServiceFactory.cs        # Factory implementation
+├── GameServiceBuilder.cs        # Fluent configuration builder
+├── GameServiceConfiguration.cs  # Immutable configuration record
+└── GameSession.cs               # Session encapsulation
+```
+
+### GameServiceBuilder (Fluent API)
+```csharp
+var factory = new GameServiceBuilder()
+    .WithPhysics((cfg, rng) => new CustomPhysics(cfg, rng))
+    .WithMatchFinder(bombGen => new CustomMatchFinder(bombGen))
+    .Build();
+```
+
+### GameSession
+Encapsulates a complete game session with all dependencies:
+
+```csharp
+public sealed class GameSession : IDisposable
+{
+    public SimulationEngine Engine { get; }
+    public IEventCollector EventCollector { get; }
+    public SeedManager SeedManager { get; }
+    public GameServiceConfiguration Configuration { get; }
+}
+```
+
+### Usage
+```csharp
+// Simple usage with defaults
+var factory = new GameServiceBuilder().Build();
+var session = factory.CreateGameSession(levelConfig);
+
+// Custom configuration
+var config = new GameServiceConfiguration
+{
+    Width = 8,
+    Height = 8,
+    RngSeed = 12345,
+    EnableEventCollection = true
+};
+var session = factory.CreateGameSession(config, levelConfig);
+```
+
+## 10. Command & Replay System
+
+### Overview
+The Command pattern enables game recording and deterministic replay.
+
+```
+Commands/
+├── IGameCommand.cs        # Command interface
+├── SwapCommand.cs         # Tile swap command
+├── TapCommand.cs          # Power-up tap command
+└── CommandHistory.cs      # Thread-safe command recording
+
+Replay/
+├── GameStateSnapshot.cs   # Serializable state snapshot
+├── GameRecording.cs       # Complete game recording
+└── ReplayController.cs    # Playback controller
+```
+
+### Command Interface
+```csharp
+public interface IGameCommand
+{
+    Guid Id { get; }
+    long IssuedAtTick { get; }
+    bool Execute(SimulationEngine engine);
+    bool CanExecute(in GameState state);
+}
+```
+
+### ReplayController
+```csharp
+var controller = new ReplayController(recording, factory);
+controller.PlaybackSpeed = 2.0f;  // 2x speed
+controller.Play();
+controller.Seek(0.5f);            // Jump to 50%
+controller.Tick(deltaTime);       // Update each frame
+```
+
+### Determinism Guarantees
+- **Fixed Random Seed**: `GameRecording.RandomSeed`
+- **Domain-Isolated RNG**: `SeedManager` provides separate streams
+- **Command Timing**: `IssuedAtTick` records precise timing
+- **State Snapshot**: `GameStateSnapshot` captures full board state
+
+See: `docs/03-design/features/replay-system.md`
