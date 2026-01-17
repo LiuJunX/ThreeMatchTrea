@@ -280,6 +280,10 @@ public sealed class SimulationEngine : IDisposable
         if (!state.IsValid(from) || !state.IsValid(to))
             return false;
 
+        // Check if tiles are blocked by cover
+        if (!state.CanInteract(from) || !state.CanInteract(to))
+            return false;
+
         // Get tile info BEFORE swap
         var tileA = state.GetTile(from.X, from.Y);
         var tileB = state.GetTile(to.X, to.Y);
