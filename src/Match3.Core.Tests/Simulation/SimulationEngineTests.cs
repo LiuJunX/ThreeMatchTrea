@@ -730,17 +730,12 @@ public class SimulationEngineTests
         Assert.True(destroyedEvents.Count >= 7,
             $"火箭+火箭组合应该触发十字消除，预期至少 7 个 TileDestroyedEvent，实际 {destroyedEvents.Count} 个");
 
-        // 验证第 0 行的方块被消除
-        bool row0Cleared = true;
+        // 验证第 0 行的方块被消除（通过事件验证，因为填充系统可能已生成新方块）
+        var destroyedPositions = destroyedEvents.Select(e => e.GridPosition).ToHashSet();
         for (int x = 0; x < 5; x++)
         {
-            if (engine.State.GetTile(x, 0).Type != TileType.None)
-            {
-                row0Cleared = false;
-                break;
-            }
+            Assert.Contains(new Position(x, 0), destroyedPositions);
         }
-        Assert.True(row0Cleared, "火箭+火箭组合应该触发十字消除，第0行应该被清除");
     }
 
     /// <summary>
@@ -1021,6 +1016,88 @@ public class SimulationEngineTests
 
         // Selection should change to new position instead
         Assert.Equal(new Position(3, 3), engine.State.SelectedPosition);
+    }
+
+    #endregion
+
+    #region Cover Interaction Tests
+
+    [Theory]
+    [InlineData(CoverType.Cage)]
+    [InlineData(CoverType.Chain)]
+    [InlineData(CoverType.Bubble)]
+    public void ApplyMove_CoveredTile_ReturnsFalse(CoverType coverType)
+    {
+        // Arrange: 在 (0,0) 放置 Cover
+        var state = CreateStableState();
+        state.SetCover(0, 0, new Cover(coverType, health: 1));
+        var engine = CreateEngine(state);
+
+        // Act: 尝试交换被 Cover 覆盖的方块
+        var result = engine.ApplyMove(new Position(0, 0), new Position(1, 0));
+
+        // Assert: 交换应该被阻止
+        Assert.False(result);
+    }
+
+    [Theory]
+    [InlineData(CoverType.Cage)]
+    [InlineData(CoverType.Chain)]
+    [InlineData(CoverType.Bubble)]
+    public void ApplyMove_TargetCovered_ReturnsFalse(CoverType coverType)
+    {
+        // Arrange: 在目标位置 (1,0) 放置 Cover
+        var state = CreateStableState();
+        state.SetCover(1, 0, new Cover(coverType, health: 1));
+        var engine = CreateEngine(state);
+
+        // Act: 尝试交换到被 Cover 覆盖的位置
+        var result = engine.ApplyMove(new Position(0, 0), new Position(1, 0));
+
+        // Assert: 交换应该被阻止
+        Assert.False(result);
+    }
+
+    [Theory]
+    [InlineData(CoverType.Cage)]
+    [InlineData(CoverType.Chain)]
+    [InlineData(CoverType.Bubble)]
+    public void HandleTap_CoveredTile_DoesNotSelect(CoverType coverType)
+    {
+        // Arrange: 在 (2,2) 放置 Cover
+        var state = CreateStableState();
+        state.SetCover(2, 2, new Cover(coverType, health: 1));
+        var engine = CreateEngine(state);
+
+        Assert.Equal(Position.Invalid, engine.State.SelectedPosition);
+
+        // Act: 尝试选中被 Cover 覆盖的方块
+        engine.HandleTap(new Position(2, 2));
+
+        // Assert: 方块不应该被选中
+        Assert.Equal(Position.Invalid, engine.State.SelectedPosition);
+    }
+
+    [Theory]
+    [InlineData(CoverType.Cage)]
+    [InlineData(CoverType.Chain)]
+    [InlineData(CoverType.Bubble)]
+    public void HandleTap_CoveredTile_DoesNotChangeSelection(CoverType coverType)
+    {
+        // Arrange: 先选中 (1,1)，然后在 (3,3) 放置 Cover
+        var state = CreateStableState();
+        state.SetCover(3, 3, new Cover(coverType, health: 1));
+        var engine = CreateEngine(state);
+
+        // 选中一个正常的方块
+        engine.HandleTap(new Position(1, 1));
+        Assert.Equal(new Position(1, 1), engine.State.SelectedPosition);
+
+        // Act: 尝试选中被 Cover 覆盖的非相邻方块
+        engine.HandleTap(new Position(3, 3));
+
+        // Assert: 选中状态不应该改变
+        Assert.Equal(new Position(1, 1), engine.State.SelectedPosition);
     }
 
     #endregion

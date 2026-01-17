@@ -97,12 +97,13 @@ public class ChoreographerPlayerIntegrationTests
         _player.Load(commands);
         _player.SkipToEnd();
 
-        // Assert
+        // Assert: Tile is created at SpawnPosition
+        // Note: Physical movement to GridPosition is handled by physics system, not Choreographer
         var tile = _player.VisualState.GetTile(1);
         Assert.NotNull(tile);
         Assert.Equal(TileType.Blue, tile.TileType);
         Assert.Equal(3f, tile.Position.X, 0.001f);
-        Assert.Equal(0f, tile.Position.Y, 0.001f);
+        Assert.Equal(-1f, tile.Position.Y, 0.001f);  // At SpawnPosition, physics controls falling
     }
 
     [Fact]
@@ -276,7 +277,8 @@ public class ChoreographerPlayerIntegrationTests
         var tile2 = _player.VisualState.GetTile(2);
         Assert.NotNull(tile2);
         Assert.Equal(TileType.Blue, tile2.TileType);
-        Assert.Equal(4f, tile2.Position.Y, 0.001f);
+        // Tile spawns at SpawnPosition; physics system controls falling to GridPosition
+        Assert.Equal(-1f, tile2.Position.Y, 0.001f);
     }
 
     #endregion
@@ -465,13 +467,13 @@ public class ChoreographerPlayerIntegrationTests
             Assert.Equal(2f, tile.Position.Y, 0.001f);
         }
 
-        // New tiles 7,8,9 at row 1
+        // New tiles 7,8,9 spawned at SpawnPosition (physics controls falling)
         for (int x = 0; x < 3; x++)
         {
             var tile = _player.VisualState.GetTile(x + 7);
             Assert.NotNull(tile);
             Assert.Equal(TileType.Green, tile.TileType);
-            Assert.Equal(1f, tile.Position.Y, 0.001f);
+            Assert.Equal(-1f, tile.Position.Y, 0.001f);  // At SpawnPosition
         }
     }
 
