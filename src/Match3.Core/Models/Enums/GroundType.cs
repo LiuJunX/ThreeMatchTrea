@@ -15,9 +15,4 @@ public enum GroundType : byte
     /// Ice layer that can be broken.
     /// </summary>
     Ice = 1,
-
-    /// <summary>
-    /// Honey that may have special spreading behavior.
-    /// </summary>
-    Honey = 2,
 }

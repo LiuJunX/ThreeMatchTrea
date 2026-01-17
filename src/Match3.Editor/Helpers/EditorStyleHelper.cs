@@ -20,7 +20,6 @@ namespace Match3.Editor.Helpers
 
         // Ground Colors
         public const string COLOR_ICE = "#b0e0e6"; // PowderBlue
-        public const string COLOR_HONEY = "#f0e68c"; // Khaki
 
         // Icons
         public const string ICON_BOMB_H = "↔️";
@@ -73,7 +72,6 @@ namespace Match3.Editor.Helpers
         public static string GetGroundColor(GroundType g) => g switch
         {
             GroundType.Ice => COLOR_ICE,
-            GroundType.Honey => COLOR_HONEY,
             _ => COLOR_TRANSPARENT
         };
 

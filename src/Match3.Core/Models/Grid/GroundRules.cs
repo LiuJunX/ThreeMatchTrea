@@ -14,7 +14,6 @@ public static class GroundRules
     {
         GroundType.None => 0,
         GroundType.Ice => 1,
-        GroundType.Honey => 1,
         _ => 1
     };
 }

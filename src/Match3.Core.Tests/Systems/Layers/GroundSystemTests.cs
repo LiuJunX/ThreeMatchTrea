@@ -150,15 +150,13 @@ public class GroundSystemTests
         // NullEventCollector doesn't store events
     }
 
-    [Theory]
-    [InlineData(GroundType.Ice)]
-    [InlineData(GroundType.Honey)]
-    public void OnTileDestroyed_AllGroundTypes_HandledCorrectly(GroundType groundType)
+    [Fact]
+    public void OnTileDestroyed_IceGround_HandledCorrectly()
     {
         // Arrange
         var state = CreateState();
         var pos = new Position(4, 4);
-        state.SetGround(pos, new Ground(groundType, health: 1));
+        state.SetGround(pos, new Ground(GroundType.Ice, health: 1));
         var events = new BufferedEventCollector();
 
         // Act
@@ -167,7 +165,7 @@ public class GroundSystemTests
         // Assert
         Assert.Equal(GroundType.None, state.GetGround(pos).Type);
         var evt = Assert.IsType<GroundDestroyedEvent>(events.GetEvents()[0]);
-        Assert.Equal(groundType, evt.Type);
+        Assert.Equal(GroundType.Ice, evt.Type);
     }
 
     #endregion
@@ -261,10 +259,10 @@ public class GroundSystemTests
         var pos = new Position(3, 3);
 
         // Act
-        state.SetGround(pos, new Ground(GroundType.Honey, health: 3));
+        state.SetGround(pos, new Ground(GroundType.Ice, health: 3));
 
         // Assert
-        Assert.Equal(GroundType.Honey, state.GetGround(pos).Type);
+        Assert.Equal(GroundType.Ice, state.GetGround(pos).Type);
         Assert.Equal(3, state.GetGround(pos).Health);
     }
 
