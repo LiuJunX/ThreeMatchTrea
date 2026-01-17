@@ -271,6 +271,119 @@ public class GroundSystemTests
 
     #endregion
 
+    #region Ice Specific Tests
+
+    [Fact]
+    public void Ice_HP1_DestroyedAfterOneHit()
+    {
+        // Arrange
+        var state = CreateState();
+        var pos = new Position(3, 3);
+        state.SetGround(pos, new Ground(GroundType.Ice, health: 1));
+        var events = new BufferedEventCollector();
+
+        // Act
+        _groundSystem.OnTileDestroyed(ref state, pos, tick: 1, simTime: 0.1f, events);
+
+        // Assert
+        Assert.Equal(GroundType.None, state.GetGround(pos).Type);
+        Assert.Single(events.GetEvents());
+        var evt = Assert.IsType<GroundDestroyedEvent>(events.GetEvents()[0]);
+        Assert.Equal(GroundType.Ice, evt.Type);
+    }
+
+    [Fact]
+    public void Ice_HP2_DestroyedAfterTwoHits()
+    {
+        // Arrange
+        var state = CreateState();
+        var pos = new Position(3, 3);
+        state.SetGround(pos, new Ground(GroundType.Ice, health: 2));
+        var events = new BufferedEventCollector();
+
+        // Act - First hit
+        _groundSystem.OnTileDestroyed(ref state, pos, tick: 1, simTime: 0.1f, events);
+
+        // Assert - Still exists
+        Assert.Equal(GroundType.Ice, state.GetGround(pos).Type);
+        Assert.Equal(1, state.GetGround(pos).Health);
+        Assert.Empty(events.GetEvents());
+
+        // Act - Second hit
+        _groundSystem.OnTileDestroyed(ref state, pos, tick: 2, simTime: 0.2f, events);
+
+        // Assert - Destroyed
+        Assert.Equal(GroundType.None, state.GetGround(pos).Type);
+        Assert.Single(events.GetEvents());
+    }
+
+    [Fact]
+    public void Ice_HP3_DestroyedAfterThreeHits()
+    {
+        // Arrange
+        var state = CreateState();
+        var pos = new Position(3, 3);
+        state.SetGround(pos, new Ground(GroundType.Ice, health: 3));
+        var events = new BufferedEventCollector();
+
+        // Act & Assert - First hit
+        _groundSystem.OnTileDestroyed(ref state, pos, tick: 1, simTime: 0.1f, events);
+        Assert.Equal(GroundType.Ice, state.GetGround(pos).Type);
+        Assert.Equal(2, state.GetGround(pos).Health);
+
+        // Act & Assert - Second hit
+        _groundSystem.OnTileDestroyed(ref state, pos, tick: 2, simTime: 0.2f, events);
+        Assert.Equal(GroundType.Ice, state.GetGround(pos).Type);
+        Assert.Equal(1, state.GetGround(pos).Health);
+
+        // Act & Assert - Third hit
+        _groundSystem.OnTileDestroyed(ref state, pos, tick: 3, simTime: 0.3f, events);
+        Assert.Equal(GroundType.None, state.GetGround(pos).Type);
+        Assert.Single(events.GetEvents());
+        var evt = Assert.IsType<GroundDestroyedEvent>(events.GetEvents()[0]);
+        Assert.Equal(GroundType.Ice, evt.Type);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void Ice_ValidHPRange_WorksCorrectly(byte hp)
+    {
+        // Arrange
+        var state = CreateState();
+        var pos = new Position(3, 3);
+        state.SetGround(pos, new Ground(GroundType.Ice, health: hp));
+        var events = new BufferedEventCollector();
+
+        // Act - Hit hp times
+        for (int i = 0; i < hp; i++)
+        {
+            _groundSystem.OnTileDestroyed(ref state, pos, tick: i + 1, simTime: 0.1f * (i + 1), events);
+        }
+
+        // Assert - Destroyed after exactly hp hits
+        Assert.Equal(GroundType.None, state.GetGround(pos).Type);
+        Assert.Single(events.GetEvents());
+    }
+
+    [Fact]
+    public void Ice_DoesNotBlockTileOperations()
+    {
+        // Arrange
+        var state = CreateState();
+        var pos = new Position(3, 3);
+        state.SetGround(pos, new Ground(GroundType.Ice, health: 2));
+
+        // Assert - Tile operations should work normally
+        // Ice doesn't affect matching, movement, or swapping
+        var tile = state.GetTile(pos);
+        Assert.NotEqual(TileType.None, tile.Type); // Tile exists above ice
+        Assert.True(state.HasGround(pos)); // Ice exists
+    }
+
+    #endregion
+
     #region Multiple Positions Tests
 
     [Fact]

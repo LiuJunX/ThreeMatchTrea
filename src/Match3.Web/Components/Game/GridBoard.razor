@@ -27,6 +27,25 @@
                 }
             }
 
+            <!-- Ground Layer -->
+            @if (GameService.SimulationEngine != null)
+            {
+                @for (int y = 0; y < GameService.Height; y++)
+                {
+                    @for (int x = 0; x < GameService.Width; x++)
+                    {
+                        var ground = GameService.SimulationEngine.State.GetGround(x, y);
+                        @if (ground.Type != GroundType.None)
+                        {
+                            <div class="ground-layer ground-@ground.Type.ToString().ToLower()"
+                                 style="left: @(x * Match3GameService.CellSize)px; top: @(y * Match3GameService.CellSize)px;">
+                                <span class="ground-hp">@ground.Health</span>
+                            </div>
+                        }
+                    }
+                }
+            }
+
             <!-- Active Tiles from VisualState -->
             @foreach (var kvp in GameService.VisualState.Tiles)
             {
