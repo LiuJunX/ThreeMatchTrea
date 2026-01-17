@@ -64,6 +64,11 @@ public class PowerUpHandler : IPowerUpHandler
         {
             if (_comboHandler.TryApplyCombo(ref state, p1, p2, affected))
             {
+                // Clear bomb attributes from combo participants to prevent double explosion
+                // The combo effect already accounts for both bombs' effects
+                ClearBombAttribute(ref state, p1);
+                ClearBombAttribute(ref state, p2);
+
                 ClearAffectedTiles(ref state, affected, tick, simTime, events);
                 return;
             }
@@ -124,6 +129,23 @@ public class PowerUpHandler : IPowerUpHandler
         finally
         {
             Pools.Release(affected);
+        }
+    }
+
+    /// <summary>
+    /// Clears the bomb attribute from a tile to prevent double explosion during combo processing.
+    /// </summary>
+    private static void ClearBombAttribute(ref GameState state, Position p)
+    {
+        var tile = state.GetTile(p.X, p.Y);
+        if (tile.Bomb != BombType.None)
+        {
+            // Create a new tile without the bomb attribute
+            var newTile = new Tile(tile.Id, tile.Type, p.X, p.Y, BombType.None)
+            {
+                Position = tile.Position
+            };
+            state.SetTile(p.X, p.Y, newTile);
         }
     }
 

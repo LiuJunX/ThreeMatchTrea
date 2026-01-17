@@ -373,6 +373,115 @@ public class PowerUpHandlerTests
         Assert.Equal(0, points);
     }
 
+    [Fact]
+    public void ProcessSpecialMove_TwoHorizontalRockets_ClearsOnlyOneRowAndOneColumn()
+    {
+        // Arrange: 两个水平火箭交换
+        // Bug: 之前会触发重复爆炸，导致消除2行1列
+        // Fix: 组合后清除炸弹属性，只消除1行1列
+        var handler = CreateHandler();
+        var state = CreateFilledState();
+        var p1 = new Position(3, 4);
+        var p2 = new Position(4, 4);
+
+        var hBomb1 = new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Horizontal };
+        var hBomb2 = new Tile(101, TileType.Red, p2.X, p2.Y) { Bomb = BombType.Horizontal };
+        state.SetTile(p1.X, p1.Y, hBomb1);
+        state.SetTile(p2.X, p2.Y, hBomb2);
+
+        // Act
+        handler.ProcessSpecialMove(ref state, p1, p2, out _);
+
+        // Assert: 统计被消除的格子数
+        // 十字形 = 1行(8格) + 1列(8格) - 1交点 = 15格
+        int clearedCount = 0;
+        for (int y = 0; y < 8; y++)
+        {
+            for (int x = 0; x < 8; x++)
+            {
+                if (state.GetTile(x, y).Type == TileType.None)
+                    clearedCount++;
+            }
+        }
+
+        // 期望：15格（1行+1列-交点），而非 23格（2行+1列-2交点）
+        Assert.Equal(15, clearedCount);
+    }
+
+    [Fact]
+    public void ProcessSpecialMove_TwoVerticalRockets_ClearsOnlyOneRowAndOneColumn()
+    {
+        // Arrange: 两个垂直火箭交换
+        var handler = CreateHandler();
+        var state = CreateFilledState();
+        var p1 = new Position(4, 3);
+        var p2 = new Position(4, 4);
+
+        var vBomb1 = new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Vertical };
+        var vBomb2 = new Tile(101, TileType.Red, p2.X, p2.Y) { Bomb = BombType.Vertical };
+        state.SetTile(p1.X, p1.Y, vBomb1);
+        state.SetTile(p2.X, p2.Y, vBomb2);
+
+        // Act
+        handler.ProcessSpecialMove(ref state, p1, p2, out _);
+
+        // Assert: 十字形 = 15格
+        int clearedCount = 0;
+        for (int y = 0; y < 8; y++)
+        {
+            for (int x = 0; x < 8; x++)
+            {
+                if (state.GetTile(x, y).Type == TileType.None)
+                    clearedCount++;
+            }
+        }
+
+        Assert.Equal(15, clearedCount);
+    }
+
+    [Fact]
+    public void ProcessSpecialMove_HorizontalPlusVerticalRocket_ClearsOnlyOneRowAndOneColumn()
+    {
+        // Arrange: 水平 + 垂直火箭交换
+        var handler = CreateHandler();
+        var state = CreateFilledState();
+        var p1 = new Position(3, 4);
+        var p2 = new Position(4, 4);
+
+        var hBomb = new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Horizontal };
+        var vBomb = new Tile(101, TileType.Red, p2.X, p2.Y) { Bomb = BombType.Vertical };
+        state.SetTile(p1.X, p1.Y, hBomb);
+        state.SetTile(p2.X, p2.Y, vBomb);
+
+        // Act
+        handler.ProcessSpecialMove(ref state, p1, p2, out _);
+
+        // Assert: 十字形 = 15格
+        int clearedCount = 0;
+        for (int y = 0; y < 8; y++)
+        {
+            for (int x = 0; x < 8; x++)
+            {
+                if (state.GetTile(x, y).Type == TileType.None)
+                    clearedCount++;
+            }
+        }
+
+        Assert.Equal(15, clearedCount);
+
+        // 额外验证：确认是正确的行和列被消除
+        // 行 y=4 应该全部为 None
+        for (int x = 0; x < 8; x++)
+        {
+            Assert.Equal(TileType.None, state.GetTile(x, 4).Type);
+        }
+        // 列 x=4 应该全部为 None
+        for (int y = 0; y < 8; y++)
+        {
+            Assert.Equal(TileType.None, state.GetTile(4, y).Type);
+        }
+    }
+
     #endregion
 
     #region Chain Explosion Tests
