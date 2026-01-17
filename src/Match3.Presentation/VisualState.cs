@@ -77,6 +77,7 @@ public sealed class VisualState : IVisualState
     /// Sync falling tile positions from game state.
     /// Call this each frame to update positions of tiles being moved by physics.
     /// This handles gravity-based movement that doesn't go through the event system.
+    /// Only syncs tiles with IsFalling=true to avoid overwriting animation positions.
     /// </summary>
     public void SyncFallingTilesFromGameState(in GameState state)
     {
@@ -87,13 +88,15 @@ public sealed class VisualState : IVisualState
                 var tile = state.GetTile(x, y);
                 if (tile.Type == TileType.None) continue;
 
-                // Only sync tiles that are falling (being moved by physics)
-                // or tiles that don't exist in visual state yet
                 if (_tiles.TryGetValue(tile.Id, out var visual))
                 {
-                    // Update position from physics simulation
-                    visual.Position = tile.Position;
-                    visual.GridPosition = new Position(x, y);
+                    // Only update position for tiles that are actually falling
+                    // This avoids overwriting positions set by Player animations (e.g., swap)
+                    if (tile.IsFalling)
+                    {
+                        visual.Position = tile.Position;
+                        visual.GridPosition = new Position(x, y);
+                    }
                 }
                 else
                 {

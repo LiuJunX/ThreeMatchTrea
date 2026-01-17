@@ -14,7 +14,7 @@ public class VisualStateTests
     #region SyncFallingTilesFromGameState Tests
 
     [Fact]
-    public void SyncFallingTiles_UpdatesExistingTilePositions()
+    public void SyncFallingTiles_UpdatesExistingTilePositions_WhenFalling()
     {
         var visualState = new VisualState();
         var state = CreateGameState(8, 8);
@@ -23,7 +23,8 @@ public class VisualStateTests
         var tile = CreateTile(TileType.Red, 2, 3);
         // Simulate falling: tile's visual position is above its grid slot
         tile.Position = new Vector2(2, 1.5f);
-        // SetTile after modifying Position (Tile is a struct)
+        tile.IsFalling = true;  // Mark as falling
+        // SetTile after modifying (Tile is a struct)
         state.SetTile(2, 3, tile);
 
         // Add same tile to visual state at old position
@@ -39,6 +40,31 @@ public class VisualStateTests
         Assert.Equal(1.5f, visual.Position.Y, 0.001f);
         Assert.Equal(2, visual.GridPosition.X);
         Assert.Equal(3, visual.GridPosition.Y);
+    }
+
+    [Fact]
+    public void SyncFallingTiles_DoesNotUpdatePosition_WhenNotFalling()
+    {
+        var visualState = new VisualState();
+        var state = CreateGameState(8, 8);
+
+        // Add tile to game state (not falling - e.g., during swap animation)
+        var tile = CreateTile(TileType.Red, 2, 3);
+        tile.Position = new Vector2(2, 3);  // At grid position
+        tile.IsFalling = false;  // Not falling (swap animation in progress)
+        state.SetTile(2, 3, tile);
+
+        // Add same tile to visual state at animation position (different from grid)
+        visualState.AddTile(tile.Id, TileType.Red, BombType.None, new Position(2, 3), new Vector2(1.5f, 3));
+
+        // Sync
+        visualState.SyncFallingTilesFromGameState(in state);
+
+        // Visual position should NOT be overwritten (preserves animation position)
+        var visual = visualState.GetTile(tile.Id);
+        Assert.NotNull(visual);
+        Assert.Equal(1.5f, visual.Position.X, 0.001f);  // Still at animation position
+        Assert.Equal(3f, visual.Position.Y, 0.001f);
     }
 
     [Fact]
@@ -93,6 +119,7 @@ public class VisualStateTests
         var tile = CreateTile(TileType.Yellow, 3, 3, BombType.Vertical);
         // Modify position before SetTile (Tile is a struct)
         tile.Position = new Vector2(3, 2);
+        tile.IsFalling = true;  // Mark as falling
         state.SetTile(3, 3, tile);
 
         // Add tile to visual state with custom scale and alpha
@@ -122,14 +149,17 @@ public class VisualStateTests
         // Add 3 tiles to game state (modify position before SetTile since Tile is a struct)
         var tile1 = CreateTile(TileType.Red, 0, 0);
         tile1.Position = new Vector2(0, 0);
+        tile1.IsFalling = false;  // Not falling
         state.SetTile(0, 0, tile1);
 
         var tile2 = CreateTile(TileType.Blue, 1, 1);
         tile2.Position = new Vector2(1, 0.5f); // Falling
+        tile2.IsFalling = true;
         state.SetTile(1, 1, tile2);
 
         var tile3 = CreateTile(TileType.Green, 2, 2);
         tile3.Position = new Vector2(2, 1.0f); // Falling
+        tile3.IsFalling = true;
         state.SetTile(2, 2, tile3);
 
         // Add only tile1 to visual state
@@ -138,12 +168,12 @@ public class VisualStateTests
         // Sync
         visualState.SyncFallingTilesFromGameState(in state);
 
-        // All 3 tiles should exist
+        // All 3 tiles should exist (tile2 and tile3 added as new)
         Assert.NotNull(visualState.GetTile(tile1.Id));
         Assert.NotNull(visualState.GetTile(tile2.Id));
         Assert.NotNull(visualState.GetTile(tile3.Id));
 
-        // Check positions
+        // Check positions of falling tiles
         Assert.Equal(0.5f, visualState.GetTile(tile2.Id)!.Position.Y, 0.001f);
         Assert.Equal(1.0f, visualState.GetTile(tile3.Id)!.Position.Y, 0.001f);
     }
@@ -175,6 +205,7 @@ public class VisualStateTests
         // Visual position can be different from grid position during falling
         // Modify position before SetTile (Tile is a struct)
         tile.Position = new Vector2(5, 4.5f);
+        tile.IsFalling = true;  // Mark as falling
         state.SetTile(5, 7, tile);
 
         visualState.AddTile(tile.Id, TileType.Red, BombType.None, new Position(5, 0), new Vector2(5, 0));
