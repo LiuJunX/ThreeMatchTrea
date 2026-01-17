@@ -29,9 +29,12 @@ The Match3 Core is the heart of the game engine, designed with a **Slot-Based La
                              │
 ┌────────────────────────────┼────────────────────────────────────┐
 │               Match3.Presentation                                │
-│  • EventInterpreter (事件 → 动画)                               │
-│  • AnimationTimeline (时序管理)                                 │
+│  • Player (指令播放器)                                          │
 │  • VisualState (插值位置)                                       │
+│  ────────────────────────────────────────────────────────────── │
+│               Match3.Core.Choreography                           │
+│  • Choreographer (GameEvent → RenderCommand[])                  │
+│  • RenderCommand (可序列化渲染指令)                             │
 └────────────────────────────┬────────────────────────────────────┘
                              │
 ┌────────────────────────────┼────────────────────────────────────┐
@@ -115,10 +118,14 @@ public interface IEventVisitor
 }
 
 // Usage - replaces switch statements
-public class EventInterpreter : IEventVisitor
+public class Choreographer : IEventVisitor
 {
-    public void InterpretEvent(GameEvent evt) => evt.Accept(this);
-    public void Visit(TileMovedEvent evt) { /* create animation */ }
+    public IReadOnlyList<RenderCommand> Choreograph(IReadOnlyList<GameEvent> events)
+    {
+        foreach (var evt in events) evt.Accept(this);
+        return _commands;
+    }
+    public void Visit(TileMovedEvent evt) { /* create MoveTileCommand */ }
 }
 ```
 
@@ -157,18 +164,25 @@ Continuous physics for flying entities (UFO, missiles).
 - **Dynamic**: Re-evaluate best target each tick
 - **TrackTile**: Track specific tile by ID
 
-## 6. Presentation Layer (`Match3.Presentation`)
-Decoupled animation system driven by game events.
+## 6. Presentation Layer (Pure Player Architecture)
+Decoupled animation system driven by render commands.
+
+### Architecture Flow
+```
+Core → GameEvent → Core.Choreographer → RenderCommand[] → Player → VisualState
+```
 
 ### Components
+- **`Choreographer`** (Core层): Converts `GameEvent` → `RenderCommand[]` with pre-calculated timing
+- **`Player`** (Presentation层): Executes commands, interpolates animations, updates `VisualState`
 - **`VisualState`**: Interpolated visual positions, scales, effects
-- **`AnimationTimeline`**: Manages animation sequencing
-- **`EventInterpreter`**: Converts `GameEvent` → Animations
+- **`RenderCommand`**: Serializable render instructions (MoveTile, DestroyTile, SpawnTile, etc.)
 
-### Animation Types
-- `TileMoveAnimation` - Tile movement (gravity, swap)
-- `TileDestroyAnimation` - Tile destruction (shrink + fade)
-- `ProjectileAnimation` - Projectile flight
+### Benefits
+- **Minimal Porting Cost**: Only need to port Player to new platforms
+- **Precise Replay**: RenderCommand sequences are serializable
+- **Maximum Testability**: Assert on command streams
+- **AI-Friendly**: Choreographer in Core layer for AI coding
 
 ## 7. AI Service (`Match3.Core.AI`)
 High-speed simulation for move evaluation and difficulty analysis.

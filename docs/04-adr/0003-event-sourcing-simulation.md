@@ -28,9 +28,9 @@ We adopt an **Event Sourcing + Tick-Based Simulation** architecture with three l
 - All state changes emit `GameEvent` records
 - `NullEventCollector` enables zero-overhead AI mode
 
-### 2. Presentation Layer
-- `EventInterpreter` converts events to animations
-- `AnimationTimeline` manages sequencing
+### 2. Presentation Layer (Pure Player Architecture)
+- `Choreographer` (Core) converts events to `RenderCommand[]` with pre-calculated timing
+- `Player` (Presentation) executes commands with interpolation, supports seeking/replay
 - `VisualState` tracks interpolated positions
 
 ### 3. AI Layer

@@ -357,7 +357,7 @@ selector.InvalidateCache();
 | 系统 | 依赖方式 |
 | :--- | :--- |
 | **SimulationEngine** | 调用 `IsStable()`、`ApplyMove()`、`HandleTap()` |
-| **PresentationController** | 检查 `HasActiveAnimations` |
+| **Player** | 检查 `HasActiveAnimations` |
 | **IMatchFinder** | 调用 `FindMatchGroups()` 验证匹配和获取炸弹信息 |
 | **GridUtility** | 调用 `IsSwapValid()`、`SwapTilesForCheck()` |
 | **IRandom** | 加权随机选择有效操作 |

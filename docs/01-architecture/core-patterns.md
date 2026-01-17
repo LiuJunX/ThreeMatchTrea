@@ -198,10 +198,10 @@ public interface IEventVisitor
 }
 
 // 4. Consumers implement the interface
-public class EventInterpreter : IEventVisitor
+public class Choreographer : IEventVisitor
 {
-    public void Visit(TileMovedEvent evt) { /* create animation */ }
-    public void Visit(TileDestroyedEvent evt) { /* create explosion */ }
+    public void Visit(TileMovedEvent evt) { /* create MoveTileCommand */ }
+    public void Visit(TileDestroyedEvent evt) { /* create DestroyTileCommand */ }
 }
 ```
 
