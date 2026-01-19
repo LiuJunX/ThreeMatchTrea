@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Threading;
 using Match3.Core.AI;
 using Match3.Core.Config;
 using Match3.Core.Events;
@@ -30,6 +31,88 @@ namespace Match3.Core.Tests.Performance;
 public class MonteCarloSimulationTests
 {
     private readonly ITestOutputHelper _output;
+
+    /// <summary>
+    /// ThreadLocal cache for simulation components to avoid per-simulation allocations.
+    /// Each thread gets its own context to avoid contention.
+    /// </summary>
+    private static readonly ThreadLocal<SimulationContext> _simulationContext =
+        new(() => new SimulationContext(), trackAllValues: false);
+
+    /// <summary>
+    /// Cached simulation components for reuse across multiple simulations.
+    /// </summary>
+    private sealed class SimulationContext
+    {
+        public readonly Match3Config Config = new();
+        public readonly XorShift64 StateRandom = new();
+        public readonly XorShift64 MoveRandom = new();
+        public readonly BombGenerator BombGenerator = new();
+        public readonly SimpleScoreSystem ScoreSystem = new();
+        public readonly BombEffectRegistry BombEffects = BombEffectRegistry.CreateDefault();
+
+        // These need config/random, created lazily
+        private RealtimeGravitySystem? _physics;
+        private RandomSpawnModel? _spawnModel;
+        private RealtimeRefillSystem? _refill;
+        private ClassicMatchFinder? _matchFinder;
+        private StandardMatchProcessor? _matchProcessor;
+        private PowerUpHandler? _powerUpHandler;
+
+        private int _lastTileTypesCount = -1;
+
+        public RealtimeGravitySystem GetPhysics()
+        {
+            return _physics ??= new RealtimeGravitySystem(Config, MoveRandom);
+        }
+
+        public RandomSpawnModel GetSpawnModel(int tileTypesCount)
+        {
+            if (_spawnModel == null)
+            {
+                _spawnModel = new RandomSpawnModel(tileTypesCount);
+                _lastTileTypesCount = tileTypesCount;
+            }
+            return _spawnModel;
+        }
+
+        public RealtimeRefillSystem GetRefill(int tileTypesCount)
+        {
+            if (_refill == null)
+            {
+                _refill = new RealtimeRefillSystem(GetSpawnModel(tileTypesCount));
+            }
+            return _refill;
+        }
+
+        public ClassicMatchFinder GetMatchFinder()
+        {
+            return _matchFinder ??= new ClassicMatchFinder(BombGenerator);
+        }
+
+        public StandardMatchProcessor GetMatchProcessor()
+        {
+            return _matchProcessor ??= new StandardMatchProcessor(ScoreSystem, BombEffects);
+        }
+
+        public PowerUpHandler GetPowerUpHandler()
+        {
+            return _powerUpHandler ??= new PowerUpHandler(ScoreSystem);
+        }
+
+        /// <summary>
+        /// Reset all stateful components for a new simulation.
+        /// </summary>
+        public void ResetForSimulation(ulong seed, int tileTypesCount)
+        {
+            StateRandom.SetState(seed);
+            MoveRandom.SetState(seed + 1);
+
+            // Reset spawn model counter for deterministic simulation
+            _spawnModel?.Reset(tileTypesCount);
+        }
+
+    }
 
     public MonteCarloSimulationTests(ITestOutputHelper output)
     {
@@ -447,21 +530,20 @@ public class MonteCarloSimulationTests
     {
         var sw = Stopwatch.StartNew();
 
+        // Get thread-local cached components
+        var ctx = _simulationContext.Value!;
+        ctx.ResetForSimulation(seed, initialState.TileTypesCount);
+
         // Clone state for simulation
         var state = initialState.Clone();
-        state.Random = new XorShift64(seed);
+        state.Random = ctx.StateRandom;
 
-        // Create simulation components
-        var random = new XorShift64(seed + 1);
-        var config = new Match3Config();
-        var physics = new RealtimeGravitySystem(config, random);
-        var spawnModel = new RandomSpawnModel(state.TileTypesCount);
-        var refill = new RealtimeRefillSystem(spawnModel);
-        var bombGenerator = new BombGenerator();
-        var matchFinder = new ClassicMatchFinder(bombGenerator);
-        var scoreSystem = new SimpleScoreSystem();
-        var matchProcessor = new StandardMatchProcessor(scoreSystem, BombEffectRegistry.CreateDefault());
-        var powerUpHandler = new PowerUpHandler(scoreSystem);
+        // Get cached simulation components
+        var physics = ctx.GetPhysics();
+        var refill = ctx.GetRefill(state.TileTypesCount);
+        var matchFinder = ctx.GetMatchFinder();
+        var matchProcessor = ctx.GetMatchProcessor();
+        var powerUpHandler = ctx.GetPowerUpHandler();
 
         using var engine = new SimulationEngine(
             state,
@@ -492,7 +574,7 @@ public class MonteCarloSimulationTests
             }
 
             // Randomly select a move
-            int moveIndex = random.Next(0, validMoves.Count);
+            int moveIndex = ctx.MoveRandom.Next(0, validMoves.Count);
             var move = validMoves[moveIndex];
 
             // Apply the move
@@ -526,7 +608,7 @@ public class MonteCarloSimulationTests
 
         if (parallel)
         {
-            // Parallel execution
+            // Parallel execution with thread-local accumulation
             var resultsBag = new ConcurrentBag<GameSimulationResult>();
 
             Parallel.For(0, simulationCount, i =>
@@ -677,7 +759,7 @@ public class MonteCarloSimulationTests
 
     private sealed class RandomSpawnModel : ISpawnModel
     {
-        private readonly int _typeCount;
+        private int _typeCount;
         private int _counter;
         private static readonly TileType[] AllTypes =
         {
@@ -688,6 +770,15 @@ public class MonteCarloSimulationTests
         public RandomSpawnModel(int typeCount)
         {
             _typeCount = Math.Min(typeCount, AllTypes.Length);
+        }
+
+        /// <summary>
+        /// Reset state for a new simulation.
+        /// </summary>
+        public void Reset(int typeCount)
+        {
+            _typeCount = Math.Min(typeCount, AllTypes.Length);
+            _counter = 0;
         }
 
         public TileType Predict(ref GameState state, int spawnX, in SpawnContext context)

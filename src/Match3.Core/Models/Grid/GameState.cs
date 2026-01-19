@@ -77,9 +77,12 @@ public struct GameState
         clone.MoveLimit = MoveLimit;
         clone.TargetDifficulty = TargetDifficulty;
         clone.SelectedPosition = SelectedPosition;
-        Array.Copy(Grid, clone.Grid, Grid.Length);
-        Array.Copy(GroundLayer, clone.GroundLayer, GroundLayer.Length);
-        Array.Copy(CoverLayer, clone.CoverLayer, CoverLayer.Length);
+        // Use logical size (Width * Height) instead of array length
+        // to support arrays from ArrayPool which may be larger
+        int size = Width * Height;
+        Array.Copy(Grid, clone.Grid, size);
+        Array.Copy(GroundLayer, clone.GroundLayer, size);
+        Array.Copy(CoverLayer, clone.CoverLayer, size);
         // Note: IRandom is shared reference here.
         // For true MCTS/branching, we would need a cloneable/struct RNG.
         return clone;
