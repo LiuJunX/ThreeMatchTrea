@@ -7,6 +7,7 @@ using Match3.Core.Config;
 using Match3.Core.DependencyInjection;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
+using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
 using Match3.Core.Simulation;
 using Match3.Core.Systems.Input;
@@ -77,6 +78,16 @@ public class Match3GameService : IDisposable
     public int Width { get; private set; } = 8;
     public int Height { get; private set; } = 8;
     public const int CellSize = 66; // Exposed for UI
+
+    /// <summary>
+    /// Current objective progress array (4 slots).
+    /// </summary>
+    public ObjectiveProgress[] Objectives => _gameSession?.Engine.State.ObjectiveProgress ?? Array.Empty<ObjectiveProgress>();
+
+    /// <summary>
+    /// Current level status.
+    /// </summary>
+    public LevelStatus LevelStatus => _gameSession?.Engine.State.LevelStatus ?? LevelStatus.InProgress;
 
     public void StartNewGame(LevelConfig? levelConfig = null)
     {

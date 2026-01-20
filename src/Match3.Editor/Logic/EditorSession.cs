@@ -4,6 +4,7 @@ using System.Linq;
 using Match3.Core.Config;
 using Match3.Core.Scenarios;
 using Match3.Core.Models.Enums;
+using Match3.Core.Models.Gameplay;
 
 namespace Match3.Editor.Logic
 {
@@ -120,6 +121,16 @@ namespace Match3.Editor.Logic
             if (CurrentLevel.Bombs == null || CurrentLevel.Bombs.Length != CurrentLevel.Grid.Length)
             {
                 CurrentLevel.Bombs = new BombType[CurrentLevel.Grid.Length];
+            }
+            // 确保有默认目标
+            if (CurrentLevel.Objectives[0].TargetLayer == ObjectiveTargetLayer.None)
+            {
+                CurrentLevel.Objectives[0] = new LevelObjective
+                {
+                    TargetLayer = ObjectiveTargetLayer.Tile,
+                    ElementType = (int)TileType.Red,
+                    TargetCount = 20
+                };
             }
         }
 

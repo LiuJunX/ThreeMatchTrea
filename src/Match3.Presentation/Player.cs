@@ -262,6 +262,19 @@ public sealed class Player
                         updateBomb.Position, tile.Position);
                 }
                 break;
+
+            case UpdateTileTypeCommand updateType:
+                // Update tile type in visual state (for shuffle)
+                var tileToUpdate = _visualState.GetTile(updateType.TileId);
+                if (tileToUpdate != null)
+                {
+                    // VisualState uses immutable TileVisual with init-only properties
+                    // We need to recreate the tile with the new type
+                    _visualState.RemoveTile(updateType.TileId);
+                    _visualState.AddTile(updateType.TileId, updateType.TileType, tileToUpdate.BombType,
+                        updateType.Position, tileToUpdate.Position);
+                }
+                break;
         }
 
         // Mark tiles as being animated for position-affecting commands

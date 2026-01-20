@@ -31,54 +31,32 @@
         {
             <!-- Tab: Grid -->
             <div class="p-3 flex-grow-1 overflow-auto">
-                <h6 class="text-uppercase text-muted small fw-bold mb-3">Grid Settings</h6>
-                <div class="row g-2 align-items-end mb-3">
-                    <div class="col-4">
-                        <label class="form-label small mb-1">Width</label>
-                        <input type="number" class="form-control form-control-sm" @bind="VM.EditorWidth" min="1" max="12" />
-                    </div>
-                    <div class="col-4">
-                        <label class="form-label small mb-1">Height</label>
-                        <input type="number" class="form-control form-control-sm" @bind="VM.EditorHeight" min="1" max="12" />
-                    </div>
-                    <div class="col-4">
-                        <button class="btn btn-sm btn-secondary w-100" @onclick="VM.ResizeGrid">Apply</button>
-                    </div>
+                <h6 class="text-uppercase text-muted small fw-bold mb-2">Grid Settings</h6>
+                <div class="d-flex gap-2 align-items-center mb-3" style="font-size: 0.75rem;">
+                    <span class="text-muted">W</span>
+                    <input type="number" class="form-control form-control-sm py-0 text-center" style="font-size: 0.75rem; width: 50px;" @bind="VM.EditorWidth" min="1" max="12" />
+                    <span class="text-muted">H</span>
+                    <input type="number" class="form-control form-control-sm py-0 text-center" style="font-size: 0.75rem; width: 50px;" @bind="VM.EditorHeight" min="1" max="12" />
+                    <button class="btn btn-sm btn-secondary py-0 px-2" style="font-size: 0.75rem;" @onclick="VM.ResizeGrid">Apply</button>
                 </div>
 
                 @if (VM.CurrentMode == EditorMode.Level)
                 {
-                    <div class="mb-3">
-                        <label class="form-label small mb-1">Move Limit</label>
-                        <input type="number" class="form-control form-control-sm" @bind="VM.CurrentLevel.MoveLimit" />
+                    <div class="d-flex gap-2 align-items-center mb-3" style="font-size: 0.75rem;">
+                        <span class="text-muted">Moves</span>
+                        <input type="number" class="form-control form-control-sm py-0 text-center" style="font-size: 0.75rem; width: 60px;" @bind="VM.CurrentLevel.MoveLimit" />
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label small mb-1">
-                            Difficulty: @(VM.CurrentLevel.TargetDifficulty.ToString("P0"))
-                        </label>
-                        <input type="range" class="form-range"
-                               min="0" max="1" step="0.1"
-                               @bind="VM.CurrentLevel.TargetDifficulty"
-                               @bind:event="oninput" />
-                        <div class="d-flex justify-content-between small text-muted">
-                            <span>Easy</span>
-                            <span>Hard</span>
-                        </div>
-                    </div>
-
-                    <!-- Objectives Editor -->
+                    <!-- Objectives Editor (Compact) -->
                     <div class="mb-3 p-2 border rounded bg-white">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <h6 class="text-uppercase text-muted small fw-bold mb-0">
                                 <i class="bi bi-bullseye me-1"></i>
-                                Objectives (@VM.ActiveObjectiveCount / @LevelEditorViewModel.MaxObjectives)
+                                Objectives
                             </h6>
                             @if (VM.ActiveObjectiveCount < LevelEditorViewModel.MaxObjectives)
                             {
-                                <button class="btn btn-sm btn-outline-primary p-1" @onclick="VM.AddObjective" title="Add Objective">
-                                    <i class="bi bi-plus-lg"></i>
-                                </button>
+                                <button class="btn btn-sm btn-outline-primary p-0 px-2" @onclick="VM.AddObjective" title="Add Objective" style="font-size: 0.85rem; line-height: 1;">+</button>
                             }
                         </div>
 
@@ -88,106 +66,44 @@
                             var index = i;
                             if (obj.TargetLayer != Match3.Core.Models.Enums.ObjectiveTargetLayer.None)
                             {
-                                <div class="border rounded p-2 mb-2 bg-light">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <span class="badge bg-secondary">Objective @(index + 1)</span>
-                                        <button class="btn btn-sm p-0 text-danger fw-bold" style="font-size: 0.75rem; line-height: 1;" @onclick="() => VM.RemoveObjective(index)" title="Remove">
-                                            ✕
-                                        </button>
-                                    </div>
-
-                                    <div class="mb-2">
-                                        <label class="form-label small mb-1">Layer</label>
-                                        <select class="form-select form-select-sm"
-                                                value="@obj.TargetLayer"
-                                                @onchange="e => OnObjectiveLayerChanged(index, e)">
-                                            @foreach (var layer in LevelEditorViewModel.ObjectiveTargetLayers)
+                                <div class="d-flex gap-1 align-items-center mb-1" style="font-size: 0.75rem;">
+                                    <select class="form-select form-select-sm py-0" style="font-size: 0.75rem; width: 70px;"
+                                            value="@obj.TargetLayer"
+                                            @onchange="e => OnObjectiveLayerChanged(index, e)">
+                                        @foreach (var layer in LevelEditorViewModel.ObjectiveTargetLayers)
+                                        {
+                                            if (layer != Match3.Core.Models.Enums.ObjectiveTargetLayer.None)
                                             {
-                                                if (layer != Match3.Core.Models.Enums.ObjectiveTargetLayer.None)
-                                                {
-                                                    <option value="@layer">@layer</option>
-                                                }
+                                                <option value="@layer">@layer</option>
                                             }
-                                        </select>
-                                    </div>
-
-                                    <div class="mb-2">
-                                        <label class="form-label small mb-1">Element</label>
-                                        <select class="form-select form-select-sm"
-                                                value="@obj.ElementType"
-                                                @onchange="e => OnObjectiveElementChanged(index, e)">
-                                            @foreach (var (value, name) in LevelEditorViewModel.GetElementTypesForLayer(obj.TargetLayer))
-                                            {
-                                                <option value="@value">@name</option>
-                                            }
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label class="form-label small mb-1">Target Count</label>
-                                        <input type="number" class="form-control form-control-sm"
-                                               value="@obj.TargetCount"
-                                               min="1"
-                                               @onchange="e => OnObjectiveCountChanged(index, e)" />
-                                    </div>
+                                        }
+                                    </select>
+                                    <select class="form-select form-select-sm py-0 flex-grow-1" style="font-size: 0.75rem;"
+                                            value="@obj.ElementType"
+                                            @onchange="e => OnObjectiveElementChanged(index, e)">
+                                        @foreach (var (value, name) in LevelEditorViewModel.GetElementTypesForLayer(obj.TargetLayer))
+                                        {
+                                            <option value="@value">@name</option>
+                                        }
+                                    </select>
+                                    <input type="number" class="form-control form-control-sm py-0 text-center" style="font-size: 0.75rem; width: 50px;"
+                                           value="@obj.TargetCount"
+                                           min="1"
+                                           @onchange="e => OnObjectiveCountChanged(index, e)" />
+                                    <button class="btn btn-sm p-0 text-danger" style="font-size: 0.7rem; line-height: 1;" @onclick="() => VM.RemoveObjective(index)" title="Remove">✕</button>
                                 </div>
                             }
                         }
 
                         @if (VM.ActiveObjectiveCount == 0)
                         {
-                            <div class="text-muted small text-center py-2">
-                                No objectives. Click + to add one.
+                            <div class="text-muted small text-center py-1" style="font-size: 0.75rem;">
+                                No objectives
                             </div>
                         }
                     </div>
                 }
 
-                <!-- Level Analysis -->
-                <div class="mb-3 p-2 border rounded bg-white">
-                    <h6 class="text-uppercase text-muted small fw-bold mb-2">
-                        <i class="bi bi-graph-up me-1"></i>
-                        Level Analysis
-                        @if (VM.IsAnalyzing)
-                        {
-                            <span class="spinner-border spinner-border-sm ms-2" role="status"></span>
-                        }
-                    </h6>
-
-                    @if (VM.IsAnalyzing)
-                    {
-                        <div class="progress mb-2" style="height: 6px;">
-                            <div class="progress-bar" role="progressbar"
-                                 style="width: @((VM.AnalysisProgress * 100).ToString("F0"))%"></div>
-                        </div>
-                    }
-
-                    <div class="row g-2 text-center small">
-                        <div class="col-6">
-                            <div class="text-muted">Win Rate</div>
-                            <div class="fw-bold @GetWinRateClass(VM.WinRate)">@(VM.WinRate.ToString("P0"))</div>
-                        </div>
-                        <div class="col-6">
-                            <div class="text-muted">Deadlock</div>
-                            <div class="fw-bold text-danger">@(VM.DeadlockRate.ToString("P0"))</div>
-                        </div>
-                    </div>
-
-                    @if (!string.IsNullOrEmpty(VM.DifficultyText))
-                    {
-                        <div class="text-center mt-2 small text-muted">
-                            @VM.DifficultyText
-                        </div>
-                    }
-
-                    <button class="btn btn-sm btn-outline-primary w-100 mt-2" @onclick="VM.RestartAnalysis" disabled="@VM.IsAnalyzing">
-                        <i class="bi bi-arrow-repeat"></i> Re-analyze
-                    </button>
-                </div>
-
-                <button class="btn btn-sm btn-outline-secondary w-100" @onclick="VM.GenerateRandomLevel">
-                    <i class="bi bi-shuffle"></i> Randomize
-                </button>
             </div>
         }
         else if (VM.ActiveTabIndex == 1)
@@ -554,14 +470,6 @@
         Match3.Core.Models.Enums.BombType.Square5x5 => "S",
         Match3.Core.Models.Enums.BombType.Color => "C",
         _ => ""
-    };
-
-    private static string GetWinRateClass(float winRate) => winRate switch
-    {
-        >= 0.8f => "text-success",
-        >= 0.6f => "text-info",
-        >= 0.4f => "text-warning",
-        _ => "text-danger"
     };
 
     // --- Objective Editing Handlers ---

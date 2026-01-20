@@ -1,6 +1,7 @@
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Objectives;
 
 namespace Match3.Core.Systems.Layers;
 
@@ -10,6 +11,12 @@ namespace Match3.Core.Systems.Layers;
 /// </summary>
 public class CoverSystem : ICoverSystem
 {
+    private readonly ILevelObjectiveSystem? _objectiveSystem;
+
+    public CoverSystem(ILevelObjectiveSystem? objectiveSystem = null)
+    {
+        _objectiveSystem = objectiveSystem;
+    }
     /// <inheritdoc />
     public bool TryDamageCover(ref GameState state, Position position, long tick, float simTime, IEventCollector events)
     {
@@ -40,6 +47,9 @@ public class CoverSystem : ICoverSystem
                     Type = destroyedType
                 });
             }
+
+            // Track objective progress
+            _objectiveSystem?.OnCoverDestroyed(ref state, destroyedType, tick, simTime, events);
 
             return true;
         }

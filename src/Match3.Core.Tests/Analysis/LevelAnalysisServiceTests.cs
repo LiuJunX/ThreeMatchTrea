@@ -351,10 +351,10 @@ public class LevelAnalysisServiceTests
         // Assert - Difficulty rating should match win rate thresholds
         var expectedRating = result.WinRate switch
         {
-            >= 0.8f => DifficultyRating.VeryEasy,
-            >= 0.6f => DifficultyRating.Easy,
-            >= 0.4f => DifficultyRating.Medium,
-            >= 0.2f => DifficultyRating.Hard,
+            >= 0.90f => DifficultyRating.VeryEasy,
+            >= 0.70f => DifficultyRating.Easy,
+            >= 0.40f => DifficultyRating.Medium,
+            >= 0.10f => DifficultyRating.Hard,
             _ => DifficultyRating.VeryHard
         };
         Assert.Equal(expectedRating, result.DifficultyRating);

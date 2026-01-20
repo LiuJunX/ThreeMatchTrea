@@ -1,6 +1,7 @@
 using System;
 using Match3.Random;
 using Match3.Core.Models.Enums;
+using Match3.Core.Models.Gameplay;
 
 namespace Match3.Core.Models.Grid;
 
@@ -50,6 +51,16 @@ public struct GameState
     // this would be a 'RandomComponent' struct with internal state.
     public IRandom Random;
 
+    /// <summary>
+    /// Objective progress tracking (fixed size 4).
+    /// </summary>
+    public ObjectiveProgress[] ObjectiveProgress;
+
+    /// <summary>
+    /// Current level status (InProgress, Victory, Defeat).
+    /// </summary>
+    public LevelStatus LevelStatus;
+
     public GameState(int width, int height, int tileTypesCount, IRandom random)
     {
         Width = width;
@@ -66,6 +77,8 @@ public struct GameState
         TargetDifficulty = 0.5f;  // Default medium
         SelectedPosition = Position.Invalid;
         Random = random;
+        ObjectiveProgress = new ObjectiveProgress[4];
+        LevelStatus = LevelStatus.InProgress;
     }
 
     public GameState Clone()
@@ -83,6 +96,9 @@ public struct GameState
         Array.Copy(Grid, clone.Grid, size);
         Array.Copy(GroundLayer, clone.GroundLayer, size);
         Array.Copy(CoverLayer, clone.CoverLayer, size);
+        clone.ObjectiveProgress = new ObjectiveProgress[4];
+        Array.Copy(ObjectiveProgress, clone.ObjectiveProgress, 4);
+        clone.LevelStatus = LevelStatus;
         // Note: IRandom is shared reference here.
         // For true MCTS/branching, we would need a cloneable/struct RNG.
         return clone;

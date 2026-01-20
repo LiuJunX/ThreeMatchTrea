@@ -15,43 +15,6 @@
         <input id="speedSlider" type="range" min="0.1" max="5.0" step="0.1" @bind="GameService.GameSpeed" @bind:event="oninput" style="width: 200px; cursor: pointer;" />
     </div>
 
-    @if (GameService.Config != null)
-    {
-        <div class="gravity-settings" style="margin-top: 20px; padding: 15px; background: #f3f4f6; border-radius: 8px;">
-            <label class="form-label fw-bold text-secondary small">GRAVITY SETTINGS</label>
-
-            <div style="margin-top: 10px;">
-                <label style="font-size: 12px; color: #6b7280;">Initial Speed: @GameService.Config.InitialFallSpeed.ToString("0.0")</label>
-                <input type="range" min="0" max="20" step="0.5"
-                       value="@GameService.Config.InitialFallSpeed"
-                       @oninput="OnInitialSpeedChanged"
-                       style="width: 100%;" />
-            </div>
-
-            <div style="margin-top: 8px;">
-                <label style="font-size: 12px; color: #6b7280;">Gravity: @GameService.Config.GravitySpeed.ToString("0.0")</label>
-                <input type="range" min="0" max="50" step="1"
-                       value="@GameService.Config.GravitySpeed"
-                       @oninput="OnGravitySpeedChanged"
-                       style="width: 100%;" />
-            </div>
-
-            <div style="margin-top: 8px;">
-                <label style="font-size: 12px; color: #6b7280;">Max Speed: @GameService.Config.MaxFallSpeed.ToString("0.0")</label>
-                <input type="range" min="5" max="50" step="1"
-                       value="@GameService.Config.MaxFallSpeed"
-                       @oninput="OnMaxSpeedChanged"
-                       style="width: 100%;" />
-            </div>
-
-            <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
-                <button class="btn btn-sm btn-outline-secondary" @onclick="ApplyPreset_Candy">Candy Style</button>
-                <button class="btn btn-sm btn-outline-secondary" @onclick="ApplyPreset_Physics">Physics</button>
-                <button class="btn btn-sm btn-outline-secondary" @onclick="ApplyPreset_Fast">Fast</button>
-                <button class="btn btn-sm btn-outline-secondary" @onclick="ApplyPreset_Default">Default</button>
-            </div>
-        </div>
-    }
 </div>
 
 @code {
@@ -72,56 +35,4 @@
 
     private void ToggleAutoPlay() => GameService.ToggleAutoPlay();
     private void TogglePause() => GameService.TogglePause();
-
-    // Gravity slider handlers
-    private void OnInitialSpeedChanged(ChangeEventArgs e)
-    {
-        if (GameService.Config != null && float.TryParse(e.Value?.ToString(), out var value))
-            GameService.Config.InitialFallSpeed = value;
-    }
-
-    private void OnGravitySpeedChanged(ChangeEventArgs e)
-    {
-        if (GameService.Config != null && float.TryParse(e.Value?.ToString(), out var value))
-            GameService.Config.GravitySpeed = value;
-    }
-
-    private void OnMaxSpeedChanged(ChangeEventArgs e)
-    {
-        if (GameService.Config != null && float.TryParse(e.Value?.ToString(), out var value))
-            GameService.Config.MaxFallSpeed = value;
-    }
-
-    // Gravity presets
-    private void ApplyPreset_Candy()
-    {
-        if (GameService.Config == null) return;
-        GameService.Config.InitialFallSpeed = 10.0f;
-        GameService.Config.GravitySpeed = 15.0f;
-        GameService.Config.MaxFallSpeed = 20.0f;
-    }
-
-    private void ApplyPreset_Physics()
-    {
-        if (GameService.Config == null) return;
-        GameService.Config.InitialFallSpeed = 0.0f;
-        GameService.Config.GravitySpeed = 20.0f;
-        GameService.Config.MaxFallSpeed = 30.0f;
-    }
-
-    private void ApplyPreset_Fast()
-    {
-        if (GameService.Config == null) return;
-        GameService.Config.InitialFallSpeed = 15.0f;
-        GameService.Config.GravitySpeed = 25.0f;
-        GameService.Config.MaxFallSpeed = 40.0f;
-    }
-
-    private void ApplyPreset_Default()
-    {
-        if (GameService.Config == null) return;
-        GameService.Config.InitialFallSpeed = 12.0f;
-        GameService.Config.GravitySpeed = 20.0f;
-        GameService.Config.MaxFallSpeed = 25.0f;
-    }
 }

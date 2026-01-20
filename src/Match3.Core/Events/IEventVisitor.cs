@@ -62,4 +62,10 @@ public interface IEventVisitor
 
     /// <summary>Visit a board shuffled event.</summary>
     void Visit(BoardShuffledEvent evt);
+
+    /// <summary>Visit an objective progress event.</summary>
+    void Visit(ObjectiveProgressEvent evt);
+
+    /// <summary>Visit a level completed event.</summary>
+    void Visit(LevelCompletedEvent evt);
 }

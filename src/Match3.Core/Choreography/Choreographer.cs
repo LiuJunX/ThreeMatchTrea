@@ -473,6 +473,20 @@ public sealed class Choreographer : IEventVisitor
         // UI can show a shuffle animation/notification if needed
     }
 
+    /// <inheritdoc />
+    public void Visit(ObjectiveProgressEvent evt)
+    {
+        // Objective progress events don't generate render commands
+        // UI handles objective display via GameState directly
+    }
+
+    /// <inheritdoc />
+    public void Visit(LevelCompletedEvent evt)
+    {
+        // Level completed events don't generate render commands
+        // UI handles victory/defeat display separately
+    }
+
     #endregion
 
     #region Cascade Timing

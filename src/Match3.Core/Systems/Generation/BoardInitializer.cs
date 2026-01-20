@@ -1,16 +1,19 @@
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Objectives;
 
 namespace Match3.Core.Systems.Generation;
 
 public class BoardInitializer : IBoardInitializer
 {
     private readonly ITileGenerator _tileGenerator;
+    private readonly ILevelObjectiveSystem? _objectiveSystem;
 
-    public BoardInitializer(ITileGenerator tileGenerator)
+    public BoardInitializer(ITileGenerator tileGenerator, ILevelObjectiveSystem? objectiveSystem = null)
     {
         _tileGenerator = tileGenerator;
+        _objectiveSystem = objectiveSystem;
     }
 
     public void Initialize(ref GameState state, LevelConfig? levelConfig)
@@ -20,6 +23,9 @@ public class BoardInitializer : IBoardInitializer
             // Initialize difficulty settings from level config
             state.MoveLimit = levelConfig.MoveLimit;
             state.TargetDifficulty = levelConfig.TargetDifficulty;
+
+            // Initialize objectives
+            _objectiveSystem?.Initialize(ref state, levelConfig);
 
             for (int i = 0; i < levelConfig.Grid.Length; i++)
             {

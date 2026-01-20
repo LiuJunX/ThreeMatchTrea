@@ -1,6 +1,7 @@
 using Match3.Core.Events;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Matching;
+using Match3.Core.Systems.Objectives;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Projectiles;
@@ -20,6 +21,7 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
     private readonly IExplosionSystem _explosionSystem;
     private readonly IPowerUpHandler _powerUpHandler;
     private readonly SimulationMatchHandler _matchHandler;
+    private readonly ILevelObjectiveSystem? _objectiveSystem;
 
     public SimulationOrchestrator(
         IPhysicsSimulation physics,
@@ -28,14 +30,16 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
         IMatchProcessor matchProcessor,
         IPowerUpHandler powerUpHandler,
         IProjectileSystem? projectileSystem = null,
-        IExplosionSystem? explosionSystem = null)
+        IExplosionSystem? explosionSystem = null,
+        ILevelObjectiveSystem? objectiveSystem = null)
     {
         _physics = physics;
         _refill = refill;
         _projectileSystem = projectileSystem ?? new ProjectileSystem();
         _explosionSystem = explosionSystem ?? new ExplosionSystem();
         _powerUpHandler = powerUpHandler;
-        _matchHandler = new SimulationMatchHandler(matchFinder, matchProcessor);
+        _objectiveSystem = objectiveSystem;
+        _matchHandler = new SimulationMatchHandler(matchFinder, matchProcessor, objectiveSystem);
     }
 
     /// <inheritdoc />

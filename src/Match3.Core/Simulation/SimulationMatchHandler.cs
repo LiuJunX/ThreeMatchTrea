@@ -5,6 +5,7 @@ using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Systems.Matching;
+using Match3.Core.Systems.Objectives;
 using Match3.Core.Utility.Pools;
 
 namespace Match3.Core.Simulation;
@@ -17,11 +18,16 @@ internal sealed class SimulationMatchHandler
 {
     private readonly IMatchFinder _matchFinder;
     private readonly IMatchProcessor _matchProcessor;
+    private readonly ILevelObjectiveSystem? _objectiveSystem;
 
-    public SimulationMatchHandler(IMatchFinder matchFinder, IMatchProcessor matchProcessor)
+    public SimulationMatchHandler(
+        IMatchFinder matchFinder,
+        IMatchProcessor matchProcessor,
+        ILevelObjectiveSystem? objectiveSystem = null)
     {
         _matchFinder = matchFinder;
         _matchProcessor = matchProcessor;
+        _objectiveSystem = objectiveSystem;
     }
 
     /// <summary>
@@ -107,6 +113,9 @@ internal sealed class SimulationMatchHandler
                 });
             }
 
+            // Track objective progress
+            _objectiveSystem?.OnTileDestroyed(ref state, tile.Type, currentTick, elapsedTime, eventCollector);
+
             state.SetTile(pos.X, pos.Y, new Tile());
         }
     }
@@ -148,8 +157,6 @@ internal sealed class SimulationMatchHandler
         float elapsedTime,
         IEventCollector eventCollector)
     {
-        if (!eventCollector.IsEnabled) return;
-
         foreach (var group in stableGroups)
         {
             foreach (var pos in group.Positions)
@@ -161,16 +168,22 @@ internal sealed class SimulationMatchHandler
                 var tile = state.GetTile(pos.X, pos.Y);
                 if (tile.Type == TileType.None) continue;
 
-                eventCollector.Emit(new TileDestroyedEvent
+                if (eventCollector.IsEnabled)
                 {
-                    Tick = currentTick,
-                    SimulationTime = elapsedTime,
-                    TileId = tile.Id,
-                    GridPosition = pos,
-                    Type = tile.Type,
-                    Bomb = tile.Bomb,
-                    Reason = DestroyReason.Match
-                });
+                    eventCollector.Emit(new TileDestroyedEvent
+                    {
+                        Tick = currentTick,
+                        SimulationTime = elapsedTime,
+                        TileId = tile.Id,
+                        GridPosition = pos,
+                        Type = tile.Type,
+                        Bomb = tile.Bomb,
+                        Reason = DestroyReason.Match
+                    });
+                }
+
+                // Track objective progress
+                _objectiveSystem?.OnTileDestroyed(ref state, tile.Type, currentTick, elapsedTime, eventCollector);
             }
         }
     }

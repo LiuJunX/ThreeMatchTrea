@@ -86,19 +86,6 @@
         </div>
     }
 
-    <div class="flex-grow-1 p-3">
-        <h6 class="text-uppercase text-muted small fw-bold mb-3">Data IO</h6>
-        
-        <div class="btn-group w-100 mb-2">
-            <button class="btn btn-primary btn-sm" @onclick="VM.SaveScenarioAsync" disabled="@string.IsNullOrEmpty(VM.CurrentFilePath)">
-                <i class="bi bi-save"></i> Save
-            </button>
-            <button class="btn btn-success btn-sm" @onclick="VM.ExportJson">Export</button>
-            <button class="btn btn-warning btn-sm" @onclick="() => VM.ImportJson(false)">Import</button>
-        </div>
-        
-        <textarea class="form-control form-control-sm font-monospace small" rows="8" @bind="VM.JsonOutput" style="white-space: pre; overflow-x: auto;"></textarea>
-    </div>
 </aside>
 
 @implements IDisposable

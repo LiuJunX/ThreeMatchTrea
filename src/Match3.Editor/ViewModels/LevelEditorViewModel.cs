@@ -535,6 +535,7 @@ namespace Match3.Editor.ViewModels
 
             IsAnalyzing = true;
             AnalysisProgress = 0;
+            AnalysisProgressText = "0 / 500";
 
             _ = RunAnalysisAsync(_analysisCts.Token);
         }
