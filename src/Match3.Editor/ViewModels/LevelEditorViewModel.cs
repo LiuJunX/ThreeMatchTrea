@@ -198,6 +198,13 @@ namespace Match3.Editor.ViewModels
             private set { _analysisProgress = value; OnPropertyChanged(nameof(AnalysisProgress)); }
         }
 
+        private string _analysisProgressText = "";
+        public string AnalysisProgressText
+        {
+            get => _analysisProgressText;
+            private set { _analysisProgressText = value; OnPropertyChanged(nameof(AnalysisProgressText)); }
+        }
+
         private float _winRate;
         public float WinRate
         {
@@ -537,16 +544,17 @@ namespace Match3.Editor.ViewModels
             var progress = new Progress<SimulationProgress>(p =>
             {
                 AnalysisProgress = p.Progress;
+                AnalysisProgressText = $"{p.CompletedCount} / {p.TotalCount}";
                 WinRate = p.WinRate;
                 DeadlockRate = p.DeadlockRate;
-                DifficultyText = $"通过率: {p.WinRate:P0} ({p.CompletedCount}/{p.TotalCount})";
+                DifficultyText = $"通过率: {p.WinRate:P0}";
             });
 
             try
             {
                 var result = await _analysisService.AnalyzeAsync(
                     ActiveLevelConfig,
-                    new AnalysisConfig { SimulationCount = 500, ProgressReportInterval = 50 },
+                    new AnalysisConfig { SimulationCount = 500, ProgressReportInterval = 10 },
                     progress,
                     token);
 

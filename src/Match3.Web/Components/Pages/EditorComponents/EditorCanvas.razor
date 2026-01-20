@@ -18,6 +18,42 @@
         <div class="small text-muted">@VM.ActiveLevelConfig.Width x @VM.ActiveLevelConfig.Height</div>
     </div>
 
+    <!-- Level Analysis Panel (Top Right) -->
+    @if (VM.CurrentMode == EditorMode.Level)
+    {
+        <div class="position-absolute top-0 end-0 m-3 bg-white shadow rounded p-2" style="z-index: 100; min-width: 160px;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-uppercase text-muted small fw-bold">Analysis</span>
+                @if (VM.IsAnalyzing)
+                {
+                    <span class="badge bg-primary">@VM.AnalysisProgressText</span>
+                }
+            </div>
+
+            <div class="d-flex gap-3 small">
+                <div class="text-center">
+                    <div class="text-muted" style="font-size: 0.7rem;">Win</div>
+                    <div class="fw-bold @GetWinRateClass(VM.WinRate)">@(VM.WinRate.ToString("P0"))</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-muted" style="font-size: 0.7rem;">Dead</div>
+                    <div class="fw-bold text-danger">@(VM.DeadlockRate.ToString("P0"))</div>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(VM.DifficultyText))
+            {
+                <div class="text-center mt-1 small text-muted" style="font-size: 0.7rem;">
+                    @VM.DifficultyText
+                </div>
+            }
+
+            <button class="btn btn-sm btn-outline-primary w-100 mt-2 py-0" style="font-size: 0.75rem;" @onclick="VM.RestartAnalysis" disabled="@VM.IsAnalyzing">
+                <i class="bi bi-arrow-repeat"></i> Analyze
+            </button>
+        </div>
+    }
+
     <!-- Grid Container -->
     <div class="flex-grow-1 d-flex align-items-center justify-content-center overflow-auto p-5">
         @{
@@ -155,4 +191,12 @@
         VM.OnRequestRepaint -= RequestUpdate;
         VM.PropertyChanged -= OnVmPropertyChanged;
     }
+
+    private static string GetWinRateClass(float winRate) => winRate switch
+    {
+        >= 0.8f => "text-success",
+        >= 0.6f => "text-info",
+        >= 0.4f => "text-warning",
+        _ => "text-danger"
+    };
 }
