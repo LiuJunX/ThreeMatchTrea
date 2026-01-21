@@ -28,6 +28,7 @@ namespace Match3.Core.Tests.Performance;
 /// These tests measure the feasibility of running multiple complete game simulations
 /// for level analysis purposes.
 /// </summary>
+[Trait("Category", "Performance")]
 public class MonteCarloSimulationTests
 {
     private readonly ITestOutputHelper _output;

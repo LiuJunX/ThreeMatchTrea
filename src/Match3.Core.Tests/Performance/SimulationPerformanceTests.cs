@@ -25,6 +25,7 @@ namespace Match3.Core.Tests.Performance;
 /// - 10000 board analyses: &lt; 10s
 /// - Event collection overhead: &lt; 20% vs NullEventCollector
 /// </summary>
+[Trait("Category", "Performance")]
 public class SimulationPerformanceTests
 {
     private readonly ITestOutputHelper _output;

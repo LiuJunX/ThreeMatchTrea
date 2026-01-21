@@ -70,9 +70,16 @@ public sealed class ProjectileSystem : IProjectileSystem
                 // Emit impact event
                 if (events.IsEnabled)
                 {
-                    // Use array instead of List for lighter allocation (event outlives method scope)
-                    var affectedArray = new Position[affected.Count];
-                    affected.CopyTo(affectedArray);
+                    // Use Array.Empty for zero-allocation when no positions affected
+                    var affectedArray = affected.Count == 0
+                        ? System.Array.Empty<Position>()
+                        : new Position[affected.Count];
+
+                    if (affected.Count > 0)
+                    {
+                        affected.CopyTo(affectedArray);
+                    }
+
                     events.Emit(new ProjectileImpactEvent
                     {
                         Tick = tick,

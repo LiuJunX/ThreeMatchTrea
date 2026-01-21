@@ -33,7 +33,11 @@ public class AsyncGameLoopTests
     private class MockMatchFinder : IMatchFinder
     {
         public List<MatchGroup> GroupsToReturn = new();
-        public List<MatchGroup> FindMatchGroups(in GameState state, IEnumerable<Position>? foci = null) => GroupsToReturn;
+        public List<MatchGroup> FindMatchGroups(in GameState state, IEnumerable<Position>? foci = null)
+        {
+            // Return a copy since caller may release the list (mimics pool behavior)
+            return new List<MatchGroup>(GroupsToReturn);
+        }
         public bool HasMatchAt(in GameState state, Position p) => false;
         public bool HasMatches(in GameState state) => false;
     }

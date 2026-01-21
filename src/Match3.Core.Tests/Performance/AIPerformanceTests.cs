@@ -23,6 +23,7 @@ namespace Match3.Core.Tests.Performance;
 /// - GetBestMove: &lt; 50ms
 /// - Full difficulty analysis: &lt; 100ms
 /// </summary>
+[Trait("Category", "Performance")]
 public class AIPerformanceTests
 {
     private readonly ITestOutputHelper _output;

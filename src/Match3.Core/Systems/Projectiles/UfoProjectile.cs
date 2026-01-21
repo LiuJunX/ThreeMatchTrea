@@ -166,13 +166,30 @@ public sealed class UfoProjectile : Projectile
         // Check if target cell is still valid (not empty)
         if (TargetingMode == UfoTargetingMode.FixedCell)
         {
-            var targetTile = state.GetTile(TargetGridPosition.Value.X, TargetGridPosition.Value.Y);
-            if (targetTile.Type == TileType.None)
+            var targetX = TargetGridPosition.Value.X;
+            var targetY = TargetGridPosition.Value.Y;
+
+            // Bounds check before accessing tile
+            if (targetX < 0 || targetX >= state.Width || targetY < 0 || targetY >= state.Height)
             {
-                // Target was destroyed, try to retarget
+                // Target is out of bounds, try to retarget
                 if (!TryRetarget(ref state, tick, simTime, events))
                 {
-                    // Can't retarget, continue to original position anyway
+                    // Can't retarget, deactivate
+                    Deactivate();
+                    return true;
+                }
+            }
+            else
+            {
+                var targetTile = state.GetTile(targetX, targetY);
+                if (targetTile.Type == TileType.None)
+                {
+                    // Target was destroyed, try to retarget
+                    if (!TryRetarget(ref state, tick, simTime, events))
+                    {
+                        // Can't retarget, continue to original position anyway
+                    }
                 }
             }
         }

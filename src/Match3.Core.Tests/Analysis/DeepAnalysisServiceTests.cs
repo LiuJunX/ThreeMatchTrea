@@ -156,6 +156,7 @@ public class DeepAnalysisServiceTests
     }
 
     [Fact]
+    [Trait("Category", "Performance")]
     public async Task AnalyzeAsync_Performance_Under60Seconds()
     {
         // Arrange

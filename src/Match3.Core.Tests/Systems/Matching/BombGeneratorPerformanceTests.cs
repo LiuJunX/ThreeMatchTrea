@@ -10,6 +10,7 @@ using Xunit.Abstractions;
 
 namespace Match3.Core.Tests.Systems.Matching
 {
+    [Trait("Category", "Performance")]
     public class BombGeneratorPerformanceTests
     {
         private readonly ITestOutputHelper _output;

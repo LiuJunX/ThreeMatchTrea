@@ -55,8 +55,8 @@ public class AsyncGameLoopSystem : IAsyncGameLoopSystem
         if (allMatches.Count > 0)
         {
             var stableGroups = Pools.ObtainList<MatchGroup>();
-            
-            try 
+
+            try
             {
                 foreach (var group in allMatches)
                 {
@@ -73,19 +73,13 @@ public class AsyncGameLoopSystem : IAsyncGameLoopSystem
             }
             finally
             {
-                // ClassicMatchFinder returns a pooled list, so we must allow it to be released.
-                // However, IMatchFinder interface implies we own the result.
-                // Assuming standard practice: Release the groups content.
-                // NOTE: Check if ClassicMatchFinder requires specific release method.
-                // Usually we just release the list back to pool.
                 Pools.Release(stableGroups);
-                
-                // Release matches from finder
-                // If MatchFinder allocates new MatchGroups, we must release them.
-                // If MatchFinder uses pools, we must release them.
-                // Assuming ReleaseGroups logic is needed.
-                // For now, simple clear.
+                Pools.Release(allMatches);
             }
+        }
+        else
+        {
+            Pools.Release(allMatches);
         }
     }
     

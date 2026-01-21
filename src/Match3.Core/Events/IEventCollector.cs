@@ -81,26 +81,60 @@ public sealed class BufferedEventCollector : IEventCollector
     }
 
     /// <summary>
-    /// Get all collected events.
+    /// Get all collected events. Allocates a new list.
+    /// For high-performance scenarios, use CopyEventsTo instead.
     /// </summary>
     public IReadOnlyList<GameEvent> GetEvents()
     {
         lock (_lock)
         {
-            return _events.ToList();
+            var result = new List<GameEvent>(_events.Count);
+            result.AddRange(_events);
+            return result;
         }
     }
 
     /// <summary>
-    /// Get events and clear the buffer.
+    /// Get events and clear the buffer. Allocates a new list.
+    /// For high-performance scenarios, use DrainEventsTo instead.
     /// </summary>
     public IReadOnlyList<GameEvent> DrainEvents()
     {
         lock (_lock)
         {
-            var result = _events.ToList();
+            var result = new List<GameEvent>(_events.Count);
+            result.AddRange(_events);
             _events.Clear();
             return result;
+        }
+    }
+
+    /// <summary>
+    /// Copy all events to a caller-provided list. Zero allocation.
+    /// </summary>
+    public void CopyEventsTo(IList<GameEvent> target)
+    {
+        lock (_lock)
+        {
+            foreach (var evt in _events)
+            {
+                target.Add(evt);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Drain all events to a caller-provided list and clear the buffer. Zero allocation.
+    /// </summary>
+    public void DrainEventsTo(IList<GameEvent> target)
+    {
+        lock (_lock)
+        {
+            foreach (var evt in _events)
+            {
+                target.Add(evt);
+            }
+            _events.Clear();
         }
     }
 
