@@ -13,15 +13,29 @@ AI-Assisted Match-3 Game Engine (C# / Blazor)
 
 ## Quick Start
 
+### Prerequisites
+- .NET SDK 8.0+ ([Download](https://dotnet.microsoft.com/download))
+- Mac: `brew install dotnet`
+
 ### Run Tests
-```powershell
+```bash
 dotnet test
 ```
 
 ### Hot Reload Development
+
+**Windows:**
 ```cmd
 .\run-web.bat
 ```
+
+**Mac/Linux:**
+```bash
+chmod +x run-web.sh   # first time only
+./run-web.sh
+```
+
+Visit http://localhost:5015
 
 ## Project Structure
 
