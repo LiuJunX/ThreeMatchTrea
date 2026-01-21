@@ -1,3 +1,5 @@
+using Match3.Core.Attributes;
+
 namespace Match3.Core.Models.Enums;
 
 /// <summary>
@@ -14,15 +16,18 @@ public enum CoverType : byte
     /// <summary>
     /// Cage that blocks matching and swap. Static.
     /// </summary>
+    [AIMapping(0, "Cage")]
     Cage = 1,
 
     /// <summary>
     /// Chain that blocks swap but allows matching. Static.
     /// </summary>
+    [AIMapping(1, "Chain")]
     Chain = 2,
 
     /// <summary>
     /// Bubble that moves with the tile. Dynamic.
     /// </summary>
+    [AIMapping(2, "Bubble")]
     Bubble = 3,
 }

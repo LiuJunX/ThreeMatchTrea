@@ -1,3 +1,5 @@
+using Match3.Core.Attributes;
+
 namespace Match3.Core.Models.Enums;
 
 /// <summary>
@@ -14,5 +16,6 @@ public enum GroundType : byte
     /// <summary>
     /// Ice layer that can be broken.
     /// </summary>
+    [AIMapping(0, "Ice")]
     Ice = 1,
 }

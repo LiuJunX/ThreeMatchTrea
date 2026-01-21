@@ -111,8 +111,11 @@ namespace Match3.Editor.Logic
         {
             var index = intent.GetInt("index", -1);
             var layer = intent.GetEnum("layer", ObjectiveTargetLayer.Tile);
-            var elementType = intent.GetInt("elementType", 0);
+            var aiIndex = intent.GetInt("elementType", 0);
             var count = intent.GetInt("count", 10);
+
+            // Convert AI index to actual enum value
+            var elementType = AITypeRegistry.FromAIIndex(layer, aiIndex);
 
             // 如果没有指定 index，添加新目标
             if (index < 0)

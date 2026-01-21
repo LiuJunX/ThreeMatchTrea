@@ -5,7 +5,9 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Match3.Core.Models.Enums;
 using Match3.Editor.Interfaces;
+using Match3.Editor.Logic;
 using Match3.Editor.Models;
 using Microsoft.Extensions.Logging;
 
@@ -130,9 +132,9 @@ namespace Match3.Web.Services.AI
             sb.AppendLine("2. SetMoveLimit: {moves} - 设置步数限制 (1-99)");
             sb.AppendLine("3. SetObjective: {index?, layer, elementType, count} - 设置目标");
             sb.AppendLine("   - layer: Tile, Cover, Ground");
-            sb.AppendLine("   - elementType: 0=Red, 1=Green, 2=Blue, 3=Yellow, 4=Purple, 5=Orange (Tile层)");
-            sb.AppendLine("   - elementType: 0=None, 1=Cage, 2=Chain, 3=Bubble (Cover层)");
-            sb.AppendLine("   - elementType: 0=None, 1=Ice (Ground层)");
+            sb.AppendLine($"   - elementType (Tile层): {AITypeRegistry.GetPromptDescription<TileType>()}");
+            sb.AppendLine($"   - elementType (Cover层): {AITypeRegistry.GetPromptDescription<CoverType>()}");
+            sb.AppendLine($"   - elementType (Ground层): {AITypeRegistry.GetPromptDescription<GroundType>()}");
             sb.AppendLine("4. PaintTile: {x, y, tileType, bombType?} - 绘制单个格子");
             sb.AppendLine("5. PaintTileRegion: {x1, y1, x2, y2, tileType, bombType?} - 绘制区域");
             sb.AppendLine("6. PaintCover: {x, y, coverType} - 放置覆盖物");

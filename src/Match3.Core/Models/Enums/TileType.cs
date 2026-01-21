@@ -1,4 +1,5 @@
 using System;
+using Match3.Core.Attributes;
 
 namespace Match3.Core.Models.Enums
 {
@@ -43,11 +44,11 @@ namespace Match3.Core.Models.Enums
         Bomb = 1 << 6,
         
         // Colors (Legacy/Editor support)
-        Red = 1 << 7,
-        Green = 1 << 8,
-        Blue = 1 << 9,
-        Yellow = 1 << 10,
-        Purple = 1 << 11,
-        Orange = 1 << 12
+        [AIMapping(0, "Red")]    Red = 1 << 7,
+        [AIMapping(1, "Green")]  Green = 1 << 8,
+        [AIMapping(2, "Blue")]   Blue = 1 << 9,
+        [AIMapping(3, "Yellow")] Yellow = 1 << 10,
+        [AIMapping(4, "Purple")] Purple = 1 << 11,
+        [AIMapping(5, "Orange")] Orange = 1 << 12
     }
 }
