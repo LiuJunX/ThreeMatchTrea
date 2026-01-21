@@ -11,15 +11,17 @@ using Match3.Core.Models.Enums;
 using Match3.Editor.Interfaces;
 using Match3.Editor.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Match3.Web.Services.AI
 {
     /// <summary>
-    /// AI 关卡编辑服务的 Web 实现 - 使用 Function Calling
+    /// AI 关卡编辑服务的 Web 实现 - 使用 Function Calling + 可选深度思考
     /// </summary>
     public class WebLevelAIChatService : ILevelAIChatService
     {
         private readonly ILLMClient _llmClient;
+        private readonly LLMOptions _options;
         private readonly ILogger<WebLevelAIChatService> _logger;
         private readonly ILevelAnalysisService? _analysisService;
         private readonly DeepAnalysisService? _deepAnalysisService;
@@ -29,14 +31,21 @@ namespace Match3.Web.Services.AI
 
         public bool IsAvailable => _llmClient.IsAvailable;
 
+        /// <summary>
+        /// 是否启用深度思考（需要配置 ReasonerModel）
+        /// </summary>
+        public bool DeepThinkingEnabled => !string.IsNullOrEmpty(_options.ReasonerModel);
+
         public WebLevelAIChatService(
             ILLMClient llmClient,
+            IOptions<LLMOptions> options,
             ILogger<WebLevelAIChatService> logger,
             ILevelAnalysisService? analysisService = null,
             DeepAnalysisService? deepAnalysisService = null,
             Func<LevelConfig>? getLevelConfig = null)
         {
             _llmClient = llmClient;
+            _options = options.Value;
             _logger = logger;
             _analysisService = analysisService;
             _deepAnalysisService = deepAnalysisService;
@@ -47,18 +56,24 @@ namespace Match3.Web.Services.AI
             string message,
             LevelContext context,
             IReadOnlyList<ChatMessage> history,
+            IProgress<string>? progress = null,
             CancellationToken cancellationToken = default)
         {
+            progress?.Report(AIProgressStatus.Thinking);
+
             var messages = BuildMessages(message, context, history);
             var tools = ToolRegistry.GetAllTools();
             var allIntents = new List<LevelIntent>();
             var analysisResults = new StringBuilder();
+            var deepThinkingResult = (string?)null;
+            var usedDeepThinking = false;
 
             int round = 0;
+            bool editOnlyMode = false; // 深度思考后切换为仅编辑模式
             while (round < MaxToolCallRounds)
             {
                 round++;
-                _logger.LogDebug("Tool calling round {Round}", round);
+                _logger.LogDebug("Tool calling round {Round}, editOnlyMode={EditOnly}", round, editOnlyMode);
 
                 var response = await _llmClient.SendWithToolsAsync(messages, tools, cancellationToken);
 
@@ -75,6 +90,10 @@ namespace Match3.Web.Services.AI
                 if (!response.HasToolCalls)
                 {
                     var finalMessage = response.Content ?? "";
+                    if (deepThinkingResult != null)
+                    {
+                        finalMessage = $"💭 **深度思考结果**\n\n{deepThinkingResult}\n\n---\n\n{finalMessage}";
+                    }
                     if (analysisResults.Length > 0)
                     {
                         finalMessage = analysisResults.ToString() + (string.IsNullOrEmpty(finalMessage) ? "" : "\n\n" + finalMessage);
@@ -84,12 +103,15 @@ namespace Match3.Web.Services.AI
                     {
                         Success = true,
                         Message = finalMessage,
-                        Intents = allIntents
+                        Intents = allIntents,
+                        UsedDeepThinking = usedDeepThinking
                     };
                 }
 
                 // 处理工具调用
                 var toolResults = new List<ToolResult>();
+                var needDeepThinking = false;
+                var deepThinkingArgs = (string?)null;
 
                 foreach (var toolCall in response.ToolCalls!)
                 {
@@ -98,16 +120,50 @@ namespace Match3.Web.Services.AI
 
                     _logger.LogDebug("Processing tool call: {ToolName} with arguments: {Arguments}", toolName, arguments);
 
-                    if (ToolRegistry.AnalysisToolNames.Contains(toolName))
+                    if (toolName == ToolRegistry.NeedDeepThinkingTool)
                     {
-                        // 分析工具
-                        var result = await ExecuteAnalysisToolAsync(toolName, arguments, cancellationToken);
-                        toolResults.Add(new ToolResult
+                        // 路由工具：触发深度思考
+                        if (DeepThinkingEnabled)
                         {
-                            ToolCallId = toolCall.Id,
-                            Content = result
-                        });
-                        analysisResults.AppendLine(result);
+                            needDeepThinking = true;
+                            deepThinkingArgs = arguments;
+                            toolResults.Add(new ToolResult
+                            {
+                                ToolCallId = toolCall.Id,
+                                Content = "正在启动深度思考模式..."
+                            });
+                        }
+                        else
+                        {
+                            toolResults.Add(new ToolResult
+                            {
+                                ToolCallId = toolCall.Id,
+                                Content = "深度思考模式未启用（未配置 ReasonerModel），将使用普通模式继续"
+                            });
+                        }
+                    }
+                    else if (ToolRegistry.AnalysisToolNames.Contains(toolName))
+                    {
+                        // 分析工具 - 在编辑模式下拒绝调用
+                        if (editOnlyMode)
+                        {
+                            _logger.LogDebug("Rejecting analysis tool {ToolName} in edit-only mode", toolName);
+                            toolResults.Add(new ToolResult
+                            {
+                                ToolCallId = toolCall.Id,
+                                Content = "当前为执行模式，请直接使用编辑工具（如 set_grid_size、set_objective）执行操作"
+                            });
+                        }
+                        else
+                        {
+                            var result = await ExecuteAnalysisToolAsync(toolName, arguments, cancellationToken);
+                            toolResults.Add(new ToolResult
+                            {
+                                ToolCallId = toolCall.Id,
+                                Content = result
+                            });
+                            analysisResults.AppendLine(result);
+                        }
                     }
                     else if (ToolRegistry.ToolNameToIntentType.TryGetValue(toolName, out var intentType))
                     {
@@ -141,6 +197,53 @@ namespace Match3.Web.Services.AI
                     }
                 }
 
+                // 如果触发深度思考，调用 R1 然后继续
+                if (needDeepThinking && deepThinkingArgs != null)
+                {
+                    progress?.Report(AIProgressStatus.DeepThinking);
+                    usedDeepThinking = true;
+
+                    var thinkingResult = await ExecuteDeepThinkingAsync(
+                        message, context, deepThinkingArgs, cancellationToken);
+
+                    deepThinkingResult = thinkingResult;
+                    progress?.Report(AIProgressStatus.Executing);
+
+                    // 更新工具结果
+                    for (int i = 0; i < toolResults.Count; i++)
+                    {
+                        if (toolResults[i].Content == "正在启动深度思考模式...")
+                        {
+                            toolResults[i] = new ToolResult
+                            {
+                                ToolCallId = toolResults[i].ToolCallId,
+                                Content = $@"深度思考完成。请根据以下计划执行：
+
+{thinkingResult}
+
+---
+【重要】现在进入执行模式：
+- 禁止调用: analyze_level, deep_analyze, get_bottleneck, need_deep_thinking
+- 只能调用: set_grid_size, set_move_limit, set_objective, add_objective, paint_tile, paint_cover 等编辑工具
+
+【立即执行】按顺序调用：
+1. set_grid_size(width=数值, height=数值)
+2. set_move_limit(moves=数值)
+3. set_objective(index=0, layer=""Tile"", element_type=0, count=35) // Red=0,Green=1,Blue=2,Yellow=3,Purple=4,Orange=5
+4. 如果有更多目标: add_objective(layer=""Cover"", element_type=0, count=10) // Cage=0,Chain=1,Bubble=2
+5. 如果需要放置元素: paint_tile/paint_cover
+
+现在开始执行工具调用！"
+                            };
+                            break;
+                        }
+                    }
+
+                    // 切换到仅编辑工具，避免调用分析工具或再次触发深度思考
+                    tools = ToolRegistry.GetEditToolsOnly();
+                    editOnlyMode = true;
+                }
+
                 // 添加助手消息和工具结果到对话
                 messages.Add(LLMMessage.AssistantWithToolCalls(response.ToolCalls));
                 foreach (var result in toolResults)
@@ -150,12 +253,140 @@ namespace Match3.Web.Services.AI
             }
 
             // 达到最大轮数
+            var maxRoundMessage = analysisResults.Length > 0 ? analysisResults.ToString() : "操作已完成";
+            if (deepThinkingResult != null)
+            {
+                maxRoundMessage = $"💭 **深度思考结果**\n\n{deepThinkingResult}\n\n---\n\n{maxRoundMessage}";
+            }
+
             return new AIChatResponse
             {
                 Success = true,
-                Message = analysisResults.Length > 0 ? analysisResults.ToString() : "操作已完成",
-                Intents = allIntents
+                Message = maxRoundMessage,
+                Intents = allIntents,
+                UsedDeepThinking = usedDeepThinking
             };
+        }
+
+        /// <summary>
+        /// 执行深度思考（调用 R1 推理模型）
+        /// </summary>
+        private async Task<string> ExecuteDeepThinkingAsync(
+            string originalMessage,
+            LevelContext context,
+            string toolArgs,
+            CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Triggering deep thinking mode with ReasonerModel: {Model}", _options.ReasonerModel);
+
+            // 解析工具参数
+            string taskSummary;
+            string reason;
+            try
+            {
+                using var doc = JsonDocument.Parse(toolArgs);
+                var root = doc.RootElement;
+                taskSummary = root.TryGetProperty("task_summary", out var ts) ? ts.GetString() ?? originalMessage : originalMessage;
+                reason = root.TryGetProperty("reason", out var r) ? r.GetString() ?? "" : "";
+            }
+            catch
+            {
+                taskSummary = originalMessage;
+                reason = "";
+            }
+
+            // 构建 R1 提示词
+            var r1Prompt = BuildDeepThinkingPrompt(taskSummary, reason, context);
+            var r1Messages = new List<LLMMessage>
+            {
+                LLMMessage.System(r1Prompt),
+                LLMMessage.User(originalMessage)
+            };
+
+            // 调用 R1（不使用工具，限制输出长度）
+            var r1Response = await _llmClient.SendAsync(
+                r1Messages,
+                _options.ReasonerModel!,
+                _options.ReasonerMaxTokens,
+                cancellationToken);
+
+            if (!r1Response.Success)
+            {
+                _logger.LogWarning("Deep thinking failed: {Error}", r1Response.Error);
+                return $"深度思考失败: {r1Response.Error}";
+            }
+
+            _logger.LogInformation("Deep thinking completed, tokens: {Prompt}+{Completion}",
+                r1Response.PromptTokens, r1Response.CompletionTokens);
+
+            return r1Response.Content ?? "（无思考结果）";
+        }
+
+        /// <summary>
+        /// 构建深度思考的系统提示词
+        /// </summary>
+        private string BuildDeepThinkingPrompt(string taskSummary, string reason, LevelContext context)
+        {
+            var sb = new StringBuilder();
+
+            sb.AppendLine("你是一个 Match3 消除游戏的关卡设计专家。请简洁高效地给出设计方案，避免冗长分析。");
+            sb.AppendLine();
+            sb.AppendLine("## 任务");
+            sb.AppendLine(taskSummary);
+            if (!string.IsNullOrEmpty(reason))
+            {
+                sb.AppendLine();
+                sb.AppendLine($"## 为什么需要深度思考");
+                sb.AppendLine(reason);
+            }
+            sb.AppendLine();
+            sb.AppendLine("## 当前关卡状态");
+            sb.AppendLine($"- 网格大小: {context.Width} x {context.Height}");
+            sb.AppendLine($"- 步数限制: {context.MoveLimit}");
+
+            if (context.Objectives != null && context.Objectives.Length > 0)
+            {
+                sb.AppendLine("- 当前目标:");
+                for (int i = 0; i < context.Objectives.Length; i++)
+                {
+                    var obj = context.Objectives[i];
+                    if (obj.TargetLayer != ObjectiveTargetLayer.None)
+                    {
+                        sb.AppendLine($"  [{i}] {obj.TargetLayer} - {obj.ElementType} x {obj.TargetCount}");
+                    }
+                }
+            }
+
+            if (!string.IsNullOrEmpty(context.GridSummary))
+                sb.AppendLine($"- 网格摘要: {context.GridSummary}");
+
+            if (!string.IsNullOrEmpty(context.DifficultyText))
+                sb.AppendLine($"- 难度评估: {context.DifficultyText}");
+
+            sb.AppendLine();
+            sb.AppendLine("## 可用元素");
+            sb.AppendLine("- TileType: Red, Green, Blue, Yellow, Purple, Orange, Rainbow, None");
+            sb.AppendLine("- BombType: None, Horizontal, Vertical, Color, Ufo, Square5x5");
+            sb.AppendLine("- CoverType: None, Cage, Chain, Bubble");
+            sb.AppendLine("- GroundType: None, Ice");
+            sb.AppendLine();
+            sb.AppendLine("## 输出要求（简洁，控制在200字内）");
+            sb.AppendLine();
+            sb.AppendLine("直接输出可执行参数：");
+            sb.AppendLine("```");
+            sb.AppendLine("grid: {width},{height}");
+            sb.AppendLine("moves: {步数}");
+            sb.AppendLine("objectives:");
+            sb.AppendLine("- Tile,{type_id},{count}  // type_id: 0=Red,1=Green,2=Blue,3=Yellow,4=Purple,5=Orange");
+            sb.AppendLine("- Cover,{type_id},{count} // type_id: 0=Cage,1=Chain,2=Bubble");
+            sb.AppendLine("elements:");
+            sb.AppendLine("- {x},{y},tile,{TileType}");
+            sb.AppendLine("- {x},{y},cover,{CoverType}");
+            sb.AppendLine("```");
+            sb.AppendLine();
+            sb.AppendLine("坐标0-based(0到size-1)。直接用英文类型名(Red/Green/Cage/Chain等)。");
+
+            return sb.ToString();
         }
 
         public async IAsyncEnumerable<string> SendMessageStreamAsync(
@@ -165,7 +396,7 @@ namespace Match3.Web.Services.AI
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             // 流式模式暂不支持工具调用，降级为普通调用
-            var response = await SendMessageAsync(message, context, history, cancellationToken);
+            var response = await SendMessageAsync(message, context, history, null, cancellationToken);
             if (response.Success && !string.IsNullOrEmpty(response.Message))
             {
                 yield return response.Message;

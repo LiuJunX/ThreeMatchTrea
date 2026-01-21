@@ -23,9 +23,20 @@ namespace Match3.Web.Services.AI
         public string ApiKey { get; set; } = "";
 
         /// <summary>
-        /// 模型名称
+        /// 模型名称（支持 Function Calling）
         /// </summary>
         public string Model { get; set; } = "deepseek-chat";
+
+        /// <summary>
+        /// 推理模型名称（深度思考，如 deepseek-reasoner）
+        /// 为空则禁用深度思考功能
+        /// </summary>
+        public string? ReasonerModel { get; set; }
+
+        /// <summary>
+        /// 推理模型最大 Token 数（限制 R1 输出长度以减少等待）
+        /// </summary>
+        public int ReasonerMaxTokens { get; set; } = 1024;
 
         /// <summary>
         /// 最大 Token 数

@@ -36,6 +36,13 @@ namespace Match3.Editor.ViewModels
             private set { _isWaitingResponse = value; OnPropertyChanged(nameof(IsWaitingResponse)); }
         }
 
+        private string _waitingStatusText = "";
+        public string WaitingStatusText
+        {
+            get => _waitingStatusText;
+            private set { _waitingStatusText = value; OnPropertyChanged(nameof(WaitingStatusText)); }
+        }
+
         private bool _isVisible = true;
         public bool IsVisible
         {
@@ -81,7 +88,14 @@ namespace Match3.Editor.ViewModels
             OnMessagesChanged?.Invoke();
 
             IsWaitingResponse = true;
+            WaitingStatusText = AIProgressStatus.Thinking;
             _cts = new CancellationTokenSource();
+
+            // 进度回调
+            var progress = new Progress<string>(status =>
+            {
+                WaitingStatusText = status;
+            });
 
             try
             {
@@ -96,6 +110,7 @@ namespace Match3.Editor.ViewModels
                     userMessage,
                     context,
                     Messages,
+                    progress,
                     _cts.Token);
 
                 if (response.Success)
@@ -129,6 +144,7 @@ namespace Match3.Editor.ViewModels
             finally
             {
                 IsWaitingResponse = false;
+                WaitingStatusText = "";
                 OnMessagesChanged?.Invoke();
             }
         }

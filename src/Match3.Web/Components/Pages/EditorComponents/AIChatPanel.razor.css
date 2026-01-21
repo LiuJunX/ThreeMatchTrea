@@ -140,6 +140,73 @@
     font-weight: 500;
 }
 
+/* 消息操作按钮 */
+.message-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 6px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.chat-message:hover .message-actions {
+    opacity: 1;
+}
+
+.btn-copy {
+    background: transparent;
+    border: none;
+    color: #6c7086;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.btn-copy:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #cdd6f4;
+}
+
+.btn-copy.copied {
+    color: #a6e3a1;
+}
+
+.chat-message.user .btn-copy {
+    color: #1e1e2e;
+    opacity: 0.6;
+}
+
+.chat-message.user .btn-copy:hover {
+    background: rgba(0, 0, 0, 0.1);
+    opacity: 1;
+}
+
+.chat-message.user .btn-copy.copied {
+    color: #166534;
+    opacity: 1;
+}
+
+/* 等待状态文字 */
+.waiting-status {
+    font-size: 12px;
+    color: #89b4fa;
+    margin-top: 6px;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
 .typing-indicator {
     display: flex;
     gap: 4px;

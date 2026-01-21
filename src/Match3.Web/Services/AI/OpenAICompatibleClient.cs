@@ -39,8 +39,25 @@ namespace Match3.Web.Services.AI
                 new AuthenticationHeaderValue("Bearer", _options.ApiKey);
         }
 
+        public Task<LLMResponse> SendAsync(
+            IReadOnlyList<LLMMessage> messages,
+            CancellationToken cancellationToken = default)
+        {
+            return SendAsync(messages, _options.Model, _options.MaxTokens, cancellationToken);
+        }
+
+        public Task<LLMResponse> SendAsync(
+            IReadOnlyList<LLMMessage> messages,
+            string model,
+            CancellationToken cancellationToken = default)
+        {
+            return SendAsync(messages, model, _options.MaxTokens, cancellationToken);
+        }
+
         public async Task<LLMResponse> SendAsync(
             IReadOnlyList<LLMMessage> messages,
+            string model,
+            int maxTokens,
             CancellationToken cancellationToken = default)
         {
             if (!IsAvailable)
@@ -56,9 +73,9 @@ namespace Match3.Web.Services.AI
             {
                 var requestBody = new
                 {
-                    model = _options.Model,
+                    model = model,
                     messages = messages,
-                    max_tokens = _options.MaxTokens,
+                    max_tokens = maxTokens,
                     temperature = _options.Temperature,
                     stream = false
                 };
@@ -70,7 +87,7 @@ namespace Match3.Web.Services.AI
 
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                _logger.LogDebug("Sending request to LLM API: {Model}", _options.Model);
+                _logger.LogDebug("Sending request to LLM API: {Model}", model);
 
                 var response = await _httpClient.PostAsync("chat/completions", content, cancellationToken);
                 var responseJson = await response.Content.ReadAsStringAsync();

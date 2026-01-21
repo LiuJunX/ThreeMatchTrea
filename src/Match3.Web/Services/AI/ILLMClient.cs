@@ -87,6 +87,23 @@ namespace Match3.Web.Services.AI
             CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// 发送消息并获取响应（指定模型）
+        /// </summary>
+        Task<LLMResponse> SendAsync(
+            IReadOnlyList<LLMMessage> messages,
+            string model,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 发送消息并获取响应（指定模型和 maxTokens）
+        /// </summary>
+        Task<LLMResponse> SendAsync(
+            IReadOnlyList<LLMMessage> messages,
+            string model,
+            int maxTokens,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// 流式发送消息
         /// </summary>
         IAsyncEnumerable<string> SendStreamAsync(

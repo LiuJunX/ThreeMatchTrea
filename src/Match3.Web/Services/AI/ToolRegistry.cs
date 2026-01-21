@@ -41,6 +41,11 @@ namespace Match3.Web.Services.AI
         };
 
         /// <summary>
+        /// 路由工具名称（触发深度思考）
+        /// </summary>
+        public const string NeedDeepThinkingTool = "need_deep_thinking";
+
+        /// <summary>
         /// 获取所有工具定义
         /// </summary>
         public static List<ToolDefinition> GetAllTools()
@@ -67,7 +72,37 @@ namespace Match3.Web.Services.AI
                 // === 分析工具 (3个) ===
                 CreateAnalyzeLevelTool(),
                 CreateDeepAnalyzeTool(),
-                CreateGetBottleneckTool()
+                CreateGetBottleneckTool(),
+
+                // === 路由工具 (1个) ===
+                CreateNeedDeepThinkingTool()
+            };
+        }
+
+        /// <summary>
+        /// 获取仅编辑工具（排除分析和路由，用于 R1 后的执行阶段）
+        /// </summary>
+        public static List<ToolDefinition> GetEditToolsOnly()
+        {
+            return new List<ToolDefinition>
+            {
+                // === 仅编辑工具 (15个) ===
+                CreateSetGridSizeTool(),
+                CreateSetMoveLimitTool(),
+                CreateSetObjectiveTool(),
+                CreateAddObjectiveTool(),
+                CreateRemoveObjectiveTool(),
+                CreatePaintTileTool(),
+                CreatePaintTileRegionTool(),
+                CreatePaintCoverTool(),
+                CreatePaintCoverRegionTool(),
+                CreatePaintGroundTool(),
+                CreatePaintGroundRegionTool(),
+                CreatePlaceBombTool(),
+                CreateGenerateRandomLevelTool(),
+                CreateClearRegionTool(),
+                CreateClearAllTool()
+                // 不包含分析工具，防止执行阶段调用
             };
         }
 
@@ -400,6 +435,26 @@ namespace Match3.Web.Services.AI
                 {
                     Properties = new Dictionary<string, ParameterProperty>(),
                     Required = new List<string>()
+                }
+            }
+        };
+
+        // === 路由工具定义 ===
+
+        private static ToolDefinition CreateNeedDeepThinkingTool() => new()
+        {
+            Function = new FunctionDefinition
+            {
+                Name = "need_deep_thinking",
+                Description = "当用户的请求需要深度创意设计、复杂分析、问题诊断或开放式建议时，调用此工具触发深度思考模式。适用场景：设计有趣的关卡、分析为什么关卡太难/太简单、给出优化建议、创意性任务。不适用于简单的参数修改或直接编辑操作。",
+                Parameters = new FunctionParameters
+                {
+                    Properties = new Dictionary<string, ParameterProperty>
+                    {
+                        ["reason"] = new() { Type = "string", Description = "为什么这个任务需要深度思考" },
+                        ["task_summary"] = new() { Type = "string", Description = "用户任务的简要总结" }
+                    },
+                    Required = new List<string> { "reason", "task_summary" }
                 }
             }
         };

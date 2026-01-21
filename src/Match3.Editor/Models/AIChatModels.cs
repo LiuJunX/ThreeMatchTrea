@@ -26,6 +26,22 @@ namespace Match3.Editor.Models
         public string? Message { get; set; }
         public List<LevelIntent> Intents { get; set; } = new List<LevelIntent>();
         public string? Error { get; set; }
+
+        /// <summary>
+        /// 是否使用了深度思考
+        /// </summary>
+        public bool UsedDeepThinking { get; set; }
+    }
+
+    /// <summary>
+    /// AI 处理进度状态
+    /// </summary>
+    public static class AIProgressStatus
+    {
+        public const string Thinking = "思考中...";
+        public const string DeepThinking = "💭 深度思考中...";
+        public const string Executing = "执行操作...";
+        public const string Analyzing = "分析关卡...";
     }
 
     /// <summary>

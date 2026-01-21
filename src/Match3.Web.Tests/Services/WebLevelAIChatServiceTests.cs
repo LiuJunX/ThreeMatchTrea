@@ -6,6 +6,7 @@ using Match3.Editor.Models;
 using Match3.Web.Services.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Match3.Web.Tests.Services
@@ -16,6 +17,12 @@ namespace Match3.Web.Tests.Services
     public class WebLevelAIChatServiceTests
     {
         private readonly ILogger<WebLevelAIChatService> _logger = NullLogger<WebLevelAIChatService>.Instance;
+        private readonly IOptions<LLMOptions> _options = Options.Create(new LLMOptions());
+
+        private WebLevelAIChatService CreateService(ILLMClient mockClient)
+        {
+            return new WebLevelAIChatService(mockClient, _options, _logger);
+        }
 
         #region Tool Call Response Tests
 
@@ -37,7 +44,7 @@ namespace Match3.Web.Tests.Services
             };
             var mockClient = new MockLLMClient(toolCalls, "好的，我来帮你设置网格大小。");
 
-            var service = new WebLevelAIChatService(mockClient, _logger);
+            var service = CreateService(mockClient);
             var context = new LevelContext { Width = 8, Height = 8, MoveLimit = 20 };
 
             var response = await service.SendMessageAsync("把网格改成 10x10", context, new List<ChatMessage>());
@@ -77,7 +84,7 @@ namespace Match3.Web.Tests.Services
             };
             var mockClient = new MockLLMClient(toolCalls, "已设置网格和步数。");
 
-            var service = new WebLevelAIChatService(mockClient, _logger);
+            var service = CreateService(mockClient);
             var context = new LevelContext { Width = 8, Height = 8, MoveLimit = 20 };
 
             var response = await service.SendMessageAsync("6x6，15步", context, new List<ChatMessage>());
@@ -93,7 +100,7 @@ namespace Match3.Web.Tests.Services
         {
             var mockClient = new MockLLMClient(null, "你好！有什么可以帮你的？");
 
-            var service = new WebLevelAIChatService(mockClient, _logger);
+            var service = CreateService(mockClient);
             var context = new LevelContext { Width = 8, Height = 8, MoveLimit = 20 };
 
             var response = await service.SendMessageAsync("你好", context, new List<ChatMessage>());
@@ -108,7 +115,7 @@ namespace Match3.Web.Tests.Services
         {
             var mockClient = new MockLLMClient(success: false, error: "API rate limit exceeded");
 
-            var service = new WebLevelAIChatService(mockClient, _logger);
+            var service = CreateService(mockClient);
             var context = new LevelContext { Width = 8, Height = 8, MoveLimit = 20 };
 
             var response = await service.SendMessageAsync("test", context, new List<ChatMessage>());
@@ -154,7 +161,7 @@ namespace Match3.Web.Tests.Services
             };
             var mockClient = new MockLLMClient(toolCalls, "Done");
 
-            var service = new WebLevelAIChatService(mockClient, _logger);
+            var service = CreateService(mockClient);
             var context = new LevelContext { Width = 8, Height = 8, MoveLimit = 20 };
 
             var response = await service.SendMessageAsync("test", context, new List<ChatMessage>());
@@ -192,7 +199,7 @@ namespace Match3.Web.Tests.Services
             };
             var mockClient = new MockLLMClient(toolCalls, "Done");
 
-            var service = new WebLevelAIChatService(mockClient, _logger);
+            var service = CreateService(mockClient);
             var context = new LevelContext { Width = 8, Height = 8, MoveLimit = 20 };
 
             var response = await service.SendMessageAsync("test", context, new List<ChatMessage>());
@@ -225,7 +232,7 @@ namespace Match3.Web.Tests.Services
             };
             var mockClient = new MockLLMClient(toolCalls, "放置蓝色方块");
 
-            var service = new WebLevelAIChatService(mockClient, _logger);
+            var service = CreateService(mockClient);
             var context = new LevelContext { Width = 8, Height = 8, MoveLimit = 20 };
 
             var response = await service.SendMessageAsync("test", context, new List<ChatMessage>());
@@ -256,7 +263,7 @@ namespace Match3.Web.Tests.Services
             };
             var mockClient = new MockLLMClient(toolCalls, "设置目标");
 
-            var service = new WebLevelAIChatService(mockClient, _logger);
+            var service = CreateService(mockClient);
             var context = new LevelContext { Width = 8, Height = 8, MoveLimit = 20 };
 
             var response = await service.SendMessageAsync("test", context, new List<ChatMessage>());
@@ -286,7 +293,7 @@ namespace Match3.Web.Tests.Services
             };
             var mockClient = new MockLLMClient(toolCalls, "清空左上角区域");
 
-            var service = new WebLevelAIChatService(mockClient, _logger);
+            var service = CreateService(mockClient);
             var context = new LevelContext { Width = 8, Height = 8, MoveLimit = 20 };
 
             var response = await service.SendMessageAsync("test", context, new List<ChatMessage>());
@@ -318,7 +325,7 @@ namespace Match3.Web.Tests.Services
             };
             var mockClient = new MockLLMClient(toolCalls, "在中心放置彩虹炸弹");
 
-            var service = new WebLevelAIChatService(mockClient, _logger);
+            var service = CreateService(mockClient);
             var context = new LevelContext { Width = 8, Height = 8, MoveLimit = 20 };
 
             var response = await service.SendMessageAsync("test", context, new List<ChatMessage>());
@@ -335,12 +342,12 @@ namespace Match3.Web.Tests.Services
         #region ToolRegistry Tests
 
         [Fact]
-        public void ToolRegistry_GetAllTools_Returns18Tools()
+        public void ToolRegistry_GetAllTools_Returns19Tools()
         {
             var tools = ToolRegistry.GetAllTools();
 
-            // 15 edit tools + 3 analysis tools = 18 total
-            Assert.Equal(18, tools.Count);
+            // 15 edit tools + 3 analysis tools + 1 routing tool = 19 total
+            Assert.Equal(19, tools.Count);
         }
 
         [Fact]
@@ -351,8 +358,10 @@ namespace Match3.Web.Tests.Services
             foreach (var tool in tools)
             {
                 var name = tool.Function.Name;
-                // Skip analysis tools
+                // Skip analysis tools and routing tools
                 if (ToolRegistry.AnalysisToolNames.Contains(name))
+                    continue;
+                if (name == ToolRegistry.NeedDeepThinkingTool)
                     continue;
 
                 Assert.True(ToolRegistry.ToolNameToIntentType.ContainsKey(name),
@@ -367,6 +376,29 @@ namespace Match3.Web.Tests.Services
             Assert.Contains("deep_analyze", ToolRegistry.AnalysisToolNames);
             Assert.Contains("get_bottleneck", ToolRegistry.AnalysisToolNames);
             Assert.Equal(3, ToolRegistry.AnalysisToolNames.Count);
+        }
+
+        [Fact]
+        public void ToolRegistry_GetEditToolsOnly_ExcludesAnalysisAndRoutingTools()
+        {
+            var editTools = ToolRegistry.GetEditToolsOnly();
+
+            // Should have 15 edit tools only
+            Assert.Equal(15, editTools.Count);
+
+            // Should not contain any analysis tools
+            foreach (var tool in editTools)
+            {
+                var name = tool.Function.Name;
+                Assert.DoesNotContain(name, ToolRegistry.AnalysisToolNames);
+                Assert.NotEqual(ToolRegistry.NeedDeepThinkingTool, name);
+            }
+
+            // Should contain all edit tools
+            foreach (var toolName in ToolRegistry.ToolNameToIntentType.Keys)
+            {
+                Assert.Contains(editTools, t => t.Function.Name == toolName);
+            }
         }
 
         #endregion
@@ -403,6 +435,16 @@ namespace Match3.Web.Tests.Services
             public bool IsAvailable => true;
 
             public Task<LLMResponse> SendAsync(IReadOnlyList<LLMMessage> messages, CancellationToken cancellationToken = default)
+            {
+                return SendAsync(messages, "default", 2048, cancellationToken);
+            }
+
+            public Task<LLMResponse> SendAsync(IReadOnlyList<LLMMessage> messages, string model, CancellationToken cancellationToken = default)
+            {
+                return SendAsync(messages, model, 2048, cancellationToken);
+            }
+
+            public Task<LLMResponse> SendAsync(IReadOnlyList<LLMMessage> messages, string model, int maxTokens, CancellationToken cancellationToken = default)
             {
                 return Task.FromResult(new LLMResponse
                 {

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,12 +17,14 @@ namespace Match3.Editor.Interfaces
         /// <param name="message">用户消息</param>
         /// <param name="context">当前关卡上下文</param>
         /// <param name="history">对话历史</param>
+        /// <param name="progress">进度报告（可选）</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>AI 响应结果</returns>
         Task<AIChatResponse> SendMessageAsync(
             string message,
             LevelContext context,
             IReadOnlyList<ChatMessage> history,
+            IProgress<string>? progress = null,
             CancellationToken cancellationToken = default);
 
         /// <summary>
