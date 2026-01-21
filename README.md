@@ -1,40 +1,67 @@
 # ThreeMatchTrea
+
 AI-Assisted Match-3 Game Engine (C# / Blazor)
 
-## 📚 Documentation Index
+## Key Features
 
-We treat documentation as code. All architectural decisions and guides are located in the `docs/` directory.
+- **Event-Sourced Simulation**: Tick-based engine with deterministic replay support
+- **AI Difficulty Analysis**: Win rate, deadlock detection, and multi-tier player simulation
+- **Deep Analysis**: 7 advanced metrics including flow curve, skill sensitivity, and P95 clear attempts
+- **AI Level Editor**: Natural language level creation and modification via LLM integration
+- **Slot-Based Grid**: 5-layer architecture (Topology, Ground, Unit, Cover, Aux)
+- **Cross-Platform Core**: Pure C# logic with zero UI dependencies
 
-### 🏛️ Architecture & Design
-- **[Architecture Overview](docs/01-architecture/overview.md)**: High-level design, layering strategy, and DOD principles.
-- **[Core Patterns](docs/01-architecture/core-patterns.md)**: Object pooling, zero-allocation logging, and randomness.
+## Quick Start
 
-### 📖 Developer Guides
-- **[Coding Standards](docs/02-guides/coding-standards.md)**: Naming conventions, style guides, and AI context rules.
-- **[Setup Guide](docs/02-guides/setup.md)**: (Coming Soon) How to build and run locally.
-
-### 📜 Decisions (ADR)
-- **[0001-adopt-zstring](docs/04-adr/0001-adopt-zstring.md)**: Why we use `ZString` for logging.
-
----
-
-## 🚀 Quick Start (Development Workflow)
-
-### 1. ⚡ Fast Automated Testing
-Validate logic and UI components in milliseconds without a browser.
+### Run Tests
 ```powershell
 dotnet test
 ```
 
-### 2. 🔥 Hot Reload Development
-Start the Web project with hot-reload enabled.
+### Hot Reload Development
 ```cmd
 .\run-web.bat
 ```
-*(Automatically handles port 5015 conflicts)*
 
 ## Project Structure
-- `src/Match3.Core`: Pure C# game logic (Data-Oriented, No UI).
-- `src/Match3.Web`: Blazor Server UI layer.
-- `src/Match3.Tests`: Unit & Scenario tests.
-- `src/Match3.ConfigTool`: Binary configuration generator.
+
+```
+src/
+├── Match3.Core           # Pure game logic (Event Sourcing, Simulation, AI)
+├── Match3.Presentation   # Animation & visual state management
+├── Match3.Random         # Unified RNG (SeedManager, RandomDomain)
+├── Match3.Editor         # Cross-platform level editor logic
+├── Match3.Web            # Blazor Server UI
+├── Match3.ConfigTool     # Configuration generator
+└── Match3.*.Tests        # Test projects
+```
+
+## Documentation
+
+All documentation lives in `/docs` (Docs-as-Code).
+
+### Architecture
+| Document | Description |
+|----------|-------------|
+| [Architecture Overview](docs/01-architecture/overview.md) | Layering, event system, simulation engine |
+| [Core Patterns](docs/01-architecture/core-patterns.md) | Object pooling, zero-allocation logging |
+| [Level Analysis](docs/01-architecture/level-analysis-system.md) | AI difficulty analysis system |
+| [Deep Analysis](docs/01-architecture/deep-analysis-design.md) | Advanced metrics for level quality |
+
+### Guides
+| Document | Description |
+|----------|-------------|
+| [Coding Standards](docs/02-guides/coding-standards.md) | Naming conventions, style guide |
+| [LLM Configuration](docs/02-guides/llm-configuration.md) | AI chat service setup |
+
+### Features
+| Document | Description |
+|----------|-------------|
+| [AI Level Editor](docs/03-design/features/ai-level-editor.md) | Natural language level editing |
+| [Replay System](docs/03-design/features/replay-system.md) | Deterministic game recording |
+| [Matching System](docs/03-design/features/matching-system.md) | Match detection and bomb generation |
+
+### ADR (Architecture Decision Records)
+- [0001-adopt-zstring](docs/04-adr/0001-adopt-zstring.md): ZString for logging
+- [0003-event-sourcing](docs/04-adr/0003-event-sourcing-simulation.md): Event-sourced simulation
+- [0004-pure-player](docs/04-adr/0004-pure-player-architecture.md): Presentation architecture
