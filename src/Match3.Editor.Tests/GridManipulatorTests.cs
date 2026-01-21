@@ -75,7 +75,7 @@ namespace Match3.Editor.Tests
         {
             var manipulator = new GridManipulator();
             var config = new LevelConfig(3, 3);
-            
+
             // Paint Color
             manipulator.PaintTile(config, 0, TileType.Green, BombType.None);
             Assert.Equal(TileType.Green, config.Grid[0]);
@@ -90,6 +90,66 @@ namespace Match3.Editor.Tests
             manipulator.PaintTile(config, 1, TileType.Rainbow, BombType.Color);
             Assert.Equal(TileType.Rainbow, config.Grid[1]);
             Assert.Equal(BombType.Color, config.Bombs[1]);
+        }
+
+        [Fact]
+        public void PaintCover_ShouldSetTypeAndHealth()
+        {
+            var manipulator = new GridManipulator();
+            var config = new LevelConfig(3, 3);
+
+            manipulator.PaintCover(config, 0, CoverType.Cage);
+
+            Assert.Equal(CoverType.Cage, config.Covers[0]);
+            Assert.True(config.CoverHealths[0] > 0);
+        }
+
+        [Fact]
+        public void ClearCover_ShouldResetTypeAndHealth()
+        {
+            var manipulator = new GridManipulator();
+            var config = new LevelConfig(3, 3);
+
+            // 先放置笼子
+            manipulator.PaintCover(config, 0, CoverType.Cage);
+            Assert.Equal(CoverType.Cage, config.Covers[0]);
+            Assert.True(config.CoverHealths[0] > 0);
+
+            // 清除
+            manipulator.ClearCover(config, 0);
+
+            Assert.Equal(CoverType.None, config.Covers[0]);
+            Assert.Equal(0, config.CoverHealths[0]);
+        }
+
+        [Fact]
+        public void PaintGround_ShouldSetTypeAndHealth()
+        {
+            var manipulator = new GridManipulator();
+            var config = new LevelConfig(3, 3);
+
+            manipulator.PaintGround(config, 0, GroundType.Ice);
+
+            Assert.Equal(GroundType.Ice, config.Grounds[0]);
+            Assert.True(config.GroundHealths[0] > 0);
+        }
+
+        [Fact]
+        public void ClearGround_ShouldResetTypeAndHealth()
+        {
+            var manipulator = new GridManipulator();
+            var config = new LevelConfig(3, 3);
+
+            // 先放置冰块
+            manipulator.PaintGround(config, 0, GroundType.Ice);
+            Assert.Equal(GroundType.Ice, config.Grounds[0]);
+            Assert.True(config.GroundHealths[0] > 0);
+
+            // 清除
+            manipulator.ClearGround(config, 0);
+
+            Assert.Equal(GroundType.None, config.Grounds[0]);
+            Assert.Equal(0, config.GroundHealths[0]);
         }
     }
 }

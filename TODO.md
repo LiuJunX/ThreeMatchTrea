@@ -7,6 +7,7 @@
 <!-- 格式: - [ ] 描述 (来源/日期) -->
 
 - [ ] AI 关卡编辑器 E2E 测试：验证 AI 意图执行后 UI 正确更新（如添加笼子到 Cover 层）(2026-01-21)
+- [ ] IntentExecutor 集成测试：验证 PaintCover/PaintGround 传入 None 类型时调用 Clear 方法（需引入 mocking 框架）(2026-01-21)
 
 ## 功能想法
 

@@ -189,7 +189,10 @@ namespace Match3.Editor.Logic
             if (IsValidPosition(x, y, config))
             {
                 var index = y * config.Width + x;
-                _gridManipulator.PaintCover(config, index, coverType);
+                if (coverType == CoverType.None)
+                    _gridManipulator.ClearCover(config, index);
+                else
+                    _gridManipulator.PaintCover(config, index, coverType);
             }
         }
 
@@ -210,7 +213,10 @@ namespace Match3.Editor.Logic
                     if (IsValidPosition(x, y, config))
                     {
                         var index = y * config.Width + x;
-                        _gridManipulator.PaintCover(config, index, coverType);
+                        if (coverType == CoverType.None)
+                            _gridManipulator.ClearCover(config, index);
+                        else
+                            _gridManipulator.PaintCover(config, index, coverType);
                     }
                 }
             }
@@ -225,7 +231,10 @@ namespace Match3.Editor.Logic
             if (IsValidPosition(x, y, config))
             {
                 var index = y * config.Width + x;
-                _gridManipulator.PaintGround(config, index, groundType);
+                if (groundType == GroundType.None)
+                    _gridManipulator.ClearGround(config, index);
+                else
+                    _gridManipulator.PaintGround(config, index, groundType);
             }
         }
 
@@ -246,7 +255,10 @@ namespace Match3.Editor.Logic
                     if (IsValidPosition(x, y, config))
                     {
                         var index = y * config.Width + x;
-                        _gridManipulator.PaintGround(config, index, groundType);
+                        if (groundType == GroundType.None)
+                            _gridManipulator.ClearGround(config, index);
+                        else
+                            _gridManipulator.PaintGround(config, index, groundType);
                     }
                 }
             }
