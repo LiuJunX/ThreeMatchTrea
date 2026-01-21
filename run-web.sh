@@ -6,6 +6,13 @@ cd "$(dirname "$0")"
 
 PORT=5015
 PROJECT="src/Match3.Web/Match3.Web.csproj"
+URLS="http://localhost:$PORT"
+
+# 检查 --lan 参数
+if [ "$1" = "--lan" ]; then
+    URLS="http://0.0.0.0:$PORT"
+    echo "LAN mode enabled - accessible from other devices"
+fi
 
 echo "[1/3] Checking for existing processes on port $PORT..."
 if command -v lsof &> /dev/null; then
@@ -22,4 +29,4 @@ echo "[2/3] Waiting for port to be released..."
 sleep 1
 
 echo "[3/3] Starting Web Project with Hot Reload..."
-dotnet watch --project "$PROJECT"
+dotnet watch --project "$PROJECT" --urls "$URLS"
