@@ -218,8 +218,6 @@ public static class BoardAnalyzer
         Span<int> counts = stackalloc int[6];
         GetColorDistribution(ref state, counts);
 
-        Console.WriteLine($"[FindMostCommonColor] maxColors={maxColors}, counts: R={counts[0]}, G={counts[1]}, B={counts[2]}, Y={counts[3]}, P={counts[4]}, O={counts[5]}");
-
         int maxCount = -1;
         int maxIndex = 0;
 
@@ -232,8 +230,6 @@ public static class BoardAnalyzer
             }
         }
 
-        var result = GetColorType(maxIndex);
-        Console.WriteLine($"[FindMostCommonColor] maxIndex={maxIndex}, maxCount={maxCount}, result={result}");
-        return result;
+        return GetColorType(maxIndex);
     }
 }

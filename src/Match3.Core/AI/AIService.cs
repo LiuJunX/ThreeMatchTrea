@@ -298,7 +298,7 @@ public sealed class AIService : IAIService
     public IReadOnlyList<MovePreview> GetAllMovePreviews(in GameState state)
     {
         var moves = GetValidMoves(in state);
-        var previews = new List<MovePreview>();
+        var previews = new List<MovePreview>(moves.Count);
 
         foreach (var move in moves)
         {
