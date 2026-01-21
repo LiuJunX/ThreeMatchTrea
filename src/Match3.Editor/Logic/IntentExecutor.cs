@@ -85,6 +85,7 @@ namespace Match3.Editor.Logic
             }
 
             _viewModel.IsDirty = true;
+            _viewModel.NotifyGridChanged();
         }
 
         private void ExecuteSetGridSize(LevelIntent intent)

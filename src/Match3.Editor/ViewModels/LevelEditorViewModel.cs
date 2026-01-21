@@ -511,6 +511,15 @@ namespace Match3.Editor.ViewModels
         protected void OnPropertyChanged(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         protected void RequestRepaint() => OnRequestRepaint?.Invoke();
 
+        /// <summary>
+        /// 供外部组件（如 AI 意图执行器）通知网格数据已变更，需要重绘和重新分析
+        /// </summary>
+        public void NotifyGridChanged()
+        {
+            RequestRepaint();
+            RestartAnalysis();
+        }
+
         // --- Level Analysis ---
 
         /// <summary>
