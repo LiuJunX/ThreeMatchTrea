@@ -1,6 +1,7 @@
 using Match3.Core.DependencyInjection;
 using Match3.Web.Components;
 using Match3.Web.Services;
+using Match3.Web.Services.AI;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,10 +15,11 @@ builder.Services.AddScoped<Match3GameService>();
 
 // Editor Services
 builder.Services.AddScoped<Match3.Editor.Interfaces.IPlatformService, Match3.Web.Services.EditorAdapters.WebPlatformService>();
-builder.Services.AddScoped<Match3.Editor.Interfaces.IFileSystemService>(sp => 
+builder.Services.AddScoped<Match3.Editor.Interfaces.IFileSystemService>(sp =>
     new Match3.Web.Services.EditorAdapters.PhysicalFileSystemService(@"d:\GitWorkSpace\LiuJun\ThreeMatchTrea\src\Match3.Core.Tests\Scenarios\Data"));
 builder.Services.AddScoped<Match3.Editor.Interfaces.IJsonService, Match3.Web.Services.EditorAdapters.SystemTextJsonService>();
 builder.Services.AddScoped<Match3.Core.Utility.IGameLogger>(sp => new MicrosoftGameLogger(sp.GetRequiredService<ILogger<MicrosoftGameLogger>>()));
+builder.Services.AddScoped<Match3.Editor.Logic.GridManipulator>();
 builder.Services.AddScoped<Match3.Editor.ViewModels.LevelEditorViewModel>();
 
 builder.Services.AddScoped<ScenarioLibraryService>(sp =>
@@ -27,6 +29,12 @@ builder.Services.AddScoped<Match3.Editor.Interfaces.IScenarioService>(sp => sp.G
 builder.Services.AddScoped<LevelLibraryService>(sp =>
     new LevelLibraryService(@"d:\GitWorkSpace\LiuJun\ThreeMatchTrea\data\levels"));
 builder.Services.AddScoped<Match3.Editor.Interfaces.ILevelService>(sp => sp.GetRequiredService<LevelLibraryService>());
+
+// AI Chat Services
+builder.Services.Configure<LLMOptions>(builder.Configuration.GetSection(LLMOptions.SectionName));
+builder.Services.AddHttpClient<ILLMClient, OpenAICompatibleClient>();
+builder.Services.AddScoped<Match3.Editor.Interfaces.ILevelAIChatService, WebLevelAIChatService>();
+builder.Services.AddScoped<Match3.Editor.ViewModels.LevelAIChatViewModel>();
 
 var app = builder.Build();
 

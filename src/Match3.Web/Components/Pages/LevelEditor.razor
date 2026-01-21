@@ -2,6 +2,7 @@
 @using Match3.Editor.ViewModels
 @using Match3.Web.Components.Pages.EditorComponents
 @inject LevelEditorViewModel VM
+@inject LevelAIChatViewModel ChatVM
 @implements IDisposable
 @rendermode InteractiveServer
 
@@ -23,10 +24,14 @@
     </div>
 </div>
 
+<!-- AI Chat Panel (Floating) -->
+<AIChatPanel OnRepaintRequested="OnAIRepaintRequested" />
+
 @code {
     protected override void OnInitialized()
     {
         VM.PropertyChanged += OnVmPropertyChanged;
+        ChatVM.PropertyChanged += OnVmPropertyChanged;
         VM.RefreshScenarioList();
         VM.RefreshLevelList();
     }
@@ -36,8 +41,14 @@
         InvokeAsync(StateHasChanged);
     }
 
+    private void OnAIRepaintRequested()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
     public void Dispose()
     {
         VM.PropertyChanged -= OnVmPropertyChanged;
+        ChatVM.PropertyChanged -= OnVmPropertyChanged;
     }
 }

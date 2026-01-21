@@ -1,0 +1,164 @@
+@using Match3.Editor.ViewModels
+@using Match3.Editor.Models
+@inject LevelAIChatViewModel ChatVM
+
+<div class="ai-chat-panel @(ChatVM.IsVisible ? "visible" : "")">
+    <div class="ai-chat-header">
+        <span>AI 助手</span>
+        <div class="header-actions">
+            <button class="btn-icon" @onclick="ClearHistory" title="清空对话">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                    <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                </svg>
+            </button>
+            <button class="btn-icon" @onclick="ToggleVisibility" title="关闭">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="ai-chat-messages" @ref="messagesContainer">
+        @foreach (var msg in ChatVM.Messages)
+        {
+            <div class="chat-message @msg.Role.ToString().ToLower() @(msg.IsError ? "error" : "")">
+                <div class="message-content">@msg.Content</div>
+                @if (msg.Intents != null && msg.Intents.Count > 0)
+                {
+                    <div class="intent-badges">
+                        @foreach (var intent in msg.Intents)
+                        {
+                            <span class="badge">@GetIntentLabel(intent.Type)</span>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        @if (ChatVM.IsWaitingResponse)
+        {
+            <div class="chat-message assistant loading">
+                <div class="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="ai-chat-input">
+        <textarea @bind="ChatVM.InputText"
+                  @bind:event="oninput"
+                  @onkeydown="HandleKeyDown"
+                  placeholder="描述你想要的关卡..."
+                  disabled="@ChatVM.IsWaitingResponse"
+                  rows="2"></textarea>
+        <button class="btn-send"
+                @onclick="SendMessage"
+                disabled="@(ChatVM.IsWaitingResponse || string.IsNullOrWhiteSpace(ChatVM.InputText))">
+            @if (ChatVM.IsWaitingResponse)
+            {
+                <span class="spinner"></span>
+            }
+            else
+            {
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10.894 2.553a1 1 0 0 0-1.788 0l-7 14a1 1 0 0 0 1.169 1.409l5-1.429A1 1 0 0 0 9 15.571V11a1 1 0 1 1 2 0v4.571a1 1 0 0 0 .725.962l5 1.428a1 1 0 0 0 1.17-1.408l-7-14z"/>
+                </svg>
+            }
+        </button>
+    </div>
+</div>
+
+@code {
+    private ElementReference messagesContainer;
+
+    protected override void OnInitialized()
+    {
+        ChatVM.OnMessagesChanged += OnMessagesChanged;
+        ChatVM.OnRequestRepaint += OnRequestRepaint;
+        ChatVM.PropertyChanged += (s, e) => InvokeAsync(StateHasChanged);
+    }
+
+    private void OnMessagesChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            await Task.Delay(50);
+            // 滚动到底部
+            await ScrollToBottom();
+        });
+    }
+
+    private void OnRequestRepaint()
+    {
+        // 触发父组件重绘
+        OnRepaintRequested?.Invoke();
+    }
+
+    [Parameter]
+    public Action? OnRepaintRequested { get; set; }
+
+    private async Task ScrollToBottom()
+    {
+        // 使用 JS interop 滚动到底部
+        try
+        {
+            await JS.InvokeVoidAsync("eval",
+                "document.querySelector('.ai-chat-messages')?.scrollTo(0, document.querySelector('.ai-chat-messages')?.scrollHeight)");
+        }
+        catch { }
+    }
+
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendMessage();
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        await ChatVM.SendMessageAsync();
+    }
+
+    private void ClearHistory()
+    {
+        ChatVM.ClearHistory();
+    }
+
+    private void ToggleVisibility()
+    {
+        ChatVM.ToggleVisibility();
+    }
+
+    private string GetIntentLabel(LevelIntentType type)
+    {
+        return type switch
+        {
+            LevelIntentType.SetGridSize => "网格",
+            LevelIntentType.SetMoveLimit => "步数",
+            LevelIntentType.SetObjective => "目标",
+            LevelIntentType.AddObjective => "目标",
+            LevelIntentType.PaintTile => "绘制",
+            LevelIntentType.PaintTileRegion => "区域",
+            LevelIntentType.PlaceBomb => "炸弹",
+            LevelIntentType.GenerateRandomLevel => "随机",
+            LevelIntentType.ClearAll => "清空",
+            _ => type.ToString()
+        };
+    }
+
+    public void Dispose()
+    {
+        ChatVM.OnMessagesChanged -= OnMessagesChanged;
+        ChatVM.OnRequestRepaint -= OnRequestRepaint;
+    }
+}

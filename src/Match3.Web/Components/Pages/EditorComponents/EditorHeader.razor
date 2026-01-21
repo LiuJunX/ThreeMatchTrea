@@ -1,19 +1,20 @@
 @using Match3.Editor.ViewModels
 @using Match3.Editor.Logic
 @inject LevelEditorViewModel VM
+@inject LevelAIChatViewModel ChatVM
 @inject Match3.Web.Services.Match3GameService GameService
 @inject NavigationManager Navigation
 
 <header class="navbar navbar-dark bg-dark flex-shrink-0 px-3 py-2 shadow-sm justify-content-between">
     <div class="d-flex align-items-center gap-3">
         <span class="navbar-brand mb-0 h1 fs-5">Level Editor</span>
-        
+
         <div class="btn-group btn-group-sm">
-            <button class="btn @(VM.CurrentMode == EditorMode.Level ? "btn-light" : "btn-outline-light")" 
+            <button class="btn @(VM.CurrentMode == EditorMode.Level ? "btn-light" : "btn-outline-light")"
                     @onclick="() => VM.SwitchMode(EditorMode.Level)">
                 Level Design
             </button>
-            <button class="btn @(VM.CurrentMode == EditorMode.Scenario ? "btn-light" : "btn-outline-light")" 
+            <button class="btn @(VM.CurrentMode == EditorMode.Scenario ? "btn-light" : "btn-outline-light")"
                     @onclick="SwitchToScenarioMode">
                 Scenario / Test
             </button>
@@ -24,7 +25,11 @@
         <button class="btn btn-sm btn-success" @onclick="PlayLevel">
             <i class="bi bi-play-fill"></i> Test
         </button>
-        <button class="btn btn-sm btn-outline-info">AI Critic (TODO)</button>
+        <button class="btn btn-sm @(ChatVM.IsVisible ? "btn-info" : "btn-outline-info")"
+                @onclick="ToggleAIChat"
+                title="AI 关卡编辑助手">
+            <i class="bi bi-robot"></i> AI 助手
+        </button>
     </div>
 </header>
 
@@ -59,5 +64,10 @@
             : VM.CurrentLevel;
         GameService.StartNewGame(levelConfig);
         Navigation.NavigateTo("/");
+    }
+
+    private void ToggleAIChat()
+    {
+        ChatVM.ToggleVisibility();
     }
 }

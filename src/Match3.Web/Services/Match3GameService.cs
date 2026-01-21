@@ -89,6 +89,21 @@ public class Match3GameService : IDisposable
     /// </summary>
     public LevelStatus LevelStatus => _gameSession?.Engine.State.LevelStatus ?? LevelStatus.InProgress;
 
+    /// <summary>
+    /// Total move limit for the level.
+    /// </summary>
+    public int MoveLimit => _gameSession?.Engine.State.MoveLimit ?? 20;
+
+    /// <summary>
+    /// Number of moves used.
+    /// </summary>
+    public int MovesUsed => (int)(_gameSession?.Engine.State.MoveCount ?? 0);
+
+    /// <summary>
+    /// Remaining moves.
+    /// </summary>
+    public int MovesRemaining => Math.Max(0, MoveLimit - MovesUsed);
+
     public void StartNewGame(LevelConfig? levelConfig = null)
     {
         StopLoop();

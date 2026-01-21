@@ -70,6 +70,11 @@ public sealed class SwapOperations : ISwapOperations
             SwapTiles(ref state, pending.From, pending.To);
             _context.EmitRevertEvent(in state, pending.From, pending.To, tick, simTime, events);
         }
+        else
+        {
+            // Valid move - increment move count
+            state.MoveCount++;
+        }
 
         // Clear pending state
         pending = PendingMoveState.None;
