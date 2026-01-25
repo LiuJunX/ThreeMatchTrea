@@ -1,6 +1,6 @@
 # Match3Explore
 
-AI-Assisted Match-3 Game Engine (C# / Blazor)
+AI-Assisted Match-3 Game Engine (C# Core / Multi-Platform UI)
 
 ## Key Features
 
@@ -45,10 +45,35 @@ src/
 ├── Match3.Presentation   # Animation & visual state management
 ├── Match3.Random         # Unified RNG (SeedManager, RandomDomain)
 ├── Match3.Editor         # Cross-platform level editor logic
-├── Match3.Web            # Blazor Server UI
+├── Match3.Web            # Blazor WebAssembly UI
 ├── Match3.ConfigTool     # Configuration generator
 └── Match3.*.Tests        # Test projects
+
+unity/                    # Unity / Tuanjie Engine project
+├── Assets/Plugins/Match3 # Core DLLs (auto-synced via PostBuild)
+├── Assets/Scripts        # Unity-specific code (Views, Controllers, Bridge)
+└── ProjectSettings       # Unity project configuration
 ```
+
+## Unity Development
+
+### Prerequisites
+- Unity 2022.3+ LTS or Tuanjie Engine
+- .NET SDK 9.0+
+
+### Sync DLLs to Unity
+```bash
+dotnet build src/Match3.Presentation -c Release
+# Or use: make unity
+```
+
+DLLs auto-sync to `unity/Assets/Plugins/Match3/` via PostBuild.
+
+### Architecture
+Unity references Core via DLL. See [unity/CLAUDE.md](unity/CLAUDE.md) for guidelines:
+- Views driven by `RenderCommand` only
+- No direct `Match3Grid` manipulation
+- Input routed through Core's `InputSystem`
 
 ## Documentation
 

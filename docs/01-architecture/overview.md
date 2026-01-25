@@ -184,6 +184,34 @@ Core → GameEvent → Core.Choreographer → RenderCommand[] → Player → Vis
 - **Maximum Testability**: Assert on command streams
 - **AI-Friendly**: Choreographer in Core layer for AI coding
 
+### Unity Implementation
+
+Unity 通过 DLL 引用 Core，实现 View 层：
+
+```
+unity/Assets/
+├── Plugins/Match3/          # DLL (PostBuild 自动同步)
+│   ├── Match3.Core.dll
+│   ├── Match3.Presentation.dll
+│   └── Match3.Random.dll
+└── Scripts/
+    ├── Bridge/              # Core ↔ Unity 桥接
+    │   └── GameController   # 管理 SimulationEngine + Player
+    ├── Views/               # MonoBehaviour 视图组件
+    │   ├── BoardView        # 棋盘渲染，消费 VisualState
+    │   └── TileView         # 单个方块的视觉表现
+    └── Controllers/         # 输入处理
+        └── InputController  # 触摸/点击 → SwapCommand
+```
+
+**架构约束**：
+- ❌ 禁止在 MonoBehaviour 中直接操作 `Match3Grid`
+- ❌ 禁止绕过 `Player` 直接处理 `GameEvent`
+- ✅ 通过 `RenderCommand` 驱动所有视觉变化
+- ✅ 输入转换为 Core 的 `InputSystem` 调用
+
+详见: `unity/CLAUDE.md`
+
 ## 7. AI Service (`Match3.Core.AI`)
 High-speed simulation for move evaluation and difficulty analysis.
 

@@ -114,10 +114,11 @@ Chosen option: **团结引擎 (Tuanjie Engine)**
 ## Migration Strategy
 
 ```
-Phase 1: 环境搭建
-├── 下载安装团结引擎
-├── 创建项目，配置目录结构
-└── 导入 Match3.Core 代码
+Phase 1: 环境搭建 ✅ 已完成
+├── 创建 unity/ 工程目录（嵌套结构）
+├── 配置 PostBuild 自动同步 DLL
+├── 添加 unity/CLAUDE.md AI 开发规则
+└── 限制 LangVersion 为 C# 10（Unity 兼容）
 
 Phase 2: 核心验证
 ├── 运行单元测试
@@ -126,13 +127,59 @@ Phase 2: 核心验证
 
 Phase 3: 表现层重写
 ├── 用 Unity 组件重写渲染
-├── 实现动画系统
+├── 实现动画系统（RenderCommand → MonoBehaviour）
 ├── 实现粒子特效
 
 Phase 4: 平台导出
 ├── 微信小游戏测试
 ├── 鸿蒙测试
 ├── iOS/Android 测试
+```
+
+## Implementation Details
+
+### DLL 集成方案
+
+采用 **PostBuild 自动同步**，而非源码引用：
+
+```
+src/Match3.Core           →  unity/Assets/Plugins/Match3/Match3.Core.dll
+src/Match3.Presentation   →  unity/Assets/Plugins/Match3/Match3.Presentation.dll
+src/Match3.Random         →  unity/Assets/Plugins/Match3/Match3.Random.dll
+(NuGet) ZString           →  unity/Assets/Plugins/Match3/ZString.dll
+(NuGet) Unsafe            →  unity/Assets/Plugins/Match3/System.Runtime.CompilerServices.Unsafe.dll
+```
+
+**同步命令**：
+```bash
+dotnet build src/Match3.Presentation -c Release
+# 或使用 make unity
+# 或告诉 Claude："同步到 Unity"
+```
+
+### 目录结构
+
+```
+unity/
+├── CLAUDE.md              # AI 开发规则，指向 Core 源码
+├── .gitignore             # Unity 专用忽略规则
+├── Assets/
+│   ├── Plugins/Match3/    # 自动同步的 DLL
+│   └── Scripts/
+│       ├── Views/         # MonoBehaviour 视图组件
+│       ├── Controllers/   # 输入和游戏流程控制
+│       └── Bridge/        # Core 与 Unity 的桥接层
+├── Packages/
+└── ProjectSettings/
+```
+
+### C# 版本兼容
+
+为确保 Unity 兼容，Core 项目限制为 C# 10：
+
+```xml
+<LangVersion>10.0</LangVersion>
+<TargetFramework>netstandard2.1</TargetFramework>
 ```
 
 ## References
