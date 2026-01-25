@@ -1,3 +1,4 @@
+using System;
 using System.Numerics;
 using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
@@ -165,7 +166,7 @@ public sealed record ShowEffectCommand : RenderCommand
 public sealed record ShowMatchHighlightCommand : RenderCommand
 {
     /// <summary>Positions of matched tiles.</summary>
-    public Position[] Positions { get; init; } = [];
+    public Position[] Positions { get; init; } = Array.Empty<Position>();
 }
 
 #endregion

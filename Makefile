@@ -2,7 +2,7 @@
 # Cross-platform development commands
 # Usage: make <target>
 
-.PHONY: all build test run clean coverage help restore watch
+.PHONY: all build test run clean coverage help restore watch unity sync-unity
 
 # Default target
 all: build test
@@ -93,6 +93,17 @@ endif
 clean-all: clean clean-coverage
 
 # ============================================
+#  Unity Commands
+# ============================================
+
+## Build and sync DLLs to Unity
+unity:
+	dotnet build src/Match3.Presentation -c Release
+
+## Alias for unity
+sync-unity: unity
+
+# ============================================
 #  Utility Commands
 # ============================================
 
@@ -142,6 +153,9 @@ help:
 	@echo   make clean          - Clean build artifacts
 	@echo   make clean-coverage - Clean coverage reports
 	@echo   make clean-all      - Clean everything
+	@echo.
+	@echo UNITY:
+	@echo   make unity          - Build and sync DLLs to Unity
 	@echo.
 	@echo UTILITY:
 	@echo   make format         - Apply code formatting

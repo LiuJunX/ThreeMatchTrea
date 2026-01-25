@@ -3,8 +3,18 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <LangVersion>latest</LangVersion>
+    <LangVersion>10.0</LangVersion>
     <AssemblyName>Match3.Random</AssemblyName>
     <RootNamespace>Match3.Random</RootNamespace>
   </PropertyGroup>
+
+  <!-- 自动同步 DLL 到 Unity -->
+  <Target Name="CopyToUnity" AfterTargets="Build" Condition="'$(Configuration)'=='Release'">
+    <PropertyGroup>
+      <UnityPluginsPath>$(ProjectDir)..\..\unity\Assets\Plugins\Match3\</UnityPluginsPath>
+    </PropertyGroup>
+    <MakeDir Directories="$(UnityPluginsPath)" Condition="!Exists('$(UnityPluginsPath)')" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(UnityPluginsPath)" SkipUnchangedFiles="true" />
+    <Message Importance="high" Text="Copied $(TargetFileName) to Unity" />
+  </Target>
 </Project>

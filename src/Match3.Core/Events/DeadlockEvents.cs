@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
@@ -36,7 +37,7 @@ public sealed record BoardShuffledEvent : GameEvent
     public long ScoreBefore { get; init; }
 
     /// <summary>所有改变类型的棋子列表</summary>
-    public IReadOnlyList<TileTypeChange> Changes { get; init; } = [];
+    public IReadOnlyList<TileTypeChange> Changes { get; init; } = Array.Empty<TileTypeChange>();
 
     /// <inheritdoc />
     public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
