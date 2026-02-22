@@ -161,6 +161,13 @@ public sealed class SimulationEngine : IDisposable
 
         var state = State;
 
+        // Clear selection when board is actively processing (gravity, matching, cascading)
+        // This prevents the highlight from "sticking" to a position when the tile there changes.
+        if (state.SelectedPosition != Position.Invalid && !IsStable())
+        {
+            state.SelectedPosition = Position.Invalid;
+        }
+
         // 0. Validate pending move (check for invalid swap revert)
         // Capture bomb swap info before validation clears it
         var pendingBombSwap = _pendingMoveState.IsBombSwap && _pendingMoveState.NeedsValidation
@@ -347,6 +354,9 @@ public sealed class SimulationEngine : IDisposable
         // Check if tiles are blocked by cover
         if (!state.CanInteract(from) || !state.CanInteract(to))
             return false;
+
+        // Clear selection when a move is applied (swipe bypasses HandleTap)
+        state.SelectedPosition = Position.Invalid;
 
         // Get tile info BEFORE swap
         var tileA = state.GetTile(from.X, from.Y);

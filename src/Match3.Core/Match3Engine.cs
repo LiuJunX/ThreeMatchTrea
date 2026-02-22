@@ -103,6 +103,12 @@ public sealed class Match3Engine : IDisposable
         ProcessInput();
         _animationSystem.Animate(ref _state, dt);
 
+        // Clear selection when board is actively processing
+        if (_state.SelectedPosition != Position.Invalid && !IsIdle)
+        {
+            _state.SelectedPosition = Position.Invalid;
+        }
+
         // Check pending move validation after animation completes (uses shared swap operations)
         _swapOperations.ValidatePendingMove(
             ref _state,
