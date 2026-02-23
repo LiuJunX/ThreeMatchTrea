@@ -41,10 +41,21 @@ namespace Match3.Unity.Bridge
         private WeightedMoveSelector _autoPlaySelector;
 
         private bool _initialized;
-        private readonly List<LockToken> _mergeLockTokens = new();
-        private float _mergeLockTimer;
-        private readonly List<LockToken> _matchLockTokens = new();
-        private float _matchLockTimer;
+
+        // Per-cell lock tracking: each entry has its own timer
+        private readonly struct ActiveLock
+        {
+            public readonly LockToken Token;
+            public readonly float Duration;
+
+            public ActiveLock(LockToken token, float duration)
+            {
+                Token = token;
+                Duration = duration;
+            }
+        }
+        private readonly List<ActiveLock> _activeLocks = new();
+        private readonly List<float> _lockTimers = new();
 
         /// <summary>
         /// Cell size in world units.
@@ -242,7 +253,7 @@ namespace Match3.Unity.Bridge
             _lastScore = -1;
             _isPaused = false;
             _isAutoPlaying = false;
-            _mergeLockTimer = 0f;
+            ReleaseAllLocks();
 
             Debug.Log($"Match3Bridge initialized: {width}x{height}, seed={seed}");
         }
@@ -273,24 +284,8 @@ namespace Match3.Unity.Bridge
                 var commands = _choreographer.Choreograph(events, _player.CurrentTime);
                 _player.Append(commands);
 
-                // Acquire per-cell Receive locks for merge-affected positions
-                if (_choreographer.LastBatchHadMerge)
-                {
-                    // Release any prior merge locks before acquiring new ones
-                    if (_mergeLockTokens.Count > 0)
-                        ReleaseMergeLocks();
-                    AcquireMergeLocks(events);
-                    _mergeLockTimer = _choreographer.MergeDuration;
-                }
-
-                // Acquire per-cell Receive locks for match-affected positions (drop delay)
-                if (_choreographer.LastBatchHadMatch)
-                {
-                    if (_matchLockTokens.Count > 0)
-                        ReleaseMatchLocks();
-                    AcquireMatchLocks(events);
-                    _matchLockTimer = _choreographer.DropDelay;
-                }
+                // Acquire per-cell locks from Choreographer's lock schedule
+                AcquireLocksFromSchedule();
             }
 
             // Tick the animation player
@@ -299,21 +294,8 @@ namespace Match3.Unity.Bridge
             // Tick visual effects (advance elapsed time, remove expired)
             _player.VisualState.UpdateEffects(scaledDelta);
 
-            // Release merge locks when the merge animation ends
-            if (_mergeLockTimer > 0f)
-            {
-                _mergeLockTimer = Mathf.Max(0f, _mergeLockTimer - scaledDelta);
-                if (_mergeLockTimer <= 0f)
-                    ReleaseMergeLocks();
-            }
-
-            // Release match locks when drop delay ends
-            if (_matchLockTimer > 0f)
-            {
-                _matchLockTimer = Mathf.Max(0f, _matchLockTimer - scaledDelta);
-                if (_matchLockTimer <= 0f)
-                    ReleaseMatchLocks();
-            }
+            // Tick per-cell lock timers, release expired ones
+            TickLockTimers(scaledDelta);
 
             // Sync falling tiles from game state (physics-driven positions)
             {
@@ -373,51 +355,73 @@ namespace Match3.Unity.Bridge
             }
         }
 
-        private void AcquireMergeLocks(IReadOnlyList<GameEvent> events)
+        /// <summary>
+        /// Read Choreographer.LockEntries, adjust durations based on context, acquire locks.
+        /// </summary>
+        private void AcquireLocksFromSchedule()
         {
-            foreach (var evt in events)
+            var entries = _choreographer.LockEntries;
+            if (entries.Count == 0) return;
+
+            // Build set of positions that will fly to objectives (for duration adjustment)
+            _flyPositionKeys.Clear();
+            foreach (var fly in _pendingFlies)
             {
-                switch (evt)
+                if (fly.MergeTarget == null)
+                    _flyPositionKeys.Add(PackGridKey(fly.SourceGridPosition.X, fly.SourceGridPosition.Y));
+            }
+
+            for (int i = 0; i < entries.Count; i++)
+            {
+                var entry = entries[i];
+                float duration = entry.Duration;
+
+                if (entry.IsMerge)
                 {
-                    case TileDestroyedEvent tde when tde.MergeTarget != null:
-                        _mergeLockTokens.Add(
-                            _session.Engine.AcquireLock(tde.GridPosition, CellLockType.Receive));
-                        break;
-                    case BombCreatedEvent bce:
-                        _mergeLockTokens.Add(
-                            _session.Engine.AcquireLock(bce.Position, CellLockType.Receive));
-                        break;
+                    // Merge locks: slightly shorter to let gravity start sooner
+                    duration -= 0.03f;
+                }
+                else
+                {
+                    // Match locks: adjust based on whether tile flies to objective
+                    var key = PackGridKey(entry.Position.X, entry.Position.Y);
+                    duration += _flyPositionKeys.Contains(key) ? 0.05f : -0.05f;
+                }
+
+                duration = Mathf.Max(duration, 0.01f);
+                var token = _session.Engine.AcquireLock(entry.Position, entry.LockType);
+                _activeLocks.Add(new ActiveLock(token, duration));
+                _lockTimers.Add(duration);
+            }
+        }
+        private readonly HashSet<long> _flyPositionKeys = new();
+
+        /// <summary>
+        /// Tick all active lock timers, release expired ones.
+        /// </summary>
+        private void TickLockTimers(float deltaTime)
+        {
+            for (int i = _lockTimers.Count - 1; i >= 0; i--)
+            {
+                _lockTimers[i] -= deltaTime;
+                if (_lockTimers[i] <= 0f)
+                {
+                    _session.Engine.ReleaseLock(_activeLocks[i].Token);
+                    _activeLocks.RemoveAt(i);
+                    _lockTimers.RemoveAt(i);
                 }
             }
         }
 
-        private void ReleaseMergeLocks()
+        /// <summary>
+        /// Release all active locks immediately.
+        /// </summary>
+        private void ReleaseAllLocks()
         {
-            foreach (var token in _mergeLockTokens)
-                _session.Engine.ReleaseLock(token);
-            _mergeLockTokens.Clear();
-        }
-
-        private void AcquireMatchLocks(IReadOnlyList<GameEvent> events)
-        {
-            foreach (var evt in events)
-            {
-                if (evt is TileDestroyedEvent tde && 
-                    tde.Reason == DestroyReason.Match && 
-                    tde.MergeTarget == null)
-                {
-                    // Lock the cell so tiles from above don't fall into it immediately
-                    _matchLockTokens.Add(
-                        _session.Engine.AcquireLock(tde.GridPosition, CellLockType.Receive));
-                }
-            }
-        }
-
-        private void ReleaseMatchLocks()
-        {
-            foreach (var token in _matchLockTokens)
-                _session.Engine.ReleaseLock(token);
-            _matchLockTokens.Clear();
+            for (int i = 0; i < _activeLocks.Count; i++)
+                _session.Engine.ReleaseLock(_activeLocks[i].Token);
+            _activeLocks.Clear();
+            _lockTimers.Clear();
         }
 
         // Reusable collections for ScanForObjectiveCollections (avoid GC)
@@ -696,8 +700,7 @@ namespace Match3.Unity.Bridge
         {
             if (_session != null)
             {
-                if (_mergeLockTokens.Count > 0) ReleaseMergeLocks();
-                if (_matchLockTokens.Count > 0) ReleaseMatchLocks();
+                ReleaseAllLocks();
             }
             _session?.Dispose();
             _session = null;

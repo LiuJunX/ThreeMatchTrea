@@ -71,6 +71,8 @@ namespace Match3.Unity.Views
             public float Duration;
             public int TileId;
             public long SuppressedKey;
+            public bool HasMergeTarget;
+            public float CurrentRotationY;
         }
 
         private struct FlyPending
@@ -277,7 +279,9 @@ namespace Match3.Unity.Views
                     Elapsed = 0f,
                     Duration = _flyConfig.GetDuration(distance),
                     TileId = request.TileId,
-                    SuppressedKey = gridKey
+                    SuppressedKey = gridKey,
+                    HasMergeTarget = false,
+                    CurrentRotationY = 0f
                 });
             }
             else
@@ -329,7 +333,9 @@ namespace Match3.Unity.Views
                 Elapsed = 0f,
                 Duration = _flyConfig.GetDuration(distance),
                 TileId = tileId,
-                SuppressedKey = pending.SuppressedKey
+                SuppressedKey = pending.SuppressedKey,
+                HasMergeTarget = true,
+                CurrentRotationY = 0f
             });
 
             return true;
@@ -387,55 +393,109 @@ namespace Match3.Unity.Views
 
                 fly.Elapsed += dt;
 
-                float popDur = _flyConfig.PopUpDuration;
-
-                if (fly.Elapsed < popDur)
-                {
-                    // Phase 1: Pop-up — tile stays in place, scales up then holds
-                    float pt = fly.Elapsed / popDur;
-                    // Quick ease-out scale: overshoot then settle
-                    float popScale = Mathf.Lerp(1f, _flyConfig.PopUpScale, Mathf.Sin(pt * Mathf.PI * 0.5f));
-                    float uniformScale = popScale * _bridge.CellSize;
-                    fly.View.transform.position = new Vector3(fly.From.x, fly.From.y, -0.1f);
-                    fly.View.transform.localScale = Vector3.one * uniformScale;
-                    fly.View.transform.localEulerAngles = Vector3.zero;
-
-                    _activeFlies[i] = fly;
-                }
+                if (fly.HasMergeTarget)
+                    UpdateFlyModeB(ref fly, dt);
                 else
+                    UpdateFlyModeA(ref fly, dt);
+
+                _activeFlies[i] = fly;
+
+                // Check completion
+                bool completed = fly.HasMergeTarget
+                    ? fly.Elapsed >= fly.Duration
+                    : fly.Elapsed >= _flyConfig.JumpUpDuration + _flyConfig.HoverDuration + fly.Duration;
+
+                if (completed)
                 {
-                    // Phase 2: Fly toward objective
-                    float flyElapsed = fly.Elapsed - popDur;
-                    float t = Mathf.Clamp01(flyElapsed / fly.Duration);
-                    float easedT = _flyConfig.EasingFunction(t);
-
-                    // Position: lerp + arc
-                    var pos = Vector3.Lerp(fly.From, fly.To, easedT);
-                    pos.y += _flyConfig.ArcHeight * Mathf.Sin(Mathf.PI * t);
-                    pos.z = Mathf.Lerp(0f, -0.2f, t);
-
-                    fly.View.transform.position = pos;
-
-                    // Scale: interpolate from pop-up size to icon size
-                    float scaleFactor = Mathf.Lerp(_flyConfig.StartScale, _flyConfig.EndScale, easedT);
-                    float uniformScale = scaleFactor * _bridge.CellSize;
-                    fly.View.transform.localScale = Vector3.one * uniformScale;
-                    fly.View.transform.localEulerAngles = Vector3.zero;
-
-                    _activeFlies[i] = fly;
-
-                    // Complete?
-                    if (t >= 1f)
-                    {
-                        OnFlyComplete(fly);
-                        _activeFlies.RemoveAt(i);
-                    }
+                    OnFlyComplete(fly);
+                    _activeFlies.RemoveAt(i);
                 }
             }
         }
 
+        /// <summary>
+        /// Mode A: 3-connect — jump up + hover spin + straight fly.
+        /// </summary>
+        private void UpdateFlyModeA(ref ActiveFly fly, float dt)
+        {
+            float cellSize = _bridge.CellSize;
+            float jumpDur = _flyConfig.JumpUpDuration;
+            float hoverDur = _flyConfig.HoverDuration;
+            float elapsed = fly.Elapsed;
+
+            // Uniform rotation across jump+hover: 180° total
+            float totalSpinDur = jumpDur + hoverDur;
+            fly.CurrentRotationY = 180f * Mathf.Clamp01(elapsed / totalSpinDur);
+
+            if (elapsed < jumpDur)
+            {
+                // Phase 1: Jump up
+                float t = elapsed / jumpDur;
+                float easedT = _flyConfig.EasingFunction(t);
+                float y = fly.From.y + _flyConfig.JumpHeight * cellSize * easedT;
+                float scale = Mathf.Lerp(_flyConfig.StartScale, _flyConfig.PopUpScale, easedT);
+
+                fly.View.transform.position = new Vector3(fly.From.x, y, _flyConfig.PopUpZOffset);
+                fly.View.transform.localScale = Vector3.one * (scale * cellSize);
+                fly.View.transform.localEulerAngles = new Vector3(0f, fly.CurrentRotationY, 0f);
+            }
+            else if (elapsed < jumpDur + hoverDur)
+            {
+                // Phase 2: Hover at apex
+                float y = fly.From.y + _flyConfig.JumpHeight * cellSize;
+
+                fly.View.transform.position = new Vector3(fly.From.x, y, _flyConfig.PopUpZOffset);
+                fly.View.transform.localScale = Vector3.one * (_flyConfig.PopUpScale * cellSize);
+                fly.View.transform.localEulerAngles = new Vector3(0f, fly.CurrentRotationY, 0f);
+            }
+            else
+            {
+                // Phase 3: Straight fly to target
+                float flyElapsed = elapsed - jumpDur - hoverDur;
+                float t = Mathf.Clamp01(flyElapsed / fly.Duration);
+                float easedT = _flyConfig.EasingFunction(t);
+
+                var flyFrom = new Vector3(fly.From.x,
+                    fly.From.y + _flyConfig.JumpHeight * cellSize,
+                    _flyConfig.PopUpZOffset);
+                var pos = Vector3.Lerp(flyFrom, fly.To, easedT);
+                float scale = Mathf.Lerp(_flyConfig.PopUpScale, _flyConfig.EndScale, easedT);
+
+                fly.View.transform.position = pos;
+                fly.View.transform.localScale = Vector3.one * (scale * cellSize);
+                fly.View.transform.localEulerAngles = new Vector3(0f, fly.CurrentRotationY, 0f);
+            }
+        }
+
+        /// <summary>
+        /// Mode B: Bomb merge — direct fly with synchronized rotation.
+        /// </summary>
+        private void UpdateFlyModeB(ref ActiveFly fly, float dt)
+        {
+            float cellSize = _bridge.CellSize;
+            float t = Mathf.Clamp01(fly.Elapsed / fly.Duration);
+            float easedT = _flyConfig.EasingFunction(t);
+
+            var pos = Vector3.Lerp(fly.From, fly.To, easedT);
+            float scale = Mathf.Lerp(_flyConfig.StartScale, _flyConfig.EndScale, easedT);
+
+            // Rotation synced to duration: exactly one full turn
+            fly.CurrentRotationY += (360f / fly.Duration) * dt;
+            fly.View.transform.position = pos;
+            fly.View.transform.localScale = Vector3.one * (scale * cellSize);
+            fly.View.transform.localEulerAngles = new Vector3(0f, fly.CurrentRotationY, 0f);
+        }
+
         private void OnFlyComplete(ActiveFly fly)
         {
+            // Snap to final state: rotation zero, exact icon scale
+            if (fly.View != null)
+            {
+                fly.View.transform.position = fly.To;
+                fly.View.transform.localEulerAngles = Vector3.zero;
+                fly.View.transform.localScale = Vector3.one * (_flyConfig.EndScale * _bridge.CellSize);
+            }
+
             // Decrement in-flight count → displayed count increases by 1
             if (fly.ObjectiveIndex >= 0 && fly.ObjectiveIndex < _icons.Count)
             {

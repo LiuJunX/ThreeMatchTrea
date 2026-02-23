@@ -8,7 +8,7 @@ namespace Match3.Unity.Tests.PlayMode
 {
     /// <summary>
     /// PlayMode tests for fly animation configuration and ObjectiveDisplayController behavior.
-    /// Tests FlyAnimationConfig duration calculations, default values, and pop-up parameters.
+    /// Tests FlyAnimationConfig duration calculations, default values, and two-mode fly parameters.
     /// Also tests ObjectiveDisplayController lifecycle (create/clear) without full game setup.
     /// </summary>
     public class FlyAnimationTests
@@ -86,9 +86,21 @@ namespace Match3.Unity.Tests.PlayMode
         }
 
         [Test]
-        public void Defaults_PopUpDuration_IsPositive()
+        public void Defaults_JumpUpDuration_IsPositive()
         {
-            Assert.Greater(_config.PopUpDuration, 0f);
+            Assert.Greater(_config.JumpUpDuration, 0f);
+        }
+
+        [Test]
+        public void Defaults_HoverDuration_IsPositive()
+        {
+            Assert.Greater(_config.HoverDuration, 0f);
+        }
+
+        [Test]
+        public void Defaults_JumpHeight_IsPositive()
+        {
+            Assert.Greater(_config.JumpHeight, 0f, "Jump should go upward");
         }
 
         [Test]
@@ -98,22 +110,27 @@ namespace Match3.Unity.Tests.PlayMode
         }
 
         [Test]
-        public void Defaults_EndScale_SmallerThanStartScale()
+        public void Defaults_EndScale_GreaterThanOne()
         {
-            Assert.Less(_config.EndScale, _config.StartScale,
-                "Tile should shrink during flight to match icon size");
+            Assert.Greater(_config.EndScale, 1f, "End scale should match icon size (> 1)");
         }
 
         [Test]
-        public void Defaults_ArcHeight_IsPositive()
+        public void Defaults_FlySpinSpeed_IsPositive()
         {
-            Assert.Greater(_config.ArcHeight, 0f, "Arc should go upward");
+            Assert.Greater(_config.FlySpinSpeed, 0f, "Spin speed should be positive");
         }
 
         [Test]
         public void Defaults_MergeStaggerDelay_IsPositive()
         {
             Assert.Greater(_config.MergeStaggerDelay, 0f);
+        }
+
+        [Test]
+        public void Defaults_PopUpZOffset_IsNegative()
+        {
+            Assert.Less(_config.PopUpZOffset, 0f, "Z offset should bring tile toward camera");
         }
 
         #endregion

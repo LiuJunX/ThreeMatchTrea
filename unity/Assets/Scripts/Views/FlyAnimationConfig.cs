@@ -4,6 +4,7 @@ namespace Match3.Unity.Views
 {
     /// <summary>
     /// Configuration for tile-to-objective fly animations.
+    /// Supports two modes: Mode A (3-connect: jump+hover+fly) and Mode B (bomb merge: direct fly).
     /// </summary>
     public sealed class FlyAnimationConfig
     {
@@ -16,20 +17,29 @@ namespace Match3.Unity.Views
         /// <summary>Distance at which MaxDuration is reached.</summary>
         public float DistanceForMaxDuration = 10f;
 
-        /// <summary>Arc height above straight-line path.</summary>
-        public float ArcHeight = 1.0f;
-
         /// <summary>Scale at flight start (board size).</summary>
         public float StartScale = 1.0f;
 
         /// <summary>Scale at flight end (icon size).</summary>
-        public float EndScale = 0.7f;
+        public float EndScale = 1.2f;
 
-        /// <summary>Brief pause at start: tile pops up then holds before flying (Gardenscapes-style).</summary>
-        public float PopUpDuration = 0.15f;
+        /// <summary>Scale multiplier during pop-up / jump phase (Mode A).</summary>
+        public float PopUpScale = 1.5f;
 
-        /// <summary>Scale multiplier during pop-up phase (e.g. 1.3 = 30% bigger).</summary>
-        public float PopUpScale = 1.3f;
+        /// <summary>Mode A: jump-up duration (seconds).</summary>
+        public float JumpUpDuration = 0.2f;
+
+        /// <summary>Mode A: jump height in grid cells (multiplied by CellSize).</summary>
+        public float JumpHeight = 1.0f;
+
+        /// <summary>Mode A: hover duration at jump apex (seconds).</summary>
+        public float HoverDuration = 0.15f;
+
+        /// <summary>Spin speed during fly phase (degrees per second).</summary>
+        public float FlySpinSpeed = 270f;
+
+        /// <summary>Z offset during pop-up and fly phase (negative = toward camera).</summary>
+        public float PopUpZOffset = -0.2f;
 
         /// <summary>Easing function (default: OutCubic).</summary>
         public System.Func<float, float> EasingFunction = t => 1f - Mathf.Pow(1f - t, 3f);

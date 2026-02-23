@@ -4,6 +4,7 @@ using System.Numerics;
 using Match3.Core.Events;
 using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
+using Match3.Core.Models.Grid;
 
 namespace Match3.Core.Choreography;
 
@@ -39,11 +40,27 @@ public sealed class Choreographer : IEventVisitor
     /// <summary>Arc height for projectile launch.</summary>
     public float ProjectileArcHeight { get; set; } = 1.5f;
 
+    /// <summary>Duration for drop acceptance delay after match destroy (cell lock).</summary>
+    public float DropDelay { get; set; } = 0.12f;
+
     /// <summary>
     /// Whether the last Choreograph() call produced a bomb merge sequence.
     /// Use this to decide whether to suppress physics sync.
     /// </summary>
     public bool LastBatchHadMerge { get; private set; }
+
+    /// <summary>
+    /// Whether the last Choreograph() call had non-merge match destroys.
+    /// Use this to decide whether to apply drop delay locks.
+    /// </summary>
+    public bool LastBatchHadMatch { get; private set; }
+
+    /// <summary>
+    /// Per-cell lock schedule emitted by the last Choreograph() call.
+    /// Bridge should acquire locks and release them after each entry's Duration.
+    /// </summary>
+    public IReadOnlyList<CellLockEntry> LockEntries => _lockEntries;
+    private readonly List<CellLockEntry> _lockEntries = new();
 
     // Timing tracking for cascade calculations
     private readonly Dictionary<int, float> _columnDestroyEndTimes = new();
@@ -62,6 +79,8 @@ public sealed class Choreographer : IEventVisitor
         _commands.Clear();
         _baseTime = baseTime;
         LastBatchHadMerge = false;
+        LastBatchHadMatch = false;
+        _lockEntries.Clear();
 
         // Calculate minimum simulation time to use relative offsets
         // This ensures events start at baseTime, not baseTime + cumulative engine time
@@ -174,6 +193,15 @@ public sealed class Choreographer : IEventVisitor
                 Priority = 10
             });
 
+            // Emit cell lock for merge source position
+            _lockEntries.Add(new CellLockEntry
+            {
+                Position = evt.GridPosition,
+                LockType = CellLockType.Receive,
+                Duration = MergeDuration,
+                IsMerge = true
+            });
+
             // Track merge end time for column cascade stalling
             if (!_columnDestroyEndTimes.TryGetValue(column, out float existing) || endTime > existing)
             {
@@ -182,6 +210,17 @@ public sealed class Choreographer : IEventVisitor
         }
         else
         {
+            LastBatchHadMatch = true;
+
+            // Emit cell lock for match destroy position (drop delay)
+            _lockEntries.Add(new CellLockEntry
+            {
+                Position = evt.GridPosition,
+                LockType = CellLockType.Receive,
+                Duration = DropDelay,
+                IsMerge = false
+            });
+
             // Standard destroy animation: fade + scale down in place
             _commands.Add(new DestroyTileCommand
             {
@@ -307,6 +346,15 @@ public sealed class Choreographer : IEventVisitor
     public void Visit(BombCreatedEvent evt)
     {
         LastBatchHadMerge = true;
+
+        // Emit cell lock for bomb origin position
+        _lockEntries.Add(new CellLockEntry
+        {
+            Position = evt.Position,
+            LockType = CellLockType.Receive,
+            Duration = MergeDuration,
+            IsMerge = true
+        });
 
         float baseStart = GetStartTime(evt);
         float mergeEndTime = baseStart + MergeDuration;

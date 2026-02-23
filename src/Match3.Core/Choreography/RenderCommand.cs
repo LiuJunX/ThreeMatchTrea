@@ -259,3 +259,26 @@ public sealed record DestroyGroundCommand : RenderCommand
 }
 
 #endregion
+
+#region Cell Lock Schedule
+
+/// <summary>
+/// Per-cell lock schedule entry emitted by Choreographer.
+/// Bridge should acquire a CellLock and release it after Duration expires.
+/// </summary>
+public struct CellLockEntry
+{
+    /// <summary>Grid position to lock.</summary>
+    public Position Position;
+
+    /// <summary>Lock type to apply.</summary>
+    public CellLockType LockType;
+
+    /// <summary>How long the lock should be held (seconds).</summary>
+    public float Duration;
+
+    /// <summary>True if this lock is for a merge animation, false for match destroy.</summary>
+    public bool IsMerge;
+}
+
+#endregion

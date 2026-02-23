@@ -10,17 +10,17 @@
     {
       "targetLayer": "Tile",
       "elementType": 128,
-      "targetCount": 10
+      "targetCount": 100
     },
     {
       "targetLayer": "Tile",
       "elementType": 512,
-      "targetCount": 10
+      "targetCount": 100
     },
     {
       "targetLayer": "Tile",
       "elementType": 1024,
-      "targetCount": 8
+      "targetCount": 100
     }
   ],
   "grid": null,

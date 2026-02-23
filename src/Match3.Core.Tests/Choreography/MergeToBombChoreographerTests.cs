@@ -125,7 +125,9 @@ public class MergeToBombChoreographerTests
         Assert.Equal(10, moveCmd.TileId);
         Assert.Equal(new Vector2(3, 2), moveCmd.From);
         Assert.Equal(new Vector2(1, 2), moveCmd.To);
-        Assert.Equal(_choreographer.MergeDuration, moveCmd.Duration, 0.001f);
+        // Duration scales with distance: dist=2, maxDist=4, scale=0.5
+        Assert.True(moveCmd.Duration > 0f && moveCmd.Duration <= _choreographer.MergeDuration,
+            $"Merge duration should scale with distance: {moveCmd.Duration}");
     }
 
     [Fact]
@@ -431,12 +433,14 @@ public class MergeToBombChoreographerTests
 
         // --- Merge movement commands ---
         // Tiles 10, 30, 40 should move to BombOrigin (2,2)
+        // Duration scales with distance: closer tiles get shorter duration
         foreach (int tileId in new[] { 10, 30, 40 })
         {
             var mergeMove = commands.OfType<MoveTileCommand>()
                 .First(c => c.TileId == tileId && c.From != c.To);
             Assert.Equal(new Vector2(2, 2), mergeMove.To);
-            Assert.Equal(mergeDuration, mergeMove.Duration, 0.001f);
+            Assert.True(mergeMove.Duration > 0f && mergeMove.Duration <= mergeDuration,
+                $"Tile {tileId} merge duration should scale with distance: {mergeMove.Duration}");
             Assert.Equal(0f, mergeMove.StartTime, 0.001f);
         }
 
@@ -557,6 +561,139 @@ public class MergeToBombChoreographerTests
 
         Assert.False(_choreographer.LastBatchHadMerge,
             "LastBatchHadMerge should reset to false on next Choreograph call without BombCreatedEvent");
+    }
+
+    #endregion
+
+    #region LastBatchHadMatch
+
+    [Fact]
+    public void LastBatchHadMatch_TrueForNormalMatch()
+    {
+        var events = new GameEvent[]
+        {
+            new TileDestroyedEvent
+            {
+                TileId = 1, GridPosition = new Position(0, 2),
+                Type = TileType.Red, Reason = DestroyReason.Match,
+                SimulationTime = 0f
+            }
+        };
+
+        _choreographer.Choreograph(events);
+
+        Assert.True(_choreographer.LastBatchHadMatch);
+    }
+
+    [Fact]
+    public void LastBatchHadMatch_FalseForMergeOnly()
+    {
+        var events = CreateMergeWithGravityEvents();
+        _choreographer.Choreograph(events);
+
+        // Merge batch has no non-merge destroys
+        Assert.False(_choreographer.LastBatchHadMatch);
+    }
+
+    [Fact]
+    public void LastBatchHadMatch_ResetsOnNextChoreograph()
+    {
+        var matchEvents = new GameEvent[]
+        {
+            new TileDestroyedEvent
+            {
+                TileId = 1, GridPosition = new Position(0, 0),
+                Type = TileType.Red, Reason = DestroyReason.Match,
+                SimulationTime = 0f
+            }
+        };
+        _choreographer.Choreograph(matchEvents);
+        Assert.True(_choreographer.LastBatchHadMatch);
+
+        _choreographer.Choreograph(CreateMergeWithGravityEvents());
+        Assert.False(_choreographer.LastBatchHadMatch);
+    }
+
+    #endregion
+
+    #region CellLockEntries
+
+    [Fact]
+    public void LockEntries_MatchDestroy_EmitsDropDelayLock()
+    {
+        var events = new GameEvent[]
+        {
+            new TileDestroyedEvent
+            {
+                TileId = 1, GridPosition = new Position(3, 2),
+                Type = TileType.Red, Reason = DestroyReason.Match,
+                SimulationTime = 0f
+            }
+        };
+
+        _choreographer.Choreograph(events);
+
+        Assert.Single(_choreographer.LockEntries);
+        var entry = _choreographer.LockEntries[0];
+        Assert.Equal(new Position(3, 2), entry.Position);
+        Assert.Equal(CellLockType.Receive, entry.LockType);
+        Assert.Equal(_choreographer.DropDelay, entry.Duration, 0.001f);
+        Assert.False(entry.IsMerge);
+    }
+
+    [Fact]
+    public void LockEntries_MergeDestroy_EmitsMergeLock()
+    {
+        var events = new GameEvent[]
+        {
+            new TileDestroyedEvent
+            {
+                TileId = 10, GridPosition = new Position(1, 2),
+                Type = TileType.Red, Reason = DestroyReason.Match,
+                MergeTarget = new Position(2, 2),
+                SimulationTime = 0f
+            }
+        };
+
+        _choreographer.Choreograph(events);
+
+        Assert.Single(_choreographer.LockEntries);
+        var entry = _choreographer.LockEntries[0];
+        Assert.Equal(new Position(1, 2), entry.Position);
+        Assert.True(entry.IsMerge);
+        Assert.Equal(_choreographer.MergeDuration, entry.Duration, 0.001f);
+    }
+
+    [Fact]
+    public void LockEntries_BombCreated_EmitsBombOriginLock()
+    {
+        var events = CreateMergeWithGravityEvents();
+        _choreographer.Choreograph(events);
+
+        // Should have entries for merge sources (tiles 10, 30, 40) + bomb origin (2,2)
+        var bombOriginLock = _choreographer.LockEntries
+            .FirstOrDefault(e => e.Position.Equals(new Position(2, 2)) && e.IsMerge);
+        Assert.True(bombOriginLock.IsMerge);
+        Assert.Equal(_choreographer.MergeDuration, bombOriginLock.Duration, 0.001f);
+    }
+
+    [Fact]
+    public void LockEntries_ClearedOnNextChoreograph()
+    {
+        var events = new GameEvent[]
+        {
+            new TileDestroyedEvent
+            {
+                TileId = 1, GridPosition = new Position(0, 0),
+                Type = TileType.Red, Reason = DestroyReason.Match,
+                SimulationTime = 0f
+            }
+        };
+        _choreographer.Choreograph(events);
+        Assert.NotEmpty(_choreographer.LockEntries);
+
+        _choreographer.Choreograph(System.Array.Empty<GameEvent>());
+        Assert.Empty(_choreographer.LockEntries);
     }
 
     #endregion
