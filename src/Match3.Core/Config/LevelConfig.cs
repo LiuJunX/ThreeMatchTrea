@@ -99,6 +99,25 @@ public class LevelConfig
         Covers = new CoverType[size];
         CoverHealths = new byte[size];
     }
+
+    public LevelConfig DeepCopy()
+    {
+        var copy = new LevelConfig(Width, Height)
+        {
+            MoveLimit = MoveLimit,
+            TargetDifficulty = TargetDifficulty,
+            AnalysisCache = AnalysisCache
+        };
+        Array.Copy(Grid, copy.Grid, Grid.Length);
+        Array.Copy(Bombs, copy.Bombs, Bombs.Length);
+        Array.Copy(Grounds, copy.Grounds, Grounds.Length);
+        Array.Copy(GroundHealths, copy.GroundHealths, GroundHealths.Length);
+        Array.Copy(Covers, copy.Covers, Covers.Length);
+        Array.Copy(CoverHealths, copy.CoverHealths, CoverHealths.Length);
+        for (int i = 0; i < Objectives.Length; i++)
+            copy.Objectives[i] = Objectives[i];
+        return copy;
+    }
 }
 
 /// <summary>

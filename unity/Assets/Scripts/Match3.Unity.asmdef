@@ -10,6 +10,7 @@
     "overrideReferences": true,
     "precompiledReferences": [
         "Match3.Core.dll",
+        "Match3.Editor.dll",
         "Match3.Presentation.dll",
         "Match3.Random.dll"
     ],

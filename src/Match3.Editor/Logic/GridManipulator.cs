@@ -13,9 +13,13 @@ namespace Match3.Editor.Logic
         {
             var newConfig = new LevelConfig(newWidth, newHeight);
 
-            // Preserve move limit
+            // Preserve scalar properties
             newConfig.MoveLimit = oldConfig.MoveLimit;
             newConfig.TargetDifficulty = oldConfig.TargetDifficulty;
+
+            // Preserve objectives
+            for (int i = 0; i < oldConfig.Objectives.Length && i < newConfig.Objectives.Length; i++)
+                newConfig.Objectives[i] = oldConfig.Objectives[i];
 
             int w = Math.Min(oldConfig.Width, newConfig.Width);
             int h = Math.Min(oldConfig.Height, newConfig.Height);
