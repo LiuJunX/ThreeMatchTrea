@@ -1,5 +1,6 @@
 using Match3.Unity.Bridge;
 using Match3.Unity.Services;
+using Match3.Unity.Views;
 using UnityEngine;
 
 namespace Match3.Unity.Controllers
@@ -76,18 +77,20 @@ namespace Match3.Unity.Controllers
             var cellSize = _bridge.CellSize;
             var origin = _bridge.BoardOrigin;
 
-            // Calculate board center
+            // Calculate board center including objective display above
             float boardWidth = width * cellSize;
             float boardHeight = height * cellSize;
+            float extraTop = ObjectiveDisplayController.TotalHeight;
+            float totalHeight = boardHeight + extraTop;
             float centerX = origin.x + boardWidth * 0.5f;
-            float centerY = origin.y + boardHeight * 0.5f;
+            float centerY = origin.y + boardHeight * 0.5f + extraTop * 0.5f;
 
             // Position camera
             transform.position = new Vector3(centerX, centerY, -10f);
 
-            // Calculate orthographic size to fit board with padding
+            // Calculate orthographic size to fit board + objectives with padding
             float targetWidth = boardWidth + _padding * 2;
-            float targetHeight = boardHeight + _padding * 2;
+            float targetHeight = totalHeight + _padding * 2;
 
             float screenAspect = (float)Screen.width / Screen.height;
             float boardAspect = targetWidth / targetHeight;

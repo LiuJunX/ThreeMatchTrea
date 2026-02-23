@@ -157,6 +157,13 @@ public sealed class GameServiceFactory : IGameServiceFactory
         }
         else
         {
+            // Apply level config (objectives, move limit) even with random grid
+            if (levelConfig != null)
+            {
+                state.MoveLimit = levelConfig.MoveLimit;
+                state.TargetDifficulty = levelConfig.TargetDifficulty;
+                objectiveSystem.Initialize(ref state, levelConfig);
+            }
             InitializeRandomBoard(ref state, tileGenerator);
         }
 

@@ -1,6 +1,11 @@
 using System;
+using System.Collections.Generic;
 using Match3.Core.Choreography;
+using Match3.Core.Config;
 using Match3.Core.DependencyInjection;
+using Match3.Core.Events;
+using Match3.Core.Events.Enums;
+using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Matching.Generation;
@@ -8,6 +13,7 @@ using Match3.Core.Systems.Selection;
 using Match3.Presentation;
 using Match3.Random;
 using Match3.Unity.Pools;
+using Match3.Unity.Services;
 using Match3.Unity.UI;
 using UnityEngine;
 
@@ -136,7 +142,28 @@ namespace Match3.Unity.Bridge
         /// </summary>
         public event Action<ObjectiveProgress[]> OnObjectivesUpdated;
 
+        /// <summary>
+        /// Event fired when a tile should fly to an objective icon.
+        /// </summary>
+        public event Action<FlyCollectionRequest> OnObjectiveCollected;
+
         #endregion
+
+        /// <summary>
+        /// Data for a tile-to-objective fly animation request.
+        /// </summary>
+        public struct FlyCollectionRequest
+        {
+            public int TileId;
+            public int ObjectiveIndex;
+            public TileType TileType;
+            public Position SourceGridPosition;
+            /// <summary>null = direct fly (3-connect), non-null = bomb merge position.</summary>
+            public Position? MergeTarget;
+            public float FlyDelay;
+            public int NewCount;
+            public int TargetCount;
+        }
 
         /// <summary>
         /// Initialize the bridge with default or serialized parameters.
@@ -165,6 +192,23 @@ namespace Match3.Unity.Bridge
                 .UseDefaultServices()
                 .Build();
 
+            // Load level config (provides objectives, move limit, etc.)
+            LevelConfig levelConfig = null;
+            try
+            {
+                levelConfig = UnityConfigProvider.Instance.GetLevelConfig("level_001");
+                // Override width/height/moves from level config
+                if (levelConfig != null)
+                {
+                    _width = width = levelConfig.Width;
+                    _height = height = levelConfig.Height;
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[Match3Bridge] Failed to load level config: {ex.Message}");
+            }
+
             // Create game session
             var config = new GameServiceConfiguration
             {
@@ -173,7 +217,7 @@ namespace Match3.Unity.Bridge
                 RngSeed = seed,
                 EnableEventCollection = true
             };
-            _session = _factory.CreateGameSession(config);
+            _session = _factory.CreateGameSession(config, levelConfig);
 
             // Create choreographer and player
             _choreographer = new Choreographer();
@@ -218,6 +262,10 @@ namespace Match3.Unity.Bridge
             var events = _session.DrainEvents();
             if (events.Count > 0)
             {
+                // Scan for objective collections before choreography
+                if (OnObjectiveCollected != null)
+                    ScanForObjectiveCollections(events);
+
                 var commands = _choreographer.Choreograph(events, _player.CurrentTime);
                 _player.Append(commands);
 
@@ -297,6 +345,125 @@ namespace Match3.Unity.Bridge
             }
         }
 
+        // Reusable collections for ScanForObjectiveCollections (avoid GC)
+        private readonly Dictionary<float, Dictionary<TileType, Queue<(int TileId, Position Pos, Position? MergeTarget)>>>
+            _destroyedBySimTime = new();
+        private readonly List<FlyCollectionRequest> _pendingFlies = new();
+        private int _lastObjectiveHash = -1;
+
+        private void ScanForObjectiveCollections(IReadOnlyList<GameEvent> events)
+        {
+            _destroyedBySimTime.Clear();
+            _pendingFlies.Clear();
+
+            var state = _session.Engine.State;
+
+            foreach (var evt in events)
+            {
+                if (evt is TileDestroyedEvent tde && tde.Reason == DestroyReason.Match)
+                {
+                    if (!_destroyedBySimTime.TryGetValue(tde.SimulationTime, out var byType))
+                    {
+                        byType = new Dictionary<TileType, Queue<(int, Position, Position?)>>();
+                        _destroyedBySimTime[tde.SimulationTime] = byType;
+                    }
+                    if (!byType.TryGetValue(tde.Type, out var queue))
+                    {
+                        queue = new Queue<(int, Position, Position?)>();
+                        byType[tde.Type] = queue;
+                    }
+                    queue.Enqueue((tde.TileId, tde.GridPosition, tde.MergeTarget));
+                }
+                else if (evt is ObjectiveProgressEvent ope)
+                {
+                    if (ope.ObjectiveIndex < 0 || ope.ObjectiveIndex >= state.ObjectiveProgress.Length)
+                        continue;
+
+                    var objProg = state.ObjectiveProgress[ope.ObjectiveIndex];
+                    if (objProg.TargetLayer != ObjectiveTargetLayer.Tile)
+                        continue;
+
+                    var targetType = (TileType)objProg.ElementType;
+
+                    if (_destroyedBySimTime.TryGetValue(ope.SimulationTime, out var byType)
+                        && byType.TryGetValue(targetType, out var queue)
+                        && queue.Count > 0)
+                    {
+                        var (tileId, pos, mergeTarget) = queue.Dequeue();
+                        _pendingFlies.Add(new FlyCollectionRequest
+                        {
+                            TileId = tileId,
+                            ObjectiveIndex = ope.ObjectiveIndex,
+                            TileType = targetType,
+                            SourceGridPosition = pos,
+                            MergeTarget = mergeTarget,
+                            FlyDelay = 0f,
+                            NewCount = ope.CurrentCount,
+                            TargetCount = ope.TargetCount
+                        });
+                    }
+                }
+            }
+
+            // Post-process: assign stagger delays for merge groups
+            if (_pendingFlies.Count > 0)
+                AssignMergeDelays();
+
+            // Fire events
+            foreach (var fly in _pendingFlies)
+                OnObjectiveCollected?.Invoke(fly);
+        }
+
+        private void AssignMergeDelays()
+        {
+            // Group merge flies by MergeTarget, sort by distance, assign delays
+            var mergeGroups = new Dictionary<Position, List<int>>();
+
+            for (int i = 0; i < _pendingFlies.Count; i++)
+            {
+                var fly = _pendingFlies[i];
+                if (fly.MergeTarget == null) continue;
+
+                var target = fly.MergeTarget.Value;
+                if (!mergeGroups.TryGetValue(target, out var indices))
+                {
+                    indices = new List<int>();
+                    mergeGroups[target] = indices;
+                }
+                indices.Add(i);
+            }
+
+            const float stagger = 0.08f;
+            foreach (var kvp in mergeGroups)
+            {
+                var target = kvp.Key;
+                var indices = kvp.Value;
+                if (indices.Count <= 1) continue;
+
+                // Sort by distance to merge target
+                indices.Sort((a, b) =>
+                {
+                    var da = GridDistance(_pendingFlies[a].SourceGridPosition, target);
+                    var db = GridDistance(_pendingFlies[b].SourceGridPosition, target);
+                    return da.CompareTo(db);
+                });
+
+                for (int j = 0; j < indices.Count; j++)
+                {
+                    var fly = _pendingFlies[indices[j]];
+                    fly.FlyDelay = j * stagger;
+                    _pendingFlies[indices[j]] = fly;
+                }
+            }
+        }
+
+        private static float GridDistance(Position a, Position b)
+        {
+            float dx = a.X - b.X;
+            float dy = a.Y - b.Y;
+            return Mathf.Sqrt(dx * dx + dy * dy);
+        }
+
         private void CheckStateChanges()
         {
             var state = _session.Engine.State;
@@ -316,6 +483,58 @@ namespace Match3.Unity.Bridge
                 _lastScore = currentScore;
                 OnScoreChanged?.Invoke(currentScore);
             }
+
+            // Check objectives changed
+            CheckObjectiveChanges(in state);
+        }
+
+        private void CheckObjectiveChanges(in GameState state)
+        {
+            if (state.ObjectiveProgress == null) return;
+
+            // Quick hash to detect changes
+            int hash = 0;
+            for (int i = 0; i < state.ObjectiveProgress.Length; i++)
+            {
+                var p = state.ObjectiveProgress[i];
+                if (!p.IsActive) continue;
+                hash = hash * 397 + p.CurrentCount;
+                hash = hash * 397 + p.TargetCount;
+            }
+
+            if (hash == _lastObjectiveHash) return;
+            _lastObjectiveHash = hash;
+
+            // Build UI-friendly objective array (sequential, active only)
+            int activeCount = 0;
+            for (int i = 0; i < state.ObjectiveProgress.Length; i++)
+            {
+                if (state.ObjectiveProgress[i].IsActive) activeCount++;
+            }
+
+            var uiObjectives = new ObjectiveProgress[activeCount];
+            int slot = 0;
+            for (int i = 0; i < state.ObjectiveProgress.Length; i++)
+            {
+                var p = state.ObjectiveProgress[i];
+                if (!p.IsActive) continue;
+
+                var tileType = p.TargetLayer == ObjectiveTargetLayer.Tile
+                    ? (TileType)p.ElementType
+                    : TileType.None;
+
+                uiObjectives[slot++] = new ObjectiveProgress
+                {
+                    Type = p.TargetLayer.ToString(),
+                    Current = p.CurrentCount,
+                    Target = p.TargetCount,
+                    Color = tileType != TileType.None
+                        ? SpriteFactory.GetTileColor(tileType)
+                        : Color.gray
+                };
+            }
+
+            OnObjectivesUpdated?.Invoke(uiObjectives);
         }
 
         /// <summary>
@@ -412,6 +631,8 @@ namespace Match3.Unity.Bridge
             OnScoreChanged = null;
             OnGameEnded = null;
             OnObjectivesUpdated = null;
+            OnObjectiveCollected = null;
+            _lastObjectiveHash = -1;
 
             // Clear static caches to prevent stale references
             SpriteFactory.ClearCache();

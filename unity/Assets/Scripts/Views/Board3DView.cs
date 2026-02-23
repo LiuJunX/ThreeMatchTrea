@@ -35,9 +35,24 @@ namespace Match3.Unity.Views
         private bool _viewInitialized;
         private int _highlightedTileId = -1;
 
+        private ObjectiveDisplayController _objectiveDisplay;
+
         private static Cubemap _reflectionCubemap;
 
         public int ActiveTileCount => _activeTiles.Count;
+
+        /// <summary>
+        /// Set by GameController to enable fly-to-objective interception.
+        /// </summary>
+        internal ObjectiveDisplayController ObjectiveDisplay
+        {
+            set => _objectiveDisplay = value;
+        }
+
+        /// <summary>
+        /// Expose pool so ObjectiveDisplayController can return tiles after flying.
+        /// </summary>
+        internal ObjectPool<Tile3DView> TilePool => _tilePool;
 
         public void Initialize(Match3Bridge bridge)
         {
@@ -358,6 +373,13 @@ namespace Match3.Unity.Views
 
                 if (!visual.IsVisible) continue;
 
+                // Skip tiles that are flying to objectives (ObjectiveDisplayController owns them)
+                if (_objectiveDisplay != null && _objectiveDisplay.HiddenTileIds.Contains(tileId))
+                {
+                    _activeTileIds.Add(tileId); // prevent removal
+                    continue;
+                }
+
                 _activeTileIds.Add(tileId);
 
                 if (!_activeTiles.TryGetValue(tileId, out var tileView))
@@ -383,8 +405,17 @@ namespace Match3.Unity.Views
             {
                 if (_activeTiles.TryGetValue(tileId, out var tileView))
                 {
-                    _tilePool.Return(tileView);
-                    _activeTiles.Remove(tileId);
+                    // Let ObjectiveDisplayController intercept (bomb merge scenario)
+                    if (_objectiveDisplay != null && _objectiveDisplay.TryInterceptRemoval(tileId, tileView))
+                    {
+                        _activeTiles.Remove(tileId);
+                        // ObjectiveDisplayController now owns this tileView
+                    }
+                    else
+                    {
+                        _tilePool.Return(tileView);
+                        _activeTiles.Remove(tileId);
+                    }
                 }
             }
 
@@ -491,6 +522,20 @@ namespace Match3.Unity.Views
                     _activeProjectiles.Remove(projectileId);
                 }
             }
+        }
+
+        /// <summary>
+        /// Remove a tile from active tracking and return its view.
+        /// Used by ObjectiveDisplayController for direct-fly (3-connect) scenario.
+        /// </summary>
+        internal Tile3DView StealTile(int tileId)
+        {
+            if (_activeTiles.TryGetValue(tileId, out var tileView))
+            {
+                _activeTiles.Remove(tileId);
+                return tileView;
+            }
+            return null;
         }
 
         public void Clear()

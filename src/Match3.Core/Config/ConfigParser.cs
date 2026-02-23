@@ -14,6 +14,7 @@ public static class ConfigParser
         PropertyNameCaseInsensitive = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
+        IncludeFields = true,
         Converters = { new JsonStringEnumConverter() }
     };
 
@@ -62,6 +63,7 @@ public static class ConfigParser
         {
             WriteIndented = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            IncludeFields = true,
             Converters = { new JsonStringEnumConverter() }
         });
     }

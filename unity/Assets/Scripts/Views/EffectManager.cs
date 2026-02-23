@@ -27,6 +27,12 @@ namespace Match3.Unity.Views
         // Grid position → tile color cache for color-matched effects
         private readonly Dictionary<long, Color> _tileColorCache = new();
 
+        /// <summary>
+        /// Grid positions (packed via PackGridKey) where "match_pop"/"pop" effects should be suppressed.
+        /// Set by ObjectiveDisplayController to prevent particles for tiles that will fly to objectives.
+        /// </summary>
+        public HashSet<long> SuppressedPositions { get; set; }
+
         private struct ActiveEffect
         {
             public ParticleSystem ParticleSystem;
@@ -83,6 +89,16 @@ namespace Match3.Unity.Views
                 // Skip if already playing
                 if (_activeEffects.ContainsKey(hash))
                     continue;
+
+                // Suppress match_pop/pop for tiles flying to objectives
+                if (SuppressedPositions != null && SuppressedPositions.Count > 0
+                    && (effect.EffectType == "match_pop" || effect.EffectType == "pop"))
+                {
+                    var key = PackGridKey(
+                        Mathf.RoundToInt(effect.Position.X),
+                        Mathf.RoundToInt(effect.Position.Y));
+                    if (SuppressedPositions.Contains(key)) continue;
+                }
 
                 // Calculate world position (with Y-flip for Unity coordinate system)
                 var worldPos = CoordinateConverter.GridToWorld(effect.Position, cellSize, origin, height);

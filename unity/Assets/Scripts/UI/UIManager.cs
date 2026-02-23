@@ -111,7 +111,6 @@ namespace Match3.Unity.UI
 
             _bridge.OnMovesChanged += UpdateMoves;
             _bridge.OnScoreChanged += UpdateScore;
-            _bridge.OnObjectivesUpdated += UpdateObjectives;
             _bridge.OnGameEnded += ShowResult;
         }
 
@@ -121,16 +120,7 @@ namespace Match3.Unity.UI
 
             _bridge.OnMovesChanged -= UpdateMoves;
             _bridge.OnScoreChanged -= UpdateScore;
-            _bridge.OnObjectivesUpdated -= UpdateObjectives;
             _bridge.OnGameEnded -= ShowResult;
-        }
-
-        /// <summary>
-        /// Update objectives display.
-        /// </summary>
-        public void UpdateObjectives(ObjectiveProgress[] objectives)
-        {
-            _topPanel?.UpdateObjectives(objectives);
         }
 
         /// <summary>

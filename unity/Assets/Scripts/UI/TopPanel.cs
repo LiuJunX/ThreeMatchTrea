@@ -5,19 +5,17 @@ using UnityEngine.UI;
 namespace Match3.Unity.UI
 {
     /// <summary>
-    /// Top UI panel displaying objectives and moves remaining.
-    /// Layout: [Obj1: 3/5] [Obj2: 2/3] [Obj3: 0/1]    Moves: 15    Score: 1250
+    /// Top UI panel displaying moves remaining and score.
+    /// Objectives are shown in world space via ObjectiveDisplayController.
     /// </summary>
     public sealed class TopPanel : MonoBehaviour
     {
-        private const int MaxObjectives = 4;
         private const float PanelHeight = 60f;
         private const int FontSize = 24;
         private const int ScoreFontSize = 28;
 
         private RectTransform _rect;
         private HorizontalLayoutGroup _layout;
-        private ObjectiveDisplay[] _objectiveDisplays;
         private TextMeshProUGUI _movesText;
         private TextMeshProUGUI _scoreText;
 
@@ -48,14 +46,6 @@ namespace Match3.Unity.UI
             _layout.childForceExpandWidth = false;
             _layout.childForceExpandHeight = false;
 
-            // Create objective displays
-            _objectiveDisplays = new ObjectiveDisplay[MaxObjectives];
-            for (int i = 0; i < MaxObjectives; i++)
-            {
-                _objectiveDisplays[i] = CreateObjectiveDisplay(i);
-                _objectiveDisplays[i].Root.gameObject.SetActive(false);
-            }
-
             // Spacer to push moves/score to right
             var spacer = new GameObject("Spacer");
             var spacerRect = spacer.AddComponent<RectTransform>();
@@ -84,83 +74,6 @@ namespace Match3.Unity.UI
                 "ScoreText");
             var scoreLayout = _scoreText.gameObject.AddComponent<LayoutElement>();
             scoreLayout.preferredWidth = 150;
-        }
-
-        private ObjectiveDisplay CreateObjectiveDisplay(int index)
-        {
-            var container = new GameObject($"Objective{index}");
-            var rect = container.AddComponent<RectTransform>();
-            rect.SetParent(transform, false);
-
-            var layout = container.AddComponent<HorizontalLayoutGroup>();
-            layout.spacing = 5f;
-            layout.childAlignment = TextAnchor.MiddleCenter;
-            layout.childControlWidth = false;
-            layout.childControlHeight = false;
-
-            var containerLayout = container.AddComponent<LayoutElement>();
-            containerLayout.preferredWidth = 100;
-
-            // Color indicator
-            var indicator = UIFactory.CreateImage(rect, null, Color.white, "Indicator");
-            var indicatorRect = indicator.GetComponent<RectTransform>();
-            indicatorRect.sizeDelta = new Vector2(24, 24);
-            var indicatorLayout = indicator.gameObject.AddComponent<LayoutElement>();
-            indicatorLayout.preferredWidth = 24;
-            indicatorLayout.preferredHeight = 24;
-
-            // Progress text
-            var text = UIFactory.CreateText(
-                rect,
-                "0/0",
-                FontSize - 2,
-                Color.white,
-                TextAlignmentOptions.MidlineLeft,
-                "ProgressText");
-            var textLayout = text.gameObject.AddComponent<LayoutElement>();
-            textLayout.preferredWidth = 60;
-
-            return new ObjectiveDisplay
-            {
-                Root = rect,
-                Indicator = indicator,
-                ProgressText = text
-            };
-        }
-
-        /// <summary>
-        /// Update objectives display.
-        /// </summary>
-        public void UpdateObjectives(ObjectiveProgress[] objectives)
-        {
-            if (objectives == null) return;
-
-            for (int i = 0; i < MaxObjectives; i++)
-            {
-                if (i < objectives.Length)
-                {
-                    var obj = objectives[i];
-                    var display = _objectiveDisplays[i];
-
-                    display.Root.gameObject.SetActive(true);
-                    display.Indicator.color = obj.Color;
-                    display.ProgressText.text = $"{obj.Current}/{obj.Target}";
-
-                    // Dim completed objectives
-                    if (obj.IsCompleted)
-                    {
-                        display.ProgressText.color = new Color(0.5f, 1f, 0.5f);
-                    }
-                    else
-                    {
-                        display.ProgressText.color = Color.white;
-                    }
-                }
-                else
-                {
-                    _objectiveDisplays[i].Root.gameObject.SetActive(false);
-                }
-            }
         }
 
         /// <summary>
@@ -195,11 +108,5 @@ namespace Match3.Unity.UI
             _scoreText.text = $"Score: {score:N0}";
         }
 
-        private struct ObjectiveDisplay
-        {
-            public RectTransform Root;
-            public Image Indicator;
-            public TextMeshProUGUI ProgressText;
-        }
     }
 }

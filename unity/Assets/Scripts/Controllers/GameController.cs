@@ -47,6 +47,7 @@ namespace Match3.Unity.Controllers
         [SerializeField] private bool _autoInitialize;
 
         private bool _initialized;
+        private ObjectiveDisplayController _objectiveDisplay;
 
         // Screen shake state
         private Camera _cachedCamera;
@@ -129,6 +130,9 @@ namespace Match3.Unity.Controllers
             _boardView.Initialize(_bridge);
             _effectManager.Initialize(_bridge);
 
+            // Initialize objective display (3D mode only)
+            InitializeObjectiveDisplay();
+
             // Initialize input
             _inputController.Initialize(_bridge);
 
@@ -141,6 +145,22 @@ namespace Match3.Unity.Controllers
             _initialized = true;
 
             Debug.Log("GameController initialized");
+        }
+
+        private void InitializeObjectiveDisplay()
+        {
+            if (_renderMode != RenderMode.View3D) return;
+            if (_boardView is not Board3DView board3D) return;
+
+            if (_objectiveDisplay == null)
+            {
+                var go = new GameObject("ObjectiveDisplay");
+                go.transform.SetParent(transform, false);
+                _objectiveDisplay = go.AddComponent<ObjectiveDisplayController>();
+            }
+
+            _objectiveDisplay.Initialize(_bridge, board3D, _effectManager);
+            board3D.ObjectiveDisplay = _objectiveDisplay;
         }
 
         private void InitializeUI()
@@ -192,6 +212,9 @@ namespace Match3.Unity.Controllers
             _boardView.Initialize(_bridge);
             _effectManager.Initialize(_bridge);
 
+            // Initialize objective display (3D mode only)
+            InitializeObjectiveDisplay();
+
             // Initialize input
             _inputController.Initialize(_bridge);
 
@@ -242,6 +265,9 @@ namespace Match3.Unity.Controllers
 
             // Update effects
             _effectManager.UpdateEffects(state);
+
+            // Update fly-to-objective animations
+            _objectiveDisplay?.UpdateFlies(Time.deltaTime);
 
             // Screen shake: only trigger on rising edge of effect count
             int effectCount = CountDestructionEffects(state);
@@ -343,6 +369,7 @@ namespace Match3.Unity.Controllers
             _shakeTimer = 0f;
             _lastShakeEffectCount = 0;
 
+            _objectiveDisplay?.Clear();
             _boardView?.Clear();
             _effectManager?.Clear();
             _uiManager?.HideResult();
@@ -367,6 +394,12 @@ namespace Match3.Unity.Controllers
         private void OnDestroy()
         {
             RestoreShake();
+
+            if (_objectiveDisplay != null)
+            {
+                Destroy(_objectiveDisplay.gameObject);
+                _objectiveDisplay = null;
+            }
 
             // Unsubscribe from UI events to prevent memory leaks
             if (_uiManager != null)

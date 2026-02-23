@@ -8,8 +8,19 @@
   "targetDifficulty": 0.3,
   "objectives": [
     {
-      "type": "Score",
-      "target": 1000
+      "targetLayer": "Tile",
+      "elementType": 128,
+      "targetCount": 10
+    },
+    {
+      "targetLayer": "Tile",
+      "elementType": 512,
+      "targetCount": 10
+    },
+    {
+      "targetLayer": "Tile",
+      "elementType": 1024,
+      "targetCount": 8
     }
   ],
   "grid": null,
