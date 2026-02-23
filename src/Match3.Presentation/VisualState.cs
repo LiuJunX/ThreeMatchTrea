@@ -43,6 +43,15 @@ public sealed class VisualState : IVisualState
     public int Height { get; private set; }
 
     /// <summary>
+    /// When true, SyncFallingTilesFromGameState suppresses ALL physics sync:
+    /// - Blocks adding NEW tiles (tiles in game state but not in visual state)
+    /// - Blocks updating EXISTING tile positions from physics
+    /// Set this during merge animations so gravity tiles don't fall visually
+    /// until the merge completes and choreographed commands take over.
+    /// </summary>
+    public bool SuppressNewTileSync { get; set; }
+
+    /// <summary>
     /// Synchronize visual state from game state.
     /// Call this to reset visual state to match simulation.
     /// </summary>
@@ -96,8 +105,11 @@ public sealed class VisualState : IVisualState
 
                 if (_tiles.TryGetValue(tile.Id, out var visual))
                 {
-                    // Skip tiles being controlled by Player animation
-                    if (visual.IsBeingAnimated)
+                    // Skip tiles being controlled by Player animation,
+                    // or ALL tiles when SuppressNewTileSync is true (during merge).
+                    // This prevents gravity from visually moving tiles while
+                    // merge animations are playing.
+                    if (visual.IsBeingAnimated || SuppressNewTileSync)
                     {
                         continue;
                     }
@@ -106,9 +118,11 @@ public sealed class VisualState : IVisualState
                     visual.Position = tile.Position;
                     visual.GridPosition = new Position(x, y);
                 }
-                else
+                else if (!SuppressNewTileSync)
                 {
-                    // Tile exists in game state but not in visual state - add it
+                    // Tile exists in game state but not in visual state - add it.
+                    // Skipped when SuppressNewTileSync is true (during merge animations)
+                    // to let choreographed SpawnTileCommands control tile appearance timing.
                     _tiles[tile.Id] = new TileVisual
                     {
                         Id = tile.Id,

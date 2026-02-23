@@ -35,6 +35,7 @@ namespace Match3.Unity.Bridge
         private WeightedMoveSelector _autoPlaySelector;
 
         private bool _initialized;
+        private float _mergeSuppressionTimer;
 
         /// <summary>
         /// Cell size in world units.
@@ -219,6 +220,10 @@ namespace Match3.Unity.Bridge
             {
                 var commands = _choreographer.Choreograph(events, _player.CurrentTime);
                 _player.Append(commands);
+
+                // Start merge suppression timer (only suppresses for MergeDuration)
+                if (_choreographer.LastBatchHadMerge)
+                    _mergeSuppressionTimer = _choreographer.MergeDuration;
             }
 
             // Tick the animation player
@@ -227,13 +232,16 @@ namespace Match3.Unity.Bridge
             // Tick visual effects (advance elapsed time, remove expired)
             _player.VisualState.UpdateEffects(scaledDelta);
 
+            // Countdown merge suppression — expires exactly when merge animation ends,
+            // not when all animations (including effects) finish.
+            _mergeSuppressionTimer = Mathf.Max(0f, _mergeSuppressionTimer - scaledDelta);
+
             // Sync falling tiles from game state (physics-driven positions)
-            // Always sync - SyncFallingTilesFromGameState already skips tiles
-            // controlled by choreographed animations (IsBeingAnimated check).
-            // Without this, gravity-driven drops are invisible during destroy
-            // animations and appear as instant teleports when animations end.
+            // Only suppress during the merge window so gravity waits for merge to finish.
+            // Normal matches let physics sync run normally.
             {
                 var state = _session.Engine.State;
+                _player.VisualState.SuppressNewTileSync = _mergeSuppressionTimer > 0f;
                 _player.VisualState.SyncFallingTilesFromGameState(in state);
             }
 
@@ -330,37 +338,20 @@ namespace Match3.Unity.Bridge
 
         /// <summary>
         /// Apply a move from position A to position B.
+        /// Core's CanInteract handles per-tile checks (cover, falling, suspended).
         /// </summary>
         public bool ApplyMove(Position from, Position to)
         {
             if (!_initialized) return false;
 
-            // Check if animations are still playing
-            if (HasActiveAnimations)
-            {
-                Debug.Log("Cannot apply move while animations are playing");
-                return false;
-            }
-
             // Check if positions are adjacent
             if (!AreAdjacent(from, to))
-            {
-                Debug.Log($"Positions are not adjacent: {from} -> {to}");
-                return false;
-            }
-
-            // Get tiles at positions
-            var state = _session.Engine.State;
-            var tileA = state.GetTile(from.X, from.Y);
-            var tileB = state.GetTile(to.X, to.Y);
-
-            if (tileA.Type == Core.Models.Enums.TileType.None ||
-                tileB.Type == Core.Models.Enums.TileType.None)
             {
                 return false;
             }
 
             // Apply swap through simulation engine
+            // Core's ApplyMove checks CanInteract (cover, falling, suspended, None)
             return _session.Engine.ApplyMove(from, to);
         }
 
@@ -375,11 +366,11 @@ namespace Match3.Unity.Bridge
         /// <summary>
         /// Handle a tap at the specified grid position.
         /// Delegates to Core's SimulationEngine.HandleTap for selection/bomb activation logic.
+        /// Core's CanInteract handles per-tile checks (cover, falling, suspended).
         /// </summary>
         public void HandleTap(Position pos)
         {
             if (!_initialized) return;
-            if (HasActiveAnimations) return;
 
             _session.Engine.HandleTap(pos);
         }

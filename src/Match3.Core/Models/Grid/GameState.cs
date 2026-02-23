@@ -159,12 +159,18 @@ public struct GameState
 
     /// <summary>
     /// Returns true if the tile at this position can be swapped by the player.
-    /// A tile cannot be swapped if it has any cover.
+    /// A tile cannot be swapped if it has cover, is falling, or is suspended.
     /// </summary>
     public readonly bool CanInteract(int x, int y)
     {
         var cover = CoverLayer[y * Width + x];
-        return !CoverRules.BlocksSwap(cover.Type);
+        if (CoverRules.BlocksSwap(cover.Type)) return false;
+
+        var tile = GetTile(x, y);
+        if (tile.Type == TileType.None) return false;
+        if (tile.IsFalling || tile.IsSuspended) return false;
+
+        return true;
     }
 
     /// <summary>

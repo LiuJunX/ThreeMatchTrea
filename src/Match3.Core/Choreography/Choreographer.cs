@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Match3.Core.Events;
 using Match3.Core.Events.Enums;
+using Match3.Core.Models.Enums;
 
 namespace Match3.Core.Choreography;
 
@@ -29,11 +30,20 @@ public sealed class Choreographer : IEventVisitor
     /// <summary>Duration for swap animation.</summary>
     public float SwapDuration { get; set; } = 0.15f;
 
+    /// <summary>Duration for merge-to-bomb animation.</summary>
+    public float MergeDuration { get; set; } = 0.3f;
+
     /// <summary>Duration for projectile launch takeoff.</summary>
     public float ProjectileTakeoffDuration { get; set; } = 0.3f;
 
     /// <summary>Arc height for projectile launch.</summary>
     public float ProjectileArcHeight { get; set; } = 1.5f;
+
+    /// <summary>
+    /// Whether the last Choreograph() call produced a bomb merge sequence.
+    /// Use this to decide whether to suppress physics sync.
+    /// </summary>
+    public bool LastBatchHadMerge { get; private set; }
 
     // Timing tracking for cascade calculations
     private readonly Dictionary<int, float> _columnDestroyEndTimes = new();
@@ -51,6 +61,7 @@ public sealed class Choreographer : IEventVisitor
     {
         _commands.Clear();
         _baseTime = baseTime;
+        LastBatchHadMerge = false;
 
         // Calculate minimum simulation time to use relative offsets
         // This ensures events start at baseTime, not baseTime + cumulative engine time
@@ -93,7 +104,25 @@ public sealed class Choreographer : IEventVisitor
         int targetRow = (int)evt.ToPosition.Y;
 
         // Calculate start time considering cascading animations
-        float startTime = CalculateMoveStartTime(column, targetRow, GetStartTime(evt));
+        float eventTime = GetStartTime(evt);
+        float startTime = CalculateMoveStartTime(column, targetRow, eventTime);
+
+        // If movement is delayed (waiting for destroy/merge to finish),
+        // hold the tile at its current position. This sets IsBeingAnimated=true,
+        // preventing SyncFallingTilesFromGameState from updating the position
+        // via physics during the wait.
+        if (startTime > eventTime)
+        {
+            _commands.Add(new MoveTileCommand
+            {
+                TileId = evt.TileId,
+                From = evt.FromPosition,
+                To = evt.FromPosition,
+                StartTime = eventTime,
+                Duration = startTime - eventTime,
+                Easing = EasingType.Linear
+            });
+        }
 
         var command = new MoveTileCommand
         {
@@ -116,60 +145,101 @@ public sealed class Choreographer : IEventVisitor
     {
         float startTime = GetStartTime(evt);
         var position = new Vector2(evt.GridPosition.X, evt.GridPosition.Y);
-
-        // Destroy animation
-        var destroyCommand = new DestroyTileCommand
-        {
-            TileId = evt.TileId,
-            Position = position,
-            Reason = evt.Reason,
-            StartTime = startTime,
-            Duration = DestroyDuration
-        };
-        _commands.Add(destroyCommand);
-
-        // Track destroy end time for column
         int column = evt.GridPosition.X;
-        float endTime = startTime + DestroyDuration;
-        if (!_columnDestroyEndTimes.TryGetValue(column, out float existing) || endTime > existing)
+
+        if (evt.MergeTarget.HasValue)
         {
-            _columnDestroyEndTimes[column] = endTime;
+            // Merge animation: move to bomb origin at original size
+            var target = new Vector2(evt.MergeTarget.Value.X, evt.MergeTarget.Value.Y);
+
+            _commands.Add(new MoveTileCommand
+            {
+                TileId = evt.TileId,
+                From = position,
+                To = target,
+                StartTime = startTime,
+                Duration = MergeDuration,
+                Easing = EasingType.InOutCubic
+            });
+
+            float endTime = startTime + MergeDuration;
+
+            // Remove tile after merge completes
+            _commands.Add(new RemoveTileCommand
+            {
+                TileId = evt.TileId,
+                StartTime = endTime,
+                Duration = 0,
+                Priority = 10
+            });
+
+            // Track merge end time for column cascade stalling
+            if (!_columnDestroyEndTimes.TryGetValue(column, out float existing) || endTime > existing)
+            {
+                _columnDestroyEndTimes[column] = endTime;
+            }
         }
-
-        // Add visual effect
-        string effectType = evt.Reason switch
+        else
         {
-            DestroyReason.Match => "match_pop",
-            DestroyReason.BombEffect => "explosion",
-            DestroyReason.Projectile => "projectile_hit",
-            DestroyReason.ChainReaction => "chain_pop",
-            _ => "pop"
-        };
+            // Standard destroy animation: fade + scale down in place
+            _commands.Add(new DestroyTileCommand
+            {
+                TileId = evt.TileId,
+                Position = position,
+                Reason = evt.Reason,
+                StartTime = startTime,
+                Duration = DestroyDuration
+            });
 
-        var effectCommand = new ShowEffectCommand
-        {
-            EffectType = effectType,
-            Position = position,
-            StartTime = startTime,
-            Duration = DestroyDuration
-        };
-        _commands.Add(effectCommand);
+            float endTime = startTime + DestroyDuration;
 
-        // Remove tile after destroy animation completes
-        var removeCommand = new RemoveTileCommand
-        {
-            TileId = evt.TileId,
-            StartTime = endTime,
-            Duration = 0,
-            Priority = 10 // Execute after effects
-        };
-        _commands.Add(removeCommand);
+            if (!_columnDestroyEndTimes.TryGetValue(column, out float existing) || endTime > existing)
+            {
+                _columnDestroyEndTimes[column] = endTime;
+            }
+
+            // Add visual effect
+            string effectType = evt.Reason switch
+            {
+                DestroyReason.Match => "match_pop",
+                DestroyReason.BombEffect => "explosion",
+                DestroyReason.Projectile => "projectile_hit",
+                DestroyReason.ChainReaction => "chain_pop",
+                _ => "pop"
+            };
+
+            _commands.Add(new ShowEffectCommand
+            {
+                EffectType = effectType,
+                Position = position,
+                StartTime = startTime,
+                Duration = DestroyDuration
+            });
+
+            // Remove tile after destroy animation completes
+            _commands.Add(new RemoveTileCommand
+            {
+                TileId = evt.TileId,
+                StartTime = endTime,
+                Duration = 0,
+                Priority = 10
+            });
+        }
     }
 
     /// <inheritdoc />
     public void Visit(TileSpawnedEvent evt)
     {
+        int column = evt.GridPosition.X;
         float startTime = GetStartTime(evt);
+
+        // Delay spawn until after destroy/merge animations in this column.
+        // Without this, tiles would appear and start falling (via physics sync)
+        // while merge animations are still playing.
+        if (_columnDestroyEndTimes.TryGetValue(column, out float destroyEndTime))
+        {
+            startTime = Math.Max(startTime, destroyEndTime);
+        }
 
         // Spawn command - creates the tile in visual state
         // Physics system handles the falling animation via SyncFallingTilesFromGameState
@@ -235,29 +305,64 @@ public sealed class Choreographer : IEventVisitor
     /// <inheritdoc />
     public void Visit(BombCreatedEvent evt)
     {
-        float startTime = GetStartTime(evt);
-        var position = new Vector2(evt.Position.X, evt.Position.Y);
+        LastBatchHadMerge = true;
 
-        // Update tile bomb type
-        var updateCommand = new UpdateTileBombCommand
+        float baseStart = GetStartTime(evt);
+        float mergeEndTime = baseStart + MergeDuration;
+        var position = new Vector2(evt.Position.X, evt.Position.Y);
+        int column = evt.Position.X;
+
+        // Hold the bomb-origin tile in place during merge.
+        // This sets IsBeingAnimated=true, preventing SyncFallingTilesFromGameState
+        // from removing it (old ID no longer in game state) during the merge.
+        _commands.Add(new MoveTileCommand
         {
             TileId = evt.TileId,
-            Position = evt.Position,
-            BombType = evt.BombType,
-            StartTime = startTime,
-            Duration = 0
-        };
-        _commands.Add(updateCommand);
+            From = position,
+            To = position,
+            StartTime = baseStart,
+            Duration = MergeDuration,
+            Easing = EasingType.Linear
+        });
+
+        // Remove old tile and spawn new bomb tile after merge completes
+        _commands.Add(new RemoveTileCommand
+        {
+            TileId = evt.TileId,
+            StartTime = mergeEndTime,
+            Duration = 0,
+            Priority = 5
+        });
+
+        // Determine tile type for the bomb
+        TileType bombTileType = evt.BombType == BombType.Color ? TileType.Rainbow : evt.BaseType;
+
+        _commands.Add(new SpawnTileCommand
+        {
+            TileId = evt.NewTileId,
+            Type = bombTileType,
+            Bomb = evt.BombType,
+            GridPos = evt.Position,
+            SpawnPos = position,
+            StartTime = mergeEndTime,
+            Duration = 0,
+            Priority = 6
+        });
 
         // Visual effect
-        var effectCommand = new ShowEffectCommand
+        _commands.Add(new ShowEffectCommand
         {
             EffectType = "bomb_created",
             Position = position,
-            StartTime = startTime,
+            StartTime = mergeEndTime,
             Duration = 0.3f
-        };
-        _commands.Add(effectCommand);
+        });
+
+        // Track merge end time for this column (delays gravity)
+        if (!_columnDestroyEndTimes.TryGetValue(column, out float existing) || mergeEndTime > existing)
+        {
+            _columnDestroyEndTimes[column] = mergeEndTime;
+        }
     }
 
     /// <inheritdoc />

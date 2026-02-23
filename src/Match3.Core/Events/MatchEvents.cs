@@ -33,8 +33,11 @@ public sealed record MatchDetectedEvent : GameEvent
 /// </summary>
 public sealed record BombCreatedEvent : GameEvent
 {
-    /// <summary>Tile ID that became a bomb.</summary>
+    /// <summary>Tile ID that became a bomb (old ID, before ProcessMatches replaced it).</summary>
     public int TileId { get; init; }
+
+    /// <summary>New tile ID created by ProcessMatches for the bomb tile.</summary>
+    public int NewTileId { get; init; }
 
     /// <summary>Position of the bomb.</summary>
     public Position Position { get; init; }

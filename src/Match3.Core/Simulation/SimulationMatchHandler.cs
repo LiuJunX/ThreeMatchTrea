@@ -70,8 +70,15 @@ internal sealed class SimulationMatchHandler
             if (stableGroups.Count > 0)
             {
                 EmitTileDestroyedEvents(ref state, stableGroups, currentTick, elapsedTime, eventCollector);
+
+                // Capture old tile IDs at bomb origins before ProcessMatches replaces them
+                var bombOrigins = CaptureBombOriginTiles(ref state, stableGroups);
+
                 processed = stableGroups.Count;
                 _matchProcessor.ProcessMatches(ref state, stableGroups);
+
+                // Emit BombCreatedEvent after ProcessMatches (bomb tiles now exist in state)
+                EmitBombCreatedEvents(ref state, bombOrigins, stableGroups, currentTick, elapsedTime, eventCollector);
             }
         }
         finally
@@ -178,12 +185,69 @@ internal sealed class SimulationMatchHandler
                         GridPosition = pos,
                         Type = tile.Type,
                         Bomb = tile.Bomb,
-                        Reason = DestroyReason.Match
+                        Reason = DestroyReason.Match,
+                        MergeTarget = group.SpawnBombType != BombType.None ? group.BombOrigin : null
                     });
                 }
 
                 // Track objective progress
                 _objectiveSystem?.OnTileDestroyed(ref state, tile.Type, currentTick, elapsedTime, eventCollector);
+            }
+        }
+    }
+
+    private static Dictionary<Position, int>? CaptureBombOriginTiles(
+        ref GameState state,
+        List<MatchGroup> stableGroups)
+    {
+        Dictionary<Position, int>? result = null;
+        foreach (var group in stableGroups)
+        {
+            if (group.SpawnBombType != BombType.None && group.BombOrigin.HasValue)
+            {
+                var pos = group.BombOrigin.Value;
+                var tile = state.GetTile(pos.X, pos.Y);
+                if (tile.Type != TileType.None)
+                {
+                    result ??= new Dictionary<Position, int>();
+                    result[pos] = tile.Id;
+                }
+            }
+        }
+        return result;
+    }
+
+    private static void EmitBombCreatedEvents(
+        ref GameState state,
+        Dictionary<Position, int>? bombOrigins,
+        List<MatchGroup> stableGroups,
+        int currentTick,
+        float elapsedTime,
+        IEventCollector eventCollector)
+    {
+        if (bombOrigins == null || !eventCollector.IsEnabled) return;
+
+        foreach (var group in stableGroups)
+        {
+            if (group.SpawnBombType != BombType.None && group.BombOrigin.HasValue)
+            {
+                var pos = group.BombOrigin.Value;
+                if (bombOrigins.TryGetValue(pos, out int oldTileId))
+                {
+                    // Read new tile ID from game state (ProcessMatches already replaced it)
+                    var newTile = state.GetTile(pos.X, pos.Y);
+
+                    eventCollector.Emit(new BombCreatedEvent
+                    {
+                        Tick = currentTick,
+                        SimulationTime = elapsedTime,
+                        TileId = oldTileId,
+                        NewTileId = newTile.Id,
+                        Position = pos,
+                        BombType = group.SpawnBombType,
+                        BaseType = group.Type
+                    });
+                }
             }
         }
     }

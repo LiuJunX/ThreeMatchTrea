@@ -46,6 +46,12 @@ public sealed record TileDestroyedEvent : GameEvent
     /// <summary>Reason for destruction.</summary>
     public DestroyReason Reason { get; init; }
 
+    /// <summary>
+    /// If set, this tile should merge toward the target position
+    /// instead of fading in place (used for bomb-producing matches).
+    /// </summary>
+    public Position? MergeTarget { get; init; }
+
     /// <inheritdoc />
     public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }

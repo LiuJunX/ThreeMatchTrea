@@ -77,15 +77,11 @@ namespace Match3.Unity.Controllers
 
         private void OnTapDetected(Position pos)
         {
-            if (!_bridge.IsIdle()) return;
-
             _bridge.HandleTap(pos);
         }
 
         private void OnSwipeDetected(Position from, Direction direction)
         {
-            if (!_bridge.IsIdle()) return;
-
             var to = _inputSystem.GetSwipeTarget(from, direction);
             if (_bridge.GetTileIdAt(to) >= 0)
             {

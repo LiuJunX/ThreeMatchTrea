@@ -407,6 +407,77 @@ public class CoverSystemTests
 
     #endregion
 
+    #region CanInteract — Tile State Tests
+
+    [Fact]
+    public void CanInteract_StableTile_ReturnsTrue()
+    {
+        var state = CreateState();
+        // CreateState fills all tiles as Red, stable (no flags)
+        Assert.True(state.CanInteract(3, 3));
+    }
+
+    [Fact]
+    public void CanInteract_FallingTile_ReturnsFalse()
+    {
+        var state = CreateState();
+        var tile = state.GetTile(3, 3);
+        tile.IsFalling = true;
+        state.SetTile(3, 3, tile);
+
+        Assert.False(state.CanInteract(3, 3));
+    }
+
+    [Fact]
+    public void CanInteract_SuspendedTile_ReturnsFalse()
+    {
+        var state = CreateState();
+        var tile = state.GetTile(3, 3);
+        tile.IsSuspended = true;
+        state.SetTile(3, 3, tile);
+
+        Assert.False(state.CanInteract(3, 3));
+    }
+
+    [Fact]
+    public void CanInteract_EmptyCell_ReturnsFalse()
+    {
+        var state = CreateState();
+        state.SetTile(3, 3, default); // TileType.None
+
+        Assert.False(state.CanInteract(3, 3));
+    }
+
+    [Fact]
+    public void CanInteract_FallingTileWithCover_ReturnsFalse()
+    {
+        // Both cover and falling should block — cover check comes first
+        var state = CreateState();
+        var tile = state.GetTile(3, 3);
+        tile.IsFalling = true;
+        state.SetTile(3, 3, tile);
+        state.SetCover(3, 3, new Cover(CoverType.Cage, health: 1));
+
+        Assert.False(state.CanInteract(3, 3));
+    }
+
+    [Fact]
+    public void CanInteract_StableTileNoCover_AdjacentTileFalling_BothCheckedIndependently()
+    {
+        // Tile at (3,3) is stable → can interact
+        // Tile at (3,4) is falling → cannot interact
+        // They are checked independently (no global lock)
+        var state = CreateState();
+        var fallingTile = state.GetTile(3, 4);
+        fallingTile.IsFalling = true;
+        state.SetTile(3, 4, fallingTile);
+
+        Assert.True(state.CanInteract(3, 3), "Stable tile should be interactable");
+        Assert.False(state.CanInteract(3, 4), "Falling tile should not be interactable");
+    }
+
+    #endregion
+
     #region CoverRules Tests
 
     [Theory]

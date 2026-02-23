@@ -128,13 +128,14 @@ public class ChoreographerTests
     }
 
     [Fact]
-    public void Choreograph_BombCreated_GeneratesUpdateAndEffect()
+    public void Choreograph_BombCreated_GeneratesHoldSpawnAndEffect()
     {
         var events = new GameEvent[]
         {
             new BombCreatedEvent
             {
                 TileId = 1,
+                NewTileId = 10,
                 Position = new Position(3, 4),
                 BombType = BombType.Horizontal,
                 BaseType = TileType.Red,
@@ -144,7 +145,20 @@ public class ChoreographerTests
 
         var commands = _choreographer.Choreograph(events);
 
-        Assert.Contains(commands, c => c is UpdateTileBombCommand);
+        // Hold old tile in place during merge
+        var holdCmd = commands.OfType<MoveTileCommand>().First();
+        Assert.Equal(1, holdCmd.TileId);
+        Assert.Equal(holdCmd.From, holdCmd.To); // from == to = hold in place
+
+        // Remove old tile after merge
+        Assert.Contains(commands, c => c is RemoveTileCommand { TileId: 1 });
+
+        // Spawn new bomb tile after merge
+        var spawnCmd = commands.OfType<SpawnTileCommand>().First();
+        Assert.Equal(10, spawnCmd.TileId);
+        Assert.Equal(BombType.Horizontal, spawnCmd.Bomb);
+        Assert.Equal(TileType.Red, spawnCmd.Type);
+
         Assert.Contains(commands, c => c is ShowEffectCommand { EffectType: "bomb_created" });
     }
 
@@ -246,7 +260,8 @@ public class ChoreographerTests
         var commands = _choreographer.Choreograph(events);
 
         var destroyCmd = commands.OfType<DestroyTileCommand>().First();
-        var moveCmd = commands.OfType<MoveTileCommand>().First();
+        // Filter out hold commands (From == To) to get the actual move
+        var moveCmd = commands.OfType<MoveTileCommand>().First(c => c.From != c.To);
 
         // Move should start after destroy ends
         Assert.True(moveCmd.StartTime >= destroyCmd.StartTime + destroyCmd.Duration,
@@ -283,8 +298,8 @@ public class ChoreographerTests
 
         var spawnCmd = commands.OfType<SpawnTileCommand>().First();
 
-        // Spawn uses simulation time directly (physics handles cascade timing)
-        Assert.Equal(0f, spawnCmd.StartTime);
+        // Spawn is delayed until after destroy animation in the same column
+        Assert.Equal(_choreographer.DestroyDuration, spawnCmd.StartTime, 0.001f);
     }
 
     [Fact]
@@ -322,7 +337,8 @@ public class ChoreographerTests
 
         var commands = _choreographer.Choreograph(events);
 
-        var moveCmds = commands.OfType<MoveTileCommand>().OrderByDescending(c => c.To.Y).ToList();
+        // Filter out hold commands (From == To) to get actual moves
+        var moveCmds = commands.OfType<MoveTileCommand>().Where(c => c.From != c.To).OrderByDescending(c => c.To.Y).ToList();
         Assert.Equal(3, moveCmds.Count);
 
         // Tiles moving to bottommost positions (higher Y) should start first
@@ -395,9 +411,10 @@ public class ChoreographerTests
 
         var spawnCmd = commands.OfType<SpawnTileCommand>().First();
 
-        // Spawn uses its own simulation time (0.1f relative to base time)
-        // Physics system handles the visual cascade timing
-        Assert.Equal(0.1f, spawnCmd.StartTime, 0.001f);
+        // Spawn is delayed until after destroy animation in the same column.
+        // Destroy at simTime=0 ends at DestroyDuration, spawn simTime=0.1 is
+        // earlier than that, so spawn is clamped to DestroyDuration.
+        Assert.Equal(_choreographer.DestroyDuration, spawnCmd.StartTime, 0.001f);
     }
 
     #endregion

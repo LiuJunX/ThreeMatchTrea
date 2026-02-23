@@ -297,8 +297,11 @@ public sealed class Player
         // Mark tiles as being animated for position-affecting commands
         MarkTilesAnimating(cmd, true);
 
-        // Add to active commands if duration > 0
-        if (cmd.Duration > 0)
+        // Add to active commands if duration > 0, except pure visual effects
+        // which are managed by VisualState.UpdateEffects and should not block
+        // HasActiveAnimations (and therefore should not block player input).
+        bool isFireAndForget = cmd is ShowEffectCommand or ShowMatchHighlightCommand;
+        if (cmd.Duration > 0 && !isFireAndForget)
         {
             _activeCommands.Add(new ActiveCommand(cmd, _currentTime));
         }
