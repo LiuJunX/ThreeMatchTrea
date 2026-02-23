@@ -486,6 +486,62 @@ public class GravityTargetResolverTests
 
     #endregion
 
+    #region Occupied Target Tests
+
+    [Fact]
+    public void DetermineTarget_TargetOccupiedByNonFallingTile_StopsAbove()
+    {
+        // Arrange: 目标格被静止棋子占据，tile 应停在其上方
+        var random = new StubRandom();
+        var resolver = new GravityTargetResolver(random);
+        var state = new GameState(1, 5, 5, random);
+        ClearBoard(ref state);
+
+        // Tile at (0,0) wants to fall
+        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        // Static tile at (0,3) — not falling
+        state.SetTile(0, 3, new Tile(2, TileType.Blue, 0, 3));
+
+        // Act
+        resolver.ClearReservations();
+        var result = resolver.DetermineTarget(ref state, 0, 0);
+
+        // Assert: should stop at (0,2) — one above the obstacle
+        Assert.Equal(0f, result.Position.X);
+        Assert.Equal(2f, result.Position.Y);
+    }
+
+    [Fact]
+    public void DetermineTarget_DiagonalTargetOccupied_NoSlide()
+    {
+        // Arrange: 直落和两个斜滑目标都被占，不能移动
+        var random = new StubRandom();
+        var resolver = new GravityTargetResolver(random);
+        var state = new GameState(3, 3, 5, random);
+        ClearBoard(ref state);
+
+        // Tile at (1,0)
+        state.SetTile(1, 0, new Tile(1, TileType.Red, 1, 0));
+
+        // Suspended tile at (1,1) — blocks direct fall
+        var suspended = new Tile(2, TileType.Blue, 1, 1) { IsSuspended = true };
+        state.SetTile(1, 1, suspended);
+
+        // Both diagonal targets occupied
+        state.SetTile(0, 1, new Tile(3, TileType.Green, 0, 1));
+        state.SetTile(2, 1, new Tile(4, TileType.Yellow, 2, 1));
+
+        // Act
+        resolver.ClearReservations();
+        var result = resolver.DetermineTarget(ref state, 1, 0);
+
+        // Assert: should stay put
+        Assert.Equal(1f, result.Position.X);
+        Assert.Equal(0f, result.Position.Y);
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static void ClearBoard(ref GameState state)

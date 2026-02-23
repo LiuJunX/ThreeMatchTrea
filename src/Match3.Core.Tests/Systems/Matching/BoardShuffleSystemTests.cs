@@ -311,6 +311,39 @@ public class BoardShuffleSystemTests
     }
 
     [Fact]
+    public void Shuffle_CoveredTilesStayInPlace_OthersShuffled()
+    {
+        // Arrange: 多个位置有 Cover，确认它们的 Type 不变
+        var shuffleSystem = CreateShuffleSystem();
+        var state = CreateDeadlockBoard();
+        var events = NullEventCollector.Instance;
+
+        // Add covers to several positions
+        var coveredPositions = new[]
+        {
+            new Position(0, 0),
+            new Position(2, 3),
+            new Position(5, 5)
+        };
+
+        var originalTypes = new Dictionary<Position, TileType>();
+        foreach (var pos in coveredPositions)
+        {
+            originalTypes[pos] = state.GetTile(pos).Type;
+            state.SetCover(pos, new Cover(CoverType.Cage, 1));
+        }
+
+        // Act
+        shuffleSystem.Shuffle(ref state, events);
+
+        // Assert: all covered tiles should retain their original type
+        foreach (var pos in coveredPositions)
+        {
+            Assert.Equal(originalTypes[pos], state.GetTile(pos).Type);
+        }
+    }
+
+    [Fact]
     public void ShuffleUntilSolvable_ChangesListContainsCorrectData()
     {
         // Arrange

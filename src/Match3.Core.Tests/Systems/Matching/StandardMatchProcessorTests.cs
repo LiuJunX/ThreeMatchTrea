@@ -387,4 +387,79 @@ public class StandardMatchProcessorTests
     }
 
     #endregion
+
+    #region Cover Protection Tests
+
+    [Fact]
+    public void ProcessMatches_CoverProtectsTile_DamagesCoverOnly()
+    {
+        // Arrange: Cover 保护棋子，只伤害 Cover
+        var state = CreateEmptyState();
+        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
+        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
+
+        // Put a cover on (1,0) — it should be protected
+        state.SetCover(new Position(1, 0), new Cover(CoverType.Cage, 1));
+
+        var processor = CreateProcessor();
+        var groups = new List<MatchGroup>
+        {
+            new MatchGroup
+            {
+                Type = TileType.Red,
+                Positions = new HashSet<Position> { new(0, 0), new(1, 0), new(2, 0) }
+            }
+        };
+
+        // Act
+        processor.ProcessMatches(ref state, groups);
+
+        // Assert: (1,0) tile is protected — tile remains, cover is destroyed
+        var protectedTile = state.GetTile(1, 0);
+        Assert.Equal(TileType.Red, protectedTile.Type);
+
+        // Other tiles without cover should be cleared
+        Assert.Equal(TileType.None, state.GetTile(0, 0).Type);
+        Assert.Equal(TileType.None, state.GetTile(2, 0).Type);
+
+        // Cover should have been damaged/destroyed (health was 1)
+        Assert.False(state.HasCover(new Position(1, 0)));
+    }
+
+    [Fact]
+    public void ProcessMatches_CoverDestroyed_TileRemains()
+    {
+        // Arrange: Cover 被摧毁后棋子还在
+        var state = CreateEmptyState();
+        state.SetTile(0, 0, new Tile(1, TileType.Blue, 0, 0));
+        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0));
+        state.SetTile(2, 0, new Tile(3, TileType.Blue, 2, 0));
+
+        // Cover on first tile
+        state.SetCover(new Position(0, 0), new Cover(CoverType.Chain, 1));
+
+        var processor = CreateProcessor();
+        var groups = new List<MatchGroup>
+        {
+            new MatchGroup
+            {
+                Type = TileType.Blue,
+                Positions = new HashSet<Position> { new(0, 0), new(1, 0), new(2, 0) }
+            }
+        };
+
+        // Act
+        processor.ProcessMatches(ref state, groups);
+
+        // Assert: (0,0) tile survives because cover protected it
+        var tile = state.GetTile(0, 0);
+        Assert.Equal(TileType.Blue, tile.Type);
+        Assert.Equal(1, tile.Id);
+
+        // Cover is now gone
+        Assert.False(state.HasCover(new Position(0, 0)));
+    }
+
+    #endregion
 }

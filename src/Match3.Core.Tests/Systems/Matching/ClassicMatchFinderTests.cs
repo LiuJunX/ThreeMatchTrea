@@ -525,4 +525,136 @@ public class ClassicMatchFinderTests
     }
 
     #endregion
+
+    #region Cover Blocking Tests
+
+    [Fact]
+    public void HasMatchAt_CageBlocksMatch_ReturnsFalse()
+    {
+        // Arrange: 三连中间有 Cage，CanMatch=false，匹配不成立
+        var state = CreateEmptyState();
+        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
+        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
+
+        // Cage on middle tile blocks matching
+        state.SetCover(new Position(1, 0), new Cover(CoverType.Cage, 1));
+
+        var finder = CreateMatchFinder();
+
+        // Act & Assert: Cage 打断三连
+        Assert.False(finder.HasMatchAt(in state, new Position(0, 0)));
+        Assert.False(finder.HasMatchAt(in state, new Position(1, 0)));
+        Assert.False(finder.HasMatchAt(in state, new Position(2, 0)));
+    }
+
+    [Fact]
+    public void HasMatchAt_ChainAllowsMatch_ReturnsTrue()
+    {
+        // Arrange: Chain 不阻断匹配（BlocksMatch=false）
+        var state = CreateEmptyState();
+        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
+        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
+
+        // Chain on middle tile — does NOT block matching
+        state.SetCover(new Position(1, 0), new Cover(CoverType.Chain, 1));
+
+        var finder = CreateMatchFinder();
+
+        // Act & Assert
+        Assert.True(finder.HasMatchAt(in state, new Position(0, 0)));
+        Assert.True(finder.HasMatchAt(in state, new Position(1, 0)));
+        Assert.True(finder.HasMatchAt(in state, new Position(2, 0)));
+    }
+
+    [Fact]
+    public void HasMatchAt_CageBlocksVerticalMatch_ReturnsFalse()
+    {
+        // Arrange: 垂直三连中间有 Cage
+        var state = CreateEmptyState();
+        state.SetTile(0, 0, new Tile(1, TileType.Blue, 0, 0));
+        state.SetTile(0, 1, new Tile(2, TileType.Blue, 0, 1));
+        state.SetTile(0, 2, new Tile(3, TileType.Blue, 0, 2));
+
+        state.SetCover(new Position(0, 1), new Cover(CoverType.Cage, 1));
+
+        var finder = CreateMatchFinder();
+
+        // Act & Assert
+        Assert.False(finder.HasMatchAt(in state, new Position(0, 0)));
+        Assert.False(finder.HasMatchAt(in state, new Position(0, 1)));
+        Assert.False(finder.HasMatchAt(in state, new Position(0, 2)));
+    }
+
+    [Fact]
+    public void HasMatchAt_BubbleAllowsMatch_ReturnsTrue()
+    {
+        // Arrange: Bubble（动态）不阻断匹配
+        var state = CreateEmptyState();
+        state.SetTile(0, 0, new Tile(1, TileType.Green, 0, 0));
+        state.SetTile(1, 0, new Tile(2, TileType.Green, 1, 0));
+        state.SetTile(2, 0, new Tile(3, TileType.Green, 2, 0));
+
+        state.SetCover(new Position(1, 0), new Cover(CoverType.Bubble, 1, true));
+
+        var finder = CreateMatchFinder();
+
+        // Act & Assert
+        Assert.True(finder.HasMatchAt(in state, new Position(0, 0)));
+        Assert.True(finder.HasMatchAt(in state, new Position(1, 0)));
+        Assert.True(finder.HasMatchAt(in state, new Position(2, 0)));
+    }
+
+    [Fact]
+    public void FindMatchGroups_CageBreaksMatch_ExcludesLockedTile()
+    {
+        // Arrange: 四连中第 2 个有 Cage，变成两段各 1+2，都不够三连
+        var state = CreateEmptyState();
+        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
+        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
+        state.SetTile(3, 0, new Tile(4, TileType.Red, 3, 0));
+
+        // Cage on (1,0) breaks the chain: [0] | [2,3] — neither is 3+
+        state.SetCover(new Position(1, 0), new Cover(CoverType.Cage, 1));
+
+        var finder = CreateMatchFinder();
+
+        // Act
+        var groups = finder.FindMatchGroups(in state);
+
+        // Assert: no match groups found
+        Assert.Empty(groups);
+
+        ClassicMatchFinder.ReleaseGroups(groups);
+    }
+
+    [Fact]
+    public void FindMatchGroups_CageOnEdge_DoesNotAffectAdjacentMatch()
+    {
+        // Arrange: Cage 在 (0,0)，相邻 (1,0)-(2,0)-(3,0) 三连不受影响
+        var state = CreateEmptyState();
+        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
+        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
+        state.SetTile(3, 0, new Tile(4, TileType.Red, 3, 0));
+
+        // Cage only on (0,0)
+        state.SetCover(new Position(0, 0), new Cover(CoverType.Cage, 1));
+
+        var finder = CreateMatchFinder();
+
+        // Act
+        var groups = finder.FindMatchGroups(in state);
+
+        // Assert: (1,0)-(2,0)-(3,0) 仍是有效三连
+        Assert.Single(groups);
+        Assert.Equal(3, groups[0].Positions.Count);
+        Assert.DoesNotContain(new Position(0, 0), groups[0].Positions);
+
+        ClassicMatchFinder.ReleaseGroups(groups);
+    }
+
+    #endregion
 }

@@ -44,10 +44,16 @@ public class InteractionSystemTests
         return new InteractionSystem(new StubLogger());
     }
 
+    /// <summary>
+    /// 创建无选中状态的测试棋盘（填充真实棋子，CanInteract 可通过）
+    /// </summary>
     private GameState CreateEmptyState(int width = 8, int height = 8)
     {
         var state = new GameState(width, height, 6, new StubRandom());
         state.SelectedPosition = Position.Invalid;
+        for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
+                state.SetTile(x, y, new Tile(y * width + x + 1, TileType.Red, x, y));
         return state;
     }
 
@@ -410,6 +416,113 @@ public class InteractionSystemTests
 
         // Assert
         Assert.Equal("Swapping...", system.StatusMessage);
+    }
+
+    #endregion
+
+    #region Cover Blocking Tests
+
+    [Fact]
+    public void TryHandleTap_CoverBlocksFirstTile_ReturnsBlocked()
+    {
+        // Arrange: 第一个选中的棋子有 Cover → 不能选中
+        var system = CreateInteractionSystem();
+        var state = CreateEmptyState();
+        var position = new Position(3, 3);
+
+        // All cover types block swap
+        state.SetCover(position, new Cover(CoverType.Cage, 1));
+
+        // Act
+        bool result = system.TryHandleTap(ref state, position, isBoardInteractive: true, out var move);
+
+        // Assert
+        Assert.False(result);
+        Assert.Null(move);
+        Assert.Equal("Blocked by cover", system.StatusMessage);
+    }
+
+    [Fact]
+    public void TryHandleTap_CoverBlocksSecondTile_ReturnsBlocked()
+    {
+        // Arrange: 已选中一个无 Cover 的棋子，邻居有 Cover → 选择变更
+        var system = CreateInteractionSystem();
+        var state = CreateEmptyState();
+        var pos1 = new Position(3, 3);
+        var pos2 = new Position(4, 3);
+
+        // Select first tile (no cover)
+        system.TryHandleTap(ref state, pos1, isBoardInteractive: true, out _);
+
+        // Neighbor has cover
+        state.SetCover(pos2, new Cover(CoverType.Chain, 1));
+
+        // Act: tap on neighbor with cover
+        bool result = system.TryHandleTap(ref state, pos2, isBoardInteractive: true, out var move);
+
+        // Assert: cover blocks interaction, no swap produced
+        Assert.False(result);
+        Assert.Null(move);
+    }
+
+    [Fact]
+    public void TryHandleTap_BubbleCoverBlocksTap_ReturnsBlocked()
+    {
+        // Arrange: Bubble（动态 Cover）也阻断交换（所有 Cover 都 BlocksSwap）
+        var system = CreateInteractionSystem();
+        var state = CreateEmptyState();
+        var position = new Position(3, 3);
+
+        state.SetCover(position, new Cover(CoverType.Bubble, 1, true));
+
+        // Act
+        bool result = system.TryHandleTap(ref state, position, isBoardInteractive: true, out var move);
+
+        // Assert
+        Assert.False(result);
+        Assert.Null(move);
+        Assert.Equal("Blocked by cover", system.StatusMessage);
+    }
+
+    [Fact]
+    public void TryHandleSwipe_CoverBlocksSource_ReturnsFalse()
+    {
+        // Arrange: 滑动源有 Cover
+        var system = CreateInteractionSystem();
+        var state = CreateEmptyState();
+        var from = new Position(3, 3);
+
+        state.SetCover(from, new Cover(CoverType.Cage, 1));
+
+        // Act
+        bool result = system.TryHandleSwipe(ref state, from, Direction.Right,
+            isBoardInteractive: true, out var move);
+
+        // Assert
+        Assert.False(result);
+        Assert.Null(move);
+        Assert.Equal("Blocked by cover", system.StatusMessage);
+    }
+
+    [Fact]
+    public void TryHandleSwipe_CoverBlocksTarget_ReturnsFalse()
+    {
+        // Arrange: 滑动目标有 Cover, 源需要有真实棋子
+        var system = CreateInteractionSystem();
+        var state = CreateEmptyState();
+        var from = new Position(3, 3);
+        var target = new Position(4, 3); // Right neighbor
+
+        state.SetCover(target, new Cover(CoverType.Chain, 1));
+
+        // Act
+        bool result = system.TryHandleSwipe(ref state, from, Direction.Right,
+            isBoardInteractive: true, out var move);
+
+        // Assert
+        Assert.False(result);
+        Assert.Null(move);
+        Assert.Equal("Target blocked by cover", system.StatusMessage);
     }
 
     #endregion
