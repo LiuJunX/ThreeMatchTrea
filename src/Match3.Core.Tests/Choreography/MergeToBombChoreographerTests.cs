@@ -482,4 +482,82 @@ public class MergeToBombChoreographerTests
     }
 
     #endregion
+
+    #region LastBatchHadMerge
+
+    [Fact]
+    public void LastBatchHadMerge_TrueWhenBombCreatedEventPresent()
+    {
+        var events = CreateMergeWithGravityEvents();
+        _choreographer.Choreograph(events);
+
+        Assert.True(_choreographer.LastBatchHadMerge,
+            "LastBatchHadMerge should be true when batch contains BombCreatedEvent");
+    }
+
+    [Fact]
+    public void LastBatchHadMerge_FalseForNormalMatch()
+    {
+        // Normal 3-match: no BombCreatedEvent
+        var events = new GameEvent[]
+        {
+            new MatchDetectedEvent
+            {
+                Type = TileType.Red,
+                Positions = new[] { new Position(0, 2), new Position(1, 2), new Position(2, 2) },
+                Shape = MatchShape.Simple3,
+                TileCount = 3,
+                SimulationTime = 0f
+            },
+            new TileDestroyedEvent
+            {
+                TileId = 1, GridPosition = new Position(0, 2),
+                Type = TileType.Red, Reason = DestroyReason.Match,
+                SimulationTime = 0f
+            },
+            new TileDestroyedEvent
+            {
+                TileId = 2, GridPosition = new Position(1, 2),
+                Type = TileType.Red, Reason = DestroyReason.Match,
+                SimulationTime = 0f
+            },
+            new TileDestroyedEvent
+            {
+                TileId = 3, GridPosition = new Position(2, 2),
+                Type = TileType.Red, Reason = DestroyReason.Match,
+                SimulationTime = 0f
+            }
+        };
+
+        _choreographer.Choreograph(events);
+
+        Assert.False(_choreographer.LastBatchHadMerge,
+            "LastBatchHadMerge should be false when no BombCreatedEvent in batch");
+    }
+
+    [Fact]
+    public void LastBatchHadMerge_ResetsOnNextChoreograph()
+    {
+        // First batch: with bomb
+        var mergeEvents = CreateMergeWithGravityEvents();
+        _choreographer.Choreograph(mergeEvents);
+        Assert.True(_choreographer.LastBatchHadMerge);
+
+        // Second batch: normal match, should reset
+        var normalEvents = new GameEvent[]
+        {
+            new TileDestroyedEvent
+            {
+                TileId = 99, GridPosition = new Position(0, 0),
+                Type = TileType.Blue, Reason = DestroyReason.Match,
+                SimulationTime = 0f
+            }
+        };
+        _choreographer.Choreograph(normalEvents);
+
+        Assert.False(_choreographer.LastBatchHadMerge,
+            "LastBatchHadMerge should reset to false on next Choreograph call without BombCreatedEvent");
+    }
+
+    #endregion
 }

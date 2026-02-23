@@ -347,6 +347,127 @@ public class MergeToBombPlayerTests
 
     #endregion
 
+    #region Fire-and-Forget Commands — HasActiveAnimations
+
+    [Fact]
+    public void ShowEffectCommand_DoesNotBlockHasActiveAnimations()
+    {
+        var commands = new RenderCommand[]
+        {
+            new ShowEffectCommand
+            {
+                EffectType = "bomb_created",
+                Position = new Vector2(2, 2),
+                StartTime = 0f,
+                Duration = 0.3f
+            }
+        };
+
+        _player.Load(commands);
+        _player.Tick(0.01f);
+
+        // Effect command fired, but should NOT block HasActiveAnimations
+        Assert.False(_player.HasActiveAnimations,
+            "ShowEffectCommand should be fire-and-forget, not blocking HasActiveAnimations");
+
+        // Effect should still exist in visual state
+        Assert.Equal(1, _visualState.Effects.Count);
+    }
+
+    [Fact]
+    public void ShowMatchHighlightCommand_DoesNotBlockHasActiveAnimations()
+    {
+        var commands = new RenderCommand[]
+        {
+            new ShowMatchHighlightCommand
+            {
+                Positions = new[] { new Position(1, 2), new Position(2, 2), new Position(3, 2) },
+                StartTime = 0f,
+                Duration = 0.1f
+            }
+        };
+
+        _player.Load(commands);
+        _player.Tick(0.01f);
+
+        Assert.False(_player.HasActiveAnimations,
+            "ShowMatchHighlightCommand should be fire-and-forget, not blocking HasActiveAnimations");
+
+        // Effects should still be created
+        Assert.Equal(3, _visualState.Effects.Count);
+    }
+
+    [Fact]
+    public void MoveTileCommand_DoesBlockHasActiveAnimations()
+    {
+        var commands = new RenderCommand[]
+        {
+            new SpawnTileCommand
+            {
+                TileId = 1, Type = TileType.Red, Bomb = BombType.None,
+                GridPos = new Position(2, 2), SpawnPos = new Vector2(2, 2),
+                StartTime = 0f, Duration = 0f
+            },
+            new MoveTileCommand
+            {
+                TileId = 1,
+                From = new Vector2(2, 2), To = new Vector2(3, 2),
+                StartTime = 0f, Duration = 0.3f,
+                Easing = EasingType.Linear
+            }
+        };
+
+        _player.Load(commands);
+        _player.Tick(0.01f);
+
+        // Regular animation command SHOULD block HasActiveAnimations
+        Assert.True(_player.HasActiveAnimations,
+            "MoveTileCommand with duration should block HasActiveAnimations");
+    }
+
+    [Fact]
+    public void MixedCommands_OnlyNonFireAndForgetBlockAnimations()
+    {
+        // Fire-and-forget effect + regular move: only the move blocks
+        var commands = new RenderCommand[]
+        {
+            new SpawnTileCommand
+            {
+                TileId = 1, Type = TileType.Red, Bomb = BombType.None,
+                GridPos = new Position(2, 2), SpawnPos = new Vector2(2, 2),
+                StartTime = 0f, Duration = 0f
+            },
+            new ShowEffectCommand
+            {
+                EffectType = "bomb_created",
+                Position = new Vector2(2, 2),
+                StartTime = 0f,
+                Duration = 0.5f
+            },
+            new MoveTileCommand
+            {
+                TileId = 1,
+                From = new Vector2(2, 2), To = new Vector2(3, 2),
+                StartTime = 0f, Duration = 0.2f,
+                Easing = EasingType.Linear
+            }
+        };
+
+        _player.Load(commands);
+        _player.Tick(0.01f);
+
+        Assert.True(_player.HasActiveAnimations, "Move is still active");
+
+        // Advance past move duration but effect is still running
+        _player.Tick(0.25f);
+
+        // Move finished, effect still alive in VisualState but should NOT block
+        Assert.False(_player.HasActiveAnimations,
+            "After move finishes, effect alone should not block HasActiveAnimations");
+    }
+
+    #endregion
+
     #region Helpers
 
     private static GameState CreateGameState(int width, int height)
