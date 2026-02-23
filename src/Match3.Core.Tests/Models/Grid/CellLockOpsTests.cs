@@ -164,4 +164,31 @@ public class CellLockOpsTests
     }
 
     #endregion
+
+    #region AllLockedAboveZero Tests
+
+    [Fact]
+    public void AllLockedAboveZero_AllLocked_ReturnsTrue()
+    {
+        uint packed = CellLockOps.Lock(0u, CellLockType.Drop | CellLockType.Receive);
+
+        Assert.True(CellLockOps.AllLockedAboveZero(packed, CellLockType.Drop | CellLockType.Receive));
+        Assert.True(CellLockOps.AllLockedAboveZero(packed, CellLockType.Drop));
+    }
+
+    [Fact]
+    public void AllLockedAboveZero_OneMissing_ReturnsFalse()
+    {
+        uint packed = CellLockOps.Lock(0u, CellLockType.Drop);
+
+        Assert.False(CellLockOps.AllLockedAboveZero(packed, CellLockType.Drop | CellLockType.Receive));
+    }
+
+    [Fact]
+    public void AllLockedAboveZero_ZeroPacked_ReturnsFalse()
+    {
+        Assert.False(CellLockOps.AllLockedAboveZero(0u, CellLockType.Swap));
+    }
+
+    #endregion
 }

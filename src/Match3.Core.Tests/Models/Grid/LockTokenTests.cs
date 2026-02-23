@@ -83,4 +83,25 @@ public class LockTokenTests
         Assert.False(state.IsLocked(0, 0, CellLockType.Matching));
         Assert.True(state.IsLocked(2, 2, CellLockType.Matching));
     }
+
+    [Fact]
+    public void DoubleRelease_ClampsAtZero_DoesNotCorruptOtherLocks()
+    {
+        var state = new GameState(3, 3, 6, new StubRandom());
+
+        // Source A and B both lock Swap
+        var tokenA = state.AcquireLock(1, 1, CellLockType.Swap);
+        var tokenB = state.AcquireLock(1, 1, CellLockType.Swap);
+
+        state.ReleaseLock(tokenA); // count=1
+        state.ReleaseLock(tokenB); // count=0
+
+        // Simulating double-release of tokenA: Unlock clamps at 0, does not go negative
+        // (Debug.Assert would fire in Debug builds, but the clamp is still safe)
+        state.Unlock(1, 1, CellLockType.Swap);
+
+        // Verify count stays at 0 and doesn't wrap around
+        Assert.False(state.IsLocked(1, 1, CellLockType.Swap));
+        Assert.Equal(0, CellLockOps.GetCount(state.CellLocks[state.Index(1, 1)], CellLockType.Swap));
+    }
 }

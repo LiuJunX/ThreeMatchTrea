@@ -79,6 +79,23 @@ public static class CellLockOps
     }
 
     /// <summary>
+    /// Returns true if every flagged lock type in <paramref name="types"/> has ref-count > 0.
+    /// Used for double-release detection.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool AllLockedAboveZero(uint packed, CellLockType types)
+    {
+        int flags = (int)types;
+        for (int bit = 0; flags != 0; bit++, flags >>= 1)
+        {
+            if ((flags & 1) == 0) continue;
+            int shift = bit * BitsPerLock;
+            if (((packed >> shift) & NibbleMask) == 0) return false;
+        }
+        return true;
+    }
+
+    /// <summary>
     /// Returns the bit index (0-based) for a single-flag CellLockType.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

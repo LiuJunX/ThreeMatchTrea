@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using Match3.Random;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
@@ -256,6 +257,8 @@ public struct GameState
 
     public void ReleaseLock(LockToken token)
     {
+        Debug.Assert(CellLockOps.AllLockedAboveZero(CellLocks[token.CellIndex], token.Types),
+            "ReleaseLock: ref-count already 0 for one or more lock types, possible double-release");
         CellLocks[token.CellIndex] = CellLockOps.Unlock(CellLocks[token.CellIndex], token.Types);
     }
 
