@@ -643,6 +643,25 @@ public sealed class SimulationEngine : IDisposable
         return _orchestrator.HasPendingMatches(in state);
     }
 
+    /// <summary>
+    /// Acquire a cell lock on the engine's state.
+    /// Safe because CellLocks is a reference-type array shared between struct copies.
+    /// </summary>
+    public LockToken AcquireLock(Position pos, CellLockType types)
+    {
+        var state = State;
+        return state.AcquireLock(pos.X, pos.Y, types);
+    }
+
+    /// <summary>
+    /// Release a previously acquired cell lock.
+    /// </summary>
+    public void ReleaseLock(LockToken token)
+    {
+        var state = State;
+        state.ReleaseLock(token);
+    }
+
     public void Dispose()
     {
         // Cleanup resources if needed

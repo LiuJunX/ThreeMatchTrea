@@ -1102,6 +1102,86 @@ public class SimulationEngineTests
 
     #endregion
 
+    #region CellLock API Tests
+
+    [Fact]
+    public void AcquireLock_LocksCellInEngineState()
+    {
+        var state = CreateStableState();
+        var engine = CreateEngine(state);
+
+        engine.AcquireLock(new Position(2, 2), CellLockType.Receive);
+
+        Assert.False(engine.State.CanReceive(2, 2));
+    }
+
+    [Fact]
+    public void ReleaseLock_UnlocksCellInEngineState()
+    {
+        var state = CreateStableState();
+        var engine = CreateEngine(state);
+
+        var token = engine.AcquireLock(new Position(2, 2), CellLockType.Receive);
+        engine.ReleaseLock(token);
+
+        Assert.True(engine.State.CanReceive(2, 2));
+    }
+
+    [Fact]
+    public void AcquireLock_SurvivesEngineTick()
+    {
+        // Critical: verifies that the shared CellLocks array reference
+        // is not broken by `State = state;` inside Tick().
+        var state = CreateStableState();
+        var engine = CreateEngine(state);
+
+        engine.AcquireLock(new Position(1, 1), CellLockType.Receive);
+
+        // Run multiple ticks — lock must persist
+        for (int i = 0; i < 10; i++)
+            engine.Tick(0.016f);
+
+        Assert.False(engine.State.CanReceive(1, 1),
+            "Receive lock should survive across Engine.Tick() calls");
+    }
+
+    [Fact]
+    public void AcquireLock_MultipleTypes_IndependentRelease()
+    {
+        var state = CreateStableState();
+        var engine = CreateEngine(state);
+
+        var tokenA = engine.AcquireLock(new Position(0, 0), CellLockType.Receive);
+        var tokenB = engine.AcquireLock(new Position(0, 0), CellLockType.Swap);
+
+        engine.ReleaseLock(tokenA);
+
+        // Receive released, Swap still locked
+        Assert.True(engine.State.CanReceive(0, 0));
+        Assert.False(engine.State.CanInteract(0, 0));
+    }
+
+    [Fact]
+    public void AcquireLock_Receive_BlocksRefillDuringTick()
+    {
+        // Integration: lock top row → tick → refill should not spawn there
+        var state = new GameState(3, 3, 4, new StubRandom());
+        // Leave all cells empty — normally refill would fill row 0
+        var engine = CreateEngine(state);
+
+        // Lock column 1, row 0 — refill should skip it
+        engine.AcquireLock(new Position(1, 0), CellLockType.Receive);
+
+        engine.Tick(0.016f);
+
+        // Column 0 and 2 get refilled, column 1 stays empty
+        Assert.NotEqual(TileType.None, engine.State.GetTile(0, 0).Type);
+        Assert.Equal(TileType.None, engine.State.GetTile(1, 0).Type);
+        Assert.NotEqual(TileType.None, engine.State.GetTile(2, 0).Type);
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private GameState CreateStableState()

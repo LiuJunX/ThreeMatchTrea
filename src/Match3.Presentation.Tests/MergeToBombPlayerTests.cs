@@ -11,8 +11,8 @@ namespace Match3.Presentation.Tests;
 
 /// <summary>
 /// Integration tests for merge-to-bomb animation in Player + VisualState.
-/// Verifies that hold commands prevent physics sync from moving tiles,
-/// and that SuppressNewTileSync blocks premature tile additions.
+/// Verifies that hold commands (IsBeingAnimated) prevent physics sync from
+/// moving tiles during merge animations.
 /// </summary>
 public class MergeToBombPlayerTests
 {
@@ -124,100 +124,85 @@ public class MergeToBombPlayerTests
 
     #endregion
 
-    #region SuppressNewTileSync
+    #region Sync Behavior — Post SuppressNewTileSync Removal
 
     [Fact]
-    public void SuppressNewTileSync_BlocksNewTileAddition()
+    public void Sync_AlwaysAddsNewTiles()
     {
+        // After removing SuppressNewTileSync, new tiles in game state
+        // are always synced to visual state (Core CellLock prevents gravity instead).
         var state = CreateGameState(8, 8);
         SetTile(ref state, 3, 2, new Tile(99, TileType.Blue, 3, 2));
 
-        _visualState.SuppressNewTileSync = true;
         _visualState.SyncFallingTilesFromGameState(in state);
 
-        // Tile 99 should NOT be in visual state
-        Assert.Null(_visualState.GetTile(99));
-    }
-
-    [Fact]
-    public void SuppressNewTileSync_False_AllowsNewTileAddition()
-    {
-        var state = CreateGameState(8, 8);
-        SetTile(ref state, 3, 2, new Tile(99, TileType.Blue, 3, 2));
-
-        _visualState.SuppressNewTileSync = false;
-        _visualState.SyncFallingTilesFromGameState(in state);
-
-        // Tile 99 should be added
         Assert.NotNull(_visualState.GetTile(99));
     }
 
     [Fact]
-    public void SuppressNewTileSync_AlsoBlocksExistingTilePositionUpdates()
+    public void Sync_AlwaysUpdatesPositionWhenNotAnimated()
     {
-        // Add tile to visual state first
+        // Tile exists in visual state, game state has different position,
+        // tile is NOT being animated → position should always update.
         _visualState.AddTile(1, TileType.Red, BombType.None,
             new Position(3, 1), new Vector2(3, 1));
 
-        // Game state has tile at different position (physics moved it)
         var state = CreateGameState(8, 8);
         var tile = new Tile(1, TileType.Red, new Vector2(3, 1.5f));
         SetTile(ref state, 3, 1, tile);
 
-        _visualState.SuppressNewTileSync = true;
         _visualState.SyncFallingTilesFromGameState(in state);
 
-        // Existing tile position should NOT be updated (suppressed during merge)
-        var visual = _visualState.GetTile(1);
-        Assert.NotNull(visual);
-        Assert.Equal(new Vector2(3, 1), visual.Position);
-    }
-
-    [Fact]
-    public void SuppressNewTileSync_False_UpdatesExistingTilePositions()
-    {
-        // Add tile to visual state first
-        _visualState.AddTile(1, TileType.Red, BombType.None,
-            new Position(3, 1), new Vector2(3, 1));
-
-        // Game state has tile at different position
-        var state = CreateGameState(8, 8);
-        var tile = new Tile(1, TileType.Red, new Vector2(3, 1.5f));
-        SetTile(ref state, 3, 1, tile);
-
-        _visualState.SuppressNewTileSync = false;
-        _visualState.SyncFallingTilesFromGameState(in state);
-
-        // Position should be updated when not suppressed
         var visual = _visualState.GetTile(1);
         Assert.NotNull(visual);
         Assert.Equal(new Vector2(3, 1.5f), visual.Position);
     }
 
     [Fact]
-    public void SuppressNewTileSync_SpawnTileCommandStillWorks()
+    public void Sync_IsBeingAnimated_StillBlocksPositionUpdate()
     {
-        // Even with suppress=true, Player's SpawnTileCommand should add the tile
+        // IsBeingAnimated is the sole guard now — verify it still works.
+        _visualState.AddTile(1, TileType.Red, BombType.None,
+            new Position(3, 1), new Vector2(3, 1));
+        var visual = _visualState.GetTile(1)!;
+        visual.AddAnimationRef(); // simulate animation hold
+
+        var state = CreateGameState(8, 8);
+        SetTile(ref state, 3, 1, new Tile(1, TileType.Red, new Vector2(3, 2)));
+
+        _visualState.SyncFallingTilesFromGameState(in state);
+
+        Assert.Equal(new Vector2(3, 1), visual.Position);
+    }
+
+    [Fact]
+    public void SpawnTileCommand_OverwritesSyncedTile()
+    {
+        // Scenario: sync adds tile from game state, then SpawnTileCommand fires.
+        // SpawnTileCommand should cleanly overwrite the sync-added tile.
+        var state = CreateGameState(8, 8);
+        SetTile(ref state, 2, 2, new Tile(200, TileType.Red, 2, 2, BombType.Horizontal));
+
+        // Sync adds tile 200 to visual state
+        _visualState.SyncFallingTilesFromGameState(in state);
+        Assert.NotNull(_visualState.GetTile(200));
+
+        // SpawnTileCommand overwrites it (as Choreographer would do)
         var commands = new RenderCommand[]
         {
             new SpawnTileCommand
             {
-                TileId = 99, Type = TileType.Blue, Bomb = BombType.None,
-                GridPos = new Position(3, 0), SpawnPos = new Vector2(3, -1),
-                StartTime = 0.3f, Duration = 0f
+                TileId = 200, Type = TileType.Red, Bomb = BombType.Horizontal,
+                GridPos = new Position(2, 2), SpawnPos = new Vector2(2, 2),
+                StartTime = 0f, Duration = 0f
             }
         };
-
         _player.Load(commands);
-        _visualState.SuppressNewTileSync = true;
+        _player.Tick(0.01f);
 
-        // Before spawn time: tile not in visual state
-        _player.Tick(0.1f);
-        Assert.Null(_visualState.GetTile(99));
-
-        // After spawn time: tile added by Player, not by sync
-        _player.Tick(0.25f); // total 0.35f
-        Assert.NotNull(_visualState.GetTile(99));
+        var tile = _visualState.GetTile(200);
+        Assert.NotNull(tile);
+        Assert.Equal(BombType.Horizontal, tile.BombType);
     }
 
     #endregion
@@ -318,15 +303,11 @@ public class MergeToBombPlayerTests
         SetTile(ref state, 3, 1, new Tile(31, TileType.Green, new Vector2(3, 1.8f)));
         SetTile(ref state, 2, 2, new Tile(200, TileType.Red, 2, 2, BombType.Horizontal));
 
-        _visualState.SuppressNewTileSync = _player.HasActiveAnimations;
         _visualState.SyncFallingTilesFromGameState(in state);
 
         // Gravity tile position should NOT be updated (IsBeingAnimated)
         gravityTile = _visualState.GetTile(31);
         Assert.Equal(new Vector2(3, 1), gravityTile!.Position);
-
-        // New bomb tile (200) should NOT be added (SuppressNewTileSync)
-        Assert.Null(_visualState.GetTile(200));
 
         // --- After merge (T = 0.35s, merge done at 0.3s) ---
         _player.Tick(0.25f); // total ~0.35s

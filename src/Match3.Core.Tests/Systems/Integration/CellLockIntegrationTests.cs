@@ -308,6 +308,112 @@ public class CellLockIntegrationTests
 
     #endregion
 
+    #region ReceiveLock — Merge Column Gravity Blocking
+
+    /// <summary>
+    /// Receive lock on merge-affected cells prevents gravity from filling them,
+    /// simulating how Bridge locks cells during merge-to-bomb animation.
+    /// </summary>
+    [Fact]
+    public void ReceiveLock_BlocksMergeColumnGravity()
+    {
+        var rng = new StubRandom();
+        var state = new GameState(3, 5, 6, rng);
+
+        // Column 1: simulate merge — rows 3,4 cleared, rows 0-2 have tiles above
+        state.SetTile(1, 0, new Tile(10, TileType.Green, 1, 0));
+        state.SetTile(1, 1, new Tile(11, TileType.Blue, 1, 1));
+        // rows 2,3,4 empty (merge cleared them)
+
+        // Lock rows 2,3,4 with Receive (Bridge would do this during merge)
+        var token2 = state.AcquireLock(1, 2, CellLockType.Receive);
+        var token3 = state.AcquireLock(1, 3, CellLockType.Receive);
+        var token4 = state.AcquireLock(1, 4, CellLockType.Receive);
+
+        var config = new Match3Config { GravitySpeed = 20f, MaxFallSpeed = 25f };
+        var gravity = new RealtimeGravitySystem(config, rng);
+        var animation = new AnimationSystem(config);
+        var helper = new AnimationTestHelper(_output);
+
+        helper.UpdateUntilStable(ref state, gravity, animation, maxFrames: 120);
+
+        // Tiles should NOT have fallen into locked rows
+        Assert.Equal(TileType.None, state.GetTile(1, 2).Type);
+        Assert.Equal(TileType.None, state.GetTile(1, 3).Type);
+        Assert.Equal(TileType.None, state.GetTile(1, 4).Type);
+        // Original tiles stay at top (can't fall past locked cells)
+        Assert.Equal(TileType.Green, state.GetTile(1, 0).Type);
+        Assert.Equal(TileType.Blue, state.GetTile(1, 1).Type);
+    }
+
+    /// <summary>
+    /// After releasing Receive locks, gravity resumes and tiles fill the cells.
+    /// </summary>
+    [Fact]
+    public void ReceiveLock_Released_GravityResumes()
+    {
+        var rng = new StubRandom();
+        var state = new GameState(1, 3, 6, rng);
+
+        // Single column: tile at row 0, rows 1-2 empty and locked
+        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        var token1 = state.AcquireLock(0, 1, CellLockType.Receive);
+        var token2 = state.AcquireLock(0, 2, CellLockType.Receive);
+
+        var config = new Match3Config { GravitySpeed = 20f, MaxFallSpeed = 25f };
+        var gravity = new RealtimeGravitySystem(config, rng);
+        var animation = new AnimationSystem(config);
+        var helper = new AnimationTestHelper(_output);
+
+        // Run gravity while locked — tile stays at top
+        helper.UpdateUntilStable(ref state, gravity, animation, maxFrames: 120);
+        Assert.Equal(TileType.Red, state.GetTile(0, 0).Type);
+
+        // Release locks
+        state.ReleaseLock(token1);
+        state.ReleaseLock(token2);
+
+        // Run gravity again — tile should fall to bottom
+        helper.UpdateUntilStable(ref state, gravity, animation, maxFrames: 120);
+        Assert.Equal(TileType.Red, state.GetTile(0, 2).Type);
+        Assert.Equal(TileType.None, state.GetTile(0, 0).Type);
+    }
+
+    /// <summary>
+    /// Receive lock on one column does not affect other columns — gravity still works.
+    /// </summary>
+    [Fact]
+    public void ReceiveLock_OtherColumnsUnaffected()
+    {
+        var rng = new StubRandom();
+        var state = new GameState(3, 3, 6, rng);
+
+        // Tiles at row 0 in all 3 columns
+        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(1, 0, new Tile(2, TileType.Green, 1, 0));
+        state.SetTile(2, 0, new Tile(3, TileType.Blue, 2, 0));
+
+        // Lock only column 1 (merge column)
+        state.AcquireLock(1, 1, CellLockType.Receive);
+        state.AcquireLock(1, 2, CellLockType.Receive);
+
+        var config = new Match3Config { GravitySpeed = 20f, MaxFallSpeed = 25f };
+        var gravity = new RealtimeGravitySystem(config, rng);
+        var animation = new AnimationSystem(config);
+        var helper = new AnimationTestHelper(_output);
+
+        helper.UpdateUntilStable(ref state, gravity, animation, maxFrames: 120);
+
+        // Column 0 and 2: tiles should have fallen to bottom
+        Assert.Equal(TileType.Red, state.GetTile(0, 2).Type);
+        Assert.Equal(TileType.Blue, state.GetTile(2, 2).Type);
+
+        // Column 1: tile blocked — can't fall past locked cells
+        Assert.Equal(TileType.Green, state.GetTile(1, 0).Type);
+    }
+
+    #endregion
+
     #region CanDestroy
 
     [Fact]

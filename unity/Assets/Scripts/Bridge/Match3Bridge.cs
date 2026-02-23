@@ -41,7 +41,10 @@ namespace Match3.Unity.Bridge
         private WeightedMoveSelector _autoPlaySelector;
 
         private bool _initialized;
-        private float _mergeSuppressionTimer;
+        private readonly List<LockToken> _mergeLockTokens = new();
+        private float _mergeLockTimer;
+        private readonly List<LockToken> _matchLockTokens = new();
+        private float _matchLockTimer;
 
         /// <summary>
         /// Cell size in world units.
@@ -239,6 +242,7 @@ namespace Match3.Unity.Bridge
             _lastScore = -1;
             _isPaused = false;
             _isAutoPlaying = false;
+            _mergeLockTimer = 0f;
 
             Debug.Log($"Match3Bridge initialized: {width}x{height}, seed={seed}");
         }
@@ -269,9 +273,24 @@ namespace Match3.Unity.Bridge
                 var commands = _choreographer.Choreograph(events, _player.CurrentTime);
                 _player.Append(commands);
 
-                // Start merge suppression timer (only suppresses for MergeDuration)
+                // Acquire per-cell Receive locks for merge-affected positions
                 if (_choreographer.LastBatchHadMerge)
-                    _mergeSuppressionTimer = _choreographer.MergeDuration;
+                {
+                    // Release any prior merge locks before acquiring new ones
+                    if (_mergeLockTokens.Count > 0)
+                        ReleaseMergeLocks();
+                    AcquireMergeLocks(events);
+                    _mergeLockTimer = _choreographer.MergeDuration;
+                }
+
+                // Acquire per-cell Receive locks for match-affected positions (drop delay)
+                if (_choreographer.LastBatchHadMatch)
+                {
+                    if (_matchLockTokens.Count > 0)
+                        ReleaseMatchLocks();
+                    AcquireMatchLocks(events);
+                    _matchLockTimer = _choreographer.DropDelay;
+                }
             }
 
             // Tick the animation player
@@ -280,16 +299,25 @@ namespace Match3.Unity.Bridge
             // Tick visual effects (advance elapsed time, remove expired)
             _player.VisualState.UpdateEffects(scaledDelta);
 
-            // Countdown merge suppression — expires exactly when merge animation ends,
-            // not when all animations (including effects) finish.
-            _mergeSuppressionTimer = Mathf.Max(0f, _mergeSuppressionTimer - scaledDelta);
+            // Release merge locks when the merge animation ends
+            if (_mergeLockTimer > 0f)
+            {
+                _mergeLockTimer = Mathf.Max(0f, _mergeLockTimer - scaledDelta);
+                if (_mergeLockTimer <= 0f)
+                    ReleaseMergeLocks();
+            }
+
+            // Release match locks when drop delay ends
+            if (_matchLockTimer > 0f)
+            {
+                _matchLockTimer = Mathf.Max(0f, _matchLockTimer - scaledDelta);
+                if (_matchLockTimer <= 0f)
+                    ReleaseMatchLocks();
+            }
 
             // Sync falling tiles from game state (physics-driven positions)
-            // Only suppress during the merge window so gravity waits for merge to finish.
-            // Normal matches let physics sync run normally.
             {
                 var state = _session.Engine.State;
-                _player.VisualState.SuppressNewTileSync = _mergeSuppressionTimer > 0f;
                 _player.VisualState.SyncFallingTilesFromGameState(in state);
             }
 
@@ -343,6 +371,53 @@ namespace Match3.Unity.Bridge
             {
                 Debug.Log($"[AutoPlay] no valid move found, moves={state.MoveCount}/{state.MoveLimit}");
             }
+        }
+
+        private void AcquireMergeLocks(IReadOnlyList<GameEvent> events)
+        {
+            foreach (var evt in events)
+            {
+                switch (evt)
+                {
+                    case TileDestroyedEvent tde when tde.MergeTarget != null:
+                        _mergeLockTokens.Add(
+                            _session.Engine.AcquireLock(tde.GridPosition, CellLockType.Receive));
+                        break;
+                    case BombCreatedEvent bce:
+                        _mergeLockTokens.Add(
+                            _session.Engine.AcquireLock(bce.Position, CellLockType.Receive));
+                        break;
+                }
+            }
+        }
+
+        private void ReleaseMergeLocks()
+        {
+            foreach (var token in _mergeLockTokens)
+                _session.Engine.ReleaseLock(token);
+            _mergeLockTokens.Clear();
+        }
+
+        private void AcquireMatchLocks(IReadOnlyList<GameEvent> events)
+        {
+            foreach (var evt in events)
+            {
+                if (evt is TileDestroyedEvent tde && 
+                    tde.Reason == DestroyReason.Match && 
+                    tde.MergeTarget == null)
+                {
+                    // Lock the cell so tiles from above don't fall into it immediately
+                    _matchLockTokens.Add(
+                        _session.Engine.AcquireLock(tde.GridPosition, CellLockType.Receive));
+                }
+            }
+        }
+
+        private void ReleaseMatchLocks()
+        {
+            foreach (var token in _matchLockTokens)
+                _session.Engine.ReleaseLock(token);
+            _matchLockTokens.Clear();
         }
 
         // Reusable collections for ScanForObjectiveCollections (avoid GC)
@@ -619,6 +694,11 @@ namespace Match3.Unity.Bridge
 
         private void Cleanup()
         {
+            if (_session != null)
+            {
+                if (_mergeLockTokens.Count > 0) ReleaseMergeLocks();
+                if (_matchLockTokens.Count > 0) ReleaseMatchLocks();
+            }
             _session?.Dispose();
             _session = null;
             _player = null;
