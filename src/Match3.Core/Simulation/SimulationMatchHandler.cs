@@ -20,6 +20,9 @@ internal sealed class SimulationMatchHandler
     private readonly IMatchProcessor _matchProcessor;
     private readonly ILevelObjectiveSystem? _objectiveSystem;
 
+    // Reused to avoid per-match Dictionary allocation
+    private readonly Dictionary<Position, int> _bombOrigins = new();
+
     public SimulationMatchHandler(
         IMatchFinder matchFinder,
         IMatchProcessor matchProcessor,
@@ -72,13 +75,14 @@ internal sealed class SimulationMatchHandler
                 EmitTileDestroyedEvents(ref state, stableGroups, currentTick, elapsedTime, eventCollector);
 
                 // Capture old tile IDs at bomb origins before ProcessMatches replaces them
-                var bombOrigins = CaptureBombOriginTiles(ref state, stableGroups);
+                _bombOrigins.Clear();
+                CaptureBombOriginTiles(ref state, stableGroups);
 
                 processed = stableGroups.Count;
                 _matchProcessor.ProcessMatches(ref state, stableGroups);
 
                 // Emit BombCreatedEvent after ProcessMatches (bomb tiles now exist in state)
-                EmitBombCreatedEvents(ref state, bombOrigins, stableGroups, currentTick, elapsedTime, eventCollector);
+                EmitBombCreatedEvents(ref state, _bombOrigins, stableGroups, currentTick, elapsedTime, eventCollector);
             }
         }
         finally
@@ -145,7 +149,11 @@ internal sealed class SimulationMatchHandler
     {
         if (!eventCollector.IsEnabled) return;
 
-        var positions = new List<Position>(group.Positions);
+        // Copy to array (group.Positions is pooled and will be returned).
+        // Array satisfies IReadOnlyCollection<Position> with minimal allocation.
+        var positions = new Position[group.Positions.Count];
+        group.Positions.CopyTo(positions);
+
         eventCollector.Emit(new MatchDetectedEvent
         {
             Tick = currentTick,
@@ -196,11 +204,10 @@ internal sealed class SimulationMatchHandler
         }
     }
 
-    private static Dictionary<Position, int>? CaptureBombOriginTiles(
+    private void CaptureBombOriginTiles(
         ref GameState state,
         List<MatchGroup> stableGroups)
     {
-        Dictionary<Position, int>? result = null;
         foreach (var group in stableGroups)
         {
             if (group.SpawnBombType != BombType.None && group.BombOrigin.HasValue)
@@ -209,23 +216,21 @@ internal sealed class SimulationMatchHandler
                 var tile = state.GetTile(pos.X, pos.Y);
                 if (tile.Type != TileType.None)
                 {
-                    result ??= new Dictionary<Position, int>();
-                    result[pos] = tile.Id;
+                    _bombOrigins[pos] = tile.Id;
                 }
             }
         }
-        return result;
     }
 
     private static void EmitBombCreatedEvents(
         ref GameState state,
-        Dictionary<Position, int>? bombOrigins,
+        Dictionary<Position, int> bombOrigins,
         List<MatchGroup> stableGroups,
         int currentTick,
         float elapsedTime,
         IEventCollector eventCollector)
     {
-        if (bombOrigins == null || !eventCollector.IsEnabled) return;
+        if (bombOrigins.Count == 0 || !eventCollector.IsEnabled) return;
 
         foreach (var group in stableGroups)
         {

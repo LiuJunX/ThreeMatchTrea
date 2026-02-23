@@ -76,9 +76,10 @@ public sealed class Choreographer : IEventVisitor
             }
         }
 
-        // Clear timing tracking
+        // Clear timing tracking (reuse inner lists to avoid re-allocation)
         _columnDestroyEndTimes.Clear();
-        _columnMoves.Clear();
+        foreach (var kvp in _columnMoves)
+            kvp.Value.Clear();
 
         // Process each event
         foreach (var evt in events)
