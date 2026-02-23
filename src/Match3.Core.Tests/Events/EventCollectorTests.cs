@@ -27,7 +27,7 @@ public class EventCollectorTests
             SimulationTime = 0.016f,
             TileId = 1,
             GridPosition = new Position(0, 0),
-            Type = Models.Enums.TileType.Red,
+            Type = Match3.Core.Models.Enums.TileType.Red,
             Reason = DestroyReason.Match
         };
 
@@ -66,7 +66,7 @@ public class EventCollectorTests
             SimulationTime = 0.016f,
             TileId = 1,
             GridPosition = new Position(0, 0),
-            Type = Models.Enums.TileType.Red,
+            Type = Match3.Core.Models.Enums.TileType.Red,
             Reason = DestroyReason.Match
         };
 

@@ -44,7 +44,7 @@ public class CoverPhysicsMatchingIntegrationTests
 
     private class StubScoreSystem : IScoreSystem
     {
-        public int CalculateMatchScore(Models.Gameplay.MatchGroup match) => match.Positions.Count * 10;
+        public int CalculateMatchScore(Match3.Core.Models.Gameplay.MatchGroup match) => match.Positions.Count * 10;
         public int CalculateSpecialMoveScore(TileType t1, BombType b1, TileType t2, BombType b2) => 100;
     }
 

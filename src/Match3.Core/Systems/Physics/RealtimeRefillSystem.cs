@@ -32,8 +32,8 @@ public class RealtimeRefillSystem : IRefillSystem
 
         for (int x = 0; x < state.Width; x++)
         {
-            // Only spawn if the spawn point (0) is empty
-            if (state.GetTile(x, 0).Type == TileType.None)
+            // Only spawn if the spawn point (0) is empty and can receive
+            if (state.GetTile(x, 0).Type == TileType.None && state.CanReceive(x, 0))
             {
                 // Spawn a new tile at the top using the spawn model
                 var type = _spawnModel.Predict(ref state, x, in context);

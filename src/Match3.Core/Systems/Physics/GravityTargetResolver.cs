@@ -131,6 +131,7 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
     {
         return IsInsideGrid(state, x, y) &&
                state.GetTile(x, y).Type == TileType.None &&
+               state.CanReceive(x, y) &&
                !IsReserved(x, y, state.Width);
     }
 

@@ -29,6 +29,11 @@ public struct GameState
     /// </summary>
     public Cover[] CoverLayer;
 
+    /// <summary>
+    /// Per-cell lock layer. Each uint packs ref-counted locks via CellLockOps.
+    /// </summary>
+    public uint[] CellLocks;
+
     public int Width;
     public int Height;
     public int TileTypesCount;
@@ -73,6 +78,7 @@ public struct GameState
         Grid = new Tile[size];
         GroundLayer = new Ground[size];
         CoverLayer = new Cover[size];
+        CellLocks = new uint[size];
         Score = 0;
         MoveCount = 0;
         NextTileId = 1;
@@ -99,6 +105,7 @@ public struct GameState
         Array.Copy(Grid, clone.Grid, size);
         Array.Copy(GroundLayer, clone.GroundLayer, size);
         Array.Copy(CoverLayer, clone.CoverLayer, size);
+        Array.Copy(CellLocks, clone.CellLocks, size);
         clone.ObjectiveProgress = new ObjectiveProgress[4];
         Array.Copy(ObjectiveProgress, clone.ObjectiveProgress, 4);
         clone.LevelStatus = LevelStatus;
@@ -163,8 +170,10 @@ public struct GameState
     /// </summary>
     public readonly bool CanInteract(int x, int y)
     {
-        var cover = CoverLayer[y * Width + x];
+        var idx = y * Width + x;
+        var cover = CoverLayer[idx];
         if (CoverRules.BlocksSwap(cover.Type)) return false;
+        if (CellLockOps.IsLocked(CellLocks[idx], CellLockType.Swap)) return false;
 
         var tile = GetTile(x, y);
         if (tile.Type == TileType.None) return false;
@@ -183,8 +192,10 @@ public struct GameState
     /// </summary>
     public readonly bool CanMatch(int x, int y)
     {
-        var cover = CoverLayer[y * Width + x];
-        return !CoverRules.BlocksMatch(cover.Type);
+        var idx = y * Width + x;
+        var cover = CoverLayer[idx];
+        if (CoverRules.BlocksMatch(cover.Type)) return false;
+        return !CellLockOps.IsLocked(CellLocks[idx], CellLockType.Matching);
     }
 
     /// <summary>
@@ -198,14 +209,69 @@ public struct GameState
     /// </summary>
     public readonly bool CanMove(int x, int y)
     {
-        var cover = CoverLayer[y * Width + x];
-        return !CoverRules.BlocksMovement(cover.Type);
+        var idx = y * Width + x;
+        var cover = CoverLayer[idx];
+        if (CoverRules.BlocksMovement(cover.Type)) return false;
+        return !CellLockOps.IsLocked(CellLocks[idx], CellLockType.Drop);
     }
 
     /// <summary>
     /// Returns true if the tile at this position can move (gravity).
     /// </summary>
     public readonly bool CanMove(Position p) => CanMove(p.X, p.Y);
+
+    #endregion
+
+    #region Cell Lock Operations
+
+    public void Lock(int x, int y, CellLockType types)
+    {
+        var idx = y * Width + x;
+        CellLocks[idx] = CellLockOps.Lock(CellLocks[idx], types);
+    }
+
+    public void Lock(Position p, CellLockType types) => Lock(p.X, p.Y, types);
+
+    public void Unlock(int x, int y, CellLockType types)
+    {
+        var idx = y * Width + x;
+        CellLocks[idx] = CellLockOps.Unlock(CellLocks[idx], types);
+    }
+
+    public void Unlock(Position p, CellLockType types) => Unlock(p.X, p.Y, types);
+
+    public readonly bool IsLocked(int x, int y, CellLockType type)
+    {
+        return CellLockOps.IsLocked(CellLocks[y * Width + x], type);
+    }
+
+    public readonly bool IsLocked(Position p, CellLockType type) => IsLocked(p.X, p.Y, type);
+
+    public LockToken AcquireLock(int x, int y, CellLockType types)
+    {
+        var idx = y * Width + x;
+        CellLocks[idx] = CellLockOps.Lock(CellLocks[idx], types);
+        return new LockToken(idx, types);
+    }
+
+    public void ReleaseLock(LockToken token)
+    {
+        CellLocks[token.CellIndex] = CellLockOps.Unlock(CellLocks[token.CellIndex], token.Types);
+    }
+
+    public readonly bool CanReceive(int x, int y)
+    {
+        return !CellLockOps.IsLocked(CellLocks[y * Width + x], CellLockType.Receive);
+    }
+
+    public readonly bool CanReceive(Position p) => CanReceive(p.X, p.Y);
+
+    public readonly bool CanDestroy(int x, int y)
+    {
+        return !CellLockOps.IsLocked(CellLocks[y * Width + x], CellLockType.Indestructible);
+    }
+
+    public readonly bool CanDestroy(Position p) => CanDestroy(p.X, p.Y);
 
     #endregion
 

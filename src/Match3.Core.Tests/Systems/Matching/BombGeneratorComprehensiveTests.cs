@@ -37,17 +37,17 @@ namespace Match3.Core.Tests.Systems.Matching
             return component;
         }
 
-        private int CountBombType(List<Models.Gameplay.MatchGroup> results, BombType type)
+        private int CountBombType(List<Match3.Core.Models.Gameplay.MatchGroup> results, BombType type)
         {
             return results.Count(g => g.SpawnBombType == type);
         }
 
-        private int CountRockets(List<Models.Gameplay.MatchGroup> results)
+        private int CountRockets(List<Match3.Core.Models.Gameplay.MatchGroup> results)
         {
             return results.Count(g => g.SpawnBombType.IsRocket());
         }
 
-        private int CountAreaBombs(List<Models.Gameplay.MatchGroup> results)
+        private int CountAreaBombs(List<Match3.Core.Models.Gameplay.MatchGroup> results)
         {
             return results.Count(g => g.SpawnBombType.IsAreaBomb());
         }
