@@ -396,6 +396,8 @@ namespace Match3.Unity.Bridge
         }
         private readonly HashSet<long> _flyPositionKeys = new();
 
+        private static long PackGridKey(int x, int y) => ((long)x << 32) | (uint)y;
+
         /// <summary>
         /// Tick all active lock timers, release expired ones.
         /// </summary>
