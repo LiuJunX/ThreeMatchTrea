@@ -16,6 +16,7 @@ namespace Match3.Unity.Pools
         private static Mesh _fallbackMesh;
         private static readonly Dictionary<TileType, Material> _materialCache = new();
         private static readonly Dictionary<BombType, Mesh> _bombMeshCache = new();
+        private static readonly Dictionary<BombType, Material[]> _bombMaterialCache = new();
         private static Shader _litShader;
 
         private static RenderTuningSettings _tuning;
@@ -76,6 +77,28 @@ namespace Match3.Unity.Pools
             if (_bombMeshCache.TryGetValue(type, out var cached))
                 return cached;
 
+            LoadBombModel(type);
+            return _bombMeshCache.TryGetValue(type, out cached) ? cached : GetFallbackMesh();
+        }
+
+        /// <summary>
+        /// Get the cached materials array for a bomb type.
+        /// Returns null if the bomb model has no embedded materials.
+        /// </summary>
+        public static Material[] GetBombMaterials(BombType type)
+        {
+            if (type == BombType.None) return null;
+
+            if (!_bombMaterialCache.ContainsKey(type))
+                LoadBombModel(type);
+
+            return _bombMaterialCache.TryGetValue(type, out var mats) ? mats : null;
+        }
+
+        private static void LoadBombModel(BombType type)
+        {
+            if (_bombMeshCache.ContainsKey(type)) return;
+
             var typeName = type.ToString();
             var model = ResourceService.Loader.Load<GameObject>($"Art/Gems/Models/Bomb_{typeName}");
             if (model != null)
@@ -84,15 +107,19 @@ namespace Match3.Unity.Pools
                 if (meshFilter != null)
                 {
                     _bombMeshCache[type] = meshFilter.sharedMesh;
-                    Debug.Log($"[MeshFactory] Loaded Bomb_{typeName} mesh from Resources");
-                    return meshFilter.sharedMesh;
+
+                    // Cache embedded materials from the FBX model
+                    var renderer = model.GetComponentInChildren<MeshRenderer>();
+                    if (renderer != null && renderer.sharedMaterials.Length > 0)
+                        _bombMaterialCache[type] = renderer.sharedMaterials;
+
+                    Debug.Log($"[MeshFactory] Loaded Bomb_{typeName} mesh from Resources ({renderer?.sharedMaterials.Length ?? 0} materials)");
+                    return;
                 }
             }
 
             Debug.LogWarning($"[MeshFactory] Bomb_{typeName} mesh not found, using fallback sphere");
-            var fallback = GetFallbackMesh();
-            _bombMeshCache[type] = fallback;
-            return fallback;
+            _bombMeshCache[type] = GetFallbackMesh();
         }
 
         /// <summary>
@@ -284,6 +311,7 @@ namespace Match3.Unity.Pools
             _blobShadowMesh = null;
 
             _bombMeshCache.Clear();
+            _bombMaterialCache.Clear();
             _tileMeshCache.Clear();
             _fallbackMesh = null;
             _litShader = null;

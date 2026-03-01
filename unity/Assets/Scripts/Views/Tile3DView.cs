@@ -115,16 +115,31 @@ namespace Match3.Unity.Views
                 ? MeshFactory.GetBombMesh(bomb)
                 : MeshFactory.GetTileMesh(type);
 
-            // 6 color types get their own material; others get fallback
-            var isColorType = (type & (TileType.Red | TileType.Green | TileType.Blue |
-                                       TileType.Yellow | TileType.Purple | TileType.Orange)) != 0;
-            _meshRenderer.sharedMaterial = isColorType
-                ? MeshFactory.GetTileMaterial(type)
-                : MeshFactory.GetFallbackMaterial();
+            // Bombs use their own multi-material design from the FBX model
+            ApplyMaterial(type, bomb);
 
             // 棋子在棋盘上投射并接收阴影
             _meshRenderer.shadowCastingMode = ShadowCastingMode.On;
             _meshRenderer.receiveShadows = true;
+        }
+
+        private void ApplyMaterial(TileType type, BombType bomb)
+        {
+            // Bombs use their own multi-material design from the FBX model
+            var bombMats = bomb != BombType.None ? MeshFactory.GetBombMaterials(bomb) : null;
+            if (bombMats != null && bombMats.Length > 0)
+            {
+                _meshRenderer.sharedMaterials = bombMats;
+                return;
+            }
+
+            // 6 color types get their own material; others get fallback
+            var isColorType = (type & (TileType.Red | TileType.Green | TileType.Blue |
+                                       TileType.Yellow | TileType.Purple | TileType.Orange)) != 0;
+            _meshRenderer.sharedMaterials = new[]
+            {
+                isColorType ? MeshFactory.GetTileMaterial(type) : MeshFactory.GetFallbackMaterial()
+            };
         }
 
         /// <summary>
@@ -225,6 +240,7 @@ namespace Match3.Unity.Views
                 _meshFilter.sharedMesh = BombType != BombType.None
                     ? MeshFactory.GetBombMesh(BombType)
                     : MeshFactory.GetTileMesh(TileType);
+                ApplyMaterial(TileType, BombType);
             }
         }
 
