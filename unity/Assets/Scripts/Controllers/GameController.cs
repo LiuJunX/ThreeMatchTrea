@@ -64,6 +64,11 @@ namespace Match3.Unity.Controllers
         public Match3Bridge Bridge => _bridge;
 
         /// <summary>
+        /// UI manager instance for external access (e.g. GameFlowController).
+        /// </summary>
+        public UIManager UI => _uiManager;
+
+        /// <summary>
         /// Board view instance.
         /// </summary>
         public IBoardView BoardView => _boardView;
@@ -225,7 +230,39 @@ namespace Match3.Unity.Controllers
             }
             else if (_uiManager != null)
             {
-                // Re-initialize existing UI with new bridge state
+                _uiManager.ResubscribeToBridge(_bridge);
+                _uiManager.HideResult();
+            }
+
+            _initialized = true;
+        }
+
+        /// <summary>
+        /// Initialize with a named level.
+        /// </summary>
+        public void InitializeWithLevel(string levelId, int seed)
+        {
+            if (_initialized)
+            {
+                Reset();
+            }
+
+            _boardView ??= CreateBoardView();
+
+            _bridge.Initialize(seed, levelId);
+
+            _boardView.Initialize(_bridge);
+            _effectManager.Initialize(_bridge);
+            InitializeObjectiveDisplay();
+            _inputController.Initialize(_bridge);
+
+            if (_enableUI && _uiManager == null)
+            {
+                InitializeUI();
+            }
+            else if (_uiManager != null)
+            {
+                _uiManager.ResubscribeToBridge(_bridge);
                 _uiManager.HideResult();
             }
 

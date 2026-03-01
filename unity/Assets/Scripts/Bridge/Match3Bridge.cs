@@ -180,11 +180,90 @@ namespace Match3.Unity.Bridge
         }
 
         /// <summary>
+        /// Current move limit (for star calculation).
+        /// </summary>
+        public int MoveLimit => _session?.Engine.State.MoveLimit ?? 0;
+
+        /// <summary>
+        /// Current moves remaining.
+        /// </summary>
+        public int MovesRemaining
+        {
+            get
+            {
+                if (_session == null) return 0;
+                var s = _session.Engine.State;
+                return s.MoveLimit - s.MoveCount;
+            }
+        }
+
+        /// <summary>
         /// Initialize the bridge with default or serialized parameters.
         /// </summary>
         public void Initialize()
         {
             Initialize(_width, _height, _seed != 0 ? _seed : System.Environment.TickCount);
+        }
+
+        /// <summary>
+        /// Initialize the bridge with a specific level config.
+        /// </summary>
+        public void Initialize(int seed, string levelId)
+        {
+            if (_initialized)
+            {
+                Cleanup();
+            }
+
+            _seed = seed;
+
+            _factory = new GameServiceBuilder()
+                .UseDefaultServices()
+                .Build();
+
+            LevelConfig levelConfig = null;
+            try
+            {
+                levelConfig = UnityConfigProvider.Instance.GetLevelConfig(levelId);
+                if (levelConfig != null)
+                {
+                    _width = levelConfig.Width;
+                    _height = levelConfig.Height;
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[Match3Bridge] Failed to load level config '{levelId}': {ex.Message}");
+            }
+
+            var config = new GameServiceConfiguration
+            {
+                Width = _width,
+                Height = _height,
+                RngSeed = seed,
+                EnableEventCollection = true
+            };
+            _session = _factory.CreateGameSession(config, levelConfig);
+
+            _choreographer = new Choreographer();
+            _player = new Player();
+
+            var matchFinder = new ClassicMatchFinder(new BombGenerator());
+            var uiRandom = _session.SeedManager.GetRandom(RandomDomain.Main);
+            _autoPlaySelector = new WeightedMoveSelector(matchFinder, uiRandom);
+
+            var state = _session.Engine.State;
+            _player.SyncFromGameState(in state);
+
+            _initialized = true;
+
+            _lastMovesRemaining = -1;
+            _lastScore = -1;
+            _isPaused = false;
+            _isAutoPlaying = false;
+            ReleaseAllLocks();
+
+            Debug.Log($"Match3Bridge initialized: {_width}x{_height}, seed={seed}, level={levelId}");
         }
 
         /// <summary>
@@ -711,12 +790,6 @@ namespace Match3.Unity.Bridge
             _autoPlaySelector = null;
             _initialized = false;
 
-            // Clear events to prevent memory leaks
-            OnMovesChanged = null;
-            OnScoreChanged = null;
-            OnGameEnded = null;
-            OnObjectivesUpdated = null;
-            OnObjectiveCollected = null;
             _lastObjectiveHash = -1;
 
             // Clear static caches to prevent stale references

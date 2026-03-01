@@ -124,6 +124,34 @@ namespace Match3.Unity.UI
         }
 
         /// <summary>
+        /// Re-subscribe to a (potentially new) bridge instance after re-init.
+        /// </summary>
+        public void ResubscribeToBridge(Match3Bridge bridge)
+        {
+            UnsubscribeFromBridgeEvents();
+            _bridge = bridge;
+            SubscribeToBridgeEvents();
+        }
+
+        /// <summary>
+        /// Replace the Restart button action (e.g. to return to level select).
+        /// </summary>
+        public void SetRestartAction(Action action)
+        {
+            if (_resultPanel != null)
+            {
+                _resultPanel.OnRestartClicked -= _onRestartClickedHandler;
+                _onRestartClickedHandler = () => action?.Invoke();
+                _resultPanel.OnRestartClicked += _onRestartClickedHandler;
+            }
+        }
+
+        /// <summary>
+        /// Access the result panel for external wiring (e.g. Next/LevelSelect buttons).
+        /// </summary>
+        public ResultPanel ResultPanel => _resultPanel;
+
+        /// <summary>
         /// Update moves remaining display.
         /// </summary>
         public void UpdateMoves(int remaining)
@@ -145,6 +173,14 @@ namespace Match3.Unity.UI
         public void ShowResult(bool isVictory, int score)
         {
             _resultPanel?.Show(isVictory, score);
+        }
+
+        /// <summary>
+        /// Show game result panel with star rating (flow mode).
+        /// </summary>
+        public void ShowResult(bool isVictory, int score, int stars)
+        {
+            _resultPanel?.Show(isVictory, score, stars);
         }
 
         /// <summary>
