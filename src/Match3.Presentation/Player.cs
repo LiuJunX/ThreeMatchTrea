@@ -121,16 +121,8 @@ public sealed class Player
             _commands.Sort(insertStart, commands.Count, RenderCommandComparers.ComparerByStartTimeThenPriority);
         }
 
-        // Recalculate next command index - find first command not yet started
-        _nextCommandIndex = _commands.Count;
-        for (int i = 0; i < _commands.Count; i++)
-        {
-            if (_commands[i].StartTime >= _currentTime)
-            {
-                _nextCommandIndex = i;
-                break;
-            }
-        }
+        // Recalculate next command index via binary search (O(log n) instead of O(n)).
+        _nextCommandIndex = BinarySearchNextCommand(_currentTime);
     }
 
     /// <summary>
@@ -166,6 +158,17 @@ public sealed class Player
         }
 
         _currentTime = targetTime;
+
+        // When all animations are done and no pending commands remain,
+        // reset time to 0 and trim the command list.
+        // This prevents float precision degradation from unbounded time accumulation
+        // and avoids O(n) scans over completed commands in Append().
+        if (_activeCommands.Count == 0 && _nextCommandIndex >= _commands.Count)
+        {
+            _commands.Clear();
+            _nextCommandIndex = 0;
+            _currentTime = 0;
+        }
     }
 
     private void CompleteFinishedCommands(float targetTime)
@@ -497,6 +500,23 @@ public sealed class Player
     }
 
     #endregion
+
+    /// <summary>
+    /// Binary search for the first command with StartTime >= currentTime.
+    /// </summary>
+    private int BinarySearchNextCommand(float currentTime)
+    {
+        int lo = 0, hi = _commands.Count;
+        while (lo < hi)
+        {
+            int mid = lo + (hi - lo) / 2;
+            if (_commands[mid].StartTime < currentTime)
+                lo = mid + 1;
+            else
+                hi = mid;
+        }
+        return lo;
+    }
 
     private record struct ActiveCommand(RenderCommand Command, float StartedAt);
 }
