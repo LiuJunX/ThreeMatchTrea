@@ -327,6 +327,48 @@ namespace Match3.Unity.Views
             UpdateBlobShadow(_lastShadowWorldPos, _lastShadowCellSize, _lastShadowTileScale, _lastShadowTileZ);
         }
 
+        #region Portal Effects
+
+        private bool _portalActive;
+
+        /// <summary>
+        /// Set portal clip scale for hole zone entry/exit effect.
+        /// </summary>
+        /// <param name="scaleY">0~1 visible ratio.</param>
+        /// <param name="anchorTop">True = shrink from bottom (entering), false = grow from bottom (exiting).</param>
+        /// <param name="cellSize">Cell size for offset calculation.</param>
+        public void SetPortalScale(float scaleY, bool anchorTop, float cellSize)
+        {
+            _portalActive = true;
+            scaleY = Mathf.Clamp01(scaleY);
+            var s = transform.localScale;
+            float fullY = _baseScale.y;
+            if (fullY < 0.001f) fullY = cellSize * TileScaleMultiplier;
+            s.y = fullY * scaleY;
+            transform.localScale = s;
+
+            // Offset position to anchor the visible part at top or bottom
+            float offset = fullY * (1f - scaleY) * 0.5f;
+            var pos = transform.position;
+            if (anchorTop)
+                pos.y += offset; // keep top edge, shrink downward
+            else
+                pos.y -= offset; // keep bottom edge, grow upward
+            transform.position = pos;
+        }
+
+        /// <summary>
+        /// Reset portal scale effect to normal rendering.
+        /// </summary>
+        public void ResetPortalScale()
+        {
+            if (!_portalActive) return;
+            _portalActive = false;
+            transform.localScale = _baseScale;
+        }
+
+        #endregion
+
         #region IPoolable
 
         public void OnSpawn()
@@ -339,6 +381,7 @@ namespace Match3.Unity.Views
             _wasAnimated = false;
             _bounceTime = -1f;
             _highlightTime = 0f;
+            _portalActive = false;
             transform.localScale = Vector3.one;
             transform.localEulerAngles = Vector3.zero;
             _meshRenderer.SetPropertyBlock(null);

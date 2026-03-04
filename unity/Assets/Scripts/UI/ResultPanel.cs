@@ -152,8 +152,8 @@ namespace Match3.Unity.UI
             // Stars display
             if (isVictory && stars > 0)
             {
-                var filled = new string('\u2605', stars);   // ★
-                var empty = new string('\u2606', 3 - stars); // ☆
+                var filled = new string('*', stars);
+                var empty = new string('-', 3 - stars);
                 _starsText.text = filled + empty;
                 _starsText.gameObject.SetActive(true);
             }
@@ -192,6 +192,11 @@ namespace Match3.Unity.UI
         {
             _nextLevelButton.gameObject.SetActive(visible);
             _levelSelectButton.gameObject.SetActive(visible);
+        }
+
+        public void SetNextLevelVisible(bool visible)
+        {
+            _nextLevelButton.gameObject.SetActive(visible);
         }
 
         public bool IsVisible => _isVisible;

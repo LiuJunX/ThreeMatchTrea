@@ -298,17 +298,9 @@ namespace Match3.Unity.Pools
                 _fallbackMaterial = null;
             }
 
-            if (_blobShadowMaterial != null)
-            {
-                Object.Destroy(_blobShadowMaterial);
-                _blobShadowMaterial = null;
-            }
-            if (_blobShadowTexture != null)
-            {
-                Object.Destroy(_blobShadowTexture);
-                _blobShadowTexture = null;
-            }
-            _blobShadowMesh = null;
+            // Note: Do NOT destroy _blobShadowMaterial/_blobShadowTexture/_blobShadowMesh here.
+            // Pooled Tile3DView objects hold references to the blob shadow material created in Awake().
+            // Destroying it turns their shadows magenta on re-use.
 
             _bombMeshCache.Clear();
             _bombMaterialCache.Clear();

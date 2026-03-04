@@ -36,6 +36,19 @@ public class BoardInitializer : IBoardInitializer
                 {
                     // Initialize Tile layer
                     var type = levelConfig.Grid[i];
+
+                    // Mark permanent holes (TileType.None in level config)
+                    if (type == TileType.None)
+                    {
+                        state.Holes[y * state.Width + x] = true;
+                    }
+
+                    // Normal = "playable cell with random color"
+                    if (type == TileType.Normal)
+                    {
+                        type = _tileGenerator.GenerateNonMatchingTile(ref state, x, y);
+                    }
+
                     var bomb = BombType.None;
                     if (levelConfig.Bombs != null && i < levelConfig.Bombs.Length)
                     {

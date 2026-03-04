@@ -4,12 +4,23 @@
   "name": "Tutorial 1",
   "width": 8,
   "height": 8,
-  "moveLimit": 20,
-  "targetDifficulty": 0.3,
+  "moveLimit": 25,
+  "targetDifficulty": 0.2,
   "objectives": [
     {
-      "type": "Score",
-      "target": 1000
+      "targetLayer": "Tile",
+      "elementType": 128,
+      "targetCount": 15
+    },
+    {
+      "targetLayer": "Tile",
+      "elementType": 512,
+      "targetCount": 15
+    },
+    {
+      "targetLayer": "Tile",
+      "elementType": 1024,
+      "targetCount": 15
     }
   ],
   "grid": null,

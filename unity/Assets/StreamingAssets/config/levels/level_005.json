@@ -1,0 +1,25 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_005",
+  "name": "Butterfly",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 28,
+  "targetDifficulty": 0.6,
+  "objectives": [
+    { "targetLayer": "Tile", "elementType": 128, "targetCount": 35 },
+    { "targetLayer": "Tile", "elementType": 512, "targetCount": 35 },
+    { "targetLayer": "Tile", "elementType": 2048, "targetCount": 35 }
+  ],
+  "grid": [
+    1, 1, 1, 0, 0, 0, 1, 1, 1,
+    1, 1, 1, 1, 0, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1,
+    0, 1, 1, 1, 1, 1, 1, 1, 0,
+    0, 0, 1, 1, 1, 1, 1, 0, 0,
+    0, 1, 1, 1, 1, 1, 1, 1, 0,
+    1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 0, 1, 1, 1, 1,
+    1, 1, 1, 0, 0, 0, 1, 1, 1
+  ]
+}

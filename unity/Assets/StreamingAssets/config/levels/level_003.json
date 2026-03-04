@@ -1,0 +1,24 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_003",
+  "name": "Diamond",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 22,
+  "targetDifficulty": 0.45,
+  "objectives": [
+    { "targetLayer": "Tile", "elementType": 128, "targetCount": 25 },
+    { "targetLayer": "Tile", "elementType": 4096, "targetCount": 25 }
+  ],
+  "grid": [
+    0, 0, 0, 0, 1, 0, 0, 0, 0,
+    0, 0, 0, 1, 1, 1, 0, 0, 0,
+    0, 0, 1, 1, 1, 1, 1, 0, 0,
+    0, 1, 1, 1, 1, 1, 1, 1, 0,
+    1, 1, 1, 1, 1, 1, 1, 1, 1,
+    0, 1, 1, 1, 1, 1, 1, 1, 0,
+    0, 0, 1, 1, 1, 1, 1, 0, 0,
+    0, 0, 0, 1, 1, 1, 0, 0, 0,
+    0, 0, 0, 0, 1, 0, 0, 0, 0
+  ]
+}

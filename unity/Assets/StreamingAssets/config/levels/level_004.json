@@ -1,0 +1,25 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_004",
+  "name": "Cross",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 20,
+  "targetDifficulty": 0.55,
+  "objectives": [
+    { "targetLayer": "Tile", "elementType": 512, "targetCount": 30 },
+    { "targetLayer": "Tile", "elementType": 1024, "targetCount": 30 },
+    { "targetLayer": "Tile", "elementType": 256, "targetCount": 30 }
+  ],
+  "grid": [
+    0, 0, 0, 1, 1, 1, 0, 0, 0,
+    0, 0, 0, 1, 1, 1, 0, 0, 0,
+    0, 0, 0, 1, 1, 1, 0, 0, 0,
+    1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1,
+    0, 0, 0, 1, 1, 1, 0, 0, 0,
+    0, 0, 0, 1, 1, 1, 0, 0, 0,
+    0, 0, 0, 1, 1, 1, 0, 0, 0
+  ]
+}

@@ -30,6 +30,7 @@ namespace Match3.Unity.Controllers
         private PlayerProgress _progress;
         private string[] _allLevelIds;
         private string _currentLevelId;
+        private int _lastStars;
 
         private void Awake()
         {
@@ -40,6 +41,7 @@ namespace Match3.Unity.Controllers
 
             // Load level IDs
             _allLevelIds = UnityConfigProvider.Instance.GetLevelIds();
+            if (_allLevelIds == null) _allLevelIds = Array.Empty<string>();
             Array.Sort(_allLevelIds, StringComparer.Ordinal);
 
             // Ensure first level is always unlocked
@@ -136,9 +138,16 @@ namespace Match3.Unity.Controllers
                     break;
                 case FlowState.Playing:
                     _gameController.Bridge.OnGameEnded -= OnGameEnded;
+                    var topPanel = _gameController.UI?.TopPanel;
+                    if (topPanel != null)
+                    {
+                        topPanel.OnQuitClicked -= OnQuitLevel;
+                        topPanel.SetQuitButtonVisible(false);
+                    }
                     break;
                 case FlowState.Result:
-                    // Result panel hidden by UIManager when transitioning away
+                    UnwireResultButtons();
+                    _gameController.UI?.HideResult();
                     break;
             }
         }
@@ -163,8 +172,6 @@ namespace Match3.Unity.Controllers
                     break;
 
                 case FlowState.Result:
-                    // ResultPanel is shown by UIManager via OnGameEnded bridge event;
-                    // we just need to wire the flow buttons
                     WireResultButtons();
                     break;
             }
@@ -183,6 +190,17 @@ namespace Match3.Unity.Controllers
             int seed = Environment.TickCount;
             _gameController.InitializeWithLevel(levelId, seed);
 
+            // Disable UIManager's auto-result (flow mode handles it)
+            _gameController.UI?.SetAutoResultEnabled(false);
+
+            // Show quit button and wire it
+            var topPanel = _gameController.UI?.TopPanel;
+            if (topPanel != null)
+            {
+                topPanel.SetQuitButtonVisible(true);
+                topPanel.OnQuitClicked += OnQuitLevel;
+            }
+
             // Wire game-end callback
             _gameController.Bridge.OnGameEnded += OnGameEnded;
 
@@ -195,12 +213,12 @@ namespace Match3.Unity.Controllers
 
         private void OnGameEnded(bool isVictory, int score)
         {
-            int stars = 0;
+            _lastStars = 0;
             if (isVictory)
             {
                 var bridge = _gameController.Bridge;
-                stars = PlayerProgress.CalculateStars(bridge.MovesRemaining, bridge.MoveLimit);
-                _progress.SetBestStars(_currentLevelId, stars);
+                _lastStars = PlayerProgress.CalculateStars(bridge.MovesRemaining, bridge.MoveLimit);
+                _progress.SetBestStars(_currentLevelId, _lastStars);
 
                 // Unlock next level
                 int idx = Array.IndexOf(_allLevelIds, _currentLevelId);
@@ -210,23 +228,28 @@ namespace Match3.Unity.Controllers
                 _progressService.Save(_progress);
             }
 
-            // Show result with stars (overrides UIManager's auto-show)
-            _gameController.UI?.ShowResult(isVictory, score, stars);
+            // Show result with stars
+            _gameController.UI?.ShowResult(isVictory, score, _lastStars);
 
             TransitionTo(FlowState.Result);
         }
 
+        private bool HasNextLevel()
+        {
+            int idx = Array.IndexOf(_allLevelIds, _currentLevelId);
+            return idx >= 0 && idx + 1 < _allLevelIds.Length;
+        }
+
         private void WireResultButtons()
         {
-            var ui = _gameController.UI;
-            if (ui == null) return;
-
-            var resultPanel = ui.ResultPanel;
+            var resultPanel = _gameController.UI?.ResultPanel;
             if (resultPanel == null) return;
 
+            // Show Level Select always; show Next Level only if there IS a next level
             resultPanel.SetFlowButtonsVisible(true);
+            if (!HasNextLevel())
+                resultPanel.SetNextLevelVisible(false);
 
-            // Temporarily wire flow actions
             resultPanel.OnRestartClicked += OnResultRestart;
             resultPanel.OnNextLevelClicked += OnResultNextLevel;
             resultPanel.OnLevelSelectClicked += OnResultLevelSelect;
@@ -244,13 +267,11 @@ namespace Match3.Unity.Controllers
 
         private void OnResultRestart()
         {
-            UnwireResultButtons();
             TransitionTo(FlowState.Playing);
         }
 
         private void OnResultNextLevel()
         {
-            UnwireResultButtons();
             int idx = Array.IndexOf(_allLevelIds, _currentLevelId);
             if (idx >= 0 && idx + 1 < _allLevelIds.Length)
                 _currentLevelId = _allLevelIds[idx + 1];
@@ -259,13 +280,25 @@ namespace Match3.Unity.Controllers
 
         private void OnResultLevelSelect()
         {
-            UnwireResultButtons();
+            TransitionTo(FlowState.LevelSelect);
+        }
+
+        private void OnQuitLevel()
+        {
             TransitionTo(FlowState.LevelSelect);
         }
 
         private void OnDestroy()
         {
+            // Clean up bridge subscription if destroyed while playing
+            if (_currentState == FlowState.Playing && _gameController != null)
+                _gameController.Bridge.OnGameEnded -= OnGameEnded;
+
             UnwireResultButtons();
+
+            // Destroy GameController (it's not a child of this transform)
+            if (_gameController != null)
+                Destroy(_gameController.gameObject);
         }
     }
 }

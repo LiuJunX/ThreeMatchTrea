@@ -105,13 +105,16 @@ namespace Match3.Unity.UI
             _resultPanel.Hide();
         }
 
+        private bool _autoResultEnabled = true;
+
         private void SubscribeToBridgeEvents()
         {
             if (_bridge == null) return;
 
             _bridge.OnMovesChanged += UpdateMoves;
             _bridge.OnScoreChanged += UpdateScore;
-            _bridge.OnGameEnded += ShowResult;
+            if (_autoResultEnabled)
+                _bridge.OnGameEnded += ShowResult;
         }
 
         private void UnsubscribeFromBridgeEvents()
@@ -121,6 +124,22 @@ namespace Match3.Unity.UI
             _bridge.OnMovesChanged -= UpdateMoves;
             _bridge.OnScoreChanged -= UpdateScore;
             _bridge.OnGameEnded -= ShowResult;
+        }
+
+        /// <summary>
+        /// Disable UIManager's automatic result display (flow mode handles it).
+        /// Must be called before Initialize or ResubscribeToBridge.
+        /// </summary>
+        public void SetAutoResultEnabled(bool enabled)
+        {
+            if (_autoResultEnabled == enabled) return;
+            _autoResultEnabled = enabled;
+
+            if (_bridge == null) return;
+            if (!enabled)
+                _bridge.OnGameEnded -= ShowResult;
+            else
+                _bridge.OnGameEnded += ShowResult;
         }
 
         /// <summary>
@@ -150,6 +169,11 @@ namespace Match3.Unity.UI
         /// Access the result panel for external wiring (e.g. Next/LevelSelect buttons).
         /// </summary>
         public ResultPanel ResultPanel => _resultPanel;
+
+        /// <summary>
+        /// Access the top panel for external wiring (e.g. Quit button).
+        /// </summary>
+        public TopPanel TopPanel => _topPanel;
 
         /// <summary>
         /// Update moves remaining display.

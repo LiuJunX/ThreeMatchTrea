@@ -54,8 +54,9 @@ namespace Match3.Unity.UI
                 layoutRect, "PLAY", () => OnPlayClicked?.Invoke(),
                 new Color(0.3f, 0.6f, 0.3f), Color.white, 36, "PlayButton");
             var btnLayout = _playButton.gameObject.AddComponent<LayoutElement>();
-            btnLayout.preferredWidth = 200;
-            btnLayout.preferredHeight = 70;
+            btnLayout.preferredWidth = 250;
+            btnLayout.preferredHeight = 80;
+            btnLayout.minWidth = 250;
         }
 
         public void Show() => _canvas.gameObject.SetActive(true);

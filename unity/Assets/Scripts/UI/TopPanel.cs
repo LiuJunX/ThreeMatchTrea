@@ -1,3 +1,4 @@
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -18,9 +19,12 @@ namespace Match3.Unity.UI
         private HorizontalLayoutGroup _layout;
         private TextMeshProUGUI _movesText;
         private TextMeshProUGUI _scoreText;
+        private Button _quitButton;
 
         private int _currentMoves;
         private int _currentScore;
+
+        public event Action OnQuitClicked;
 
         /// <summary>
         /// Initialize the top panel.
@@ -45,6 +49,15 @@ namespace Match3.Unity.UI
             _layout.childControlHeight = true;
             _layout.childForceExpandWidth = false;
             _layout.childForceExpandHeight = false;
+
+            // Quit button (hidden by default, shown in flow mode)
+            _quitButton = UIFactory.CreateButton(
+                transform, "< Quit", () => OnQuitClicked?.Invoke(),
+                new Color(0.4f, 0.4f, 0.45f), Color.white, 18, "QuitButton");
+            var quitLayout = _quitButton.gameObject.AddComponent<LayoutElement>();
+            quitLayout.preferredWidth = 80;
+            quitLayout.preferredHeight = 40;
+            _quitButton.gameObject.SetActive(false);
 
             // Spacer to push moves/score to right
             var spacer = new GameObject("Spacer");
@@ -108,5 +121,12 @@ namespace Match3.Unity.UI
             _scoreText.text = $"Score: {score:N0}";
         }
 
+        /// <summary>
+        /// Show or hide the quit button (used by flow mode).
+        /// </summary>
+        public void SetQuitButtonVisible(bool visible)
+        {
+            _quitButton.gameObject.SetActive(visible);
+        }
     }
 }

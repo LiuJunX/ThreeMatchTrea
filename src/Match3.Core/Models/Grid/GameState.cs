@@ -35,6 +35,11 @@ public struct GameState
     /// </summary>
     public uint[] CellLocks;
 
+    /// <summary>
+    /// Per-cell hole mask. True = permanent hole (tiles pass through, never land).
+    /// </summary>
+    public bool[] Holes;
+
     public int Width;
     public int Height;
     public int TileTypesCount;
@@ -80,6 +85,7 @@ public struct GameState
         GroundLayer = new Ground[size];
         CoverLayer = new Cover[size];
         CellLocks = new uint[size];
+        Holes = new bool[size];
         Score = 0;
         MoveCount = 0;
         NextTileId = 1;
@@ -107,6 +113,7 @@ public struct GameState
         Array.Copy(GroundLayer, clone.GroundLayer, size);
         Array.Copy(CoverLayer, clone.CoverLayer, size);
         Array.Copy(CellLocks, clone.CellLocks, size);
+        Array.Copy(Holes, clone.Holes, size);
         clone.ObjectiveProgress = new ObjectiveProgress[4];
         Array.Copy(ObjectiveProgress, clone.ObjectiveProgress, 4);
         clone.LevelStatus = LevelStatus;
@@ -279,6 +286,16 @@ public struct GameState
     #endregion
 
     #region Utility
+
+    /// <summary>
+    /// Returns true if the cell is a permanent hole (tiles pass through).
+    /// </summary>
+    public readonly bool IsHole(int x, int y) => Holes[y * Width + x];
+
+    /// <summary>
+    /// Returns true if the cell is a permanent hole (tiles pass through).
+    /// </summary>
+    public readonly bool IsHole(Position p) => Holes[p.Y * Width + p.X];
 
     public readonly int Index(int x, int y) => y * Width + x;
 

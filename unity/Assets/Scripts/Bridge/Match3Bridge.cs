@@ -78,6 +78,24 @@ namespace Match3.Unity.Bridge
         public int Height => _height;
 
         /// <summary>
+        /// Grid layout mask: layout[row, col] = true if cell is playable.
+        /// Returns null if not initialized.
+        /// </summary>
+        public bool[,] GridLayout
+        {
+            get
+            {
+                if (_session == null) return null;
+                var state = _session.Engine.State;
+                var layout = new bool[state.Height, state.Width];
+                for (int y = 0; y < state.Height; y++)
+                    for (int x = 0; x < state.Width; x++)
+                        layout[y, x] = state.Grid[y * state.Width + x].Type != Core.Models.Enums.TileType.None;
+                return layout;
+            }
+        }
+
+        /// <summary>
         /// Current visual state for rendering.
         /// </summary>
         public VisualState VisualState => _player?.VisualState;
@@ -104,6 +122,7 @@ namespace Match3.Unity.Bridge
         private bool _isAutoPlaying;
         private int _lastMovesRemaining = -1;
         private int _lastScore = -1;
+        private bool _gameEndFired;
 
         /// <summary>
         /// Game simulation speed multiplier (0.1x - 5.0x).
@@ -261,6 +280,7 @@ namespace Match3.Unity.Bridge
             _lastScore = -1;
             _isPaused = false;
             _isAutoPlaying = false;
+            _gameEndFired = false;
             ReleaseAllLocks();
 
             Debug.Log($"Match3Bridge initialized: {_width}x{_height}, seed={seed}, level={levelId}");
@@ -332,6 +352,7 @@ namespace Match3.Unity.Bridge
             _lastScore = -1;
             _isPaused = false;
             _isAutoPlaying = false;
+            _gameEndFired = false;
             ReleaseAllLocks();
 
             Debug.Log($"Match3Bridge initialized: {width}x{height}, seed={seed}");
@@ -646,6 +667,14 @@ namespace Match3.Unity.Bridge
 
             // Check objectives changed
             CheckObjectiveChanges(in state);
+
+            // Check level completed (one-shot)
+            if (!_gameEndFired && state.LevelStatus != LevelStatus.InProgress)
+            {
+                _gameEndFired = true;
+                bool isVictory = state.LevelStatus == LevelStatus.Victory;
+                OnGameEnded?.Invoke(isVictory, state.Score);
+            }
         }
 
         private void CheckObjectiveChanges(in GameState state)
@@ -768,6 +797,29 @@ namespace Match3.Unity.Bridge
 
             var tile = state.GetTile(pos.X, pos.Y);
             return tile.Type != Core.Models.Enums.TileType.None ? tile.Id : -1;
+        }
+
+        /// <summary>
+        /// Get the hole zone for a column (entryY, exitY).
+        /// Returns null if the column has no holes.
+        /// </summary>
+        public (int entryY, int exitY)? GetColumnHoleZone(int column)
+        {
+            if (!_initialized || _session == null) return null;
+
+            var state = _session.Engine.State;
+            if (state.Holes == null || column < 0 || column >= state.Width) return null;
+
+            for (int y = 0; y < state.Height; y++)
+            {
+                if (state.IsHole(column, y))
+                {
+                    int exitY = Core.Systems.Physics.GravityTargetResolver.FindHoleZoneExit(in state, column, y);
+                    return (y, exitY);
+                }
+            }
+
+            return null;
         }
 
         private static bool AreAdjacent(Position a, Position b)

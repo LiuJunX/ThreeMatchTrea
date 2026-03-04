@@ -32,6 +32,9 @@ public class RealtimeRefillSystem : IRefillSystem
 
         for (int x = 0; x < state.Width; x++)
         {
+            // Don't spawn in hole cells
+            if (state.IsHole(x, 0)) continue;
+
             // Only spawn if the spawn point (0) is empty and can receive
             if (state.GetTile(x, 0).Type == TileType.None && state.CanReceive(x, 0))
             {

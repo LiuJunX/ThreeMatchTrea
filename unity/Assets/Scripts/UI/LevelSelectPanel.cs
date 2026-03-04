@@ -82,7 +82,7 @@ namespace Match3.Unity.UI
 
             // Mask
             var maskImage = scrollGo.AddComponent<Image>();
-            maskImage.color = Color.clear;
+            maskImage.color = Color.white; // Mask needs non-zero alpha for stencil
             scrollGo.AddComponent<Mask>().showMaskGraphic = false;
 
             // Content container
@@ -140,8 +140,8 @@ namespace Match3.Unity.UI
             var rect = go.AddComponent<RectTransform>();
 
             var bgColor = unlocked
-                ? new Color(0.2f, 0.25f, 0.35f, 0.95f)
-                : new Color(0.15f, 0.15f, 0.18f, 0.95f);
+                ? new Color(0.25f, 0.35f, 0.55f, 1f)
+                : new Color(0.2f, 0.2f, 0.25f, 1f);
             var bgImage = go.AddComponent<Image>();
             bgImage.color = bgColor;
 
@@ -166,20 +166,19 @@ namespace Match3.Unity.UI
             Color starsColor;
             if (!unlocked)
             {
-                starsStr = "\U0001F512"; // lock emoji
-                starsColor = Color.gray;
+                starsStr = "LOCKED";
+                starsColor = new Color(0.6f, 0.6f, 0.6f);
             }
             else if (stars > 0)
             {
-                var filled = new string('\u2605', stars);
-                var empty = new string('\u2606', 3 - stars);
-                starsStr = filled + empty;
+                // Use * for filled, - for empty (safe for all fonts)
+                starsStr = new string('*', stars) + new string('-', 3 - stars);
                 starsColor = new Color(1f, 0.85f, 0.2f);
             }
             else
             {
-                starsStr = "\u2606\u2606\u2606";
-                starsColor = new Color(0.5f, 0.5f, 0.5f);
+                starsStr = "- - -";
+                starsColor = new Color(0.6f, 0.6f, 0.6f);
             }
 
             var starText = UIFactory.CreateText(
@@ -195,8 +194,8 @@ namespace Match3.Unity.UI
                 btn.targetGraphic = bgImage;
                 var colors = btn.colors;
                 colors.normalColor = bgColor;
-                colors.highlightedColor = new Color(0.3f, 0.35f, 0.5f);
-                colors.pressedColor = new Color(0.15f, 0.2f, 0.3f);
+                colors.highlightedColor = new Color(0.35f, 0.45f, 0.65f);
+                colors.pressedColor = new Color(0.2f, 0.25f, 0.4f);
                 colors.selectedColor = bgColor;
                 btn.colors = colors;
 

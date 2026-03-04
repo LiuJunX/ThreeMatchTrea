@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Physics;
 using Match3.Presentation;
 using Match3.Unity.Bridge;
 using Match3.Unity.Pools;
@@ -37,6 +38,14 @@ namespace Match3.Unity.Views
 
         private ObjectiveDisplayController _objectiveDisplay;
 
+        // Per-column hole zone info for portal visual effects
+        private struct HoleZone
+        {
+            public int EntryY; // first hole row (from top, grid coords)
+            public int ExitY;  // last hole row
+        }
+        private readonly Dictionary<int, HoleZone> _columnHoleZones = new();
+
         private static Cubemap _reflectionCubemap;
 
         public int ActiveTileCount => _activeTiles.Count;
@@ -58,59 +67,73 @@ namespace Match3.Unity.Views
         {
             _bridge = bridge;
 
-            if (_viewInitialized) return;
+            if (!_viewInitialized)
+            {
+                // Auto-boot render tuning (no manual scene wiring required).
+                // If a RenderTuningSettings asset exists, it will be applied immediately.
+                RenderTuningRuntime.EnsureController();
 
-            // Auto-boot render tuning (no manual scene wiring required).
-            // If a RenderTuningSettings asset exists, it will be applied immediately.
-            RenderTuningRuntime.EnsureController();
+                // Setup lighting controller (owns key/fill/rim/selection lights)
+                var lightingGo = new GameObject("BoardLighting");
+                lightingGo.transform.SetParent(transform, false);
+                _lightingController = lightingGo.AddComponent<BoardLightingController>();
+                _lightingController.Initialize();
 
-            // Setup lighting controller (owns key/fill/rim/selection lights)
-            var lightingGo = new GameObject("BoardLighting");
-            lightingGo.transform.SetParent(transform, false);
-            _lightingController = lightingGo.AddComponent<BoardLightingController>();
-            _lightingController.Initialize();
+                // Setup environment (ambient, reflections, camera background)
+                SetupEnvironment();
 
-            // Setup environment (ambient, reflections, camera background)
-            SetupEnvironment();
+                _tileContainer = new GameObject("TileContainer3D").transform;
+                _tileContainer.SetParent(transform, false);
 
-            _tileContainer = new GameObject("TileContainer3D").transform;
-            _tileContainer.SetParent(transform, false);
+                _projectileContainer = new GameObject("ProjectileContainer3D").transform;
+                _projectileContainer.SetParent(transform, false);
 
-            _projectileContainer = new GameObject("ProjectileContainer3D").transform;
-            _projectileContainer.SetParent(transform, false);
+                var (tileInitial, tileMax) = GetPoolSize("tiles", 64, 128);
+                var (projInitial, projMax) = GetPoolSize("projectiles", 5, 20);
 
-            var (tileInitial, tileMax) = GetPoolSize("tiles", 64, 128);
-            var (projInitial, projMax) = GetPoolSize("projectiles", 5, 20);
+                _tilePool = new ObjectPool<Tile3DView>(
+                    factory: () => CreateTile3DView(_tileContainer),
+                    parent: _tileContainer,
+                    initialSize: tileInitial,
+                    maxSize: tileMax
+                );
 
-            _tilePool = new ObjectPool<Tile3DView>(
-                factory: () => CreateTile3DView(_tileContainer),
-                parent: _tileContainer,
-                initialSize: tileInitial,
-                maxSize: tileMax
-            );
+                _projectilePool = new ObjectPool<Projectile3DView>(
+                    factory: () => CreateProjectile3DView(_projectileContainer),
+                    parent: _projectileContainer,
+                    initialSize: projInitial,
+                    maxSize: projMax
+                );
 
-            _projectilePool = new ObjectPool<Projectile3DView>(
-                factory: () => CreateProjectile3DView(_projectileContainer),
-                parent: _projectileContainer,
-                initialSize: projInitial,
-                maxSize: projMax
-            );
+                _viewInitialized = true;
+            }
 
-            // Build board floor mesh
-            BuildBoardFloor();
-            BuildBoardVignette();
-
-            _viewInitialized = true;
+            // Always rebuild floor and vignette (board size/shape may change between levels)
+            RebuildBoardFloor();
+            RebuildBoardVignette();
+            BuildHoleZones();
         }
 
-        private void BuildBoardFloor()
+        private void RebuildBoardFloor()
         {
+            if (_boardFloor != null)
+            {
+                Destroy(_boardFloor);
+                _boardFloor = null;
+            }
+
             var width = _bridge.Width;
             var height = _bridge.Height;
             var cellSize = _bridge.CellSize;
             var origin = _bridge.BoardOrigin;
 
-            var mesh = BuildBoardMesh(width, height, cellSize, origin);
+            // Use actual grid layout from level config (supports holes/cutouts)
+            var layout = _bridge.GridLayout;
+            Mesh mesh;
+            if (layout != null)
+                mesh = BoardMeshBuilder.Build(layout, cellSize, origin, height);
+            else
+                mesh = BoardMeshBuilder.BuildRectangular(width, height, cellSize, origin);
 
             _boardFloor = new GameObject("BoardFloor");
             _boardFloor.transform.SetParent(transform, false);
@@ -121,24 +144,6 @@ namespace Match3.Unity.Views
             var floorRenderer = _boardFloor.AddComponent<MeshRenderer>();
             floorRenderer.materials = BoardMeshBuilder.GetBoardMaterials();
             floorRenderer.receiveShadows = true; // 棋盘接收棋子投影
-        }
-
-        private static Mesh BuildBoardMesh(int width, int height, float cellSize, Vector2 origin)
-        {
-#if UNITY_EDITOR
-            // Editor: change testShape to debug irregular layouts
-            // 0=rect, 1=L, 2=cross, 3=diamond, 4=U, 5=donut
-            // 6=hole1, 7=hole2x2, 8=single_row, 9=single_col
-#pragma warning disable 0162
-            const int testShape = 0;
-            if (testShape != 0)
-            {
-                var layout = BoardTestLayouts.Get(testShape, height, width);
-                return BoardMeshBuilder.Build(layout, cellSize, origin, height);
-            }
-#pragma warning restore 0162
-#endif
-            return BoardMeshBuilder.BuildRectangular(width, height, cellSize, origin);
         }
 
         private void SetupEnvironment()
@@ -233,9 +238,13 @@ namespace Match3.Unity.Views
         private static Material _vignetteMaterial;
         private static Texture2D _vignetteTexture;
 
-        private void BuildBoardVignette()
+        private void RebuildBoardVignette()
         {
-            if (_boardVignette != null) return;
+            if (_boardVignette != null)
+            {
+                Destroy(_boardVignette);
+                _boardVignette = null;
+            }
 
             var bounds = CoordinateConverter.GetBoardBounds(_bridge.Width, _bridge.Height, _bridge.CellSize, _bridge.BoardOrigin);
 
@@ -422,6 +431,9 @@ namespace Match3.Unity.Views
             // Update selection highlight
             UpdateSelectionHighlight();
 
+            // Portal visual effects for tiles falling through holes
+            UpdatePortalEffects(cellSize, origin, height);
+
             // Render projectiles
             RenderProjectiles(state, cellSize, origin, height);
         }
@@ -592,6 +604,85 @@ namespace Match3.Unity.Views
             go.AddComponent<MeshRenderer>();
             var projView = go.AddComponent<Projectile3DView>();
             return projView;
+        }
+
+        /// <summary>
+        /// Scan each column for contiguous hole zones (from game state Holes array).
+        /// </summary>
+        private void BuildHoleZones()
+        {
+            _columnHoleZones.Clear();
+
+            var state = _bridge.CurrentState;
+            if (state.Holes == null) return;
+
+            for (int x = 0; x < state.Width; x++)
+            {
+                // Find first hole in column
+                for (int y = 0; y < state.Height; y++)
+                {
+                    if (state.IsHole(x, y))
+                    {
+                        int exitY = GravityTargetResolver.FindHoleZoneExit(in state, x, y);
+                        _columnHoleZones[x] = new HoleZone { EntryY = y, ExitY = exitY };
+                        break; // one hole zone per column for now
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Apply portal visual effects to tiles falling through hole zones.
+        /// Uses pure scale clipping on the real tile — no ghost duplicates.
+        /// Entry: tile shrinks into hole (top-anchored).
+        /// Inside: tile invisible.
+        /// Exit: tile grows out of hole (bottom-anchored) as it physically arrives.
+        /// </summary>
+        private void UpdatePortalEffects(float cellSize, Vector2 origin, int height)
+        {
+            if (_columnHoleZones.Count == 0) return;
+
+            foreach (var kvp in _activeTiles)
+            {
+                var tileView = kvp.Value;
+                if (!tileView.gameObject.activeSelf) continue;
+
+                var worldPos = tileView.transform.position;
+                var gridPos = CoordinateConverter.WorldToGridFloat(worldPos, cellSize, origin, height);
+                int col = Mathf.RoundToInt(gridPos.X);
+
+                if (!_columnHoleZones.TryGetValue(col, out var zone)) continue;
+
+                float tileGridY = gridPos.Y;
+                float entryStart = zone.EntryY - 1.0f; // one cell above first hole
+                float entryEnd = (float)zone.EntryY;    // first hole row
+                int exitGridY = zone.ExitY + 1;          // first non-hole row below
+                float exitStart = (float)zone.ExitY;     // last hole row (emerge starts here)
+                float exitEnd = (float)exitGridY;         // first non-hole row (fully emerged)
+
+                // 1. Entry phase: tile shrinking into hole (top-anchored)
+                if (tileGridY > entryStart && tileGridY < entryEnd)
+                {
+                    float progress = Mathf.Clamp01((tileGridY - entryStart) / (entryEnd - entryStart));
+                    tileView.SetPortalScale(1f - progress, anchorTop: true, cellSize);
+                }
+                // 2. Inside hole: fully hidden
+                else if (tileGridY >= entryEnd && tileGridY < exitStart)
+                {
+                    tileView.SetPortalScale(0f, anchorTop: true, cellSize);
+                }
+                // 3. Exit phase: tile emerging from hole (bottom-anchored)
+                else if (tileGridY >= exitStart && tileGridY < exitEnd)
+                {
+                    float progress = Mathf.Clamp01((tileGridY - exitStart) / (exitEnd - exitStart));
+                    tileView.SetPortalScale(progress, anchorTop: false, cellSize);
+                }
+                // 4. Normal: not in portal zone
+                else
+                {
+                    tileView.ResetPortalScale();
+                }
+            }
         }
 
         private void OnDestroy()

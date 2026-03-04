@@ -213,6 +213,13 @@ public class RealtimeGravitySystem : IPhysicsSimulation
 
         if (HasMovedToNewCell(state, visualX, visualY, currentX, currentY))
         {
+            // Don't snap to hole cells — tile passes through
+            if (state.IsHole(visualX, visualY))
+            {
+                state.SetTile(currentX, currentY, tile);
+                return;
+            }
+
             var targetSlot = state.GetTile(visualX, visualY);
             if (targetSlot.Type == TileType.None)
             {
@@ -234,13 +241,14 @@ public class RealtimeGravitySystem : IPhysicsSimulation
 
     /// <summary>
     /// Sync dynamic cover when a tile moves to a new position.
+    /// Dynamic covers should not enter hole cells.
     /// </summary>
     private void SyncDynamicCover(ref GameState state, int fromX, int fromY, int toX, int toY)
     {
         var cover = state.GetCover(fromX, fromY);
 
-        // Only move if cover is dynamic
-        if (cover.Type != CoverType.None && cover.IsDynamic)
+        // Only move if cover is dynamic and destination is not a hole
+        if (cover.Type != CoverType.None && cover.IsDynamic && !state.IsHole(toX, toY))
         {
             state.SetCover(toX, toY, cover);
             state.SetCover(fromX, fromY, Cover.Empty);

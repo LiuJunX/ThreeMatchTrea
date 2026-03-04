@@ -21,6 +21,9 @@ namespace Match3.Unity.Controllers
 
         private void Awake()
         {
+            // Skip if disabled (GameFlowController may coexist on same object)
+            if (!enabled) return;
+
             // Ensure game runs when editor loses focus (needed for MCP automation)
             Application.runInBackground = true;
 

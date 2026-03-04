@@ -68,6 +68,11 @@ namespace Match3.Unity.Pools
         {
             if (item == null) return;
 
+            // Re-parent back to pool parent (may have been reparented while active,
+            // e.g., by ObjectiveDisplayController fly-to-objective animation)
+            if (_parent != null && item.transform.parent != _parent)
+                item.transform.SetParent(_parent, false);
+
             item.OnDespawn();
             item.gameObject.SetActive(false);
 

@@ -31,6 +31,9 @@ public sealed record GameStateSnapshot
     /// <summary>Flattened ground layer array.</summary>
     public Ground[] GroundLayers { get; init; } = System.Array.Empty<Ground>();
 
+    /// <summary>Per-cell hole mask (static topology).</summary>
+    public bool[] Holes { get; init; } = System.Array.Empty<bool>();
+
     /// <summary>Next tile ID to assign.</summary>
     public int NextTileId { get; init; }
 
@@ -51,6 +54,8 @@ public sealed record GameStateSnapshot
         var coverLayers = new Cover[size];
         var groundLayers = new Ground[size];
 
+        var holes = new bool[size];
+
         for (int y = 0; y < state.Height; y++)
         {
             for (int x = 0; x < state.Width; x++)
@@ -61,6 +66,7 @@ public sealed record GameStateSnapshot
                 bombTypes[index] = tile.Bomb;
                 coverLayers[index] = state.GetCover(x, y);
                 groundLayers[index] = state.GetGround(x, y);
+                holes[index] = state.Holes[index];
             }
         }
 
@@ -73,6 +79,7 @@ public sealed record GameStateSnapshot
             BombTypes = bombTypes,
             CoverLayers = coverLayers,
             GroundLayers = groundLayers,
+            Holes = holes,
             NextTileId = state.NextTileId,
             Score = state.Score,
             MoveCount = state.MoveCount
@@ -106,6 +113,8 @@ public sealed record GameStateSnapshot
                 state.SetTile(x, y, tile);
                 state.SetCover(x, y, CoverLayers[index]);
                 state.SetGround(x, y, GroundLayers[index]);
+                if (index < Holes.Length)
+                    state.Holes[index] = Holes[index];
             }
         }
 
