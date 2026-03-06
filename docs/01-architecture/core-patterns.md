@@ -260,6 +260,61 @@ controller.Play();
 
 See: `docs/03-design/features/replay-system.md`
 
+## 14. Tile Data Flow (Core → View)
+
+### Pipeline
+
+```
+GameState.Tile.Type
+  → GameEvent (TileSpawnedEvent / BoardShuffledEvent / ...)
+    → Choreographer (IEventVisitor)
+      → RenderCommand (SpawnTileCommand / UpdateTileTypeCommand / ...)
+        → Player.Append() → Player.Tick()
+          → VisualState.TileVisual { TileType, BombType, Position, Scale, Alpha }
+            → BoardView.Render() / Board3DView.Render()
+              → TileView.UpdateFromVisual() / Tile3DView.UpdateFromVisual()
+```
+
+### Key Invariant
+
+**View must be a stateless projection of VisualState.**
+
+TileView/Tile3DView cache `TileType` and `BombType` as an optimization to avoid
+recreating sprites/meshes every frame. The cached values are synced inside
+`UpdateFromVisual()`:
+
+```csharp
+if (TileType != visual.TileType || BombType != visual.BombType)
+{
+    TileType = visual.TileType;
+    BombType = visual.BombType;
+    // rebuild sprites / meshes
+}
+```
+
+BoardView adds editor-only assertions to catch desync:
+
+```csharp
+#if UNITY_EDITOR
+Debug.Assert(tileView.TileType == visual.TileType);
+Debug.Assert(tileView.BombType == visual.BombType);
+#endif
+```
+
+### TileType Mutation Scenarios
+
+| Scenario | Event | RenderCommand | Notes |
+|----------|-------|---------------|-------|
+| New tile spawned | `TileSpawnedEvent` | `SpawnTileCommand` | Player creates new TileVisual |
+| Board shuffle (deadlock) | `BoardShuffledEvent` | `UpdateTileTypeCommand` | Player replaces TileVisual (TileType is `init`-only) |
+| Bomb created from match | `BombCreatedEvent` | `SpawnTileCommand` | New tile with BombType at match position |
+
+### Common Pitfall
+
+`TileVisual.TileType` is `{ get; init; }` — immutable after creation. When a tile's
+type changes (e.g., shuffle), Player must **remove and re-add** the TileVisual rather
+than mutating it. The View layer must detect this change and update its cached appearance.
+
 ## Related Documents
 *   Code Style: `docs/02-guides/coding-standards.md`
 *   Testing Guidelines: `docs/testing-guidelines.md`

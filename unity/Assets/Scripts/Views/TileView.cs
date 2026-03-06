@@ -129,18 +129,12 @@ namespace Match3.Unity.Views
             // Update visibility
             gameObject.SetActive(visual.IsVisible);
 
-            // Update tile type if changed (e.g., after board shuffle)
-            if (TileType != visual.TileType)
+            // Sync appearance when tile type or bomb type changes
+            if (TileType != visual.TileType || BombType != visual.BombType)
             {
                 TileType = visual.TileType;
-                UpdateSprites();
-            }
-
-            // Update bomb overlay if type changed
-            if (BombType != visual.BombType)
-            {
                 BombType = visual.BombType;
-                UpdateBombOverlay();
+                UpdateSprites();
             }
         }
 

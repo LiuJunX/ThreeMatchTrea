@@ -233,19 +233,10 @@ namespace Match3.Unity.Views
             // Visibility
             gameObject.SetActive(visual.IsVisible);
 
-            // Update tile type if changed (e.g., after board shuffle)
-            if (TileType != visual.TileType)
+            // Sync appearance when tile type or bomb type changes
+            if (TileType != visual.TileType || BombType != visual.BombType)
             {
                 TileType = visual.TileType;
-                _meshFilter.sharedMesh = BombType != BombType.None
-                    ? MeshFactory.GetBombMesh(BombType)
-                    : MeshFactory.GetTileMesh(TileType);
-                ApplyMaterial(TileType, BombType);
-            }
-
-            // Update bomb mesh if type changed (e.g., UpdateTileBombCommand)
-            if (BombType != visual.BombType)
-            {
                 BombType = visual.BombType;
                 _meshFilter.sharedMesh = BombType != BombType.None
                     ? MeshFactory.GetBombMesh(BombType)
