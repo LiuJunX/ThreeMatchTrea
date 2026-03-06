@@ -51,6 +51,10 @@ namespace Match3.Unity.Controllers
                 cameraSetup.SetupCamera();
             }
 
+            // Pipeline diagnostics (toggle with F9 in Editor)
+            var diag = _gameController.gameObject.AddComponent<PipelineDiagnostics>();
+            diag.Initialize(_gameController.Bridge, _gameController);
+
             Debug.Log($"Match3 Game Started: {_boardWidth}x{_boardHeight}, seed={seed}");
         }
 

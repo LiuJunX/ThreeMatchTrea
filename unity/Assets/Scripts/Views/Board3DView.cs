@@ -537,6 +537,14 @@ namespace Match3.Unity.Views
         }
 
         /// <summary>
+        /// Get the GameObject for a tile by ID (diagnostics only).
+        /// </summary>
+        public GameObject GetTileGameObject(int tileId)
+        {
+            return _activeTiles.TryGetValue(tileId, out var view) ? view.gameObject : null;
+        }
+
+        /// <summary>
         /// Remove a tile from active tracking and return its view.
         /// Used by ObjectiveDisplayController for direct-fly (3-connect) scenario.
         /// </summary>
