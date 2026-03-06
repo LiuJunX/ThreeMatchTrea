@@ -22,16 +22,6 @@ namespace Match3.Unity.Views
         /// </summary>
         public int TileId { get; private set; }
 
-        /// <summary>
-        /// Current tile type.
-        /// </summary>
-        public TileType TileType { get; private set; }
-
-        /// <summary>
-        /// Current bomb type.
-        /// </summary>
-        public BombType BombType { get; private set; }
-
         private Vector3 _baseScale = Vector3.one;
         private bool _isHighlighted;
         private bool _wasAnimated;
@@ -64,10 +54,7 @@ namespace Match3.Unity.Views
         public void Setup(int id, TileType type, BombType bomb)
         {
             TileId = id;
-            TileType = type;
-            BombType = bomb;
-
-            UpdateSprites();
+            ApplyAppearance(type, bomb);
         }
 
         /// <summary>
@@ -129,34 +116,31 @@ namespace Match3.Unity.Views
             // Update visibility
             gameObject.SetActive(visual.IsVisible);
 
-            // Sync appearance when tile type or bomb type changes
-            if (TileType != visual.TileType || BombType != visual.BombType)
-            {
-                TileType = visual.TileType;
-                BombType = visual.BombType;
-                UpdateSprites();
-            }
+            // Immediate mode: sync appearance from visual state every frame
+            ApplyAppearance(visual.TileType, visual.BombType);
         }
 
-        private void UpdateSprites()
+        private void ApplyAppearance(TileType type, BombType bomb)
         {
-            _renderer.sprite = SpriteFactory.GetTileSprite(TileType);
-            UpdateBombOverlay();
-        }
+            // Compare against renderer's actual state, not cached fields
+            var targetSprite = SpriteFactory.GetTileSprite(type);
+            if (_renderer.sprite != targetSprite)
+                _renderer.sprite = targetSprite;
 
-        private void UpdateBombOverlay()
-        {
-            if (BombType == BombType.None)
+            if (bomb == BombType.None)
             {
-                _bombOverlayGo.SetActive(false);
+                if (_bombOverlayGo.activeSelf)
+                    _bombOverlayGo.SetActive(false);
                 return;
             }
 
-            var overlaySprite = SpriteFactory.GetBombOverlay(BombType);
+            var overlaySprite = SpriteFactory.GetBombOverlay(bomb);
             if (overlaySprite != null)
             {
-                _bombOverlay.sprite = overlaySprite;
-                _bombOverlayGo.SetActive(true);
+                if (_bombOverlay.sprite != overlaySprite)
+                    _bombOverlay.sprite = overlaySprite;
+                if (!_bombOverlayGo.activeSelf)
+                    _bombOverlayGo.SetActive(true);
             }
         }
 
@@ -192,8 +176,6 @@ namespace Match3.Unity.Views
         public void OnSpawn()
         {
             TileId = -1;
-            TileType = TileType.None;
-            BombType = BombType.None;
             _baseScale = Vector3.one;
             _isHighlighted = false;
             _wasAnimated = false;

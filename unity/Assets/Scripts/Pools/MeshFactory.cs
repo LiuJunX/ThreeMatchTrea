@@ -15,6 +15,7 @@ namespace Match3.Unity.Pools
         private static readonly Dictionary<TileType, Mesh> _tileMeshCache = new();
         private static Mesh _fallbackMesh;
         private static readonly Dictionary<TileType, Material> _materialCache = new();
+        private static readonly Dictionary<TileType, Material[]> _singleMaterialArrayCache = new();
         private static readonly Dictionary<BombType, Mesh> _bombMeshCache = new();
         private static readonly Dictionary<BombType, Material[]> _bombMaterialCache = new();
         private static Shader _litShader;
@@ -154,6 +155,28 @@ namespace Match3.Unity.Pools
             if ((type & TileType.Purple) != 0) return new Color(0.482f, 0.140f, 0.780f);
             if ((type & TileType.Orange) != 0) return new Color(0.950f, 0.464f, 0.038f);
             return Color.gray;
+        }
+
+        /// <summary>
+        /// Get a cached single-element material array for the given tile type.
+        /// Avoids per-frame allocation when setting sharedMaterials.
+        /// </summary>
+        public static Material[] GetTileMaterialArray(TileType type, BombType bomb)
+        {
+            // Bombs use their own multi-material array
+            var bombMats = bomb != BombType.None ? GetBombMaterials(bomb) : null;
+            if (bombMats != null && bombMats.Length > 0)
+                return bombMats;
+
+            // Cached single-element array for tile materials
+            if (_singleMaterialArrayCache.TryGetValue(type, out var cached))
+                return cached;
+
+            var mat = GetTileMaterial(type);
+            if (mat == null) mat = GetFallbackMaterial();
+            var arr = new[] { mat };
+            _singleMaterialArrayCache[type] = arr;
+            return arr;
         }
 
         /// <summary>
@@ -304,6 +327,7 @@ namespace Match3.Unity.Pools
 
             _bombMeshCache.Clear();
             _bombMaterialCache.Clear();
+            _singleMaterialArrayCache.Clear();
             _tileMeshCache.Clear();
             _fallbackMesh = null;
             _litShader = null;

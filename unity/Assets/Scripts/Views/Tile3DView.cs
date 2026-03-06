@@ -29,8 +29,6 @@ namespace Match3.Unity.Views
         private float _lastShadowTileZ;
 
         public int TileId { get; private set; }
-        public TileType TileType { get; private set; }
-        public BombType BombType { get; private set; }
 
         private Vector3 _baseScale = Vector3.one;
         private bool _isHighlighted;
@@ -107,39 +105,27 @@ namespace Match3.Unity.Views
         public void Setup(int id, TileType type, BombType bomb)
         {
             TileId = id;
-            TileType = type;
-            BombType = bomb;
-
-            // Use bomb mesh when applicable, otherwise per-type tile mesh
-            _meshFilter.sharedMesh = bomb != BombType.None
-                ? MeshFactory.GetBombMesh(bomb)
-                : MeshFactory.GetTileMesh(type);
-
-            // Bombs use their own multi-material design from the FBX model
-            ApplyMaterial(type, bomb);
+            ApplyAppearance(type, bomb);
 
             // 棋子在棋盘上投射并接收阴影
             _meshRenderer.shadowCastingMode = ShadowCastingMode.On;
             _meshRenderer.receiveShadows = true;
         }
 
-        private void ApplyMaterial(TileType type, BombType bomb)
+        private void ApplyAppearance(TileType type, BombType bomb)
         {
-            // Bombs use their own multi-material design from the FBX model
-            var bombMats = bomb != BombType.None ? MeshFactory.GetBombMaterials(bomb) : null;
-            if (bombMats != null && bombMats.Length > 0)
-            {
-                _meshRenderer.sharedMaterials = bombMats;
-                return;
-            }
+            // Compare against renderer's actual state, not cached fields
+            var targetMesh = bomb != BombType.None
+                ? MeshFactory.GetBombMesh(bomb)
+                : MeshFactory.GetTileMesh(type);
+            if (_meshFilter.sharedMesh != targetMesh)
+                _meshFilter.sharedMesh = targetMesh;
 
-            // 6 color types get their own material; others get fallback
-            var isColorType = (type & (TileType.Red | TileType.Green | TileType.Blue |
-                                       TileType.Yellow | TileType.Purple | TileType.Orange)) != 0;
-            _meshRenderer.sharedMaterials = new[]
-            {
-                isColorType ? MeshFactory.GetTileMaterial(type) : MeshFactory.GetFallbackMaterial()
-            };
+            // Pre-cached array from MeshFactory — no per-frame allocation
+            var targetMats = MeshFactory.GetTileMaterialArray(type, bomb);
+            var currentMats = _meshRenderer.sharedMaterials;
+            if (currentMats.Length != targetMats.Length || currentMats[0] != targetMats[0])
+                _meshRenderer.sharedMaterials = targetMats;
         }
 
         /// <summary>
@@ -233,16 +219,8 @@ namespace Match3.Unity.Views
             // Visibility
             gameObject.SetActive(visual.IsVisible);
 
-            // Sync appearance when tile type or bomb type changes
-            if (TileType != visual.TileType || BombType != visual.BombType)
-            {
-                TileType = visual.TileType;
-                BombType = visual.BombType;
-                _meshFilter.sharedMesh = BombType != BombType.None
-                    ? MeshFactory.GetBombMesh(BombType)
-                    : MeshFactory.GetTileMesh(TileType);
-                ApplyMaterial(TileType, BombType);
-            }
+            // Immediate mode: sync appearance from visual state every frame
+            ApplyAppearance(visual.TileType, visual.BombType);
         }
 
         /// <summary>
@@ -375,8 +353,6 @@ namespace Match3.Unity.Views
         public void OnSpawn()
         {
             TileId = -1;
-            TileType = TileType.None;
-            BombType = BombType.None;
             _baseScale = Vector3.one;
             _isHighlighted = false;
             _wasAnimated = false;

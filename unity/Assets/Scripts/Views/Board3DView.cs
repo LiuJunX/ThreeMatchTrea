@@ -399,14 +399,6 @@ namespace Match3.Unity.Views
                 }
 
                 tileView.UpdateFromVisual(visual, cellSize, origin, height);
-
-#if UNITY_EDITOR
-                // Invariant: view appearance must match visual state
-                Debug.Assert(tileView.TileType == visual.TileType,
-                    $"[Board3DView] Tile {tileId} type desync: view={tileView.TileType} visual={visual.TileType}");
-                Debug.Assert(tileView.BombType == visual.BombType,
-                    $"[Board3DView] Tile {tileId} bomb desync: view={tileView.BombType} visual={visual.BombType}");
-#endif
             }
 
             // Remove tiles that are no longer active

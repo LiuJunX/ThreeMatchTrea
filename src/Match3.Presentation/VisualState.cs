@@ -313,10 +313,10 @@ public sealed class TileVisual
     public bool IsVisible { get; set; } = true;
 
     /// <summary>Type of tile.</summary>
-    public TileType TileType { get; init; }
+    public TileType TileType { get; set; }
 
     /// <summary>Bomb type (if any).</summary>
-    public BombType BombType { get; init; }
+    public BombType BombType { get; set; }
 
     /// <summary>Grid position.</summary>
     public Position GridPosition { get; set; }

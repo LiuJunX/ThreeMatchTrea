@@ -57,6 +57,18 @@ Unity 通过 DLL 引用核心库，**源码位于**：
 - `ResourceService` 统一资源加载接口（可替换 Resources.Load 为 Addressables 等）
 - BoardView 创建推迟到 `Initialize()`（非 `Awake()`）
 
+### View 层无状态规范（Immediate Mode Appearance）
+
+**核心原则：View 不缓存上游数据的副本。**
+
+- ❌ 禁止在 View 中缓存 VisualState 的属性（TileType、BombType 等）做 dirty check
+- ✅ 每帧从 VisualState 读取，与渲染器实际状态比较，不等则更新
+- ✅ 高频属性（position、scale）可直接赋值；低频属性（mesh、material、sprite）先比较再赋值
+- ✅ 避免 `sharedMaterials = new[]` 每帧分配，使用 `MeshFactory.GetTileMaterialArray()` 预缓存数组
+
+**原因：** View 缓存上游数据会引入 desync 风险——上游数据变了但 View 的副本没更新。
+比较渲染器的实际状态而非自维护的缓存，从结构上消除了这类 bug。
+
 ## 目录结构
 
 ```

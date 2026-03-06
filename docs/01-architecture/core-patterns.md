@@ -277,29 +277,18 @@ GameState.Tile.Type
 
 ### Key Invariant
 
-**View must be a stateless projection of VisualState.**
+**View must be a stateless projection of VisualState (Immediate Mode Appearance).**
 
-TileView/Tile3DView cache `TileType` and `BombType` as an optimization to avoid
-recreating sprites/meshes every frame. The cached values are synced inside
-`UpdateFromVisual()`:
-
-```csharp
-if (TileType != visual.TileType || BombType != visual.BombType)
-{
-    TileType = visual.TileType;
-    BombType = visual.BombType;
-    // rebuild sprites / meshes
-}
-```
-
-BoardView adds editor-only assertions to catch desync:
+View does NOT cache upstream data (TileType, BombType, etc.). Each frame,
+`UpdateFromVisual()` compares the renderer's actual state against the target:
 
 ```csharp
-#if UNITY_EDITOR
-Debug.Assert(tileView.TileType == visual.TileType);
-Debug.Assert(tileView.BombType == visual.BombType);
-#endif
+var targetMesh = MeshFactory.GetTileMesh(visual.TileType);
+if (_meshFilter.sharedMesh != targetMesh)
+    _meshFilter.sharedMesh = targetMesh;
 ```
+
+This eliminates desync bugs structurally — there is no cached copy that can go stale.
 
 ### TileType Mutation Scenarios
 
@@ -311,9 +300,9 @@ Debug.Assert(tileView.BombType == visual.BombType);
 
 ### Common Pitfall
 
-`TileVisual.TileType` is `{ get; init; }` — immutable after creation. When a tile's
-type changes (e.g., shuffle), Player must **remove and re-add** the TileVisual rather
-than mutating it. The View layer must detect this change and update its cached appearance.
+Do NOT cache VisualState properties in View objects for dirty checking.
+This creates a second source of truth that can desync from the original.
+Instead, compare against the renderer's actual state (sprite, mesh, material reference).
 
 ## Related Documents
 *   Code Style: `docs/02-guides/coding-standards.md`
