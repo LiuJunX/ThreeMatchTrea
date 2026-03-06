@@ -195,7 +195,7 @@ public class HoleGravityTests
     [Fact]
     public void Refill_SkipsHoleColumns()
     {
-        // Arrange: column 0 has hole at row 0 — refill should skip it
+        // Arrange: column 0 has hole at row 0 — refill should spawn at first non-hole row
         var state = new GameState(2, 3, 5, new StubRandom());
         for (int y = 0; y < 3; y++)
             for (int x = 0; x < 2; x++)
@@ -209,11 +209,14 @@ public class HoleGravityTests
         // Act
         refill.Update(ref state);
 
-        // Assert: column 0 should NOT have a tile at row 0 (it's a hole)
+        // Assert: column 0 row 0 is a hole — still None
         Assert.Equal(TileType.None, state.GetTile(0, 0).Type);
 
-        // Column 1 should have been refilled
-        Assert.NotEqual(TileType.None, state.GetTile(1, 0).Type);
+        // Column 0 should spawn at row 1 (first non-hole row)
+        Assert.Equal(TileType.Red, state.GetTile(0, 1).Type);
+
+        // Column 1 should have been refilled at row 0
+        Assert.Equal(TileType.Red, state.GetTile(1, 0).Type);
     }
 
     [Fact]

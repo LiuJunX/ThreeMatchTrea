@@ -32,23 +32,29 @@ public class RealtimeRefillSystem : IRefillSystem
 
         for (int x = 0; x < state.Width; x++)
         {
-            // Don't spawn in hole cells
-            if (state.IsHole(x, 0)) continue;
+            // Find the topmost non-hole cell in this column (spawn point)
+            int spawnY = -1;
+            for (int y = 0; y < state.Height; y++)
+            {
+                if (!state.IsHole(x, y)) { spawnY = y; break; }
+            }
 
-            // Only spawn if the spawn point (0) is empty and can receive
-            if (state.GetTile(x, 0).Type == TileType.None && state.CanReceive(x, 0))
+            // Column is entirely holes — skip
+            if (spawnY < 0) continue;
+
+            // Only spawn if the spawn point is empty and can receive
+            if (state.GetTile(x, spawnY).Type == TileType.None && state.CanReceive(x, spawnY))
             {
                 // Spawn a new tile at the top using the spawn model
                 var type = _spawnModel.Predict(ref state, x, in context);
-                var tile = new Tile(state.NextTileId++, type, x, 0);
-                
-                // Start position: Just above the board (-1.0f)
-                // The gravity system will handle following behavior via GravityTargetResolver
-                tile.Position = new Vector2(x, -1.0f);
+                var tile = new Tile(state.NextTileId++, type, x, spawnY);
+
+                // Start position: one row above the spawn point
+                tile.Position = new Vector2(x, spawnY - 1.0f);
                 tile.Velocity = new Vector2(0, 2.0f); // Initial downward velocity
                 tile.IsFalling = true;
 
-                state.SetTile(x, 0, tile);
+                state.SetTile(x, spawnY, tile);
             }
         }
     }

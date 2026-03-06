@@ -323,6 +323,70 @@ public class RealtimeRefillSystemTests
 
     #endregion
 
+    #region Irregular Board (Holes at Top)
+
+    [Fact]
+    public void Update_ShouldSpawnAtFirstNonHoleRow()
+    {
+        // Arrange: 3x3 board shaped like:
+        //     X        ← row 0: only column 1 has a cell
+        //   X X X      ← row 1
+        //   X X X      ← row 2
+        var state = new GameState(3, 3, 5, new StubRandom());
+        ClearBoard(ref state);
+
+        // Mark column 0 and 2, row 0 as holes
+        state.Holes[0 * 3 + 0] = true; // (0,0)
+        state.Holes[0 * 3 + 2] = true; // (2,0)
+
+        var spawnModel = new FixedSpawnModel { TypeToSpawn = TileType.Red };
+        var refill = new RealtimeRefillSystem(spawnModel);
+
+        // Act
+        refill.Update(ref state);
+
+        // Assert: column 0 spawns at row 1 (first non-hole)
+        Assert.Equal(TileType.None, state.GetTile(0, 0).Type);
+        Assert.Equal(TileType.Red, state.GetTile(0, 1).Type);
+        Assert.True(state.GetTile(0, 1).IsFalling);
+        Assert.Equal(0.0f, state.GetTile(0, 1).Position.Y); // spawnY - 1 = 0
+
+        // Assert: column 1 spawns at row 0 (normal)
+        Assert.Equal(TileType.Red, state.GetTile(1, 0).Type);
+        Assert.Equal(-1.0f, state.GetTile(1, 0).Position.Y);
+
+        // Assert: column 2 spawns at row 1 (first non-hole)
+        Assert.Equal(TileType.None, state.GetTile(2, 0).Type);
+        Assert.Equal(TileType.Red, state.GetTile(2, 1).Type);
+        Assert.Equal(0.0f, state.GetTile(2, 1).Position.Y);
+    }
+
+    [Fact]
+    public void Update_AllHolesColumn_ShouldSkip()
+    {
+        // Arrange: column 0 is entirely holes
+        var state = new GameState(2, 3, 5, new StubRandom());
+        ClearBoard(ref state);
+
+        for (int y = 0; y < 3; y++)
+            state.Holes[y * 2 + 0] = true;
+
+        var spawnModel = new FixedSpawnModel { TypeToSpawn = TileType.Red };
+        var refill = new RealtimeRefillSystem(spawnModel);
+
+        // Act
+        refill.Update(ref state);
+
+        // Assert: column 0 has no tiles anywhere
+        for (int y = 0; y < 3; y++)
+            Assert.Equal(TileType.None, state.GetTile(0, y).Type);
+
+        // Column 1 should be refilled normally
+        Assert.Equal(TileType.Red, state.GetTile(1, 0).Type);
+    }
+
+    #endregion
+
     #region Edge Cases
 
     [Fact]

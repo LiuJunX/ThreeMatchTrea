@@ -31,6 +31,7 @@ namespace Match3.Unity.Controllers
         private string[] _allLevelIds;
         private string _currentLevelId;
         private int _lastStars;
+        private bool _lastVictory;
 
         private void Awake()
         {
@@ -38,6 +39,7 @@ namespace Match3.Unity.Controllers
 
             _progressService = new PlayerProgressService();
             _progress = _progressService.Load();
+            Debug.Log($"[GameFlow] Loaded progress: {_progress.UnlockedLevels.Count} levels unlocked, {_progress.BestStars.Count} with stars");
 
             // Load level IDs
             _allLevelIds = UnityConfigProvider.Instance.GetLevelIds();
@@ -214,6 +216,7 @@ namespace Match3.Unity.Controllers
         private void OnGameEnded(bool isVictory, int score)
         {
             _lastStars = 0;
+            _lastVictory = isVictory;
             if (isVictory)
             {
                 var bridge = _gameController.Bridge;
@@ -223,9 +226,14 @@ namespace Match3.Unity.Controllers
                 // Unlock next level
                 int idx = Array.IndexOf(_allLevelIds, _currentLevelId);
                 if (idx >= 0 && idx + 1 < _allLevelIds.Length)
-                    _progress.UnlockedLevels.Add(_allLevelIds[idx + 1]);
+                {
+                    var nextId = _allLevelIds[idx + 1];
+                    _progress.UnlockedLevels.Add(nextId);
+                    Debug.Log($"[GameFlow] Unlocked '{nextId}'");
+                }
 
                 _progressService.Save(_progress);
+                Debug.Log($"[GameFlow] Progress saved: {_progress.UnlockedLevels.Count} levels unlocked");
             }
 
             // Show result with stars
@@ -245,9 +253,9 @@ namespace Match3.Unity.Controllers
             var resultPanel = _gameController.UI?.ResultPanel;
             if (resultPanel == null) return;
 
-            // Show Level Select always; show Next Level only if there IS a next level
+            // Show Level Select always; show Next Level only on victory AND if there IS a next level
             resultPanel.SetFlowButtonsVisible(true);
-            if (!HasNextLevel())
+            if (!_lastVictory || !HasNextLevel())
                 resultPanel.SetNextLevelVisible(false);
 
             resultPanel.OnRestartClicked += OnResultRestart;
