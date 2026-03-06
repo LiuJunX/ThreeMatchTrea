@@ -122,26 +122,9 @@ namespace Match3.Unity.Views
 
         private void ApplyAppearance(TileType type, BombType bomb)
         {
-            // Compare against renderer's actual state, not cached fields
-            var targetSprite = SpriteFactory.GetTileSprite(type);
-            if (_renderer.sprite != targetSprite)
-                _renderer.sprite = targetSprite;
-
-            if (bomb == BombType.None)
-            {
-                if (_bombOverlayGo.activeSelf)
-                    _bombOverlayGo.SetActive(false);
-                return;
-            }
-
-            var overlaySprite = SpriteFactory.GetBombOverlay(bomb);
-            if (overlaySprite != null)
-            {
-                if (_bombOverlay.sprite != overlaySprite)
-                    _bombOverlay.sprite = overlaySprite;
-                if (!_bombOverlayGo.activeSelf)
-                    _bombOverlayGo.SetActive(true);
-            }
+            ViewHelper.SetSprite(_renderer, SpriteFactory.GetTileSprite(type));
+            ViewHelper.SetBombOverlay(_bombOverlay, _bombOverlayGo,
+                bomb != BombType.None ? SpriteFactory.GetBombOverlay(bomb) : null);
         }
 
         /// <summary>

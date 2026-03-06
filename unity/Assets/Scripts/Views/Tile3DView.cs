@@ -114,18 +114,11 @@ namespace Match3.Unity.Views
 
         private void ApplyAppearance(TileType type, BombType bomb)
         {
-            // Compare against renderer's actual state, not cached fields
             var targetMesh = bomb != BombType.None
                 ? MeshFactory.GetBombMesh(bomb)
                 : MeshFactory.GetTileMesh(type);
-            if (_meshFilter.sharedMesh != targetMesh)
-                _meshFilter.sharedMesh = targetMesh;
-
-            // Pre-cached array from MeshFactory — no per-frame allocation
-            var targetMats = MeshFactory.GetTileMaterialArray(type, bomb);
-            var currentMats = _meshRenderer.sharedMaterials;
-            if (currentMats.Length != targetMats.Length || currentMats[0] != targetMats[0])
-                _meshRenderer.sharedMaterials = targetMats;
+            ViewHelper.SetMesh(_meshFilter, targetMesh);
+            ViewHelper.SetMaterials(_meshRenderer, MeshFactory.GetTileMaterialArray(type, bomb));
         }
 
         /// <summary>
