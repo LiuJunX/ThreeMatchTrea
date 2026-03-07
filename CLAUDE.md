@@ -3,7 +3,6 @@
 **Read before any task:**
 
 - `.trae/rules/project_rules.md` - AI 行为指南和快速禁令
-- `docs/hop-migration.md` - HOP 迁移计划、工作流、规则清单和进度跟踪
 
 **技术规范真源：**
 
