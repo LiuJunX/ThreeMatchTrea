@@ -58,6 +58,9 @@ namespace Match3.Unity.Views
             PrewarmPool("pop", 10);
             PrewarmPool("bomb_shockwave", 3);
             PrewarmPool("bomb_flash", 3);
+            PrewarmPool("color_bomb_wave", 2);
+            PrewarmPool("color_bomb_trail", 8);
+            PrewarmPool("color_bomb_hit", 8);
 
             _initialized = true;
         }
@@ -267,6 +270,12 @@ namespace Match3.Unity.Views
                 case "bomb_flash":
                     var flashColor = Color.Lerp(tileColor, Color.white, 0.6f);
                     main.startColor = new ParticleSystem.MinMaxGradient(flashColor, Color.white);
+                    break;
+
+                case "color_bomb_hit":
+                    // Tint hit sparkle with the destroyed tile's color
+                    var hitBright = Color.Lerp(tileColor, Color.white, 0.35f);
+                    main.startColor = new ParticleSystem.MinMaxGradient(hitBright, tileColor);
                     break;
             }
         }

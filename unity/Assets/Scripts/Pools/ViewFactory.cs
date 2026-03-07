@@ -174,6 +174,69 @@ namespace Match3.Unity.Pools
                         AnimationCurve.EaseInOut(0f, 1f, 1f, 0.3f));
                     break;
 
+                case "color_bomb_wave":
+                    // Rainbow expanding ring burst at color bomb origin
+                    main.startLifetime = 0.5f;
+                    main.startSpeed = new ParticleSystem.MinMaxCurve(3f, 5f);
+                    main.startSize = new ParticleSystem.MinMaxCurve(0.1f, 0.2f);
+                    // Rainbow gradient: cycle through hues
+                    var waveGrad = new Gradient();
+                    waveGrad.SetKeys(
+                        new[]
+                        {
+                            new GradientColorKey(new Color(1f, 0.2f, 0.2f), 0f),
+                            new GradientColorKey(new Color(1f, 1f, 0.2f), 0.25f),
+                            new GradientColorKey(new Color(0.2f, 1f, 0.4f), 0.5f),
+                            new GradientColorKey(new Color(0.3f, 0.5f, 1f), 0.75f),
+                            new GradientColorKey(new Color(0.8f, 0.3f, 1f), 1f)
+                        },
+                        new[]
+                        {
+                            new GradientAlphaKey(1f, 0f),
+                            new GradientAlphaKey(0f, 1f)
+                        });
+                    main.startColor = new ParticleSystem.MinMaxGradient(waveGrad);
+                    emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 35, 45) });
+                    shape.shapeType = ParticleSystemShapeType.Circle;
+                    shape.radius = 0.15f;
+                    shape.radiusThickness = 0f; // Edge only (ring)
+                    var waveVel = ps.velocityOverLifetime;
+                    waveVel.enabled = true;
+                    waveVel.speedModifier = new ParticleSystem.MinMaxCurve(1f,
+                        AnimationCurve.EaseInOut(0f, 1f, 1f, 0.2f));
+                    break;
+
+                case "color_bomb_trail":
+                    // Small bright streak at beam midpoint — suggests fast-moving beam
+                    main.startLifetime = 0.12f;
+                    main.startSpeed = new ParticleSystem.MinMaxCurve(1f, 2f);
+                    main.startSize = new ParticleSystem.MinMaxCurve(0.06f, 0.12f);
+                    main.startColor = new ParticleSystem.MinMaxGradient(
+                        new Color(1f, 1f, 0.7f, 0.9f),
+                        new Color(1f, 0.9f, 0.4f, 0.7f));
+                    emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 4, 6) });
+                    shape.shapeType = ParticleSystemShapeType.Sphere;
+                    shape.radius = 0.08f;
+                    break;
+
+                case "color_bomb_hit":
+                    // Bright sparkle impact burst at target tile
+                    main.startLifetime = 0.25f;
+                    main.startSpeed = new ParticleSystem.MinMaxCurve(2f, 4f);
+                    main.startSize = new ParticleSystem.MinMaxCurve(0.08f, 0.18f);
+                    main.startColor = new ParticleSystem.MinMaxGradient(
+                        new Color(1f, 1f, 0.5f),
+                        new Color(1f, 0.8f, 0.3f));
+                    emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 10, 14) });
+                    shape.shapeType = ParticleSystemShapeType.Circle;
+                    shape.radius = 0.1f;
+                    main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+                    var hitVel = ps.velocityOverLifetime;
+                    hitVel.enabled = true;
+                    hitVel.speedModifier = new ParticleSystem.MinMaxCurve(1f,
+                        AnimationCurve.EaseInOut(0f, 1f, 1f, 0.15f));
+                    break;
+
                 case "bomb_flash":
                     // Brief bright flash at explosion center
                     main.startLifetime = 0.15f;

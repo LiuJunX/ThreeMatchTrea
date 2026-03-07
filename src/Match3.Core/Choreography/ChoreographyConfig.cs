@@ -37,4 +37,19 @@ public sealed class ChoreographyConfig
 
     /// <summary>Delay per cell for rocket trail effect staggering.</summary>
     public float RocketTrailInterval { get; set; } = 0.015f;
+
+    /// <summary>Base delay per Chebyshev-distance unit for color bomb beam propagation.</summary>
+    public float ColorBombInterval { get; set; } = 0.04f;
+
+    /// <summary>Acceleration factor for color bomb beam propagation (each step shorter than the last).</summary>
+    public float ColorBombAccel { get; set; } = 0.85f;
+
+    /// <summary>Duration for UFO takeoff animation (vertical rise).</summary>
+    public float UfoTakeoffDuration { get; set; } = 0.25f;
+
+    /// <summary>Height the UFO rises during takeoff (grid units).</summary>
+    public float UfoTakeoffHeight { get; set; } = 1.5f;
+
+    /// <summary>UFO flight speed (grid units per second).</summary>
+    public float UfoFlightSpeed { get; set; } = 8f;
 }
