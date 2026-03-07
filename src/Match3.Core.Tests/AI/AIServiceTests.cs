@@ -1,4 +1,4 @@
-using Match3.Core.AI;
+﻿using Match3.Core.AI;
 using Match3.Core.AI.Strategies;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
@@ -30,12 +30,12 @@ public class AIServiceTests
     private class StubScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(MatchGroup match) => 10;
-        public int CalculateSpecialMoveScore(TileType t1, BombType b1, TileType t2, BombType b2) => 100;
+        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 100;
     }
 
     private class StubSpawnModel : ISpawnModel
     {
-        public TileType Predict(ref GameState state, int spawnX, in SpawnContext context) => TileType.Blue;
+        public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context) => ElementType.Item3;
     }
 
     private AIService CreateAIService()
@@ -48,7 +48,7 @@ public class AIServiceTests
         var bombGenerator = new BombGenerator();
         var matchFinder = new ClassicMatchFinder(bombGenerator);
         var scoreSystem = new StubScoreSystem();
-        var matchProcessor = new StandardMatchProcessor(scoreSystem, BombEffectRegistry.CreateDefault());
+        var matchProcessor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), BombEffectRegistry.CreateDefault());
         var powerUpHandler = new PowerUpHandler(scoreSystem);
 
         return new AIService(
@@ -330,7 +330,7 @@ public class AIServiceTests
     private GameState CreateTestState()
     {
         var state = new GameState(5, 5, 5, new StubRandom());
-        var types = new[] { TileType.Red, TileType.Blue, TileType.Green, TileType.Yellow, TileType.Purple };
+        var types = new[] { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4, ElementType.Item5 };
 
         for (int y = 0; y < 5; y++)
         {
@@ -351,7 +351,7 @@ public class AIServiceTests
         {
             for (int x = 0; x < 5; x++)
             {
-                state.SetTile(x, y, new Tile(0, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(0, ElementType.None, x, y));
             }
         }
         return state;
@@ -360,9 +360,11 @@ public class AIServiceTests
     private GameState CreateStateWithEmptyTile()
     {
         var state = CreateTestState();
-        state.SetTile(0, 0, new Tile(0, TileType.None, 0, 0));
+        state.SetTile(0, 0, new Tile(0, ElementType.None, 0, 0));
         return state;
     }
 
     #endregion
 }
+
+

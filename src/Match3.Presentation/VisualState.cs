@@ -58,7 +58,7 @@ public sealed class VisualState : IVisualState
             for (int x = 0; x < state.Width; x++)
             {
                 var tile = state.GetTile(x, y);
-                if (tile.Type == TileType.None) continue;
+                if (tile.Type == ElementType.None) continue;
 
                 _tiles[tile.Id] = new TileVisual
                 {
@@ -90,7 +90,7 @@ public sealed class VisualState : IVisualState
             for (int x = 0; x < state.Width; x++)
             {
                 var tile = state.GetTile(x, y);
-                if (tile.Type == TileType.None) continue;
+                if (tile.Type == ElementType.None) continue;
 
                 _aliveTileIds.Add(tile.Id);
 
@@ -142,7 +142,7 @@ public sealed class VisualState : IVisualState
     /// <summary>
     /// Add a new tile visual (for spawned tiles).
     /// </summary>
-    public void AddTile(int tileId, TileType type, BombType bomb, Position gridPos, Vector2 spawnPos)
+    public void AddTile(int tileId, ElementType type, BombType bomb, Position gridPos, Vector2 spawnPos)
     {
         _tiles[tileId] = new TileVisual
         {
@@ -313,7 +313,7 @@ public sealed class TileVisual
     public bool IsVisible { get; set; } = true;
 
     /// <summary>Type of tile.</summary>
-    public TileType TileType { get; set; }
+    public ElementType TileType { get; set; }
 
     /// <summary>Bomb type (if any).</summary>
     public BombType BombType { get; set; }

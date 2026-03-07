@@ -1,4 +1,4 @@
-using System.Linq;
+﻿using System.Linq;
 using System.Numerics;
 using Match3.Core.Choreography;
 using Match3.Core.Events;
@@ -34,7 +34,7 @@ public class MergeToBombChoreographerTests
             // 1. Match detected
             new MatchDetectedEvent
             {
-                Type = TileType.Red,
+                Type = ElementType.Item1,
                 Positions = new[] { new Position(1, 2), new Position(2, 2), new Position(3, 2), new Position(4, 2) },
                 Shape = MatchShape.Line4Horizontal,
                 TileCount = 4,
@@ -44,21 +44,21 @@ public class MergeToBombChoreographerTests
             new TileDestroyedEvent
             {
                 TileId = 10, GridPosition = new Position(1, 2),
-                Type = TileType.Red, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = DestroyReason.Match,
                 MergeTarget = new Position(2, 2),
                 SimulationTime = 0f
             },
             new TileDestroyedEvent
             {
                 TileId = 30, GridPosition = new Position(3, 2),
-                Type = TileType.Red, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = DestroyReason.Match,
                 MergeTarget = new Position(2, 2),
                 SimulationTime = 0f
             },
             new TileDestroyedEvent
             {
                 TileId = 40, GridPosition = new Position(4, 2),
-                Type = TileType.Red, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = DestroyReason.Match,
                 MergeTarget = new Position(2, 2),
                 SimulationTime = 0f
             },
@@ -68,7 +68,7 @@ public class MergeToBombChoreographerTests
                 TileId = 20, NewTileId = 200,
                 Position = new Position(2, 2),
                 BombType = BombType.Horizontal,
-                BaseType = TileType.Red,
+                BaseType = ElementType.Item1,
                 SimulationTime = 0f
             },
             // 4. Gravity: tile at (3,1) falls to (3,2) — same column as merge tile 30
@@ -94,7 +94,7 @@ public class MergeToBombChoreographerTests
             {
                 TileId = 50,
                 GridPosition = new Position(3, 0),
-                Type = TileType.Blue,
+                Type = ElementType.Item3,
                 Bomb = BombType.None,
                 SpawnPosition = new Vector2(3, -1),
                 SimulationTime = 0f
@@ -112,7 +112,7 @@ public class MergeToBombChoreographerTests
             new TileDestroyedEvent
             {
                 TileId = 10, GridPosition = new Position(3, 2),
-                Type = TileType.Red, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = DestroyReason.Match,
                 MergeTarget = new Position(1, 2),
                 SimulationTime = 0f
             }
@@ -138,7 +138,7 @@ public class MergeToBombChoreographerTests
             new TileDestroyedEvent
             {
                 TileId = 10, GridPosition = new Position(3, 2),
-                Type = TileType.Red, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = DestroyReason.Match,
                 MergeTarget = new Position(1, 2),
                 SimulationTime = 0f
             }
@@ -162,7 +162,7 @@ public class MergeToBombChoreographerTests
             new TileDestroyedEvent
             {
                 TileId = 10, GridPosition = new Position(3, 2),
-                Type = TileType.Red, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = DestroyReason.Match,
                 MergeTarget = new Position(1, 2),
                 SimulationTime = 0f
             },
@@ -196,7 +196,7 @@ public class MergeToBombChoreographerTests
             new TileDestroyedEvent
             {
                 TileId = 10, GridPosition = new Position(3, 2),
-                Type = TileType.Red, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = DestroyReason.Match,
                 MergeTarget = new Position(1, 2),
                 SimulationTime = 0f
             },
@@ -231,7 +231,7 @@ public class MergeToBombChoreographerTests
             new TileDestroyedEvent
             {
                 TileId = 10, GridPosition = new Position(3, 2),
-                Type = TileType.Red, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = DestroyReason.Match,
                 MergeTarget = new Position(1, 2),
                 SimulationTime = 0f
             },
@@ -266,7 +266,7 @@ public class MergeToBombChoreographerTests
                 TileId = 20, NewTileId = 200,
                 Position = new Position(2, 2),
                 BombType = BombType.Horizontal,
-                BaseType = TileType.Red,
+                BaseType = ElementType.Item1,
                 SimulationTime = 0f
             }
         };
@@ -290,7 +290,7 @@ public class MergeToBombChoreographerTests
                 TileId = 20, NewTileId = 200,
                 Position = new Position(2, 2),
                 BombType = BombType.Horizontal,
-                BaseType = TileType.Red,
+                BaseType = ElementType.Item1,
                 SimulationTime = 0f
             }
         };
@@ -302,7 +302,7 @@ public class MergeToBombChoreographerTests
     }
 
     [Fact]
-    public void BombCreated_SpawnsNewBombTileAtMergeEnd()
+    public void BombCreated_SpawnsBombTileImmediatelyAtScaleZero()
     {
         var events = new GameEvent[]
         {
@@ -311,23 +311,38 @@ public class MergeToBombChoreographerTests
                 TileId = 20, NewTileId = 200,
                 Position = new Position(2, 2),
                 BombType = BombType.Horizontal,
-                BaseType = TileType.Red,
+                BaseType = ElementType.Item1,
                 SimulationTime = 0f
             }
         };
 
         var commands = _choreographer.Choreograph(events);
 
+        // Spawn happens immediately (not at mergeEnd) to prevent SyncFallingTiles
+        // from creating the tile at full scale during the merge animation
         var spawnCmd = commands.OfType<SpawnTileCommand>().First(c => c.TileId == 200);
-        Assert.Equal(_choreographer.Config.MergeDuration, spawnCmd.StartTime, 0.001f);
+        Assert.Equal(0f, spawnCmd.StartTime, 0.001f);
         Assert.Equal(BombType.Horizontal, spawnCmd.Bomb);
-        Assert.Equal(TileType.Red, spawnCmd.Type);
+        Assert.Equal(ElementType.Item1, spawnCmd.Type);
+
+        // Scale should be zero during merge, then pop-in at mergeEnd
+        var scaleCommands = commands.OfType<ScaleTileCommand>()
+            .Where(c => c.TileId == 200).OrderBy(c => c.StartTime).ToList();
+        Assert.True(scaleCommands.Count >= 2);
+        // First: hold at zero during merge
+        Assert.Equal(Vector2.Zero, scaleCommands[0].FromScale);
+        Assert.Equal(Vector2.Zero, scaleCommands[0].ToScale);
+        // Second: pop-in from zero to one
+        Assert.Equal(Vector2.Zero, scaleCommands[1].FromScale);
+        Assert.Equal(Vector2.One, scaleCommands[1].ToScale);
+        Assert.Equal(_choreographer.Config.MergeDuration, scaleCommands[1].StartTime, 0.001f);
     }
 
     [Fact]
     public void BombCreated_SetsColumnDestroyEndTime()
     {
         // BombCreated at column 2 should delay gravity in column 2
+        // until merge + bomb pop-in completes
         var events = new GameEvent[]
         {
             new BombCreatedEvent
@@ -335,7 +350,7 @@ public class MergeToBombChoreographerTests
                 TileId = 20, NewTileId = 200,
                 Position = new Position(2, 2),
                 BombType = BombType.Horizontal,
-                BaseType = TileType.Red,
+                BaseType = ElementType.Item1,
                 SimulationTime = 0f
             },
             new TileMovedEvent
@@ -349,11 +364,13 @@ public class MergeToBombChoreographerTests
 
         var commands = _choreographer.Choreograph(events);
 
-        // Gravity in bomb column should be delayed
+        float bombReadyTime = _choreographer.Config.MergeDuration + _choreographer.Config.BombPopDuration;
+
+        // Gravity in bomb column should be delayed until bomb pop-in completes
         var gravityMove = commands.OfType<MoveTileCommand>()
             .First(c => c.TileId == 21 && c.From != c.To);
-        Assert.True(gravityMove.StartTime >= _choreographer.Config.MergeDuration,
-            $"Gravity in bomb column should wait for merge: start={gravityMove.StartTime}");
+        Assert.True(gravityMove.StartTime >= bombReadyTime,
+            $"Gravity in bomb column should wait for merge + pop: start={gravityMove.StartTime}, bombReady={bombReadyTime}");
 
         // Should have hold command
         var holdCmd = commands.OfType<MoveTileCommand>()
@@ -373,14 +390,14 @@ public class MergeToBombChoreographerTests
             new TileDestroyedEvent
             {
                 TileId = 10, GridPosition = new Position(3, 2),
-                Type = TileType.Red, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = DestroyReason.Match,
                 MergeTarget = new Position(1, 2),
                 SimulationTime = 0f
             },
             new TileSpawnedEvent
             {
                 TileId = 50, GridPosition = new Position(3, 0),
-                Type = TileType.Blue, Bomb = BombType.None,
+                Type = ElementType.Item3, Bomb = BombType.None,
                 SpawnPosition = new Vector2(3, -1),
                 SimulationTime = 0f
             }
@@ -401,14 +418,14 @@ public class MergeToBombChoreographerTests
             new TileDestroyedEvent
             {
                 TileId = 10, GridPosition = new Position(3, 2),
-                Type = TileType.Red, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = DestroyReason.Match,
                 MergeTarget = new Position(1, 2),
                 SimulationTime = 0f
             },
             new TileSpawnedEvent
             {
                 TileId = 50, GridPosition = new Position(5, 0),
-                Type = TileType.Blue, Bomb = BombType.None,
+                Type = ElementType.Item3, Bomb = BombType.None,
                 SpawnPosition = new Vector2(5, -1),
                 SimulationTime = 0f
             }
@@ -450,9 +467,9 @@ public class MergeToBombChoreographerTests
         Assert.Equal(new Vector2(2, 2), bombHold.From);
         Assert.Equal(mergeDuration, bombHold.Duration, 0.001f);
 
-        // --- Bomb spawn ---
+        // --- Bomb spawn (immediate at scale 0, before merge ends) ---
         var bombSpawn = commands.OfType<SpawnTileCommand>().First(c => c.TileId == 200);
-        Assert.Equal(mergeDuration, bombSpawn.StartTime, 0.001f);
+        Assert.Equal(0f, bombSpawn.StartTime, 0.001f);
         Assert.Equal(BombType.Horizontal, bombSpawn.Bomb);
 
         // --- Gravity hold ---
@@ -507,7 +524,7 @@ public class MergeToBombChoreographerTests
         {
             new MatchDetectedEvent
             {
-                Type = TileType.Red,
+                Type = ElementType.Item1,
                 Positions = new[] { new Position(0, 2), new Position(1, 2), new Position(2, 2) },
                 Shape = MatchShape.Simple3,
                 TileCount = 3,
@@ -516,19 +533,19 @@ public class MergeToBombChoreographerTests
             new TileDestroyedEvent
             {
                 TileId = 1, GridPosition = new Position(0, 2),
-                Type = TileType.Red, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = DestroyReason.Match,
                 SimulationTime = 0f
             },
             new TileDestroyedEvent
             {
                 TileId = 2, GridPosition = new Position(1, 2),
-                Type = TileType.Red, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = DestroyReason.Match,
                 SimulationTime = 0f
             },
             new TileDestroyedEvent
             {
                 TileId = 3, GridPosition = new Position(2, 2),
-                Type = TileType.Red, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = DestroyReason.Match,
                 SimulationTime = 0f
             }
         };
@@ -553,7 +570,7 @@ public class MergeToBombChoreographerTests
             new TileDestroyedEvent
             {
                 TileId = 99, GridPosition = new Position(0, 0),
-                Type = TileType.Blue, Reason = DestroyReason.Match,
+                Type = ElementType.Item3, Reason = DestroyReason.Match,
                 SimulationTime = 0f
             }
         };
@@ -575,7 +592,7 @@ public class MergeToBombChoreographerTests
             new TileDestroyedEvent
             {
                 TileId = 1, GridPosition = new Position(0, 2),
-                Type = TileType.Red, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = DestroyReason.Match,
                 SimulationTime = 0f
             }
         };
@@ -603,7 +620,7 @@ public class MergeToBombChoreographerTests
             new TileDestroyedEvent
             {
                 TileId = 1, GridPosition = new Position(0, 0),
-                Type = TileType.Red, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = DestroyReason.Match,
                 SimulationTime = 0f
             }
         };
@@ -626,7 +643,7 @@ public class MergeToBombChoreographerTests
             new TileDestroyedEvent
             {
                 TileId = 1, GridPosition = new Position(3, 2),
-                Type = TileType.Red, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = DestroyReason.Match,
                 SimulationTime = 0f
             }
         };
@@ -649,7 +666,7 @@ public class MergeToBombChoreographerTests
             new TileDestroyedEvent
             {
                 TileId = 10, GridPosition = new Position(1, 2),
-                Type = TileType.Red, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = DestroyReason.Match,
                 MergeTarget = new Position(2, 2),
                 SimulationTime = 0f
             }
@@ -674,7 +691,12 @@ public class MergeToBombChoreographerTests
         var bombOriginLock = _choreographer.LockEntries
             .FirstOrDefault(e => e.Position.Equals(new Position(2, 2)) && e.IsMerge);
         Assert.True(bombOriginLock.IsMerge);
-        Assert.Equal(_choreographer.Config.MergeDuration, bombOriginLock.Duration, 0.001f);
+        // Bomb origin lock covers merge + pop-in to prevent gravity overlap
+        float expectedDuration = _choreographer.Config.MergeDuration + _choreographer.Config.BombPopDuration;
+        Assert.Equal(expectedDuration, bombOriginLock.Duration, 0.001f);
+        // Must include Drop lock to prevent physics from accumulating velocity during merge
+        Assert.True(bombOriginLock.LockType.HasFlag(CellLockType.Drop));
+        Assert.True(bombOriginLock.LockType.HasFlag(CellLockType.Receive));
     }
 
     [Fact]
@@ -685,7 +707,7 @@ public class MergeToBombChoreographerTests
             new TileDestroyedEvent
             {
                 TileId = 1, GridPosition = new Position(0, 0),
-                Type = TileType.Red, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = DestroyReason.Match,
                 SimulationTime = 0f
             }
         };
@@ -698,3 +720,4 @@ public class MergeToBombChoreographerTests
 
     #endregion
 }
+

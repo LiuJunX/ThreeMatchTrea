@@ -1,4 +1,4 @@
-using Match3.Core.Config;
+﻿using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Generation;
@@ -30,9 +30,9 @@ public class BoardInitializerTests
     private class StubTileGenerator : ITileGenerator
     {
         private int _counter = 0;
-        private readonly TileType[] _types = { TileType.Red, TileType.Blue, TileType.Green, TileType.Yellow };
+        private readonly ElementType[] _types = { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4 };
 
-        public TileType GenerateNonMatchingTile(ref GameState state, int x, int y)
+        public ElementType GenerateNonMatchingTile(ref GameState state, int x, int y)
         {
             // 简单循环返回不同类型，避免匹配
             return _types[(_counter++ + x + y) % _types.Length];
@@ -63,9 +63,9 @@ public class BoardInitializerTests
             Height = 3,
             Grid = new[]
             {
-                TileType.Red, TileType.Blue, TileType.Green,
-                TileType.Yellow, TileType.Purple, TileType.Orange,
-                TileType.Red, TileType.Blue, TileType.Green
+                ElementType.Item1, ElementType.Item3, ElementType.Item2,
+                ElementType.Item4, ElementType.Item5, ElementType.Item6,
+                ElementType.Item1, ElementType.Item3, ElementType.Item2
             }
         };
 
@@ -73,11 +73,11 @@ public class BoardInitializerTests
         initializer.Initialize(ref state, levelConfig);
 
         // Assert
-        Assert.Equal(TileType.Red, state.GetTile(0, 0).Type);
-        Assert.Equal(TileType.Blue, state.GetTile(1, 0).Type);
-        Assert.Equal(TileType.Green, state.GetTile(2, 0).Type);
-        Assert.Equal(TileType.Yellow, state.GetTile(0, 1).Type);
-        Assert.Equal(TileType.Purple, state.GetTile(1, 1).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.Item3, state.GetTile(1, 0).Type);
+        Assert.Equal(ElementType.Item2, state.GetTile(2, 0).Type);
+        Assert.Equal(ElementType.Item4, state.GetTile(0, 1).Type);
+        Assert.Equal(ElementType.Item5, state.GetTile(1, 1).Type);
     }
 
     [Fact]
@@ -92,9 +92,9 @@ public class BoardInitializerTests
             Height = 3,
             Grid = new[]
             {
-                TileType.Red, TileType.Blue, TileType.Green,
-                TileType.Yellow, TileType.Purple, TileType.Orange,
-                TileType.Red, TileType.Blue, TileType.Green
+                ElementType.Item1, ElementType.Item3, ElementType.Item2,
+                ElementType.Item4, ElementType.Item5, ElementType.Item6,
+                ElementType.Item1, ElementType.Item3, ElementType.Item2
             },
             Bombs = new[]
             {
@@ -125,9 +125,9 @@ public class BoardInitializerTests
         {
             Width = 3,
             Height = 3,
-            Grid = new TileType[9]
+            Grid = new ElementType[9]
         };
-        for (int i = 0; i < 9; i++) levelConfig.Grid[i] = TileType.Red;
+        for (int i = 0; i < 9; i++) levelConfig.Grid[i] = ElementType.Item1;
 
         // Act
         initializer.Initialize(ref state, levelConfig);
@@ -164,7 +164,7 @@ public class BoardInitializerTests
             for (int x = 0; x < 8; x++)
             {
                 var tile = state.GetTile(x, y);
-                Assert.NotEqual(TileType.None, tile.Type);
+                Assert.NotEqual(ElementType.None, tile.Type);
             }
         }
     }
@@ -188,7 +188,7 @@ public class BoardInitializerTests
                 var t1 = state.GetTile(x, y).Type;
                 var t2 = state.GetTile(x + 1, y).Type;
                 var t3 = state.GetTile(x + 2, y).Type;
-                if (t1 != TileType.None && t1 == t2 && t2 == t3)
+                if (t1 != ElementType.None && t1 == t2 && t2 == t3)
                 {
                     Assert.Fail($"Horizontal match found at ({x}, {y})");
                 }
@@ -202,12 +202,104 @@ public class BoardInitializerTests
                 var t1 = state.GetTile(x, y).Type;
                 var t2 = state.GetTile(x, y + 1).Type;
                 var t3 = state.GetTile(x, y + 2).Type;
-                if (t1 != TileType.None && t1 == t2 && t2 == t3)
+                if (t1 != ElementType.None && t1 == t2 && t2 == t3)
                 {
                     Assert.Fail($"Vertical match found at ({x}, {y})");
                 }
             }
         }
+    }
+
+    #endregion
+
+    #region Cells Array (Board Shape) Tests
+
+    [Fact]
+    public void Initialize_WithCellsArray_VoidCellsHaveNoTile()
+    {
+        // Arrange: 3x3 board with center cell as Void
+        var initializer = CreateInitializer();
+        var state = new GameState(3, 3, 6, new StubRandom());
+        var levelConfig = new LevelConfig(3, 3);
+        levelConfig.Cells[4] = CellKind.Void; // center (1,1)
+
+        // Act
+        initializer.Initialize(ref state, levelConfig);
+
+        // Assert: Void cell has no tile, others have tiles
+        Assert.NotEqual(ElementType.None, state.GetTile(0, 0).Type);
+        Assert.NotEqual(ElementType.None, state.GetTile(2, 0).Type);
+        Assert.Equal(ElementType.None, state.GetTile(1, 1).Type); // Void → no tile
+        Assert.NotEqual(ElementType.None, state.GetTile(0, 2).Type);
+    }
+
+    [Fact]
+    public void Initialize_NullGrid_WithCells_GeneratesRandomForSlots()
+    {
+        // Arrange: 3x3, grid=null, cells defines shape
+        var initializer = CreateInitializer();
+        var state = new GameState(3, 3, 6, new StubRandom());
+        var levelConfig = new LevelConfig(3, 3) { Grid = null! };
+        // Top-left corner is Void
+        levelConfig.Cells[0] = CellKind.Void;
+
+        // Act
+        initializer.Initialize(ref state, levelConfig);
+
+        // Assert: Void cell has no tile
+        Assert.Equal(ElementType.None, state.GetTile(0, 0).Type);
+        // Slot cells get random tiles
+        Assert.NotEqual(ElementType.None, state.GetTile(1, 0).Type);
+        Assert.NotEqual(ElementType.None, state.GetTile(2, 2).Type);
+    }
+
+    [Fact]
+    public void Initialize_CrossShape_OnlySlotCellsHaveTiles()
+    {
+        // Arrange: 5x5 cross (corners are Void)
+        var initializer = CreateInitializer();
+        var state = new GameState(5, 5, 6, new StubRandom());
+        var cells = new CellKind[]
+        {
+            CellKind.Void, CellKind.Slot, CellKind.Slot, CellKind.Slot, CellKind.Void,
+            CellKind.Slot, CellKind.Slot, CellKind.Slot, CellKind.Slot, CellKind.Slot,
+            CellKind.Slot, CellKind.Slot, CellKind.Slot, CellKind.Slot, CellKind.Slot,
+            CellKind.Slot, CellKind.Slot, CellKind.Slot, CellKind.Slot, CellKind.Slot,
+            CellKind.Void, CellKind.Slot, CellKind.Slot, CellKind.Slot, CellKind.Void,
+        };
+        var levelConfig = new LevelConfig(5, 5) { Grid = null!, Cells = cells };
+
+        // Act
+        initializer.Initialize(ref state, levelConfig);
+
+        // Assert: corners are empty
+        Assert.Equal(ElementType.None, state.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.None, state.GetTile(4, 0).Type);
+        Assert.Equal(ElementType.None, state.GetTile(0, 4).Type);
+        Assert.Equal(ElementType.None, state.GetTile(4, 4).Type);
+        // center and arms have tiles
+        Assert.NotEqual(ElementType.None, state.GetTile(2, 2).Type);
+        Assert.NotEqual(ElementType.None, state.GetTile(1, 0).Type);
+        Assert.NotEqual(ElementType.None, state.GetTile(3, 4).Type);
+    }
+
+    [Fact]
+    public void Initialize_VoidCells_SetCellKindCorrectly()
+    {
+        // Arrange
+        var initializer = CreateInitializer();
+        var state = new GameState(3, 3, 6, new StubRandom());
+        var levelConfig = new LevelConfig(3, 3) { Grid = null! };
+        levelConfig.Cells[0] = CellKind.Void;
+        levelConfig.Cells[8] = CellKind.Void;
+
+        // Act
+        initializer.Initialize(ref state, levelConfig);
+
+        // Assert: CellKind propagated to GameState
+        Assert.True(state.IsVoid(0, 0));
+        Assert.False(state.IsVoid(1, 0));
+        Assert.True(state.IsVoid(2, 2));
     }
 
     #endregion
@@ -227,8 +319,8 @@ public class BoardInitializerTests
         // Assert
         Assert.Equal(3, state.Width);
         Assert.Equal(3, state.Height);
-        Assert.NotEqual(TileType.None, state.GetTile(0, 0).Type);
-        Assert.NotEqual(TileType.None, state.GetTile(2, 2).Type);
+        Assert.NotEqual(ElementType.None, state.GetTile(0, 0).Type);
+        Assert.NotEqual(ElementType.None, state.GetTile(2, 2).Type);
     }
 
     [Fact]
@@ -241,25 +333,26 @@ public class BoardInitializerTests
         // 先填充一些初始值
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 5; x++)
-                state.SetTile(x, y, new Tile(0, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(0, ElementType.None, x, y));
 
         var levelConfig = new LevelConfig
         {
             Width = 3,
             Height = 3,
-            Grid = new TileType[9]
+            Grid = new ElementType[9]
         };
-        for (int i = 0; i < 9; i++) levelConfig.Grid[i] = TileType.Red;
+        for (int i = 0; i < 9; i++) levelConfig.Grid[i] = ElementType.Item1;
 
         // Act
         initializer.Initialize(ref state, levelConfig);
 
         // Assert: 只有 3x3 区域被填充
-        Assert.Equal(TileType.Red, state.GetTile(0, 0).Type);
-        Assert.Equal(TileType.Red, state.GetTile(2, 2).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(2, 2).Type);
         // 超出 LevelConfig 范围的位置保持原样
-        Assert.Equal(TileType.None, state.GetTile(4, 4).Type);
+        Assert.Equal(ElementType.None, state.GetTile(4, 4).Type);
     }
 
     #endregion
 }
+

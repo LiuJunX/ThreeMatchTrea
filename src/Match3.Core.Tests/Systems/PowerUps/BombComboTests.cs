@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
@@ -52,7 +52,7 @@ public class BombComboTests
     {
         rng ??= new StubRandom();
         var state = new GameState(width, height, 6, rng);
-        var types = new[] { TileType.Red, TileType.Blue, TileType.Green, TileType.Yellow };
+        var types = new[] { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4 };
         int id = 1;
         for (int y = 0; y < height; y++)
         {
@@ -72,7 +72,7 @@ public class BombComboTests
         {
             for (int x = 0; x < width; x++)
             {
-                state.SetTile(x, y, new Tile(0, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(0, ElementType.None, x, y));
             }
         }
         return state;
@@ -83,7 +83,7 @@ public class BombComboTests
         int count = 0;
         for (int i = 0; i < state.Grid.Length; i++)
         {
-            if (state.Grid[i].Type != TileType.None)
+            if (state.Grid[i].Type != ElementType.None)
                 count++;
         }
         return count;
@@ -106,8 +106,8 @@ public class BombComboTests
         var p2 = new Position(4, 4);
 
         // 设置两个横向火箭
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Horizontal });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Red, p2.X, p2.Y) { Bomb = BombType.Horizontal });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Horizontal });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Item1, p2.X, p2.Y) { Bomb = BombType.Horizontal });
 
         // Act
         var affected = new HashSet<Position>();
@@ -132,8 +132,8 @@ public class BombComboTests
         var p1 = new Position(4, 3);
         var p2 = new Position(4, 4);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Vertical });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Red, p2.X, p2.Y) { Bomb = BombType.Vertical });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Vertical });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Item1, p2.X, p2.Y) { Bomb = BombType.Vertical });
 
         // Act
         var affected = new HashSet<Position>();
@@ -152,8 +152,8 @@ public class BombComboTests
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Horizontal });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Red, p2.X, p2.Y) { Bomb = BombType.Vertical });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Horizontal });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Item1, p2.X, p2.Y) { Bomb = BombType.Vertical });
 
         // Act
         var affected = new HashSet<Position>();
@@ -176,8 +176,8 @@ public class BombComboTests
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Horizontal });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Red, p2.X, p2.Y) { Bomb = BombType.Square5x5 });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Horizontal });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Item1, p2.X, p2.Y) { Bomb = BombType.Square5x5 });
 
         // Act
         var affected = new HashSet<Position>();
@@ -215,8 +215,8 @@ public class BombComboTests
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Square5x5 });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Red, p2.X, p2.Y) { Bomb = BombType.Vertical });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Square5x5 });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Item1, p2.X, p2.Y) { Bomb = BombType.Vertical });
 
         // Act
         var affected = new HashSet<Position>();
@@ -235,8 +235,8 @@ public class BombComboTests
         var p1 = new Position(0, 0);
         var p2 = new Position(1, 0);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Horizontal });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Red, p2.X, p2.Y) { Bomb = BombType.Square5x5 });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Horizontal });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Item1, p2.X, p2.Y) { Bomb = BombType.Square5x5 });
 
         // Act
         var affected = new HashSet<Position>();
@@ -265,8 +265,8 @@ public class BombComboTests
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Horizontal });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Red, p2.X, p2.Y) { Bomb = BombType.Ufo });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Horizontal });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Item1, p2.X, p2.Y) { Bomb = BombType.Ufo });
 
         // Act
         var affected = new HashSet<Position>();
@@ -293,8 +293,8 @@ public class BombComboTests
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Ufo });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Red, p2.X, p2.Y) { Bomb = BombType.Vertical });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Ufo });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Item1, p2.X, p2.Y) { Bomb = BombType.Vertical });
 
         // Act
         var affected = new HashSet<Position>();
@@ -318,16 +318,16 @@ public class BombComboTests
         var p2 = new Position(4, 4);
 
         // 设置火箭和彩球
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Horizontal });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Rainbow, p2.X, p2.Y) { Bomb = BombType.Color });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Horizontal });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Universal, p2.X, p2.Y) { Bomb = BombType.Color });
 
         // 放置红色方块（最多）
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
         // 放置蓝色（较少）
-        state.SetTile(0, 1, new Tile(4, TileType.Blue, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Blue, 1, 1));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item3, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item3, 1, 1));
 
         // Act
         var affected = new HashSet<Position>();
@@ -349,13 +349,13 @@ public class BombComboTests
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Rainbow, p1.X, p1.Y) { Bomb = BombType.Color });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Red, p2.X, p2.Y) { Bomb = BombType.Vertical });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Universal, p1.X, p1.Y) { Bomb = BombType.Color });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Item1, p2.X, p2.Y) { Bomb = BombType.Vertical });
 
         // 放置绿色方块（最多）
-        state.SetTile(0, 0, new Tile(1, TileType.Green, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Green, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Green, 2, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item2, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item2, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item2, 2, 0));
 
         // Act
         var affected = new HashSet<Position>();
@@ -380,8 +380,8 @@ public class BombComboTests
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Square5x5 });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Red, p2.X, p2.Y) { Bomb = BombType.Square5x5 });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Square5x5 });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Item1, p2.X, p2.Y) { Bomb = BombType.Square5x5 });
 
         // Act
         var affected = new HashSet<Position>();
@@ -404,8 +404,8 @@ public class BombComboTests
         var p1 = new Position(5, 5);
         var p2 = new Position(6, 6);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Square5x5 });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Red, p2.X, p2.Y) { Bomb = BombType.Square5x5 });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Square5x5 });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Item1, p2.X, p2.Y) { Bomb = BombType.Square5x5 });
 
         // Act
         var affected = new HashSet<Position>();
@@ -430,8 +430,8 @@ public class BombComboTests
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Square5x5 });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Red, p2.X, p2.Y) { Bomb = BombType.Ufo });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Square5x5 });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Item1, p2.X, p2.Y) { Bomb = BombType.Ufo });
 
         // Act
         var affected = new HashSet<Position>();
@@ -458,8 +458,8 @@ public class BombComboTests
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Ufo });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Red, p2.X, p2.Y) { Bomb = BombType.Square5x5 });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Ufo });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Item1, p2.X, p2.Y) { Bomb = BombType.Square5x5 });
 
         // Act
         var affected = new HashSet<Position>();
@@ -482,14 +482,14 @@ public class BombComboTests
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Square5x5 });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Rainbow, p2.X, p2.Y) { Bomb = BombType.Color });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Square5x5 });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Universal, p2.X, p2.Y) { Bomb = BombType.Color });
 
         // 放置红色（最多）- 分散在棋盘上
-        state.SetTile(1, 1, new Tile(1, TileType.Red, 1, 1));
-        state.SetTile(5, 5, new Tile(2, TileType.Red, 5, 5));
+        state.SetTile(1, 1, new Tile(1, ElementType.Item1, 1, 1));
+        state.SetTile(5, 5, new Tile(2, ElementType.Item1, 5, 5));
         // 放置蓝色（较少）
-        state.SetTile(0, 0, new Tile(3, TileType.Blue, 0, 0));
+        state.SetTile(0, 0, new Tile(3, ElementType.Item3, 0, 0));
 
         // Act
         var affected = new HashSet<Position>();
@@ -518,8 +518,8 @@ public class BombComboTests
         var p1 = new Position(2, 4);
         var p2 = new Position(5, 4);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Ufo });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Red, p2.X, p2.Y) { Bomb = BombType.Ufo });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Ufo });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Item1, p2.X, p2.Y) { Bomb = BombType.Ufo });
 
         // Act
         var affected = new HashSet<Position>();
@@ -554,15 +554,15 @@ public class BombComboTests
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Ufo });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Rainbow, p2.X, p2.Y) { Bomb = BombType.Color });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Ufo });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Universal, p2.X, p2.Y) { Bomb = BombType.Color });
 
         // 放置红色（最多）
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(2, 2, new Tile(2, TileType.Red, 2, 2));
-        state.SetTile(6, 6, new Tile(3, TileType.Red, 6, 6));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(2, 2, new Tile(2, ElementType.Item1, 2, 2));
+        state.SetTile(6, 6, new Tile(3, ElementType.Item1, 6, 6));
         // 放置蓝色（较少）
-        state.SetTile(7, 7, new Tile(4, TileType.Blue, 7, 7));
+        state.SetTile(7, 7, new Tile(4, ElementType.Item3, 7, 7));
 
         // Act
         var affected = new HashSet<Position>();
@@ -586,12 +586,12 @@ public class BombComboTests
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Rainbow, p1.X, p1.Y) { Bomb = BombType.Color });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Red, p2.X, p2.Y) { Bomb = BombType.Ufo });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Universal, p1.X, p1.Y) { Bomb = BombType.Color });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Item1, p2.X, p2.Y) { Bomb = BombType.Ufo });
 
         // 放置绿色（最多）
-        state.SetTile(0, 0, new Tile(1, TileType.Green, 0, 0));
-        state.SetTile(2, 2, new Tile(2, TileType.Green, 2, 2));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item2, 0, 0));
+        state.SetTile(2, 2, new Tile(2, ElementType.Item2, 2, 2));
 
         // Act
         var affected = new HashSet<Position>();
@@ -615,8 +615,8 @@ public class BombComboTests
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Rainbow, p1.X, p1.Y) { Bomb = BombType.Color });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Rainbow, p2.X, p2.Y) { Bomb = BombType.Color });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Universal, p1.X, p1.Y) { Bomb = BombType.Color });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Universal, p2.X, p2.Y) { Bomb = BombType.Color });
 
         // Act
         var affected = new HashSet<Position>();
@@ -642,8 +642,8 @@ public class BombComboTests
         var p1 = new Position(0, 1);
         var p2 = new Position(1, 1);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Rainbow, p1.X, p1.Y) { Bomb = BombType.Color });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Rainbow, p2.X, p2.Y) { Bomb = BombType.Color });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Universal, p1.X, p1.Y) { Bomb = BombType.Color });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Universal, p2.X, p2.Y) { Bomb = BombType.Color });
 
         // Act
         var affected = new HashSet<Position>();
@@ -667,17 +667,17 @@ public class BombComboTests
         var p2 = new Position(4, 4);
 
         // 彩球
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Rainbow, p1.X, p1.Y) { Bomb = BombType.Color });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Universal, p1.X, p1.Y) { Bomb = BombType.Color });
         // 普通蓝色方块（不是炸弹）
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Blue, p2.X, p2.Y));
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Item3, p2.X, p2.Y));
 
         // 放置蓝色
-        state.SetTile(0, 0, new Tile(1, TileType.Blue, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item3, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0));
         // 放置红色（更多，但不应该被消除）
-        state.SetTile(0, 1, new Tile(3, TileType.Red, 0, 1));
-        state.SetTile(1, 1, new Tile(4, TileType.Red, 1, 1));
-        state.SetTile(2, 1, new Tile(5, TileType.Red, 2, 1));
+        state.SetTile(0, 1, new Tile(3, ElementType.Item1, 0, 1));
+        state.SetTile(1, 1, new Tile(4, ElementType.Item1, 1, 1));
+        state.SetTile(2, 1, new Tile(5, ElementType.Item1, 2, 1));
 
         // Act: 使用 TryApplyCombo 处理彩球+普通方块的情况
         var affected = new HashSet<Position>();
@@ -708,8 +708,8 @@ public class BombComboTests
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Horizontal });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Red, p2.X, p2.Y) { Bomb = BombType.Ufo });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Horizontal });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Item1, p2.X, p2.Y) { Bomb = BombType.Ufo });
 
         // Act
         var affected = new HashSet<Position>();
@@ -733,8 +733,8 @@ public class BombComboTests
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Vertical });
-        state.SetTile(p2.X, p2.Y, new Tile(101, TileType.Red, p2.X, p2.Y) { Bomb = BombType.Ufo });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Vertical });
+        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Item1, p2.X, p2.Y) { Bomb = BombType.Ufo });
 
         // Act
         var affected = new HashSet<Position>();
@@ -777,7 +777,7 @@ public class BombComboTests
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
 
-        state.SetTile(p1.X, p1.Y, new Tile(100, TileType.Red, p1.X, p1.Y) { Bomb = BombType.Horizontal });
+        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Horizontal });
         // p2 不是炸弹
 
         // Act
@@ -790,3 +790,4 @@ public class BombComboTests
 
     #endregion
 }
+

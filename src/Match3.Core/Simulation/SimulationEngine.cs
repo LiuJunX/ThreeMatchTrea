@@ -257,10 +257,10 @@ public sealed class SimulationEngine : IDisposable
                 }
 
                 // Shuffle until solvable
-                bool success = _shuffleSystem.ShuffleUntilSolvable(
+                _shuffleSystem.ShuffleUntilSolvable(
                     ref state, _eventCollector, maxAttempts: _config.ShuffleMaxAttempts);
 
-                if (!success)
+                if (!_deadlockDetector.HasValidMoves(in state))
                 {
                     // Extreme case: still deadlocked after max attempts
                     // Mark as failed to prevent infinite shuffle loop
@@ -367,8 +367,8 @@ public sealed class SimulationEngine : IDisposable
         // Check if either tile is a bomb or color bomb (before swap)
         bool tileAIsBomb = tileA.Bomb != BombType.None;
         bool tileBIsBomb = tileB.Bomb != BombType.None;
-        bool tileAIsColorBomb = tileA.Type == TileType.Rainbow;
-        bool tileBIsColorBomb = tileB.Type == TileType.Rainbow;
+        bool tileAIsColorBomb = tileA.Type == ElementType.Universal;
+        bool tileBIsColorBomb = tileB.Type == ElementType.Universal;
         bool hasSpecialMove = tileAIsBomb || tileBIsBomb || tileAIsColorBomb || tileBIsColorBomb;
 
         // Swap tiles in grid using shared operations
@@ -481,7 +481,7 @@ public sealed class SimulationEngine : IDisposable
     public void ActivateBomb(Position position)
     {
         var state = State;
-        _powerUpHandler.ActivateBomb(ref state, position);
+        _powerUpHandler.ActivateBomb(ref state, position, _currentTick, _elapsedTime, _eventCollector);
         _bombsActivated++;
         State = state;
     }
@@ -586,6 +586,10 @@ public sealed class SimulationEngine : IDisposable
             clonedState.Random = newRandom;
         }
 
+        // Each clone gets its own explosion system and a PowerUpHandler that references it
+        var cloneExplosion = new ExplosionSystem(new CoverSystem(_objectiveSystem), new GroundSystem(_objectiveSystem), _objectiveSystem);
+        var clonePowerUp = _powerUpHandler.WithExplosionSystem(cloneExplosion);
+
         return new SimulationEngine(
             clonedState,
             _config,
@@ -593,10 +597,10 @@ public sealed class SimulationEngine : IDisposable
             _refill,
             _matchFinder,
             _matchProcessor,
-            _powerUpHandler,
+            clonePowerUp,
             new ProjectileSystem(), // Each clone gets its own projectile system
             NullEventCollector.Instance, // Clones always use null collector
-            new ExplosionSystem(new CoverSystem(_objectiveSystem), new GroundSystem(_objectiveSystem), _objectiveSystem), // Each clone gets its own explosion system
+            cloneExplosion,
             _deadlockDetector,
             _shuffleSystem,
             _objectiveSystem

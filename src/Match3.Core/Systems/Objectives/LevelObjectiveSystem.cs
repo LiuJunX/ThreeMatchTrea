@@ -45,7 +45,7 @@ public class LevelObjectiveSystem : ILevelObjectiveSystem
     }
 
     /// <inheritdoc />
-    public void OnTileDestroyed(ref GameState state, TileType type, int tick, float simTime, IEventCollector events)
+    public void OnTileDestroyed(ref GameState state, ElementType type, int tick, float simTime, IEventCollector events)
     {
         UpdateProgress(ref state, ObjectiveTargetLayer.Tile, (int)type, tick, simTime, events);
     }

@@ -35,7 +35,7 @@ public class MergeToBombPlayerTests
         {
             new SpawnTileCommand
             {
-                TileId = 1, Type = TileType.Red, Bomb = BombType.None,
+                TileId = 1, Type = ElementType.Item1, Bomb = BombType.None,
                 GridPos = new Position(3, 1), SpawnPos = new Vector2(3, 1),
                 StartTime = 0f, Duration = 0f
             },
@@ -65,7 +65,7 @@ public class MergeToBombPlayerTests
         {
             new SpawnTileCommand
             {
-                TileId = 1, Type = TileType.Red, Bomb = BombType.None,
+                TileId = 1, Type = ElementType.Item1, Bomb = BombType.None,
                 GridPos = new Position(3, 1), SpawnPos = new Vector2(3, 1),
                 StartTime = 0f, Duration = 0f
             },
@@ -83,7 +83,7 @@ public class MergeToBombPlayerTests
 
         // Create a game state where tile 1 has moved to (3, 2) via physics
         var state = CreateGameState(8, 8);
-        SetTile(ref state, 3, 2, new Tile(1, TileType.Red, 3, 2));
+        SetTile(ref state, 3, 2, new Tile(1, ElementType.Item1, 3, 2));
 
         _visualState.SyncFallingTilesFromGameState(in state);
 
@@ -100,7 +100,7 @@ public class MergeToBombPlayerTests
         {
             new SpawnTileCommand
             {
-                TileId = 1, Type = TileType.Red, Bomb = BombType.None,
+                TileId = 1, Type = ElementType.Item1, Bomb = BombType.None,
                 GridPos = new Position(3, 1), SpawnPos = new Vector2(3, 1),
                 StartTime = 0f, Duration = 0f
             },
@@ -132,7 +132,7 @@ public class MergeToBombPlayerTests
         // After removing SuppressNewTileSync, new tiles in game state
         // are always synced to visual state (Core CellLock prevents gravity instead).
         var state = CreateGameState(8, 8);
-        SetTile(ref state, 3, 2, new Tile(99, TileType.Blue, 3, 2));
+        SetTile(ref state, 3, 2, new Tile(99, ElementType.Item3, 3, 2));
 
         _visualState.SyncFallingTilesFromGameState(in state);
 
@@ -144,11 +144,11 @@ public class MergeToBombPlayerTests
     {
         // Tile exists in visual state, game state has different position,
         // tile is NOT being animated → position should always update.
-        _visualState.AddTile(1, TileType.Red, BombType.None,
+        _visualState.AddTile(1, ElementType.Item1, BombType.None,
             new Position(3, 1), new Vector2(3, 1));
 
         var state = CreateGameState(8, 8);
-        var tile = new Tile(1, TileType.Red, new Vector2(3, 1.5f));
+        var tile = new Tile(1, ElementType.Item1, new Vector2(3, 1.5f));
         SetTile(ref state, 3, 1, tile);
 
         _visualState.SyncFallingTilesFromGameState(in state);
@@ -162,13 +162,13 @@ public class MergeToBombPlayerTests
     public void Sync_IsBeingAnimated_StillBlocksPositionUpdate()
     {
         // IsBeingAnimated is the sole guard now — verify it still works.
-        _visualState.AddTile(1, TileType.Red, BombType.None,
+        _visualState.AddTile(1, ElementType.Item1, BombType.None,
             new Position(3, 1), new Vector2(3, 1));
         var visual = _visualState.GetTile(1)!;
         visual.AddAnimationRef(); // simulate animation hold
 
         var state = CreateGameState(8, 8);
-        SetTile(ref state, 3, 1, new Tile(1, TileType.Red, new Vector2(3, 2)));
+        SetTile(ref state, 3, 1, new Tile(1, ElementType.Item1, new Vector2(3, 2)));
 
         _visualState.SyncFallingTilesFromGameState(in state);
 
@@ -181,7 +181,7 @@ public class MergeToBombPlayerTests
         // Scenario: sync adds tile from game state, then SpawnTileCommand fires.
         // SpawnTileCommand should cleanly overwrite the sync-added tile.
         var state = CreateGameState(8, 8);
-        SetTile(ref state, 2, 2, new Tile(200, TileType.Red, 2, 2, BombType.Horizontal));
+        SetTile(ref state, 2, 2, new Tile(200, ElementType.Item1, 2, 2, BombType.Horizontal));
 
         // Sync adds tile 200 to visual state
         _visualState.SyncFallingTilesFromGameState(in state);
@@ -192,7 +192,7 @@ public class MergeToBombPlayerTests
         {
             new SpawnTileCommand
             {
-                TileId = 200, Type = TileType.Red, Bomb = BombType.Horizontal,
+                TileId = 200, Type = ElementType.Item1, Bomb = BombType.Horizontal,
                 GridPos = new Position(2, 2), SpawnPos = new Vector2(2, 2),
                 StartTime = 0f, Duration = 0f
             }
@@ -222,14 +222,14 @@ public class MergeToBombPlayerTests
             // Bomb origin tile
             new SpawnTileCommand
             {
-                TileId = 20, Type = TileType.Red, Bomb = BombType.None,
+                TileId = 20, Type = ElementType.Item1, Bomb = BombType.None,
                 GridPos = new Position(2, 2), SpawnPos = new Vector2(2, 2),
                 StartTime = 0f, Duration = 0f
             },
             // Gravity tile above destroyed position
             new SpawnTileCommand
             {
-                TileId = 31, Type = TileType.Green, Bomb = BombType.None,
+                TileId = 31, Type = ElementType.Item2, Bomb = BombType.None,
                 GridPos = new Position(3, 1), SpawnPos = new Vector2(3, 1),
                 StartTime = 0f, Duration = 0f
             }
@@ -273,7 +273,7 @@ public class MergeToBombPlayerTests
             },
             new SpawnTileCommand
             {
-                TileId = 200, Type = TileType.Red, Bomb = BombType.Horizontal,
+                TileId = 200, Type = ElementType.Item1, Bomb = BombType.Horizontal,
                 GridPos = new Position(2, 2), SpawnPos = new Vector2(2, 2),
                 StartTime = baseTime + mergeDuration, Duration = 0, Priority = 6
             }
@@ -300,8 +300,8 @@ public class MergeToBombPlayerTests
         // --- Simulate physics sync during merge ---
         // Create game state where tile 31 has moved to (3, 1.8)
         var state = CreateGameState(8, 8);
-        SetTile(ref state, 3, 1, new Tile(31, TileType.Green, new Vector2(3, 1.8f)));
-        SetTile(ref state, 2, 2, new Tile(200, TileType.Red, 2, 2, BombType.Horizontal));
+        SetTile(ref state, 3, 1, new Tile(31, ElementType.Item2, new Vector2(3, 1.8f)));
+        SetTile(ref state, 2, 2, new Tile(200, ElementType.Item1, 2, 2, BombType.Horizontal));
 
         _visualState.SyncFallingTilesFromGameState(in state);
 
@@ -385,7 +385,7 @@ public class MergeToBombPlayerTests
         {
             new SpawnTileCommand
             {
-                TileId = 1, Type = TileType.Red, Bomb = BombType.None,
+                TileId = 1, Type = ElementType.Item1, Bomb = BombType.None,
                 GridPos = new Position(2, 2), SpawnPos = new Vector2(2, 2),
                 StartTime = 0f, Duration = 0f
             },
@@ -414,7 +414,7 @@ public class MergeToBombPlayerTests
         {
             new SpawnTileCommand
             {
-                TileId = 1, Type = TileType.Red, Bomb = BombType.None,
+                TileId = 1, Type = ElementType.Item1, Bomb = BombType.None,
                 GridPos = new Position(2, 2), SpawnPos = new Vector2(2, 2),
                 StartTime = 0f, Duration = 0f
             },

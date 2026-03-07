@@ -49,7 +49,7 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
 
             // 2. Check if blocked by a falling tile (follow it)
             var tileBelow = state.GetTile(x, checkY);
-            if (tileBelow.Type != TileType.None && tileBelow.IsFalling)
+            if (tileBelow.Type != ElementType.None && tileBelow.IsFalling)
             {
                 // If current tile is already falling (chasing from above), follow immediately
                 // Otherwise, wait until the tile below has cleared the midpoint
@@ -208,14 +208,14 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
     {
         return IsInsideGrid(state, x, y) &&
                !state.IsHole(x, y) &&
-               state.GetTile(x, y).Type == TileType.None &&
+               state.GetTile(x, y).Type == ElementType.None &&
                state.CanReceive(x, y) &&
                !IsReserved(x, y, state.Width);
     }
 
     private bool IsOverheadClear(ref GameState state, int targetX, int targetY)
     {
-        return state.GetTile(targetX, targetY).Type == TileType.None;
+        return state.GetTile(targetX, targetY).Type == ElementType.None;
     }
 
     private static bool IsInsideGrid(GameState state, int x, int y)

@@ -49,7 +49,7 @@ namespace Match3.Editor.Tests
 
             Assert.True(result);
             Assert.Equal(ObjectiveTargetLayer.Tile, objectives[0].TargetLayer);
-            Assert.Equal((int)TileType.Red, objectives[0].ElementType);
+            Assert.Equal((int)ElementType.Item1, objectives[0].ElementType);
             Assert.Equal(10, objectives[0].TargetCount);
         }
 
@@ -95,7 +95,7 @@ namespace Match3.Editor.Tests
             objectives[0] = new LevelObjective
             {
                 TargetLayer = ObjectiveTargetLayer.Tile,
-                ElementType = (int)TileType.Blue
+                ElementType = (int)ElementType.Item3
             };
 
             var result = ObjectiveEditorHelper.TrySetObjectiveLayer(objectives, 0, ObjectiveTargetLayer.Cover);
@@ -123,13 +123,13 @@ namespace Match3.Editor.Tests
             objectives[0] = new LevelObjective
             {
                 TargetLayer = ObjectiveTargetLayer.Tile,
-                ElementType = (int)TileType.Red
+                ElementType = (int)ElementType.Item1
             };
 
-            var result = ObjectiveEditorHelper.TrySetObjectiveElementType(objectives, 0, (int)TileType.Green);
+            var result = ObjectiveEditorHelper.TrySetObjectiveElementType(objectives, 0, (int)ElementType.Item2);
 
             Assert.True(result);
-            Assert.Equal((int)TileType.Green, objectives[0].ElementType);
+            Assert.Equal((int)ElementType.Item2, objectives[0].ElementType);
         }
 
         [Fact]
@@ -161,8 +161,8 @@ namespace Match3.Editor.Tests
             var types = ObjectiveEditorHelper.GetElementTypesForLayer(ObjectiveTargetLayer.Tile);
 
             Assert.Equal(6, types.Length);
-            Assert.Contains(types, t => t.Value == (int)TileType.Red && t.Name == "Red");
-            Assert.Contains(types, t => t.Value == (int)TileType.Blue && t.Name == "Blue");
+            Assert.Contains(types, t => t.Value == (int)ElementType.Item1 && t.Name == "Red");
+            Assert.Contains(types, t => t.Value == (int)ElementType.Item3 && t.Name == "Blue");
         }
 
         [Fact]
@@ -186,7 +186,7 @@ namespace Match3.Editor.Tests
         [Fact]
         public void GetElementTypeName_ShouldReturnCorrectName()
         {
-            Assert.Equal("Red", ObjectiveEditorHelper.GetElementTypeName(ObjectiveTargetLayer.Tile, (int)TileType.Red));
+            Assert.Equal("Item1", ObjectiveEditorHelper.GetElementTypeName(ObjectiveTargetLayer.Tile, (int)ElementType.Item1));
             Assert.Equal("Cage", ObjectiveEditorHelper.GetElementTypeName(ObjectiveTargetLayer.Cover, (int)CoverType.Cage));
             Assert.Equal("Ice", ObjectiveEditorHelper.GetElementTypeName(ObjectiveTargetLayer.Ground, (int)GroundType.Ice));
             Assert.Equal("Unknown", ObjectiveEditorHelper.GetElementTypeName(ObjectiveTargetLayer.None, 0));

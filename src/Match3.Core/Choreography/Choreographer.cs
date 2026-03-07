@@ -149,7 +149,7 @@ public sealed class Choreographer : IEventVisitor
 
         if (evt.MergeTarget.HasValue)
         {
-            // Merge animation: move to bomb origin at original size
+            // Merge animation: move to bomb origin and shrink
             var target = new Vector2(evt.MergeTarget.Value.X, evt.MergeTarget.Value.Y);
 
             _commands.Add(new MoveTileCommand
@@ -157,6 +157,16 @@ public sealed class Choreographer : IEventVisitor
                 TileId = evt.TileId,
                 From = position,
                 To = target,
+                StartTime = startTime,
+                Duration = Config.MergeDuration,
+                Easing = EasingType.InOutCubic
+            });
+
+            _commands.Add(new ScaleTileCommand
+            {
+                TileId = evt.TileId,
+                FromScale = Vector2.One,
+                ToScale = Vector2.Zero,
                 StartTime = startTime,
                 Duration = Config.MergeDuration,
                 Easing = EasingType.InOutCubic
@@ -173,7 +183,8 @@ public sealed class Choreographer : IEventVisitor
                 Priority = 10
             });
 
-            // Emit cell lock for merge source position
+            // Lock merge source for merge duration only
+            // Source positions become empty after tile slides away — no bomb pop-in here
             _lockEntries.Add(new CellLockEntry
             {
                 Position = evt.GridPosition,
@@ -192,12 +203,18 @@ public sealed class Choreographer : IEventVisitor
         {
             LastBatchHadMatch = true;
 
-            // Emit cell lock for match destroy position (drop delay)
+            // Wave delay: later waves (higher SimulationTime) get longer locks
+            float waveDelay = evt.SimulationTime - _minSimulationTime;
+            float dropDelay = evt.Reason == DestroyReason.BombEffect
+                ? Config.BombDropDelay
+                : Config.DropDelay;
+
+            // Emit cell lock for destroy position (drop delay + wave offset)
             _lockEntries.Add(new CellLockEntry
             {
                 Position = evt.GridPosition,
                 LockType = CellLockType.Receive,
-                Duration = Config.DropDelay,
+                Duration = waveDelay + dropDelay,
                 IsMerge = false
             });
 
@@ -327,12 +344,13 @@ public sealed class Choreographer : IEventVisitor
     {
         LastBatchHadMerge = true;
 
-        // Emit cell lock for bomb origin position
+        // Lock bomb origin for merge + pop-in duration to prevent gravity overlap
+        float totalBombDuration = Config.MergeDuration + Config.BombPopDuration;
         _lockEntries.Add(new CellLockEntry
         {
             Position = evt.Position,
-            LockType = CellLockType.Receive,
-            Duration = Config.MergeDuration,
+            LockType = CellLockType.Receive | CellLockType.Drop,
+            Duration = totalBombDuration,
             IsMerge = true
         });
 
@@ -354,7 +372,37 @@ public sealed class Choreographer : IEventVisitor
             Easing = EasingType.Linear
         });
 
-        // Remove old tile and spawn new bomb tile after merge completes
+        // Determine tile type for the bomb
+        ElementType bombTileType = evt.BombType == BombType.Color ? ElementType.Universal : evt.BaseType;
+
+        // Spawn the new bomb tile immediately at scale=0 so that
+        // SyncFallingTilesFromGameState doesn't create it at full size.
+        // The tile already exists in GameState after ProcessMatches.
+        _commands.Add(new SpawnTileCommand
+        {
+            TileId = evt.NewTileId,
+            Type = bombTileType,
+            Bomb = evt.BombType,
+            GridPos = evt.Position,
+            SpawnPos = position,
+            StartTime = baseStart,
+            Duration = 0,
+            Priority = 1
+        });
+
+        // Immediately set scale to zero — invisible during merge animation
+        _commands.Add(new ScaleTileCommand
+        {
+            TileId = evt.NewTileId,
+            FromScale = Vector2.Zero,
+            ToScale = Vector2.Zero,
+            StartTime = baseStart,
+            Duration = Config.MergeDuration,
+            Easing = EasingType.Linear,
+            Priority = 2
+        });
+
+        // Remove old tile after merge completes
         _commands.Add(new RemoveTileCommand
         {
             TileId = evt.TileId,
@@ -363,19 +411,16 @@ public sealed class Choreographer : IEventVisitor
             Priority = 5
         });
 
-        // Determine tile type for the bomb
-        TileType bombTileType = evt.BombType == BombType.Color ? TileType.Rainbow : evt.BaseType;
-
-        _commands.Add(new SpawnTileCommand
+        // Bomb pop-in scale animation (0 → 1)
+        _commands.Add(new ScaleTileCommand
         {
             TileId = evt.NewTileId,
-            Type = bombTileType,
-            Bomb = evt.BombType,
-            GridPos = evt.Position,
-            SpawnPos = position,
+            FromScale = Vector2.Zero,
+            ToScale = Vector2.One,
             StartTime = mergeEndTime,
-            Duration = 0,
-            Priority = 6
+            Duration = Config.BombPopDuration,
+            Easing = EasingType.OutBack,
+            Priority = 7
         });
 
         // Visual effect
@@ -387,10 +432,12 @@ public sealed class Choreographer : IEventVisitor
             Duration = 0.3f
         });
 
-        // Track merge end time for this column (delays gravity)
-        if (!_columnDestroyEndTimes.TryGetValue(column, out float existing) || mergeEndTime > existing)
+        // Track full bomb appearance time for this column (delays gravity)
+        // Include BombPopDuration so tiles above don't fall until pop-in completes
+        float bombReadyTime = mergeEndTime + Config.BombPopDuration;
+        if (!_columnDestroyEndTimes.TryGetValue(column, out float existing) || bombReadyTime > existing)
         {
-            _columnDestroyEndTimes[column] = mergeEndTime;
+            _columnDestroyEndTimes[column] = bombReadyTime;
         }
     }
 
@@ -398,16 +445,168 @@ public sealed class Choreographer : IEventVisitor
     public void Visit(BombActivatedEvent evt)
     {
         float startTime = GetStartTime(evt);
-        var position = new Vector2(evt.Position.X, evt.Position.Y);
+        var origin = new Vector2(evt.Position.X, evt.Position.Y);
 
-        var effectCommand = new ShowEffectCommand
+        // Common flash at origin
+        _commands.Add(new ShowEffectCommand
         {
-            EffectType = "bomb_explosion",
-            Position = position,
+            EffectType = "bomb_flash",
+            Position = origin,
             StartTime = startTime,
-            Duration = 0.4f
-        };
-        _commands.Add(effectCommand);
+            Duration = 0.15f
+        });
+
+        switch (evt.BombType)
+        {
+            case BombType.Horizontal:
+            case BombType.Vertical:
+                EmitRocketEffects(evt, startTime, origin);
+                break;
+
+            case BombType.Color:
+                EmitColorBombEffects(evt, startTime, origin);
+                break;
+
+            default:
+                // Square5x5, Ufo, etc. — generic shockwave + explosion
+                _commands.Add(new ShowEffectCommand
+                {
+                    EffectType = "bomb_shockwave",
+                    Position = origin,
+                    StartTime = startTime,
+                    Duration = 0.5f
+                });
+                _commands.Add(new ShowEffectCommand
+                {
+                    EffectType = "bomb_explosion",
+                    Position = origin,
+                    StartTime = startTime,
+                    Duration = 0.4f
+                });
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Emit directional trail + head effects for Horizontal/Vertical rockets.
+    /// </summary>
+    private void EmitRocketEffects(BombActivatedEvent evt, float startTime, Vector2 origin)
+    {
+        bool isHorizontal = evt.BombType == BombType.Horizontal;
+        string trailType = isHorizontal ? "rocket_trail_h" : "rocket_trail_v";
+        const float trailAccel = 0.8f; // matches logical layer acceleration
+
+        int minExtent = int.MaxValue;
+        int maxExtent = int.MinValue;
+
+        // Pre-compute cumulative delays with acceleration: delay[d] = sum of interval * accel^i for i in [0, d-1]
+        // Find max distance first
+        int maxDist = 0;
+        int originAxis = isHorizontal ? evt.Position.X : evt.Position.Y;
+        foreach (var pos in evt.AffectedPositions)
+        {
+            int axis = isHorizontal ? pos.X : pos.Y;
+            int d = Math.Abs(axis - originAxis);
+            if (d > maxDist) maxDist = d;
+        }
+
+        // Build cumulative delay table
+        float[] cumulativeDelay = new float[maxDist + 1];
+        cumulativeDelay[0] = 0f;
+        float interval = Config.RocketTrailInterval;
+        for (int i = 1; i <= maxDist; i++)
+        {
+            cumulativeDelay[i] = cumulativeDelay[i - 1] + interval;
+            interval *= trailAccel;
+        }
+
+        // Emit staggered trail effects along the rocket path
+        foreach (var pos in evt.AffectedPositions)
+        {
+            int axis = isHorizontal ? pos.X : pos.Y;
+            int dist = Math.Abs(axis - originAxis);
+
+            // Track extents for head effects
+            if (axis < minExtent) minExtent = axis;
+            if (axis > maxExtent) maxExtent = axis;
+
+            // Skip the origin cell (already has flash)
+            if (dist == 0) continue;
+
+            _commands.Add(new ShowEffectCommand
+            {
+                EffectType = trailType,
+                Position = new Vector2(pos.X, pos.Y),
+                StartTime = startTime + cumulativeDelay[dist],
+                Duration = 0.15f
+            });
+        }
+
+        // Head effects at the two endpoints
+        if (minExtent != int.MaxValue)
+        {
+            int crossAxis = isHorizontal ? evt.Position.Y : evt.Position.X;
+
+            int minDist = Math.Abs(minExtent - originAxis);
+            int maxDistEnd = Math.Abs(maxExtent - originAxis);
+
+            var minPos = isHorizontal
+                ? new Vector2(minExtent, crossAxis)
+                : new Vector2(crossAxis, minExtent);
+            var maxPos = isHorizontal
+                ? new Vector2(maxExtent, crossAxis)
+                : new Vector2(crossAxis, maxExtent);
+
+            _commands.Add(new ShowEffectCommand
+            {
+                EffectType = "rocket_head",
+                Position = minPos,
+                StartTime = startTime + cumulativeDelay[minDist],
+                Duration = 0.2f
+            });
+            _commands.Add(new ShowEffectCommand
+            {
+                EffectType = "rocket_head",
+                Position = maxPos,
+                StartTime = startTime + cumulativeDelay[maxDistEnd],
+                Duration = 0.2f
+            });
+        }
+    }
+
+    /// <summary>
+    /// Emit rainbow wave at origin + sparkle hit at each affected position for Color bomb.
+    /// </summary>
+    private void EmitColorBombEffects(BombActivatedEvent evt, float startTime, Vector2 origin)
+    {
+        // Rainbow wave at origin
+        _commands.Add(new ShowEffectCommand
+        {
+            EffectType = "color_bomb_wave",
+            Position = origin,
+            StartTime = startTime,
+            Duration = 0.5f
+        });
+
+        // Sparkle at each affected tile, staggered by Chebyshev distance
+        foreach (var pos in evt.AffectedPositions)
+        {
+            int dist = Math.Max(
+                Math.Abs(pos.X - evt.Position.X),
+                Math.Abs(pos.Y - evt.Position.Y));
+
+            // Skip origin (already has wave)
+            if (dist == 0) continue;
+
+            float hitDelay = dist * Config.RocketTrailInterval;
+            _commands.Add(new ShowEffectCommand
+            {
+                EffectType = "color_bomb_hit",
+                Position = new Vector2(pos.X, pos.Y),
+                StartTime = startTime + hitDelay,
+                Duration = 0.3f
+            });
+        }
     }
 
     /// <inheritdoc />
@@ -596,7 +795,7 @@ public sealed class Choreographer : IEventVisitor
             {
                 TileId = change.TileId,
                 Position = change.Position,
-                TileType = change.NewType,
+                TileType = change.ToType,
                 StartTime = startTime,
                 Duration = 0 // Instant update
             };

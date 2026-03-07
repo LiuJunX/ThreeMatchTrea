@@ -121,7 +121,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool ShouldSkipTile(in GameState state, Tile tile, int x, int y)
     {
-        if (tile.Type == TileType.None) return true;
+        if (tile.Type == ElementType.None) return true;
         if (tile.IsSuspended) return true;
         if (_newlyOccupiedSlots.Contains(y * state.Width + x)) return true;
 
@@ -214,18 +214,18 @@ public class RealtimeGravitySystem : IPhysicsSimulation
         if (HasMovedToNewCell(state, visualX, visualY, currentX, currentY))
         {
             // Don't snap to hole cells — tile passes through
-            if (state.IsHole(visualX, visualY))
+            if (state.IsVoid(visualX, visualY))
             {
                 state.SetTile(currentX, currentY, tile);
                 return;
             }
 
             var targetSlot = state.GetTile(visualX, visualY);
-            if (targetSlot.Type == TileType.None)
+            if (targetSlot.Type == ElementType.None)
             {
                 // Move tile to new position
                 state.SetTile(visualX, visualY, tile);
-                state.SetTile(currentX, currentY, new Tile(0, TileType.None, currentX, currentY));
+                state.SetTile(currentX, currentY, new Tile(0, ElementType.None, currentX, currentY));
 
                 // Sync dynamic cover with the tile
                 SyncDynamicCover(ref state, currentX, currentY, visualX, visualY);
@@ -248,7 +248,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
         var cover = state.GetCover(fromX, fromY);
 
         // Only move if cover is dynamic and destination is not a hole
-        if (cover.Type != CoverType.None && cover.IsDynamic && !state.IsHole(toX, toY))
+        if (cover.Type != CoverType.None && cover.IsDynamic && !state.IsVoid(toX, toY))
         {
             state.SetCover(toX, toY, cover);
             state.SetCover(fromX, fromY, Cover.Empty);
@@ -267,7 +267,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
     {
         var tile = state.GetTile(x, y);
 
-        if (tile.Type == TileType.None) return true;
+        if (tile.Type == ElementType.None) return true;
 
         // Tiles blocked by static cover are considered stable
         if (!state.CanMove(x, y)) return true;

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Numerics;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
@@ -57,11 +57,11 @@ public class GravityAnimationIntegrationTests
         // 清空棋盘
         for (int y = 0; y < 6; y++)
         {
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
         }
 
         // 在 (0, 0) 放置一个红色方块
-        var tile = new Tile(100, TileType.Red, 0, 0);
+        var tile = new Tile(100, ElementType.Item1, 0, 0);
         state.SetTile(0, 0, tile);
 
         var config = new Match3Config
@@ -79,19 +79,19 @@ public class GravityAnimationIntegrationTests
         for (int frame = 0; frame < 30; frame++)
         {
             // 记录 GravitySystem 更新前的位置
-            var tileBeforeGravity = FindTile(ref state, TileType.Red);
+            var tileBeforeGravity = FindTile(ref state, ElementType.Item1);
             float posBeforeGravity = tileBeforeGravity.Position.Y;
 
             // GravitySystem 更新
             gravitySystem.Update(ref state, dt);
 
-            var tileAfterGravity = FindTile(ref state, TileType.Red);
+            var tileAfterGravity = FindTile(ref state, ElementType.Item1);
             float posAfterGravity = tileAfterGravity.Position.Y;
 
             // AnimationSystem 更新
             animationSystem.Animate(ref state, dt);
 
-            var tileAfterAnimation = FindTile(ref state, TileType.Red);
+            var tileAfterAnimation = FindTile(ref state, ElementType.Item1);
             float posAfterAnimation = tileAfterAnimation.Position.Y;
 
             _output.WriteLine($"Frame {frame}: Before={posBeforeGravity:F3} -> AfterGravity={posAfterGravity:F3} -> AfterAnimation={posAfterAnimation:F3} | IsFalling={tileAfterGravity.IsFalling}");
@@ -127,10 +127,10 @@ public class GravityAnimationIntegrationTests
 
         for (int y = 0; y < 8; y++)
         {
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
         }
 
-        var tile = new Tile(100, TileType.Red, 0, 0);
+        var tile = new Tile(100, ElementType.Item1, 0, 0);
         state.SetTile(0, 0, tile);
 
         var config = new Match3Config
@@ -152,7 +152,7 @@ public class GravityAnimationIntegrationTests
             gravitySystem.Update(ref state, dt);
             animationSystem.Animate(ref state, dt);
 
-            var currentTile = FindTile(ref state, TileType.Red);
+            var currentTile = FindTile(ref state, ElementType.Item1);
             float currentPosY = currentTile.Position.Y;
 
             // 位置应该单调递增（或停止时保持不变）
@@ -184,11 +184,11 @@ public class GravityAnimationIntegrationTests
 
         for (int y = 0; y < 3; y++)
         {
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
         }
 
         // 放置一个已停止的 tile，位置略微偏离整数
-        var tile = new Tile(100, TileType.Red, 0, 2);
+        var tile = new Tile(100, ElementType.Item1, 0, 2);
         tile.Position = new Vector2(0, 2.05f); // 略微偏离
         tile.Velocity = Vector2.Zero;
         tile.IsFalling = false;
@@ -205,7 +205,7 @@ public class GravityAnimationIntegrationTests
         Assert.Equal(2.0f, resultTile.Position.Y, 2); // 应该被吸附到整数位置
     }
 
-    private Tile FindTile(ref GameState state, TileType type)
+    private Tile FindTile(ref GameState state, ElementType type)
     {
         for (int y = 0; y < state.Height; y++)
         {
@@ -238,11 +238,11 @@ public class GravityAnimationIntegrationTests
         // Arrange: 创建 2x1 棋盘
         var state = new GameState(2, 1, 5, new StubRandom());
 
-        var redTile = new Tile(1, TileType.Red, 0, 0);
+        var redTile = new Tile(1, ElementType.Item1, 0, 0);
         redTile.Position = new Vector2(0, 0);
         state.SetTile(0, 0, redTile);
 
-        var blueTile = new Tile(2, TileType.Blue, 1, 0);
+        var blueTile = new Tile(2, ElementType.Item3, 1, 0);
         blueTile.Position = new Vector2(1, 0);
         state.SetTile(1, 0, blueTile);
 
@@ -304,8 +304,8 @@ public class GravityAnimationIntegrationTests
         Assert.True(stable, "回退动画应该完成");
         Assert.Equal(0, state.Grid[0].Position.X, 2); // Red 回到 (0,0)
         Assert.Equal(1, state.Grid[1].Position.X, 2); // Blue 回到 (1,0)
-        Assert.Equal(TileType.Red, state.Grid[0].Type);  // 类型也应该正确
-        Assert.Equal(TileType.Blue, state.Grid[1].Type);
+        Assert.Equal(ElementType.Item1, state.Grid[0].Type);  // 类型也应该正确
+        Assert.Equal(ElementType.Item3, state.Grid[1].Type);
 
         _output.WriteLine($"回退动画完成: Red 在 X={state.Grid[0].Position.X:F3}, Blue 在 X={state.Grid[1].Position.X:F3}");
     }
@@ -324,11 +324,11 @@ public class GravityAnimationIntegrationTests
         var state = new GameState(2, 1, 5, new StubRandom());
 
         // 设置两个不同颜色的 tile
-        var redTile = new Tile(1, TileType.Red, 0, 0);
+        var redTile = new Tile(1, ElementType.Item1, 0, 0);
         redTile.Position = new Vector2(0, 0);
         state.SetTile(0, 0, redTile);
 
-        var blueTile = new Tile(2, TileType.Blue, 1, 0);
+        var blueTile = new Tile(2, ElementType.Item3, 1, 0);
         blueTile.Position = new Vector2(1, 0);
         state.SetTile(1, 0, blueTile);
 
@@ -390,11 +390,11 @@ public class GravityAnimationIntegrationTests
         // Arrange
         var state = new GameState(2, 1, 5, new StubRandom());
 
-        var redTile = new Tile(1, TileType.Red, 0, 0);
+        var redTile = new Tile(1, ElementType.Item1, 0, 0);
         redTile.Position = new Vector2(0, 0);
         state.SetTile(0, 0, redTile);
 
-        var blueTile = new Tile(2, TileType.Blue, 1, 0);
+        var blueTile = new Tile(2, ElementType.Item3, 1, 0);
         blueTile.Position = new Vector2(1, 0);
         state.SetTile(1, 0, blueTile);
 
@@ -428,11 +428,11 @@ public class GravityAnimationIntegrationTests
         // Arrange
         var state = new GameState(2, 1, 5, new StubRandom());
 
-        var redTile = new Tile(1, TileType.Red, 0, 0);
+        var redTile = new Tile(1, ElementType.Item1, 0, 0);
         redTile.Position = new Vector2(0, 0);
         state.SetTile(0, 0, redTile);
 
-        var blueTile = new Tile(2, TileType.Blue, 1, 0);
+        var blueTile = new Tile(2, ElementType.Item3, 1, 0);
         blueTile.Position = new Vector2(1, 0);
         state.SetTile(1, 0, blueTile);
 
@@ -447,8 +447,8 @@ public class GravityAnimationIntegrationTests
         // Assert
         Assert.True(result.SwapResult.FrameCount > 0, "交换应该有动画帧");
         Assert.True(result.RevertResult.FrameCount > 0, "回退应该有动画帧");
-        Assert.Equal(TileType.Red, state.Grid[0].Type);   // 回到原始位置
-        Assert.Equal(TileType.Blue, state.Grid[1].Type);
+        Assert.Equal(ElementType.Item1, state.Grid[0].Type);   // 回到原始位置
+        Assert.Equal(ElementType.Item3, state.Grid[1].Type);
 
         _output.WriteLine($"交换动画: {result.SwapResult.FrameCount} 帧");
         _output.WriteLine($"回退动画: {result.RevertResult.FrameCount} 帧");
@@ -468,11 +468,11 @@ public class GravityAnimationIntegrationTests
         // Arrange: 创建 1x2 棋盘（竖向）
         var state = new GameState(1, 2, 5, new StubRandom());
 
-        var redTile = new Tile(1, TileType.Red, 0, 0);
+        var redTile = new Tile(1, ElementType.Item1, 0, 0);
         redTile.Position = new Vector2(0, 0);
         state.SetTile(0, 0, redTile);
 
-        var blueTile = new Tile(2, TileType.Blue, 0, 1);
+        var blueTile = new Tile(2, ElementType.Item3, 0, 1);
         blueTile.Position = new Vector2(0, 1);
         state.SetTile(0, 1, blueTile);
 
@@ -535,8 +535,8 @@ public class GravityAnimationIntegrationTests
         Assert.True(stable, "回退动画应该完成");
         Assert.Equal(0, state.Grid[0].Position.Y, 2); // Red 回到 (0,0)
         Assert.Equal(1, state.Grid[1].Position.Y, 2); // Blue 回到 (0,1)
-        Assert.Equal(TileType.Red, state.Grid[0].Type);
-        Assert.Equal(TileType.Blue, state.Grid[1].Type);
+        Assert.Equal(ElementType.Item1, state.Grid[0].Type);
+        Assert.Equal(ElementType.Item3, state.Grid[1].Type);
 
         _output.WriteLine($"回退动画完成: Red 在 Y={state.Grid[0].Position.Y:F3}, Blue 在 Y={state.Grid[1].Position.Y:F3}");
     }
@@ -550,11 +550,11 @@ public class GravityAnimationIntegrationTests
         // Arrange: 创建 1x2 棋盘（竖向）
         var state = new GameState(1, 2, 5, new StubRandom());
 
-        var redTile = new Tile(1, TileType.Red, 0, 0);
+        var redTile = new Tile(1, ElementType.Item1, 0, 0);
         redTile.Position = new Vector2(0, 0);
         state.SetTile(0, 0, redTile);
 
-        var blueTile = new Tile(2, TileType.Blue, 0, 1);
+        var blueTile = new Tile(2, ElementType.Item3, 0, 1);
         blueTile.Position = new Vector2(0, 1);
         state.SetTile(0, 1, blueTile);
 
@@ -614,11 +614,11 @@ public class GravityAnimationIntegrationTests
         // Arrange: 创建 1x2 棋盘（竖向）
         var state = new GameState(1, 2, 5, new StubRandom());
 
-        var redTile = new Tile(1, TileType.Red, 0, 0);
+        var redTile = new Tile(1, ElementType.Item1, 0, 0);
         redTile.Position = new Vector2(0, 0);
         state.SetTile(0, 0, redTile);
 
-        var blueTile = new Tile(2, TileType.Blue, 0, 1);
+        var blueTile = new Tile(2, ElementType.Item3, 0, 1);
         blueTile.Position = new Vector2(0, 1);
         state.SetTile(0, 1, blueTile);
 
@@ -633,8 +633,8 @@ public class GravityAnimationIntegrationTests
         // Assert
         Assert.True(result.SwapResult.FrameCount > 0, "竖向交换应该有动画帧");
         Assert.True(result.RevertResult.FrameCount > 0, "竖向回退应该有动画帧");
-        Assert.Equal(TileType.Red, state.Grid[0].Type);   // 回到原始位置
-        Assert.Equal(TileType.Blue, state.Grid[1].Type);
+        Assert.Equal(ElementType.Item1, state.Grid[0].Type);   // 回到原始位置
+        Assert.Equal(ElementType.Item3, state.Grid[1].Type);
 
         _output.WriteLine($"竖向交换动画: {result.SwapResult.FrameCount} 帧");
         _output.WriteLine($"竖向回退动画: {result.RevertResult.FrameCount} 帧");
@@ -643,3 +643,4 @@ public class GravityAnimationIntegrationTests
 
     #endregion
 }
+

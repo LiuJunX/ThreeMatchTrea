@@ -1,4 +1,4 @@
-using Match3.Core.Models.Enums;
+﻿using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Spawning;
 using Match3.Random;
@@ -33,7 +33,7 @@ public class RuleBasedSpawnModelTests
         {
             for (int x = 0; x < width; x++)
             {
-                state.SetTile(x, y, new Tile(y * width + x, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(y * width + x, ElementType.None, x, y));
             }
         }
         return state;
@@ -50,11 +50,11 @@ public class RuleBasedSpawnModelTests
 
         var type = model.Predict(ref state, 0, in context);
 
-        Assert.NotEqual(TileType.None, type);
+        Assert.NotEqual(ElementType.None, type);
     }
 
     [Fact]
-    public void Predict_ZeroTileTypes_ReturnsNone()
+    public void Predict_ZeroElementTypes_ReturnsNone()
     {
         var model = new RuleBasedSpawnModel();
         var state = new GameState(3, 3, 0, new StubRandom());
@@ -62,7 +62,7 @@ public class RuleBasedSpawnModelTests
 
         var type = model.Predict(ref state, 0, in context);
 
-        Assert.Equal(TileType.None, type);
+        Assert.Equal(ElementType.None, type);
     }
 
     #endregion
@@ -76,8 +76,8 @@ public class RuleBasedSpawnModelTests
         var state = CreateState(5, 5);
 
         // Setup a board where Red would create a match
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
 
         var context = new SpawnContext
         {
@@ -91,7 +91,7 @@ public class RuleBasedSpawnModelTests
         var type = model.Predict(ref state, 2, in context);
 
         // Should spawn Red to create a match (helping the player)
-        Assert.Equal(TileType.Red, type);
+        Assert.Equal(ElementType.Item1, type);
     }
 
     [Fact]
@@ -101,8 +101,8 @@ public class RuleBasedSpawnModelTests
         var state = CreateState(5, 5);
 
         // Setup a board where Blue would create a match
-        state.SetTile(0, 0, new Tile(1, TileType.Blue, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item3, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0));
 
         var context = new SpawnContext
         {
@@ -116,7 +116,7 @@ public class RuleBasedSpawnModelTests
         var type = model.Predict(ref state, 2, in context);
 
         // Should spawn Blue to create a match
-        Assert.Equal(TileType.Blue, type);
+        Assert.Equal(ElementType.Item3, type);
     }
 
     [Fact]
@@ -126,8 +126,8 @@ public class RuleBasedSpawnModelTests
         var state = CreateState(5, 5);
 
         // Setup a board where Green would create a match
-        state.SetTile(0, 0, new Tile(1, TileType.Green, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Green, 1, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item2, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item2, 1, 0));
 
         var context = new SpawnContext
         {
@@ -141,7 +141,7 @@ public class RuleBasedSpawnModelTests
         var type = model.Predict(ref state, 2, in context);
 
         // Should spawn Green to create a match
-        Assert.Equal(TileType.Green, type);
+        Assert.Equal(ElementType.Item2, type);
     }
 
     #endregion
@@ -155,8 +155,8 @@ public class RuleBasedSpawnModelTests
         var state = CreateState(5, 5);
 
         // Setup a board where Red would create a match
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
 
         var context = new SpawnContext
         {
@@ -170,7 +170,7 @@ public class RuleBasedSpawnModelTests
         var type = model.Predict(ref state, 2, in context);
 
         // Should NOT spawn Red (avoid creating match)
-        Assert.NotEqual(TileType.Red, type);
+        Assert.NotEqual(ElementType.Item1, type);
     }
 
     [Fact]
@@ -180,8 +180,8 @@ public class RuleBasedSpawnModelTests
         var state = CreateState(5, 5);
 
         // Setup a board where Yellow would create a match
-        state.SetTile(0, 0, new Tile(1, TileType.Yellow, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Yellow, 1, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item4, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item4, 1, 0));
 
         var context = new SpawnContext
         {
@@ -195,7 +195,7 @@ public class RuleBasedSpawnModelTests
         var type = model.Predict(ref state, 2, in context);
 
         // Should NOT spawn Yellow (challenge the player)
-        Assert.NotEqual(TileType.Yellow, type);
+        Assert.NotEqual(ElementType.Item4, type);
     }
 
     #endregion
@@ -210,15 +210,15 @@ public class RuleBasedSpawnModelTests
         // Red dominates: 8 Red + 1 each of 5 others = 13 total, Red=61%
         int id = 1;
         for (int x = 0; x < 5; x++)
-            state.SetTile(x, 4, new Tile(id++, TileType.Red, x, 4));
-        state.SetTile(0, 3, new Tile(id++, TileType.Red, 0, 3));
-        state.SetTile(1, 3, new Tile(id++, TileType.Red, 1, 3));
-        state.SetTile(2, 3, new Tile(id++, TileType.Red, 2, 3));
-        state.SetTile(3, 3, new Tile(id++, TileType.Green, 3, 3));
-        state.SetTile(4, 3, new Tile(id++, TileType.Blue, 4, 3));
-        state.SetTile(0, 2, new Tile(id++, TileType.Yellow, 0, 2));
-        state.SetTile(1, 2, new Tile(id++, TileType.Purple, 1, 2));
-        state.SetTile(2, 2, new Tile(id++, TileType.Orange, 2, 2));
+            state.SetTile(x, 4, new Tile(id++, ElementType.Item1, x, 4));
+        state.SetTile(0, 3, new Tile(id++, ElementType.Item1, 0, 3));
+        state.SetTile(1, 3, new Tile(id++, ElementType.Item1, 1, 3));
+        state.SetTile(2, 3, new Tile(id++, ElementType.Item1, 2, 3));
+        state.SetTile(3, 3, new Tile(id++, ElementType.Item2, 3, 3));
+        state.SetTile(4, 3, new Tile(id++, ElementType.Item3, 4, 3));
+        state.SetTile(0, 2, new Tile(id++, ElementType.Item4, 0, 2));
+        state.SetTile(1, 2, new Tile(id++, ElementType.Item5, 1, 2));
+        state.SetTile(2, 2, new Tile(id++, ElementType.Item6, 2, 2));
 
         var context = SpawnContext.Default;
         int redCount = 0;
@@ -228,7 +228,7 @@ public class RuleBasedSpawnModelTests
         {
             var model = new RuleBasedSpawnModel(new StubRandom(i));
             var type = model.Predict(ref state, 0, in context);
-            if (type == TileType.Red) redCount++;
+            if (type == ElementType.Item1) redCount++;
         }
 
         // Red is 61% of board but guard triggers Balance weighting:
@@ -246,8 +246,8 @@ public class RuleBasedSpawnModelTests
         // Place 2 of each color = perfectly balanced, 12 total
         int id = 1;
         var colors = new[] {
-            TileType.Red, TileType.Green, TileType.Blue,
-            TileType.Yellow, TileType.Purple, TileType.Orange
+            ElementType.Item1, ElementType.Item2, ElementType.Item3,
+            ElementType.Item4, ElementType.Item5, ElementType.Item6
         };
         for (int i = 0; i < 6; i++)
         {
@@ -259,7 +259,7 @@ public class RuleBasedSpawnModelTests
 
         // Should NOT trigger diversity guard — normal strategy runs
         var type = model.Predict(ref state, 0, in context);
-        Assert.NotEqual(TileType.None, type);
+        Assert.NotEqual(ElementType.None, type);
     }
 
     [Fact]
@@ -269,8 +269,8 @@ public class RuleBasedSpawnModelTests
         var state = CreateState(5, 5);
 
         // Only 2 tiles of same color — too few to judge
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
 
         var context = new SpawnContext
         {
@@ -284,7 +284,7 @@ public class RuleBasedSpawnModelTests
         var type = model.Predict(ref state, 2, in context);
 
         // Guard should NOT fire — Help strategy spawns Red to match
-        Assert.Equal(TileType.Red, type);
+        Assert.Equal(ElementType.Item1, type);
     }
 
     #endregion
@@ -305,13 +305,13 @@ public class RuleBasedSpawnModelTests
         // 2 Red + 1 Green + 1 Blue + 1 Yellow + 1 Purple + 1 Orange = 7 total
         // Red = 2/7 = 28% < 33% — guard won't fire
         int id = 1;
-        state.SetTile(0, 4, new Tile(id++, TileType.Red, 0, 4));
-        state.SetTile(1, 4, new Tile(id++, TileType.Red, 1, 4));
-        state.SetTile(2, 4, new Tile(id++, TileType.Green, 2, 4));
-        state.SetTile(3, 4, new Tile(id++, TileType.Blue, 3, 4));
-        state.SetTile(4, 4, new Tile(id++, TileType.Yellow, 4, 4));
-        state.SetTile(0, 3, new Tile(id++, TileType.Purple, 0, 3));
-        state.SetTile(1, 3, new Tile(id++, TileType.Orange, 1, 3));
+        state.SetTile(0, 4, new Tile(id++, ElementType.Item1, 0, 4));
+        state.SetTile(1, 4, new Tile(id++, ElementType.Item1, 1, 4));
+        state.SetTile(2, 4, new Tile(id++, ElementType.Item2, 2, 4));
+        state.SetTile(3, 4, new Tile(id++, ElementType.Item3, 3, 4));
+        state.SetTile(4, 4, new Tile(id++, ElementType.Item4, 4, 4));
+        state.SetTile(0, 3, new Tile(id++, ElementType.Item5, 0, 3));
+        state.SetTile(1, 3, new Tile(id++, ElementType.Item6, 1, 3));
 
         var context = new SpawnContext
         {
@@ -326,7 +326,7 @@ public class RuleBasedSpawnModelTests
 
         // Challenge should NOT prefer the most common color (Red)
         // It should prefer the rarest non-matching color
-        Assert.NotEqual(TileType.Red, type);
+        Assert.NotEqual(ElementType.Item1, type);
     }
 
     #endregion
@@ -341,10 +341,10 @@ public class RuleBasedSpawnModelTests
 
         // Column 2: top tile is Blue, and Blue would also match (Help picks Blue)
         // Place two Blues horizontally so Help strategy wants Blue at (2,0)
-        state.SetTile(0, 0, new Tile(1, TileType.Blue, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item3, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0));
         // Column 2 top tile is also Blue (at row 4)
-        state.SetTile(2, 4, new Tile(3, TileType.Blue, 2, 4));
+        state.SetTile(2, 4, new Tile(3, ElementType.Item3, 2, 4));
 
         var context = new SpawnContext
         {
@@ -359,7 +359,7 @@ public class RuleBasedSpawnModelTests
 
         // Help would pick Blue (match), but column top is Blue
         // Anti-streak should deflect to a different color
-        Assert.NotEqual(TileType.Blue, type);
+        Assert.NotEqual(ElementType.Item3, type);
     }
 
     [Fact]
@@ -374,13 +374,13 @@ public class RuleBasedSpawnModelTests
 
         // Fill bottom half so the column has existing tiles
         var seedColors = new[] {
-            TileType.Red, TileType.Green, TileType.Blue, TileType.Yellow
+            ElementType.Item1, ElementType.Item2, ElementType.Item3, ElementType.Item4
         };
         for (int y = 4; y < 8; y++)
             state.SetTile(0, y, new Tile(y, seedColors[y - 4], 0, y));
 
         int repeatCount = 0;
-        TileType prev = TileType.None;
+        ElementType prev = ElementType.None;
 
         for (int i = 0; i < spawns; i++)
         {
@@ -388,7 +388,7 @@ public class RuleBasedSpawnModelTests
 
             // Shift top down, place new tile at row 0 (simulates gravity settling)
             var oldTop = state.GetTile(0, 0);
-            if (oldTop.Type != TileType.None)
+            if (oldTop.Type != ElementType.None)
                 state.SetTile(0, 1, oldTop);
             state.SetTile(0, 0, new Tile(i + 100, type, 0, 0));
 
@@ -412,7 +412,7 @@ public class RuleBasedSpawnModelTests
         var type = model.Predict(ref state, 0, in context);
 
         // Should return a valid color without error
-        Assert.NotEqual(TileType.None, type);
+        Assert.NotEqual(ElementType.None, type);
     }
 
     #endregion
@@ -428,7 +428,7 @@ public class RuleBasedSpawnModelTests
 
         var type = adapter.GenerateNonMatchingTile(ref state, 0, 0);
 
-        Assert.NotEqual(TileType.None, type);
+        Assert.NotEqual(ElementType.None, type);
     }
 
     [Fact]
@@ -438,8 +438,8 @@ public class RuleBasedSpawnModelTests
         var state = CreateState(5, 5);
 
         // Setup for match
-        state.SetTile(0, 0, new Tile(1, TileType.Purple, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Purple, 1, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item5, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item5, 1, 0));
 
         // Context that triggers help mode
         var helpContext = new SpawnContext
@@ -455,7 +455,7 @@ public class RuleBasedSpawnModelTests
         var type = adapter.GenerateNonMatchingTile(ref state, 2, 0);
 
         // Should create match in help mode
-        Assert.Equal(TileType.Purple, type);
+        Assert.Equal(ElementType.Item5, type);
     }
 
     #endregion
@@ -472,8 +472,9 @@ public class RuleBasedSpawnModelTests
 
         var type = legacyModel.Predict(ref state, 0, in context);
 
-        Assert.NotEqual(TileType.None, type);
+        Assert.NotEqual(ElementType.None, type);
     }
 
     #endregion
 }
+

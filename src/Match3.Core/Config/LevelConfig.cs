@@ -9,7 +9,22 @@ public class LevelConfig
 {
     public int Width { get; set; } = 8;
     public int Height { get; set; } = 8;
-    public TileType[] Grid { get; set; }
+    
+    // Split TileType[] Grid into Cells and Grid
+    // Legacy Grid field is mapped to Grid (ElementType)
+    // We should probably have separate arrays in config, but for now we'll reuse Grid for ElementType
+    // and assume Cells are mostly Slots unless specified.
+    
+    /// <summary>
+    /// Initial ElementType layout.
+    /// </summary>
+    public ElementType[] Grid { get; set; }
+    
+    /// <summary>
+    /// Initial CellKind layout (Structure).
+    /// </summary>
+    public CellKind[] Cells { get; set; }
+
     public BombType[] Bombs { get; set; }
 
     /// <summary>
@@ -79,12 +94,16 @@ public class LevelConfig
     public LevelConfig()
     {
         var size = Width * Height;
-        Grid = new TileType[size];
+        Grid = new ElementType[size];
+        Cells = new CellKind[size];
         Bombs = new BombType[size];
         Grounds = new GroundType[size];
         GroundHealths = new byte[size];
         Covers = new CoverType[size];
         CoverHealths = new byte[size];
+        
+        // Default cells to Slot
+        Array.Fill(Cells, CellKind.Slot);
     }
 
     public LevelConfig(int width, int height)
@@ -92,12 +111,15 @@ public class LevelConfig
         Width = width;
         Height = height;
         var size = width * height;
-        Grid = new TileType[size];
+        Grid = new ElementType[size];
+        Cells = new CellKind[size];
         Bombs = new BombType[size];
         Grounds = new GroundType[size];
         GroundHealths = new byte[size];
         Covers = new CoverType[size];
         CoverHealths = new byte[size];
+        
+        Array.Fill(Cells, CellKind.Slot);
     }
 
     public LevelConfig DeepCopy()
@@ -109,6 +131,7 @@ public class LevelConfig
             AnalysisCache = AnalysisCache
         };
         Array.Copy(Grid, copy.Grid, Grid.Length);
+        Array.Copy(Cells, copy.Cells, Cells.Length);
         Array.Copy(Bombs, copy.Bombs, Bombs.Length);
         Array.Copy(Grounds, copy.Grounds, Grounds.Length);
         Array.Copy(GroundHealths, copy.GroundHealths, GroundHealths.Length);

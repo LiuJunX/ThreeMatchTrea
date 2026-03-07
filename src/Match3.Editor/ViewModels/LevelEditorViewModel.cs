@@ -94,8 +94,8 @@ namespace Match3.Editor.ViewModels
             set { _editorHeight = value; OnPropertyChanged(nameof(EditorHeight)); }
         }
 
-        private TileType _selectedType = TileType.Red;
-        public TileType SelectedType
+        private ElementType _selectedType = ElementType.Item1;
+        public ElementType SelectedType
         {
             get => _selectedType;
             set
@@ -223,23 +223,23 @@ namespace Match3.Editor.ViewModels
         public LevelConfig ActiveLevelConfig => _session.ActiveLevelConfig;
         public BombType[] ActiveBombs => ActiveLevelConfig.Bombs;
 
-        private static readonly TileType[] _tilePaletteTypes =
+        private static readonly ElementType[] _tilePaletteTypes =
         {
-            TileType.Red,
-            TileType.Green,
-            TileType.Blue,
-            TileType.Yellow,
-            TileType.Purple,
-            TileType.Orange,
-            TileType.Rainbow,
-            TileType.None
+            ElementType.Item1,
+            ElementType.Item2,
+            ElementType.Item3,
+            ElementType.Item4,
+            ElementType.Item5,
+            ElementType.Item6,
+            ElementType.Universal,
+            ElementType.None
         };
 
         private static readonly GroundType[] _groundPaletteTypes = (GroundType[])Enum.GetValues(typeof(GroundType));
         private static readonly CoverType[] _coverPaletteTypes = (CoverType[])Enum.GetValues(typeof(CoverType));
         private static readonly BombType[] _bombPaletteTypes = (BombType[])Enum.GetValues(typeof(BombType));
 
-        public static IReadOnlyList<TileType> TilePaletteTypes => _tilePaletteTypes;
+        public static IReadOnlyList<ElementType> TilePaletteTypes => _tilePaletteTypes;
         public static IReadOnlyList<GroundType> GroundPaletteTypes => _groundPaletteTypes;
         public static IReadOnlyList<CoverType> CoverPaletteTypes => _coverPaletteTypes;
         public static IReadOnlyList<BombType> BombPaletteTypes => _bombPaletteTypes;
@@ -413,7 +413,7 @@ namespace Match3.Editor.ViewModels
             {
                 EditorWidth = _session.CurrentScenario.InitialState.Width;
                 EditorHeight = _session.CurrentScenario.InitialState.Height;
-                if (_session.CurrentScenario.InitialState.Grid.All(t => t == TileType.None))
+                if (_session.CurrentScenario.InitialState.Grid.All(t => t == ElementType.None))
                 {
                     GenerateRandomLevel();
                 }
@@ -474,7 +474,7 @@ namespace Match3.Editor.ViewModels
                 }
                 else
                 {
-                    var type = AssertColor ? SelectedType : (TileType?)null;
+                    var type = AssertColor ? SelectedType : (ElementType?)null;
                     var bomb = AssertBomb ? SelectedBomb : (BombType?)null;
 
                     _session.CurrentScenario.Assertions.Add(new ScenarioAssertion

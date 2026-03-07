@@ -56,6 +56,8 @@ namespace Match3.Unity.Views
             PrewarmPool("match_pop", 10);
             PrewarmPool("explosion", 5);
             PrewarmPool("pop", 10);
+            PrewarmPool("bomb_shockwave", 3);
+            PrewarmPool("bomb_flash", 3);
 
             _initialized = true;
         }
@@ -259,6 +261,12 @@ namespace Match3.Unity.Views
                     // Explosion uses tile color mixed with warm orange
                     var warmColor = Color.Lerp(tileColor, new Color(1f, 0.6f, 0.2f), 0.4f);
                     main.startColor = new ParticleSystem.MinMaxGradient(warmColor, tileColor);
+                    break;
+
+                case "bomb_shockwave":
+                case "bomb_flash":
+                    var flashColor = Color.Lerp(tileColor, Color.white, 0.6f);
+                    main.startColor = new ParticleSystem.MinMaxGradient(flashColor, Color.white);
                     break;
             }
         }

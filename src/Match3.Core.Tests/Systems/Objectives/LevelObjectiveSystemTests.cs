@@ -1,4 +1,4 @@
-using Match3.Core.Config;
+﻿using Match3.Core.Config;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
@@ -56,7 +56,7 @@ public class LevelObjectiveSystemTests
         var config = CreateConfig(new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Red,
+            ElementType = (int)ElementType.Item1,
             TargetCount = 10
         });
 
@@ -65,7 +65,7 @@ public class LevelObjectiveSystemTests
 
         // Assert
         Assert.Equal(ObjectiveTargetLayer.Tile, state.ObjectiveProgress[0].TargetLayer);
-        Assert.Equal((int)TileType.Red, state.ObjectiveProgress[0].ElementType);
+        Assert.Equal((int)ElementType.Item1, state.ObjectiveProgress[0].ElementType);
         Assert.Equal(10, state.ObjectiveProgress[0].TargetCount);
         Assert.Equal(0, state.ObjectiveProgress[0].CurrentCount);
         Assert.True(state.ObjectiveProgress[0].IsActive);
@@ -78,7 +78,7 @@ public class LevelObjectiveSystemTests
         // Arrange
         var state = CreateState();
         var config = CreateConfig(
-            new LevelObjective { TargetLayer = ObjectiveTargetLayer.Tile, ElementType = (int)TileType.Red, TargetCount = 5 },
+            new LevelObjective { TargetLayer = ObjectiveTargetLayer.Tile, ElementType = (int)ElementType.Item1, TargetCount = 5 },
             new LevelObjective { TargetLayer = ObjectiveTargetLayer.Cover, ElementType = (int)CoverType.Cage, TargetCount = 3 },
             new LevelObjective { TargetLayer = ObjectiveTargetLayer.Ground, ElementType = (int)GroundType.Ice, TargetCount = 8 }
         );
@@ -120,7 +120,7 @@ public class LevelObjectiveSystemTests
         var config = CreateConfig(new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Blue,
+            ElementType = (int)ElementType.Item3,
             TargetCount = 5
         });
 
@@ -143,14 +143,14 @@ public class LevelObjectiveSystemTests
         var config = CreateConfig(new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Red,
+            ElementType = (int)ElementType.Item1,
             TargetCount = 5
         });
         _system.Initialize(ref state, config);
         var events = new BufferedEventCollector();
 
         // Act
-        _system.OnTileDestroyed(ref state, TileType.Red, tick: 1, simTime: 0.1f, events);
+        _system.OnTileDestroyed(ref state, ElementType.Item1, tick: 1, simTime: 0.1f, events);
 
         // Assert
         Assert.Equal(1, state.ObjectiveProgress[0].CurrentCount);
@@ -164,14 +164,14 @@ public class LevelObjectiveSystemTests
         var config = CreateConfig(new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Red,
+            ElementType = (int)ElementType.Item1,
             TargetCount = 5
         });
         _system.Initialize(ref state, config);
         var events = new BufferedEventCollector();
 
         // Act
-        _system.OnTileDestroyed(ref state, TileType.Blue, tick: 1, simTime: 0.1f, events);
+        _system.OnTileDestroyed(ref state, ElementType.Item3, tick: 1, simTime: 0.1f, events);
 
         // Assert
         Assert.Equal(0, state.ObjectiveProgress[0].CurrentCount);
@@ -192,7 +192,7 @@ public class LevelObjectiveSystemTests
         var events = new BufferedEventCollector();
 
         // Act
-        _system.OnTileDestroyed(ref state, TileType.Red, tick: 1, simTime: 0.1f, events);
+        _system.OnTileDestroyed(ref state, ElementType.Item1, tick: 1, simTime: 0.1f, events);
 
         // Assert
         Assert.Equal(0, state.ObjectiveProgress[0].CurrentCount);
@@ -206,14 +206,14 @@ public class LevelObjectiveSystemTests
         var config = CreateConfig(new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Green,
+            ElementType = (int)ElementType.Item2,
             TargetCount = 3
         });
         _system.Initialize(ref state, config);
         var events = new BufferedEventCollector();
 
         // Act
-        _system.OnTileDestroyed(ref state, TileType.Green, tick: 42, simTime: 1.5f, events);
+        _system.OnTileDestroyed(ref state, ElementType.Item2, tick: 42, simTime: 1.5f, events);
 
         // Assert
         Assert.Single(events.GetEvents());
@@ -235,14 +235,14 @@ public class LevelObjectiveSystemTests
         var config = CreateConfig(new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Yellow,
+            ElementType = (int)ElementType.Item4,
             TargetCount = 1
         });
         _system.Initialize(ref state, config);
         var events = new BufferedEventCollector();
 
         // Act
-        _system.OnTileDestroyed(ref state, TileType.Yellow, tick: 1, simTime: 0.1f, events);
+        _system.OnTileDestroyed(ref state, ElementType.Item4, tick: 1, simTime: 0.1f, events);
 
         // Assert
         var evt = Assert.IsType<ObjectiveProgressEvent>(events.GetEvents()[0]);
@@ -258,16 +258,16 @@ public class LevelObjectiveSystemTests
         var config = CreateConfig(new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Red,
+            ElementType = (int)ElementType.Item1,
             TargetCount = 1
         });
         _system.Initialize(ref state, config);
         var events = new BufferedEventCollector();
-        _system.OnTileDestroyed(ref state, TileType.Red, tick: 1, simTime: 0.1f, events);
+        _system.OnTileDestroyed(ref state, ElementType.Item1, tick: 1, simTime: 0.1f, events);
         events = new BufferedEventCollector(); // Reset events
 
         // Act
-        _system.OnTileDestroyed(ref state, TileType.Red, tick: 2, simTime: 0.2f, events);
+        _system.OnTileDestroyed(ref state, ElementType.Item1, tick: 2, simTime: 0.2f, events);
 
         // Assert
         Assert.Empty(events.GetEvents());
@@ -282,14 +282,14 @@ public class LevelObjectiveSystemTests
         var config = CreateConfig(new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Red,
+            ElementType = (int)ElementType.Item1,
             TargetCount = 5
         });
         _system.Initialize(ref state, config);
         var events = NullEventCollector.Instance;
 
         // Act
-        _system.OnTileDestroyed(ref state, TileType.Red, tick: 1, simTime: 0.1f, events);
+        _system.OnTileDestroyed(ref state, ElementType.Item1, tick: 1, simTime: 0.1f, events);
 
         // Assert
         Assert.Equal(1, state.ObjectiveProgress[0].CurrentCount); // Progress still updated
@@ -421,14 +421,14 @@ public class LevelObjectiveSystemTests
         // Arrange
         var state = CreateState();
         var config = CreateConfig(
-            new LevelObjective { TargetLayer = ObjectiveTargetLayer.Tile, ElementType = (int)TileType.Red, TargetCount = 1 },
+            new LevelObjective { TargetLayer = ObjectiveTargetLayer.Tile, ElementType = (int)ElementType.Item1, TargetCount = 1 },
             new LevelObjective { TargetLayer = ObjectiveTargetLayer.Cover, ElementType = (int)CoverType.Cage, TargetCount = 1 }
         );
         _system.Initialize(ref state, config);
         var events = NullEventCollector.Instance;
 
         // Complete all objectives
-        _system.OnTileDestroyed(ref state, TileType.Red, tick: 1, simTime: 0.1f, events);
+        _system.OnTileDestroyed(ref state, ElementType.Item1, tick: 1, simTime: 0.1f, events);
         _system.OnCoverDestroyed(ref state, CoverType.Cage, tick: 2, simTime: 0.2f, events);
 
         // Act
@@ -444,14 +444,14 @@ public class LevelObjectiveSystemTests
         // Arrange
         var state = CreateState();
         var config = CreateConfig(
-            new LevelObjective { TargetLayer = ObjectiveTargetLayer.Tile, ElementType = (int)TileType.Red, TargetCount = 1 },
+            new LevelObjective { TargetLayer = ObjectiveTargetLayer.Tile, ElementType = (int)ElementType.Item1, TargetCount = 1 },
             new LevelObjective { TargetLayer = ObjectiveTargetLayer.Cover, ElementType = (int)CoverType.Cage, TargetCount = 5 }
         );
         _system.Initialize(ref state, config);
         var events = NullEventCollector.Instance;
 
         // Only complete first objective
-        _system.OnTileDestroyed(ref state, TileType.Red, tick: 1, simTime: 0.1f, events);
+        _system.OnTileDestroyed(ref state, ElementType.Item1, tick: 1, simTime: 0.1f, events);
 
         // Act
         bool isComplete = _system.IsLevelComplete(in state);
@@ -489,7 +489,7 @@ public class LevelObjectiveSystemTests
         var config = CreateConfig(new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Red,
+            ElementType = (int)ElementType.Item1,
             TargetCount = 10 // Not achievable
         });
         _system.Initialize(ref state, config);
@@ -511,12 +511,12 @@ public class LevelObjectiveSystemTests
         var config = CreateConfig(new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Red,
+            ElementType = (int)ElementType.Item1,
             TargetCount = 1
         });
         _system.Initialize(ref state, config);
         var events = NullEventCollector.Instance;
-        _system.OnTileDestroyed(ref state, TileType.Red, tick: 1, simTime: 0.1f, events); // Complete objective
+        _system.OnTileDestroyed(ref state, ElementType.Item1, tick: 1, simTime: 0.1f, events); // Complete objective
 
         // Act
         bool isFailed = _system.IsLevelFailed(in state);
@@ -535,7 +535,7 @@ public class LevelObjectiveSystemTests
         var config = CreateConfig(new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Red,
+            ElementType = (int)ElementType.Item1,
             TargetCount = 10
         });
         _system.Initialize(ref state, config);
@@ -576,12 +576,12 @@ public class LevelObjectiveSystemTests
         var config = CreateConfig(new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Red,
+            ElementType = (int)ElementType.Item1,
             TargetCount = 1
         });
         _system.Initialize(ref state, config);
         var events = new BufferedEventCollector();
-        _system.OnTileDestroyed(ref state, TileType.Red, tick: 1, simTime: 0.1f, events);
+        _system.OnTileDestroyed(ref state, ElementType.Item1, tick: 1, simTime: 0.1f, events);
         events = new BufferedEventCollector(); // Reset
 
         // Act
@@ -601,12 +601,12 @@ public class LevelObjectiveSystemTests
         var config = CreateConfig(new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Red,
+            ElementType = (int)ElementType.Item1,
             TargetCount = 1
         });
         _system.Initialize(ref state, config);
         var events = new BufferedEventCollector();
-        _system.OnTileDestroyed(ref state, TileType.Red, tick: 1, simTime: 0.1f, events);
+        _system.OnTileDestroyed(ref state, ElementType.Item1, tick: 1, simTime: 0.1f, events);
         events = new BufferedEventCollector(); // Reset
 
         // Act
@@ -632,7 +632,7 @@ public class LevelObjectiveSystemTests
         var config = CreateConfig(new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Red,
+            ElementType = (int)ElementType.Item1,
             TargetCount = 100 // Can't complete
         });
         _system.Initialize(ref state, config);
@@ -656,7 +656,7 @@ public class LevelObjectiveSystemTests
         var config = CreateConfig(new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Red,
+            ElementType = (int)ElementType.Item1,
             TargetCount = 100
         });
         _system.Initialize(ref state, config);
@@ -682,7 +682,7 @@ public class LevelObjectiveSystemTests
         var config = CreateConfig(new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Red,
+            ElementType = (int)ElementType.Item1,
             TargetCount = 1
         });
         _system.Initialize(ref state, config);
@@ -707,7 +707,7 @@ public class LevelObjectiveSystemTests
         var config = CreateConfig(new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Red,
+            ElementType = (int)ElementType.Item1,
             TargetCount = 5 // Not yet complete
         });
         _system.Initialize(ref state, config);
@@ -729,12 +729,12 @@ public class LevelObjectiveSystemTests
         var config = CreateConfig(new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Red,
+            ElementType = (int)ElementType.Item1,
             TargetCount = 1
         });
         _system.Initialize(ref state, config);
         var progressEvents = NullEventCollector.Instance;
-        _system.OnTileDestroyed(ref state, TileType.Red, tick: 1, simTime: 0.1f, progressEvents);
+        _system.OnTileDestroyed(ref state, ElementType.Item1, tick: 1, simTime: 0.1f, progressEvents);
 
         // Act
         _system.UpdateLevelStatus(ref state, tick: 2, simTime: 0.2f, NullEventCollector.Instance);
@@ -753,17 +753,17 @@ public class LevelObjectiveSystemTests
         // Arrange
         var state = CreateState();
         var config = CreateConfig(
-            new LevelObjective { TargetLayer = ObjectiveTargetLayer.Tile, ElementType = (int)TileType.Red, TargetCount = 3 },
-            new LevelObjective { TargetLayer = ObjectiveTargetLayer.Tile, ElementType = (int)TileType.Blue, TargetCount = 2 },
+            new LevelObjective { TargetLayer = ObjectiveTargetLayer.Tile, ElementType = (int)ElementType.Item1, TargetCount = 3 },
+            new LevelObjective { TargetLayer = ObjectiveTargetLayer.Tile, ElementType = (int)ElementType.Item3, TargetCount = 2 },
             new LevelObjective { TargetLayer = ObjectiveTargetLayer.Cover, ElementType = (int)CoverType.Cage, TargetCount = 4 }
         );
         _system.Initialize(ref state, config);
         var events = NullEventCollector.Instance;
 
         // Act
-        _system.OnTileDestroyed(ref state, TileType.Red, tick: 1, simTime: 0.1f, events);
-        _system.OnTileDestroyed(ref state, TileType.Red, tick: 2, simTime: 0.2f, events);
-        _system.OnTileDestroyed(ref state, TileType.Blue, tick: 3, simTime: 0.3f, events);
+        _system.OnTileDestroyed(ref state, ElementType.Item1, tick: 1, simTime: 0.1f, events);
+        _system.OnTileDestroyed(ref state, ElementType.Item1, tick: 2, simTime: 0.2f, events);
+        _system.OnTileDestroyed(ref state, ElementType.Item3, tick: 3, simTime: 0.3f, events);
         _system.OnCoverDestroyed(ref state, CoverType.Cage, tick: 4, simTime: 0.4f, events);
 
         // Assert
@@ -778,14 +778,14 @@ public class LevelObjectiveSystemTests
         // Arrange - Two different tile type objectives
         var state = CreateState();
         var config = CreateConfig(
-            new LevelObjective { TargetLayer = ObjectiveTargetLayer.Tile, ElementType = (int)TileType.Red, TargetCount = 5 },
-            new LevelObjective { TargetLayer = ObjectiveTargetLayer.Tile, ElementType = (int)TileType.Blue, TargetCount = 5 }
+            new LevelObjective { TargetLayer = ObjectiveTargetLayer.Tile, ElementType = (int)ElementType.Item1, TargetCount = 5 },
+            new LevelObjective { TargetLayer = ObjectiveTargetLayer.Tile, ElementType = (int)ElementType.Item3, TargetCount = 5 }
         );
         _system.Initialize(ref state, config);
         var events = NullEventCollector.Instance;
 
         // Act
-        _system.OnTileDestroyed(ref state, TileType.Red, tick: 1, simTime: 0.1f, events);
+        _system.OnTileDestroyed(ref state, ElementType.Item1, tick: 1, simTime: 0.1f, events);
 
         // Assert
         Assert.Equal(1, state.ObjectiveProgress[0].CurrentCount); // Red updated
@@ -794,3 +794,4 @@ public class LevelObjectiveSystemTests
 
     #endregion
 }
+

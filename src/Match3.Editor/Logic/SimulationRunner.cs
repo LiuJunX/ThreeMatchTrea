@@ -16,6 +16,7 @@ using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
 using Match3.Core.Systems.Selection;
 using Match3.Core.Systems.Spawning;
+using Match3.Core.Systems.Objectives;
 using Match3.Core.Utility;
 using Match3.Core.View;
 using Match3.Random;
@@ -64,7 +65,10 @@ namespace Match3.Editor.Logic
             var physics = new RealtimeGravitySystem(engineConfig, seedManager.GetRandom(RandomDomain.Physics));
             var refill = new RealtimeRefillSystem(spawnModel);
             var matchFinder = new ClassicMatchFinder(new BombGenerator());
-            var matchProcessor = new StandardMatchProcessor(scoreSystem, bombRegistry);
+            var objectiveSystem = new LevelObjectiveSystem();
+            var coverSystem = new Match3.Core.Systems.Layers.CoverSystem(objectiveSystem);
+            var groundSystem = new Match3.Core.Systems.Layers.GroundSystem(objectiveSystem);
+            var matchProcessor = new StandardMatchProcessor(scoreSystem, coverSystem, groundSystem, bombRegistry);
             var powerUpHandler = new PowerUpHandler(scoreSystem);
             
             var gameLoop = new AsyncGameLoopSystem(physics, refill, matchFinder, matchProcessor, powerUpHandler);
@@ -135,7 +139,7 @@ namespace Match3.Editor.Logic
             private readonly SimulationRunner _runner;
             public EditorGameView(SimulationRunner runner) => _runner = runner;
             
-            public void RenderBoard(TileType[,] board) 
+            public void RenderBoard(ElementType[,] board) 
             { 
                 _runner.OnRepaintRequired?.Invoke(); 
             }

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Matching;
@@ -42,7 +42,7 @@ public class DeadlockDetectionSystemTests
         {
             for (int x = 0; x < width; x++)
             {
-                state.SetTile(x, y, new Tile(y * width + x, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(y * width + x, ElementType.None, x, y));
             }
         }
         return state;
@@ -56,21 +56,21 @@ public class DeadlockDetectionSystemTests
         var state = CreateEmptyState();
 
         // 创建一个简单的可行移动：(0,0) Red, (1,0) Blue, (2,0) Red -> 交换 (0,1) 和 (1,1) 可以匹配
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
-        state.SetTile(0, 1, new Tile(4, TileType.Blue, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Red, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.Green, 2, 1));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item3, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item1, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item2, 2, 1));
 
         // 填充其余位置避免干扰
         for (int y = 0; y < state.Height; y++)
         {
             for (int x = 0; x < state.Width; x++)
             {
-                if (state.GetTile(x, y).Type == TileType.None)
+                if (state.GetTile(x, y).Type == ElementType.None)
                 {
-                    state.SetTile(x, y, new Tile(y * state.Width + x, TileType.Yellow, x, y));
+                    state.SetTile(x, y, new Tile(y * state.Width + x, ElementType.Item4, x, y));
                 }
             }
         }
@@ -92,7 +92,7 @@ public class DeadlockDetectionSystemTests
         // R G B R G B  (row 3)
         // ...
         // 每行向左旋转一个位置，防止垂直 3 连
-        TileType[] pattern = { TileType.Red, TileType.Green, TileType.Blue };
+        ElementType[] pattern = { ElementType.Item1, ElementType.Item2, ElementType.Item3 };
 
         for (int y = 0; y < state.Height; y++)
         {
@@ -212,6 +212,99 @@ public class DeadlockDetectionSystemTests
         detector.InvalidateCache(); // 当前实现无缓存，确保不抛异常
     }
 
+    /// <summary>
+    /// 死锁棋盘上有一个可点击炸弹 → 不算死锁
+    /// </summary>
+    [Fact]
+    public void HasValidMoves_DeadlockBoardWithTappableBomb_ReturnsTrue()
+    {
+        var detector = CreateDetector();
+        var state = CreateDeadlockBoard();
+
+        // 在 (2,2) 放一个炸弹（保持原始模式颜色，三色旋转模式本身无匹配交换）
+        state.SetTile(2, 2, new Tile(14, ElementType.Item3, 2, 2, BombType.Horizontal));
+
+        Assert.True(detector.HasValidMoves(in state),
+            "棋盘上有可点击的炸弹，不应判定为死锁");
+    }
+
+    /// <summary>
+    /// 死锁棋盘上炸弹被 Cover 挡住 → 仍然是死锁
+    /// </summary>
+    [Fact]
+    public void HasValidMoves_DeadlockBoardWithBlockedBomb_ReturnsFalse()
+    {
+        var detector = CreateDetector();
+        var state = CreateDeadlockBoard();
+
+        // 放一个炸弹（保持原始模式颜色 Item3），但用 Cage 挡住
+        state.SetTile(2, 2, new Tile(14, ElementType.Item3, 2, 2, BombType.Square5x5));
+        state.SetCover(2, 2, new Cover { Type = CoverType.Cage, Health = 1 });
+
+        Assert.False(detector.HasValidMoves(in state),
+            "炸弹被 Cover 挡住时不可交互，仍应判定为死锁");
+    }
+
+    /// <summary>
+    /// 死锁棋盘上有炸弹与普通棋子相邻 → 炸弹交换始终有效
+    /// </summary>
+    [Fact]
+    public void HasValidMoves_DeadlockBoardWithBombSwap_ReturnsTrue()
+    {
+        var detector = CreateDetector();
+        var state = CreateDeadlockBoard();
+
+        // 在 (0,0) 放一个炸弹，(1,0) 是普通棋子
+        state.SetTile(0, 0, new Tile(0, ElementType.Item1, 0, 0, BombType.Vertical));
+
+        Assert.True(detector.HasValidMoves(in state),
+            "炸弹与普通棋子的交换始终有效，不应判定为死锁");
+    }
+
+    /// <summary>
+    /// 死锁棋盘上两个相邻炸弹 → combo 交换有效
+    /// </summary>
+    [Fact]
+    public void HasValidMoves_DeadlockBoardWithTwoBombs_ReturnsTrue()
+    {
+        var detector = CreateDetector();
+        var state = CreateDeadlockBoard();
+
+        // 两个相邻炸弹
+        state.SetTile(3, 3, new Tile(21, ElementType.Item1, 3, 3, BombType.Horizontal));
+        state.SetTile(4, 3, new Tile(22, ElementType.Item2, 4, 3, BombType.Vertical));
+
+        Assert.True(detector.HasValidMoves(in state),
+            "两个相邻炸弹可以交换触发 combo，不应判定为死锁");
+    }
+
+    /// <summary>
+    /// FindAllValidMoves 应包含炸弹交换
+    /// </summary>
+    [Fact]
+    public void FindAllValidMoves_DeadlockBoardWithBomb_IncludesBombSwaps()
+    {
+        var detector = CreateDetector();
+        var state = CreateDeadlockBoard();
+
+        // 在 (0,0) 放一个炸弹
+        state.SetTile(0, 0, new Tile(0, ElementType.Item1, 0, 0, BombType.Horizontal));
+
+        var moves = detector.FindAllValidMoves(in state);
+        try
+        {
+            Assert.NotEmpty(moves);
+            // 炸弹在 (0,0)，应有与 (1,0) 和 (0,1) 的交换
+            Assert.Contains(moves, m =>
+                (m.From == new Position(0, 0) && m.To == new Position(1, 0)) ||
+                (m.From == new Position(0, 0) && m.To == new Position(0, 1)));
+        }
+        finally
+        {
+            Pools.Release(moves);
+        }
+    }
+
     [Fact]
     public void FindAllValidMoves_CheckersPattern_ReturnsSomeMoves()
     {
@@ -230,7 +323,7 @@ public class DeadlockDetectionSystemTests
         {
             for (int x = 0; x < state.Width; x++)
             {
-                var type = ((x / 2) + y) % 2 == 0 ? TileType.Red : TileType.Blue;
+                var type = ((x / 2) + y) % 2 == 0 ? ElementType.Item1 : ElementType.Item3;
                 state.SetTile(x, y, new Tile(y * state.Width + x, type, x, y));
             }
         }
@@ -251,3 +344,4 @@ public class DeadlockDetectionSystemTests
         }
     }
 }
+

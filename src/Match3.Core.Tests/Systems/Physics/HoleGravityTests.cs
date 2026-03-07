@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
@@ -53,16 +53,16 @@ public class HoleGravityTests
         // Tile at (0,0) should fall through hole at (0,1) and land at (0,3) or bottom.
         var state = new GameState(1, 4, 5, new StubRandom());
         for (int y = 0; y < 4; y++)
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
         // Mark row 1 as hole
-        state.Holes[1] = true;
+        state.Cells[1] = CellKind.Void;
 
         // Place a red tile at (0,0)
-        state.SetTile(0, 0, new Tile(100, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(100, ElementType.Item1, 0, 0));
 
         // Place a blocker at bottom (0,3) so tile lands at (0,2)
-        state.SetTile(0, 3, new Tile(200, TileType.Blue, 0, 3));
+        state.SetTile(0, 3, new Tile(200, ElementType.Item3, 0, 3));
 
         var physics = new RealtimeGravitySystem(DefaultConfig, new StubRandom());
 
@@ -72,7 +72,7 @@ public class HoleGravityTests
         // Assert: tile should have landed at (0,2), skipping hole at (0,1)
         var tileAt2 = state.GetTile(0, 2);
         Assert.Equal(100, tileAt2.Id);
-        Assert.Equal(TileType.Red, tileAt2.Type);
+        Assert.Equal(ElementType.Item1, tileAt2.Type);
         Assert.False(tileAt2.IsFalling);
     }
 
@@ -82,13 +82,13 @@ public class HoleGravityTests
         // Arrange: 1-wide, 6-tall. Rows 1-3 are holes. Tile at (0,0) should land at (0,5) or (0,4).
         var state = new GameState(1, 6, 5, new StubRandom());
         for (int y = 0; y < 6; y++)
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
-        state.Holes[1] = true;
-        state.Holes[2] = true;
-        state.Holes[3] = true;
+        state.Cells[1] = CellKind.Void;
+        state.Cells[2] = CellKind.Void;
+        state.Cells[3] = CellKind.Void;
 
-        state.SetTile(0, 0, new Tile(100, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(100, ElementType.Item1, 0, 0));
 
         var physics = new RealtimeGravitySystem(DefaultConfig, new StubRandom());
 
@@ -98,7 +98,7 @@ public class HoleGravityTests
         // Assert: tile should land at (0,5) — bottom of board, past the 3-row hole zone
         var tileAt5 = state.GetTile(0, 5);
         Assert.Equal(100, tileAt5.Id);
-        Assert.Equal(TileType.Red, tileAt5.Type);
+        Assert.Equal(ElementType.Item1, tileAt5.Type);
         Assert.False(tileAt5.IsFalling);
     }
 
@@ -112,12 +112,12 @@ public class HoleGravityTests
         // Arrange: tile falls through hole, check that grid position matches physical position
         var state = new GameState(1, 5, 5, new StubRandom());
         for (int y = 0; y < 5; y++)
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
-        state.Holes[1] = true;
-        state.Holes[2] = true;
+        state.Cells[1] = CellKind.Void;
+        state.Cells[2] = CellKind.Void;
 
-        state.SetTile(0, 0, new Tile(100, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(100, ElementType.Item1, 0, 0));
 
         var physics = new RealtimeGravitySystem(DefaultConfig, new StubRandom());
 
@@ -136,10 +136,10 @@ public class HoleGravityTests
     {
         var state = new GameState(1, 4, 5, new StubRandom());
         for (int y = 0; y < 4; y++)
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
-        state.Holes[1] = true;
-        state.SetTile(0, 0, new Tile(100, TileType.Red, 0, 0));
+        state.Cells[1] = CellKind.Void;
+        state.SetTile(0, 0, new Tile(100, ElementType.Item1, 0, 0));
 
         var physics = new RealtimeGravitySystem(DefaultConfig, new StubRandom());
         RunUntilStable(physics, ref state);
@@ -163,13 +163,13 @@ public class HoleGravityTests
         // Multiple tiles fall through the same hole sequentially
         var state = new GameState(1, 5, 5, new StubRandom());
         for (int y = 0; y < 5; y++)
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
-        state.Holes[2] = true;
+        state.Cells[2] = CellKind.Void;
 
         // Two tiles stacked
-        state.SetTile(0, 0, new Tile(100, TileType.Red, 0, 0));
-        state.SetTile(0, 1, new Tile(101, TileType.Blue, 0, 1));
+        state.SetTile(0, 0, new Tile(100, ElementType.Item1, 0, 0));
+        state.SetTile(0, 1, new Tile(101, ElementType.Item3, 0, 1));
 
         var physics = new RealtimeGravitySystem(DefaultConfig, new StubRandom());
         RunUntilStable(physics, ref state);
@@ -179,13 +179,13 @@ public class HoleGravityTests
         var tileAt4 = state.GetTile(0, 4);
 
         // Both should be non-None tiles
-        Assert.NotEqual(TileType.None, tileAt3.Type);
-        Assert.NotEqual(TileType.None, tileAt4.Type);
+        Assert.NotEqual(ElementType.None, tileAt3.Type);
+        Assert.NotEqual(ElementType.None, tileAt4.Type);
 
         // One should be Red, one Blue (order may vary due to physics timing)
         var types = new[] { tileAt3.Type, tileAt4.Type };
-        Assert.Contains(TileType.Red, types);
-        Assert.Contains(TileType.Blue, types);
+        Assert.Contains(ElementType.Item1, types);
+        Assert.Contains(ElementType.Item3, types);
     }
 
     #endregion
@@ -199,24 +199,24 @@ public class HoleGravityTests
         var state = new GameState(2, 3, 5, new StubRandom());
         for (int y = 0; y < 3; y++)
             for (int x = 0; x < 2; x++)
-                state.SetTile(x, y, new Tile(y * 2 + x, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(y * 2 + x, ElementType.None, x, y));
 
-        state.Holes[0] = true; // (0,0) is a hole
+        state.Cells[0] = CellKind.Void; // (0,0) is a hole
 
-        var spawnModel = new StubSpawnModel(TileType.Red);
+        var spawnModel = new StubSpawnModel(ElementType.Item1);
         var refill = new RealtimeRefillSystem(spawnModel);
 
         // Act
         refill.Update(ref state);
 
         // Assert: column 0 row 0 is a hole — still None
-        Assert.Equal(TileType.None, state.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.None, state.GetTile(0, 0).Type);
 
         // Column 0 should spawn at row 1 (first non-hole row)
-        Assert.Equal(TileType.Red, state.GetTile(0, 1).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(0, 1).Type);
 
         // Column 1 should have been refilled at row 0
-        Assert.Equal(TileType.Red, state.GetTile(1, 0).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(1, 0).Type);
     }
 
     [Fact]
@@ -225,18 +225,18 @@ public class HoleGravityTests
         // Arrange: hole is NOT at row 0 — refill should work normally
         var state = new GameState(1, 4, 5, new StubRandom());
         for (int y = 0; y < 4; y++)
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
-        state.Holes[1 * 1 + 0] = true; // (0,1) is a hole, row 0 is free
+        state.Cells[1 * 1 + 0] = CellKind.Void; // (0,1) is a hole, row 0 is free
 
-        var spawnModel = new StubSpawnModel(TileType.Green);
+        var spawnModel = new StubSpawnModel(ElementType.Item2);
         var refill = new RealtimeRefillSystem(spawnModel);
 
         // Act
         refill.Update(ref state);
 
         // Assert: row 0 should have a tile (hole is below, not at spawn point)
-        Assert.NotEqual(TileType.None, state.GetTile(0, 0).Type);
+        Assert.NotEqual(ElementType.None, state.GetTile(0, 0).Type);
     }
 
     #endregion
@@ -250,16 +250,16 @@ public class HoleGravityTests
         // R R [HOLE] R R — should NOT form a 4-match
         var state = new GameState(1, 5, 5, new StubRandom());
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(0, 1, new Tile(2, TileType.Red, 0, 1));
-        state.SetTile(0, 2, new Tile(3, TileType.None, 0, 2)); // hole cell has TileType.None
-        state.SetTile(0, 3, new Tile(4, TileType.Red, 0, 3));
-        state.SetTile(0, 4, new Tile(5, TileType.Red, 0, 4));
-        state.Holes[2] = true;
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(0, 1, new Tile(2, ElementType.Item1, 0, 1));
+        state.SetTile(0, 2, new Tile(3, ElementType.None, 0, 2)); // hole cell has ElementType.None
+        state.SetTile(0, 3, new Tile(4, ElementType.Item1, 0, 3));
+        state.SetTile(0, 4, new Tile(5, ElementType.Item1, 0, 4));
+        state.Cells[2] = CellKind.Void;
 
-        // Matching uses GetType which returns TileType.None for holes → breaks connectivity
+        // Matching uses GetType which returns ElementType.None for holes → breaks connectivity
         // Verify: tile at hole position is None
-        Assert.Equal(TileType.None, state.GetType(0, 2));
+        Assert.Equal(ElementType.None, state.GetType(0, 2));
     }
 
     #endregion
@@ -275,30 +275,30 @@ public class HoleGravityTests
         var state = new GameState(3, 3, 5, new StubRandom());
         for (int y = 0; y < 3; y++)
             for (int x = 0; x < 3; x++)
-                state.SetTile(x, y, new Tile(y * 3 + x, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(y * 3 + x, ElementType.None, x, y));
 
-        state.SetTile(1, 0, new Tile(100, TileType.Red, 1, 0));
+        state.SetTile(1, 0, new Tile(100, ElementType.Item1, 1, 0));
 
-        var obstacle = new Tile(9, TileType.Green, 1, 1);
+        var obstacle = new Tile(9, ElementType.Item2, 1, 1);
         obstacle.IsSuspended = true;
         state.SetTile(1, 1, obstacle);
 
         // Mark (0,1) as hole — diagonal slide should avoid it
-        state.Holes[1 * 3 + 0] = true;
+        state.Cells[1 * 3 + 0] = CellKind.Void;
 
         // Block (2,2) so tile stops at (2,1)
-        state.SetTile(2, 2, new Tile(10, TileType.Blue, 2, 2));
+        state.SetTile(2, 2, new Tile(10, ElementType.Item3, 2, 2));
 
         var physics = new RealtimeGravitySystem(DefaultConfig, new StubRandom());
         RunUntilStable(physics, ref state);
 
         // Assert: tile should be at (2,1), not at (0,1) which is a hole
         var tileAt21 = state.GetTile(2, 1);
-        Assert.Equal(TileType.Red, tileAt21.Type);
+        Assert.Equal(ElementType.Item1, tileAt21.Type);
         Assert.Equal(100, tileAt21.Id);
 
         // Hole at (0,1) should remain empty
-        Assert.Equal(TileType.None, state.GetTile(0, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(0, 1).Type);
     }
 
     #endregion
@@ -311,12 +311,12 @@ public class HoleGravityTests
         // Arrange: column with hole zone at rows 1-2, tile at (0,0)
         var state = new GameState(1, 5, 5, new StubRandom());
         for (int y = 0; y < 5; y++)
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
-        state.Holes[1] = true;
-        state.Holes[2] = true;
+        state.Cells[1] = CellKind.Void;
+        state.Cells[2] = CellKind.Void;
 
-        state.SetTile(0, 0, new Tile(100, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(100, ElementType.Item1, 0, 0));
 
         var resolver = new GravityTargetResolver(new StubRandom());
         var target = resolver.DetermineTarget(ref state, 0, 0);
@@ -337,11 +337,11 @@ public class HoleGravityTests
         var state = new GameState(3, 3, 5, new StubRandom());
         for (int y = 0; y < 3; y++)
             for (int x = 0; x < 3; x++)
-                state.SetTile(x, y, new Tile(y * 3 + x + 1, TileType.Red, x, y));
+                state.SetTile(x, y, new Tile(y * 3 + x + 1, ElementType.Item1, x, y));
 
         // Mark some holes
-        state.Holes[0 * 3 + 1] = true; // (1,0)
-        state.Holes[2 * 3 + 2] = true; // (2,2)
+        state.Cells[0 * 3 + 1] = CellKind.Void; // (1,0)
+        state.Cells[2 * 3 + 2] = CellKind.Void; // (2,2)
 
         // Act: snapshot and restore
         var snapshot = GameStateSnapshot.FromState(in state);
@@ -354,9 +354,9 @@ public class HoleGravityTests
         Assert.False(restored.IsHole(1, 1));
 
         // Verify snapshot property
-        Assert.Equal(state.Width * state.Height, snapshot.Holes.Length);
-        Assert.True(snapshot.Holes[1]);     // (1,0) = index 1
-        Assert.True(snapshot.Holes[8]);     // (2,2) = index 8
+        Assert.Equal(state.Width * state.Height, snapshot.Cells.Length);
+        Assert.True(snapshot.Cells[1] == CellKind.Void);     // (1,0) = index 1
+        Assert.True(snapshot.Cells[8] == CellKind.Void);     // (2,2) = index 8
     }
 
     #endregion
@@ -367,7 +367,7 @@ public class HoleGravityTests
     public void FindHoleZoneExit_SingleHole_ReturnsEntryY()
     {
         var state = new GameState(1, 5, 5, new StubRandom());
-        state.Holes[2] = true; // row 2
+        state.Cells[2] = CellKind.Void; // row 2
 
         int exit = GravityTargetResolver.FindHoleZoneExit(in state, 0, 2);
         Assert.Equal(2, exit);
@@ -377,9 +377,9 @@ public class HoleGravityTests
     public void FindHoleZoneExit_MultiRowHole_ReturnsLastRow()
     {
         var state = new GameState(1, 6, 5, new StubRandom());
-        state.Holes[1] = true;
-        state.Holes[2] = true;
-        state.Holes[3] = true;
+        state.Cells[1] = CellKind.Void;
+        state.Cells[2] = CellKind.Void;
+        state.Cells[3] = CellKind.Void;
 
         int exit = GravityTargetResolver.FindHoleZoneExit(in state, 0, 1);
         Assert.Equal(3, exit);
@@ -407,24 +407,24 @@ public class HoleGravityTests
         var state = new GameState(3, 5, 5, new StubRandom());
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 3; x++)
-                state.SetTile(x, y, new Tile(y * 3 + x, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(y * 3 + x, ElementType.None, x, y));
 
         // Holes at row 2 for all columns
         for (int x = 0; x < 3; x++)
-            state.Holes[2 * 3 + x] = true;
+            state.Cells[2 * 3 + x] = CellKind.Void;
 
         // Place 3 Red tiles at row 0 — they should fall through holes and land at row 4
-        state.SetTile(0, 0, new Tile(100, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(101, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(102, TileType.Red, 2, 0));
+        state.SetTile(0, 0, new Tile(100, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(101, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(102, ElementType.Item1, 2, 0));
 
         var physics = new RealtimeGravitySystem(DefaultConfig, new StubRandom());
         RunUntilStable(physics, ref state);
 
         // After settling, all 3 tiles should be at row 4 (bottom)
-        Assert.Equal(TileType.Red, state.GetTile(0, 4).Type);
-        Assert.Equal(TileType.Red, state.GetTile(1, 4).Type);
-        Assert.Equal(TileType.Red, state.GetTile(2, 4).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(0, 4).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(1, 4).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(2, 4).Type);
 
         // Verify they're stable (matchable)
         Assert.True(physics.IsStable(in state));
@@ -451,16 +451,16 @@ public class HoleGravityTests
         //   Row 6: Tile D (Yellow)
         var state = new GameState(1, 7, 5, new StubRandom());
         for (int y = 0; y < 7; y++)
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
-        state.Holes[2] = true;
-        state.Holes[3] = true;
-        state.Holes[4] = true;
+        state.Cells[2] = CellKind.Void;
+        state.Cells[3] = CellKind.Void;
+        state.Cells[4] = CellKind.Void;
 
-        state.SetTile(0, 0, new Tile(100, TileType.Red, 0, 0));
-        state.SetTile(0, 1, new Tile(101, TileType.Blue, 0, 1));
-        state.SetTile(0, 5, new Tile(200, TileType.Green, 0, 5));
-        state.SetTile(0, 6, new Tile(201, TileType.Yellow, 0, 6));
+        state.SetTile(0, 0, new Tile(100, ElementType.Item1, 0, 0));
+        state.SetTile(0, 1, new Tile(101, ElementType.Item3, 0, 1));
+        state.SetTile(0, 5, new Tile(200, ElementType.Item2, 0, 5));
+        state.SetTile(0, 6, new Tile(201, ElementType.Item4, 0, 6));
 
         var physics = new RealtimeGravitySystem(DefaultConfig, new StubRandom());
 
@@ -478,7 +478,7 @@ public class HoleGravityTests
             for (int y = 0; y < 7; y++)
             {
                 var tile = state.GetTile(0, y);
-                if (tile.Type == TileType.None) continue;
+                if (tile.Type == ElementType.None) continue;
 
                 Assert.True(tile.Position.Y >= prevPositions[y] - 0.01f,
                     $"Frame {frame}: Tile {tile.Id} at grid({0},{y}) moved backward! " +
@@ -504,17 +504,17 @@ public class HoleGravityTests
         // behind its current position when the leader decelerates.
         var state = new GameState(1, 8, 5, new StubRandom());
         for (int y = 0; y < 8; y++)
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
-        state.Holes[1] = true;
-        state.Holes[2] = true;
-        state.Holes[3] = true;
+        state.Cells[1] = CellKind.Void;
+        state.Cells[2] = CellKind.Void;
+        state.Cells[3] = CellKind.Void;
 
         // Two tiles above holes
-        state.SetTile(0, 0, new Tile(100, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(100, ElementType.Item1, 0, 0));
 
         // Blocker below hole exit
-        state.SetTile(0, 5, new Tile(200, TileType.Blue, 0, 5));
+        state.SetTile(0, 5, new Tile(200, ElementType.Item3, 0, 5));
 
         var physics = new RealtimeGravitySystem(DefaultConfig, new StubRandom());
 
@@ -527,7 +527,7 @@ public class HoleGravityTests
 
             // Find tile 100 wherever it is in the grid
             var tile = FindTileById(in state, 100);
-            if (tile.Type == TileType.None) break;
+            if (tile.Type == ElementType.None) break;
 
             Assert.True(tile.Position.Y >= prevY - 0.01f,
                 $"Frame {frame}: Tile 100 snapped backward from {prevY:F3} to {tile.Position.Y:F3}");
@@ -544,20 +544,20 @@ public class HoleGravityTests
         // to its grid entry position. It should hold at its physical position.
         var state = new GameState(1, 6, 5, new StubRandom());
         for (int y = 0; y < 6; y++)
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
         // Holes at rows 1-2
-        state.Holes[1] = true;
-        state.Holes[2] = true;
+        state.Cells[1] = CellKind.Void;
+        state.Cells[2] = CellKind.Void;
 
         // Tile at row 0, will fall through holes
-        var tile = new Tile(100, TileType.Red, 0, 0);
+        var tile = new Tile(100, ElementType.Item1, 0, 0);
         state.SetTile(0, 0, tile);
 
         // Blocker at row 3 (right at hole exit) — not falling, static
-        state.SetTile(0, 3, new Tile(200, TileType.Green, 0, 3));
-        state.SetTile(0, 4, new Tile(201, TileType.Blue, 0, 4));
-        state.SetTile(0, 5, new Tile(202, TileType.Yellow, 0, 5));
+        state.SetTile(0, 3, new Tile(200, ElementType.Item2, 0, 3));
+        state.SetTile(0, 4, new Tile(201, ElementType.Item3, 0, 4));
+        state.SetTile(0, 5, new Tile(202, ElementType.Item4, 0, 5));
 
         var resolver = new GravityTargetResolver(new StubRandom());
 
@@ -596,15 +596,15 @@ public class HoleGravityTests
         //   Row 6: (empty)
         var state = new GameState(1, 7, 5, new StubRandom());
         for (int y = 0; y < 7; y++)
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
-        state.Holes[2] = true;
-        state.Holes[3] = true;
-        state.Holes[4] = true;
+        state.Cells[2] = CellKind.Void;
+        state.Cells[3] = CellKind.Void;
+        state.Cells[4] = CellKind.Void;
 
-        state.SetTile(0, 0, new Tile(100, TileType.Red, 0, 0));
-        state.SetTile(0, 1, new Tile(101, TileType.Blue, 0, 1));
-        state.SetTile(0, 5, new Tile(200, TileType.Green, 0, 5));
+        state.SetTile(0, 0, new Tile(100, ElementType.Item1, 0, 0));
+        state.SetTile(0, 1, new Tile(101, ElementType.Item3, 0, 1));
+        state.SetTile(0, 5, new Tile(200, ElementType.Item2, 0, 5));
 
         var physics = new RealtimeGravitySystem(DefaultConfig, new StubRandom());
 
@@ -615,7 +615,7 @@ public class HoleGravityTests
 
             // Tile A (id=100) should never have Position.Y in the hole zone (rows 2-4)
             var tileA = FindTileById(in state, 100);
-            if (tileA.Type != TileType.None)
+            if (tileA.Type != ElementType.None)
             {
                 int roundedY = (int)System.Math.Floor(tileA.Position.Y + 0.5f);
                 Assert.False(roundedY >= 2 && roundedY <= 4,
@@ -637,7 +637,7 @@ public class HoleGravityTests
 
         // Tile A should have settled above the hole (row 0 or 1) since rows 5-6 are full
         var finalA = FindTileById(in state, 100);
-        Assert.NotEqual(TileType.None, finalA.Type);
+        Assert.NotEqual(ElementType.None, finalA.Type);
     }
 
     [Fact]
@@ -648,22 +648,22 @@ public class HoleGravityTests
         // After GuardHoleTransit allows backward, it should snap back and stabilize.
         var state = new GameState(1, 6, 5, new StubRandom());
         for (int y = 0; y < 6; y++)
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
-        state.Holes[1] = true;
-        state.Holes[2] = true;
+        state.Cells[1] = CellKind.Void;
+        state.Cells[2] = CellKind.Void;
 
         // Manually create a stuck tile: at grid (0,0), Position.Y deep in hole zone
-        var stuck = new Tile(100, TileType.Red, 0, 0);
+        var stuck = new Tile(100, ElementType.Item1, 0, 0);
         stuck.Position.Y = 2.5f;
         stuck.Velocity.Y = 0f;
         stuck.IsFalling = false;
         state.SetTile(0, 0, stuck);
 
         // Block exit
-        state.SetTile(0, 3, new Tile(200, TileType.Green, 0, 3));
-        state.SetTile(0, 4, new Tile(201, TileType.Blue, 0, 4));
-        state.SetTile(0, 5, new Tile(202, TileType.Yellow, 0, 5));
+        state.SetTile(0, 3, new Tile(200, ElementType.Item2, 0, 3));
+        state.SetTile(0, 4, new Tile(201, ElementType.Item3, 0, 4));
+        state.SetTile(0, 5, new Tile(202, ElementType.Item4, 0, 5));
 
         var physics = new RealtimeGravitySystem(DefaultConfig, new StubRandom());
 
@@ -687,7 +687,7 @@ public class HoleGravityTests
     public void IsHole_PositionOverload_Works()
     {
         var state = new GameState(3, 3, 5, new StubRandom());
-        state.Holes[1 * 3 + 2] = true; // (2,1)
+        state.Cells[1 * 3 + 2] = CellKind.Void; // (2,1)
 
         Assert.True(state.IsHole(new Position(2, 1)));
         Assert.False(state.IsHole(new Position(0, 0)));
@@ -695,3 +695,5 @@ public class HoleGravityTests
 
     #endregion
 }
+
+

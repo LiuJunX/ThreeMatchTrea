@@ -35,7 +35,8 @@ public class ClassicMatchFinder : IMatchFinder
         if (!state.CanMatch(p)) return false;
 
         var type = state.GetType(p.X, p.Y);
-        if (type == TileType.None || type == TileType.Rainbow || type == TileType.Bomb) return false;
+        // Universal (Rainbow) and Unmatchable items don't participate in standard color matching loops
+        if (type == ElementType.None || type == ElementType.Universal || type == ElementType.Unmatchable) return false;
 
         int w = state.Width;
         int h = state.Height;
@@ -82,7 +83,7 @@ public class ClassicMatchFinder : IMatchFinder
     /// Checks if the position (x,y) is part of a 2x2 square of the same type.
     /// The position can be any of the 4 corners of the square.
     /// </summary>
-    private static bool Has2x2SquareAt(in GameState state, int x, int y, TileType type)
+    private static bool Has2x2SquareAt(in GameState state, int x, int y, ElementType type)
     {
         int w = state.Width;
         int h = state.Height;
@@ -127,7 +128,7 @@ public class ClassicMatchFinder : IMatchFinder
         return false;
     }
 
-    private static bool IsMatchableType(in GameState state, int x, int y, TileType type)
+    private static bool IsMatchableType(in GameState state, int x, int y, ElementType type)
     {
         return state.CanMatch(x, y) && state.GetType(x, y) == type;
     }
@@ -153,7 +154,7 @@ public class ClassicMatchFinder : IMatchFinder
                     if (!state.CanMatch(p)) continue;
 
                     var type = state.GetType(x, y);
-                    if (type == TileType.None || type == TileType.Rainbow || type == TileType.Bomb) continue;
+                    if (type == ElementType.None || type == ElementType.Universal || type == ElementType.Unmatchable) continue;
 
                     var component = GetConnectedComponent(in state, p, type);
                     try
@@ -182,7 +183,7 @@ public class ClassicMatchFinder : IMatchFinder
         }
     }
 
-    private HashSet<Position> GetConnectedComponent(in GameState state, Position start, TileType type)
+    private HashSet<Position> GetConnectedComponent(in GameState state, Position start, ElementType type)
     {
         var component = Pools.ObtainHashSet<Position>();
         var queue = Pools.ObtainQueue<Position>();
@@ -213,7 +214,7 @@ public class ClassicMatchFinder : IMatchFinder
         }
     }
 
-    private void CheckNeighbor(in GameState state, int x, int y, TileType type, HashSet<Position> component, Queue<Position> queue)
+    private void CheckNeighbor(in GameState state, int x, int y, ElementType type, HashSet<Position> component, Queue<Position> queue)
     {
         if (x < 0 || x >= state.Width || y < 0 || y >= state.Height) return;
 

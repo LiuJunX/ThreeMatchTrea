@@ -49,12 +49,12 @@ public class DeadlockIntegrationTests
     private class StubScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(Core.Models.Gameplay.MatchGroup match) => 10;
-        public int CalculateSpecialMoveScore(TileType t1, BombType b1, TileType t2, BombType b2) => 100;
+        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 100;
     }
 
     private class StubSpawnModel : ISpawnModel
     {
-        public TileType Predict(ref GameState state, int spawnX, in Core.Systems.Spawning.SpawnContext context) => TileType.Blue;
+        public ElementType Predict(ref GameState state, int spawnX, in Core.Systems.Spawning.SpawnContext context) => ElementType.Item3;
     }
 
     private SimulationEngine CreateEngine(GameState state, IEventCollector? eventCollector = null, SimulationConfig? config = null)
@@ -66,12 +66,12 @@ public class DeadlockIntegrationTests
         var bombGenerator = new BombGenerator();
         var matchFinder = new ClassicMatchFinder(bombGenerator);
         var scoreSystem = new StubScoreSystem();
-        var matchProcessor = new StandardMatchProcessor(scoreSystem, BombEffectRegistry.CreateDefault());
+        var matchProcessor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), BombEffectRegistry.CreateDefault());
         var powerUpHandler = new PowerUpHandler(scoreSystem);
 
         // 创建死锁检测和洗牌系统
         var deadlockDetector = new DeadlockDetectionSystem(matchFinder);
-        var shuffleSystem = new BoardShuffleSystem(deadlockDetector);
+        var shuffleSystem = new BoardShuffleSystem(matchFinder);
 
         // 确保配置启用死锁检测和事件
         var finalConfig = config ?? new SimulationConfig
@@ -102,7 +102,7 @@ public class DeadlockIntegrationTests
         var state = new GameState(6, 6, 6, random);
 
         // 三色旋转模式：每行向左旋转一个位置
-        TileType[] pattern = { TileType.Red, TileType.Green, TileType.Blue };
+        ElementType[] pattern = { ElementType.Item1, ElementType.Item2, ElementType.Item3 };
 
         for (int y = 0; y < state.Height; y++)
         {
@@ -274,9 +274,9 @@ public class DeadlockIntegrationTests
         {
             for (int x = 0; x < state.Width; x++)
             {
-                var type = TileType.Red;
-                if (x % 3 == 0) type = TileType.Blue;
-                else if (x % 3 == 1) type = TileType.Green;
+                var type = ElementType.Item1;
+                if (x % 3 == 0) type = ElementType.Item3;
+                else if (x % 3 == 1) type = ElementType.Item2;
                 state.SetTile(x, y, new Tile(y * state.Width + x, type, x, y));
             }
         }
@@ -295,3 +295,5 @@ public class DeadlockIntegrationTests
         Assert.Empty(shuffleEvents);
     }
 }
+
+

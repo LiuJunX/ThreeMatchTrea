@@ -16,6 +16,7 @@ public class PowerUpHandler : IPowerUpHandler
     private readonly BombEffectRegistry _effectRegistry;
     private readonly ICoverSystem _coverSystem;
     private readonly IGroundSystem _groundSystem;
+    private readonly IExplosionSystem? _explosionSystem;
 
     public PowerUpHandler(IScoreSystem scoreSystem)
         : this(scoreSystem, new BombComboHandler(), BombEffectRegistry.CreateDefault(),
@@ -28,13 +29,15 @@ public class PowerUpHandler : IPowerUpHandler
         BombComboHandler comboHandler,
         BombEffectRegistry effectRegistry,
         ICoverSystem coverSystem,
-        IGroundSystem groundSystem)
+        IGroundSystem groundSystem,
+        IExplosionSystem? explosionSystem = null)
     {
         _scoreSystem = scoreSystem;
         _comboHandler = comboHandler;
         _effectRegistry = effectRegistry;
         _coverSystem = coverSystem;
         _groundSystem = groundSystem;
+        _explosionSystem = explosionSystem;
     }
 
     public void ProcessSpecialMove(ref GameState state, Position p1, Position p2, out int points)
@@ -87,7 +90,8 @@ public class PowerUpHandler : IPowerUpHandler
         ActivateBomb(ref state, p, 0, 0f, NullEventCollector.Instance);
     }
 
-    public void ActivateBomb(ref GameState state, Position p, int tick, float simTime, IEventCollector events)
+    public void ActivateBomb(ref GameState state, Position p, int tick, float simTime, IEventCollector events,
+        bool isChainReaction = false)
     {
         var t = state.GetTile(p.X, p.Y);
         if (t.Bomb == BombType.None) return;
@@ -95,41 +99,76 @@ public class PowerUpHandler : IPowerUpHandler
         var affected = Pools.ObtainHashSet<Position>();
         try
         {
-            // Use BombEffectRegistry to get single bomb effect
             if (_effectRegistry.TryGetEffect(t.Bomb, out var effect))
             {
                 effect!.Apply(in state, p, affected);
-                ClearAffectedTiles(ref state, affected, tick, simTime, events);
-            }
+                affected.Add(p); // Ensure origin is in the affected set
 
-            // Ensure the bomb itself is cleared
-            var currentT = state.GetTile(p.X, p.Y);
-            if (currentT.Type != TileType.None)
-            {
+                // Emit BombActivatedEvent
                 if (events.IsEnabled)
                 {
-                    events.Emit(new TileDestroyedEvent
+                    events.Emit(new BombActivatedEvent
                     {
                         Tick = tick,
                         SimulationTime = simTime,
-                        TileId = currentT.Id,
-                        GridPosition = p,
-                        Type = currentT.Type,
-                        Bomb = currentT.Bomb,
-                        Reason = DestroyReason.BombEffect
+                        TileId = t.Id,
+                        Position = p,
+                        BombType = t.Bomb,
+                        AffectedPositions = new List<Position>(affected),
+                        IsChainReaction = isChainReaction
                     });
                 }
 
-                state.SetTile(p.X, p.Y, new Tile(0, TileType.None, p.X, p.Y));
+                // Clear bomb attribute to prevent re-activation
+                ClearBombAttribute(ref state, p);
 
-                // Notify ground layer
-                _groundSystem.OnTileDestroyed(ref state, p, tick, simTime, events);
+                if (_explosionSystem != null)
+                {
+                    // Rockets spread 2x faster than other bombs
+                    bool isRocket = t.Bomb == BombType.Horizontal || t.Bomb == BombType.Vertical;
+                    if (isRocket)
+                        _explosionSystem.CreateTargetedExplosion(ref state, p, affected, 0.04f, 0.8f);
+                    else
+                        _explosionSystem.CreateTargetedExplosion(ref state, p, affected);
+                }
+                else
+                {
+                    // Fallback: instant destruction (backward compatible)
+                    ClearAffectedTiles(ref state, affected, tick, simTime, events);
+
+                    // Ensure the bomb itself is cleared
+                    var currentT = state.GetTile(p.X, p.Y);
+                    if (currentT.Type != ElementType.None)
+                    {
+                        if (events.IsEnabled)
+                        {
+                            events.Emit(new TileDestroyedEvent
+                            {
+                                Tick = tick,
+                                SimulationTime = simTime,
+                                TileId = currentT.Id,
+                                GridPosition = p,
+                                Type = currentT.Type,
+                                Bomb = currentT.Bomb,
+                                Reason = DestroyReason.BombEffect
+                            });
+                        }
+
+                        state.SetTile(p.X, p.Y, new Tile(0, ElementType.None, p.X, p.Y));
+                        _groundSystem.OnTileDestroyed(ref state, p, tick, simTime, events);
+                    }
+                }
             }
         }
         finally
         {
             Pools.Release(affected);
         }
+    }
+
+    public IPowerUpHandler WithExplosionSystem(IExplosionSystem? explosionSystem)
+    {
+        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, explosionSystem);
     }
 
     /// <summary>
@@ -194,7 +233,7 @@ public class PowerUpHandler : IPowerUpHandler
                 var tile = state.GetTile(pos.X, pos.Y);
 
                 // Already empty, skip
-                if (tile.Type == TileType.None)
+                if (tile.Type == ElementType.None)
                     continue;
 
                 // If it's a bomb, trigger chain explosion
@@ -227,7 +266,7 @@ public class PowerUpHandler : IPowerUpHandler
                 }
 
                 // Clear the tile
-                state.SetTile(pos.X, pos.Y, new Tile(0, TileType.None, pos.X, pos.Y));
+                state.SetTile(pos.X, pos.Y, new Tile(0, ElementType.None, pos.X, pos.Y));
 
                 // Notify ground layer
                 _groundSystem.OnTileDestroyed(ref state, pos, tick, simTime, events);

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
@@ -49,7 +49,7 @@ public class SwapOperationsTests
     private GameState CreateTestState()
     {
         var state = new GameState(5, 5, 4, new StubRandom());
-        var types = new[] { TileType.Red, TileType.Blue, TileType.Green, TileType.Yellow };
+        var types = new[] { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4 };
 
         for (int y = 0; y < 5; y++)
         {
@@ -297,3 +297,4 @@ public class SwapOperationsTests
 
     #endregion
 }
+

@@ -9,17 +9,17 @@
   "objectives": [
     {
       "targetLayer": "Tile",
-      "elementType": 128,
+      "elementType": 1,
       "targetCount": 15
     },
     {
       "targetLayer": "Tile",
-      "elementType": 512,
+      "elementType": 3,
       "targetCount": 15
     },
     {
       "targetLayer": "Tile",
-      "elementType": 1024,
+      "elementType": 4,
       "targetCount": 15
     }
   ],

@@ -1,10 +1,8 @@
 using System;
 using Match3.Core.Config;
 using Match3.Core.Events;
-using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Simulation;
-using Match3.Core.Systems.Core;
 using Match3.Core.Systems.Generation;
 using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.Matching;
@@ -92,10 +90,10 @@ public sealed class GameServiceFactory : IGameServiceFactory
         var scoreSystem = _scoreSystemFactory();
         var bombRegistry = _bombRegistryFactory();
         var matchProcessor = _matchProcessorFactory(scoreSystem, bombRegistry);
-        var powerUpHandler = _powerUpFactory(scoreSystem);
         var projectileSystem = _projectileFactory();
         var objectiveSystem = _objectiveSystemFactory();
         var explosionSystem = new ExplosionSystem(new CoverSystem(objectiveSystem), new GroundSystem(objectiveSystem), objectiveSystem);
+        var powerUpHandler = _powerUpFactory(scoreSystem).WithExplosionSystem(explosionSystem);
 
         // Use provided event collector or create based on config
         var collector = eventCollector ?? _eventCollectorFactory(true);
@@ -150,20 +148,17 @@ public sealed class GameServiceFactory : IGameServiceFactory
         // Initialize board
         var tileGenerator = _tileGeneratorFactory(seedManager.GetRandom(RandomDomain.Refill));
 
-        if (levelConfig?.Grid != null && HasValidTiles(levelConfig.Grid))
+        if (levelConfig != null)
         {
+            // BoardInitializer handles all cases:
+            // - Grid with tiles → use specified layout
+            // - Grid null/empty → generate random tiles for Slot cells
+            // - Cells array → skip Void/Wall cells
             var initializer = new BoardInitializer(tileGenerator, objectiveSystem);
             initializer.Initialize(ref state, levelConfig);
         }
         else
         {
-            // Apply level config (objectives, move limit) even with random grid
-            if (levelConfig != null)
-            {
-                state.MoveLimit = levelConfig.MoveLimit;
-                state.TargetDifficulty = levelConfig.TargetDifficulty;
-                objectiveSystem.Initialize(ref state, levelConfig);
-            }
             InitializeRandomBoard(ref state, tileGenerator);
         }
 
@@ -179,9 +174,9 @@ public sealed class GameServiceFactory : IGameServiceFactory
         var scoreSystem = _scoreSystemFactory();
         var bombRegistry = _bombRegistryFactory();
         var matchProcessor = _matchProcessorFactory(scoreSystem, bombRegistry);
-        var powerUpHandler = _powerUpFactory(scoreSystem);
         var projectileSystem = _projectileFactory();
         var explosionSystem = new ExplosionSystem(new CoverSystem(objectiveSystem), new GroundSystem(objectiveSystem), objectiveSystem);
+        var powerUpHandler = _powerUpFactory(scoreSystem).WithExplosionSystem(explosionSystem);
         var physics = _physicsFactory(match3Config, seedManager.GetRandom(RandomDomain.Physics));
         var refill = _refillFactory(spawnModel);
 
@@ -207,14 +202,15 @@ public sealed class GameServiceFactory : IGameServiceFactory
         return new GameSession(engine, eventCollector, seedManager, configuration);
     }
 
-    private static bool HasValidTiles(TileType[] grid)
-    {
-        foreach (var t in grid)
-        {
-            if (t != TileType.None) return true;
-        }
-        return false;
-    }
+    /// <inheritdoc />
+    public ISpawnModel CreateSpawnModel(IRandom random) => _spawnModelFactory(random);
+
+    /// <inheritdoc />
+    public ITileGenerator CreateTileGenerator(IRandom random) => _tileGeneratorFactory(random);
+
+    public IDeadlockDetectionSystem CreateDeadlockDetector(IMatchFinder matchFinder) => _deadlockDetectorFactory(matchFinder);
+    public IBoardShuffleSystem CreateShuffleSystem(IDeadlockDetectionSystem deadlockDetector) => _shuffleSystemFactory(deadlockDetector);
+    public ILevelObjectiveSystem? CreateObjectiveSystem() => _objectiveSystemFactory?.Invoke();
 
     private void InitializeRandomBoard(ref GameState state, ITileGenerator tileGenerator)
     {

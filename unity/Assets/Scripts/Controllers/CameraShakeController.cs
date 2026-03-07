@@ -113,8 +113,16 @@ namespace Match3.Unity.Controllers
             int count = 0;
             foreach (var effect in state.Effects)
             {
-                if (effect.EffectType == "explosion" || effect.EffectType == "bomb_explosion")
-                    count++;
+                switch (effect.EffectType)
+                {
+                    case "explosion":
+                    case "bomb_explosion":
+                        count++;
+                        break;
+                    case "bomb_shockwave":
+                        count += 5; // Shockwave = medium shake contribution
+                        break;
+                }
             }
             return count;
         }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Numerics;
 using System.Text;
 using Match3.Core.Config;
@@ -30,7 +30,7 @@ public class GravityStressTests
 
     private class StubTileGenerator : ITileGenerator
     {
-        public TileType GenerateNonMatchingTile(ref GameState state, int x, int y) => TileType.Blue;
+        public ElementType GenerateNonMatchingTile(ref GameState state, int x, int y) => ElementType.Item3;
     }
 
     private class StubRandom : IRandom
@@ -55,13 +55,13 @@ public class GravityStressTests
         
         // Fill top 3 with tiles, bottom 7 empty
         // Y=0,1,2 occupied. 3..9 empty.
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(0, 1, new Tile(2, TileType.Red, 0, 1));
-        state.SetTile(0, 2, new Tile(3, TileType.Red, 0, 2));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(0, 1, new Tile(2, ElementType.Item1, 0, 1));
+        state.SetTile(0, 2, new Tile(3, ElementType.Item1, 0, 2));
 
         for (int y = 3; y < height; y++)
         {
-            state.SetTile(0, y, new Tile(0, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(0, ElementType.None, 0, y));
         }
 
         // Simulate 60 frames (1 second)
@@ -112,14 +112,14 @@ public class GravityStressTests
         var gravity = new RealtimeGravitySystem(new Match3Config(), new StubRandom());
 
         // Tile A (Bottom) falling at speed 10
-        var tileA = new Tile(1, TileType.Red, 0, 5);
+        var tileA = new Tile(1, ElementType.Item1, 0, 5);
         tileA.Position = new Vector2(0, 5.0f);
         tileA.Velocity = new Vector2(0, 10.0f);
         tileA.IsFalling = true;
         state.SetTile(0, 5, tileA);
 
         // Tile B (Top) falling at speed 15 (catching up)
-        var tileB = new Tile(2, TileType.Blue, 0, 4);
+        var tileB = new Tile(2, ElementType.Item3, 0, 4);
         tileB.Position = new Vector2(0, 4.05f); // Very close to A (Gap 0.95 < 1.0) -> Should collide
         tileB.Velocity = new Vector2(0, 15.0f);
         tileB.IsFalling = true;
@@ -157,3 +157,4 @@ public class GravityStressTests
         return new Tile(); // Should not happen
     }
 }
+

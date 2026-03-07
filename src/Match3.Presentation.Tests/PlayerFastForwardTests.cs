@@ -36,7 +36,7 @@ public class PlayerFastForwardTests
         {
             new SpawnTileCommand
             {
-                TileId = 1, Type = TileType.Red, Bomb = BombType.None,
+                TileId = 1, Type = ElementType.Item1, Bomb = BombType.None,
                 GridPos = new Position(0, 0), SpawnPos = new Vector2(0, 0),
                 StartTime = 0f, Duration = 0f
             },
@@ -77,7 +77,7 @@ public class PlayerFastForwardTests
         {
             new SpawnTileCommand
             {
-                TileId = 1, Type = TileType.Red, Bomb = BombType.None,
+                TileId = 1, Type = ElementType.Item1, Bomb = BombType.None,
                 GridPos = new Position(0, 0), SpawnPos = new Vector2(0, 0),
                 StartTime = 0f, Duration = 0f
             },
@@ -110,13 +110,13 @@ public class PlayerFastForwardTests
         {
             new SpawnTileCommand
             {
-                TileId = 1, Type = TileType.Red, Bomb = BombType.None,
+                TileId = 1, Type = ElementType.Item1, Bomb = BombType.None,
                 GridPos = new Position(0, 0), SpawnPos = new Vector2(0, 0),
                 StartTime = 0f, Duration = 0f
             },
             new SpawnTileCommand
             {
-                TileId = 2, Type = TileType.Blue, Bomb = BombType.None,
+                TileId = 2, Type = ElementType.Item3, Bomb = BombType.None,
                 GridPos = new Position(1, 0), SpawnPos = new Vector2(1, 0),
                 StartTime = 0f, Duration = 0f
             },
@@ -164,7 +164,7 @@ public class PlayerFastForwardTests
         {
             new SpawnTileCommand
             {
-                TileId = 1, Type = TileType.Red, Bomb = BombType.None,
+                TileId = 1, Type = ElementType.Item1, Bomb = BombType.None,
                 GridPos = new Position(0, 0), SpawnPos = new Vector2(0, 0),
                 StartTime = 0f, Duration = 0f
             },
@@ -208,7 +208,7 @@ public class PlayerFastForwardTests
         {
             new SpawnTileCommand
             {
-                TileId = 1, Type = TileType.Red, Bomb = BombType.None,
+                TileId = 1, Type = ElementType.Item1, Bomb = BombType.None,
                 GridPos = new Position(0, 0), SpawnPos = new Vector2(0, 0),
                 StartTime = 0f, Duration = 0f
             },

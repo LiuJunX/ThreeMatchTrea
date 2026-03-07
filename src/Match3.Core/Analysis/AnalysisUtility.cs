@@ -13,10 +13,10 @@ namespace Match3.Core.Analysis;
 /// </summary>
 internal static class AnalysisUtility
 {
-    private static readonly TileType[] AllTileTypes =
+    private static readonly ElementType[] AllTileTypes =
     {
-        TileType.Red, TileType.Blue, TileType.Green,
-        TileType.Yellow, TileType.Purple, TileType.Orange
+        ElementType.Item1, ElementType.Item2, ElementType.Item3,
+        ElementType.Item4, ElementType.Item5, ElementType.Item6
     };
 
     /// <summary>
@@ -36,7 +36,7 @@ internal static class AnalysisUtility
             for (int x = 0; x < levelData.Width; x++)
             {
                 int idx = y * levelData.Width + x;
-                TileType type;
+                ElementType type;
                 do
                 {
                     type = types[random.Next(types.Length)];
@@ -76,7 +76,7 @@ internal static class AnalysisUtility
                     bomb = levelConfig.Bombs[idx];
                 }
 
-                if (type == TileType.None)
+                if (type == ElementType.None)
                 {
                     var types = GetTileTypes(tileTypesCount);
                     do
@@ -127,14 +127,14 @@ internal static class AnalysisUtility
     /// <summary>
     /// 统计关卡中使用的不同颜色数量
     /// </summary>
-    public static int CountDistinctTileTypes(TileType[]? grid)
+    public static int CountDistinctTileTypes(ElementType[]? grid)
     {
         if (grid == null || grid.Length == 0) return 0;
 
-        var seen = new HashSet<TileType>();
+        var seen = new HashSet<ElementType>();
         foreach (var type in grid)
         {
-            if (type != TileType.None && type != TileType.Rainbow)
+            if (type != ElementType.None && type != ElementType.Universal)
             {
                 seen.Add(type);
             }
@@ -145,9 +145,9 @@ internal static class AnalysisUtility
     /// <summary>
     /// 获取指定数量的棋子类型
     /// </summary>
-    public static TileType[] GetTileTypes(int count)
+    public static ElementType[] GetTileTypes(int count)
     {
-        var result = new TileType[Math.Min(count, AllTileTypes.Length)];
+        var result = new ElementType[Math.Min(count, AllTileTypes.Length)];
         Array.Copy(AllTileTypes, result, result.Length);
         return result;
     }
@@ -155,7 +155,7 @@ internal static class AnalysisUtility
     /// <summary>
     /// 检查在指定位置放置指定类型是否会产生匹配
     /// </summary>
-    public static bool WouldCreateMatch(in GameState state, int x, int y, TileType type)
+    public static bool WouldCreateMatch(in GameState state, int x, int y, ElementType type)
     {
         if (x >= 2 &&
             state.GetType(x - 1, y) == type &&
@@ -199,7 +199,7 @@ internal static class AnalysisUtility
         int count = 0;
         for (int i = 0; i < state.Grid.Length; i++)
         {
-            if (state.Grid[i].Type != TileType.None) count++;
+            if (state.Grid[i].Type != ElementType.None) count++;
         }
         return count;
     }

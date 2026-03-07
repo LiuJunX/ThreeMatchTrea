@@ -1,4 +1,4 @@
-using System.Linq;
+﻿using System.Linq;
 using Match3.Core.Config;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
@@ -30,12 +30,12 @@ public class SimulationPauseTests
     private class StubScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(MatchGroup match) => 10;
-        public int CalculateSpecialMoveScore(TileType t1, BombType b1, TileType t2, BombType b2) => 100;
+        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 100;
     }
 
     private class StubSpawnModel : ISpawnModel
     {
-        public TileType Predict(ref GameState state, int spawnX, in SpawnContext context) => TileType.Blue;
+        public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context) => ElementType.Item3;
     }
 
     private SimulationEngine CreateEngine(GameState state)
@@ -47,7 +47,7 @@ public class SimulationPauseTests
         var bombGenerator = new BombGenerator();
         var matchFinder = new ClassicMatchFinder(bombGenerator);
         var scoreSystem = new StubScoreSystem();
-        var matchProcessor = new StandardMatchProcessor(scoreSystem, BombEffectRegistry.CreateDefault());
+        var matchProcessor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), BombEffectRegistry.CreateDefault());
         var powerUpHandler = new PowerUpHandler(scoreSystem);
 
         return new SimulationEngine(
@@ -69,7 +69,7 @@ public class SimulationPauseTests
         {
             for (int x = 0; x < 5; x++)
             {
-                state.SetTile(x, y, new Tile(y * 5 + x, TileType.Blue, x, y));
+                state.SetTile(x, y, new Tile(y * 5 + x, ElementType.Item3, x, y));
             }
         }
         return state;
@@ -119,3 +119,5 @@ public class SimulationPauseTests
         Assert.Equal(0f, result.DeltaTime);
     }
 }
+
+

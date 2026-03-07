@@ -23,7 +23,7 @@ public class ChoreographerPlayerIntegrationTests
     public void TileMove_FullFlow_UpdatesVisualState()
     {
         // Arrange: Add tile to visual state
-        _player.VisualState.AddTile(1, TileType.Red, BombType.None, new Position(3, 3), new Vector2(3, 3));
+        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(3, 3), new Vector2(3, 3));
 
         // Act: Create event, choreograph, load, tick
         var events = new GameEvent[]
@@ -53,7 +53,7 @@ public class ChoreographerPlayerIntegrationTests
     public void TileDestroy_FullFlow_RemovesTileFromVisualState()
     {
         // Arrange
-        _player.VisualState.AddTile(1, TileType.Red, BombType.None, new Position(3, 4), new Vector2(3, 4));
+        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(3, 4), new Vector2(3, 4));
 
         // Act
         var events = new GameEvent[]
@@ -62,7 +62,7 @@ public class ChoreographerPlayerIntegrationTests
             {
                 TileId = 1,
                 GridPosition = new Position(3, 4),
-                Type = TileType.Red,
+                Type = ElementType.Item1,
                 Reason = DestroyReason.Match,
                 SimulationTime = 0f
             }
@@ -80,7 +80,7 @@ public class ChoreographerPlayerIntegrationTests
     public void TileDestroy_DuringAnimation_IsBeingAnimated()
     {
         // Arrange
-        _player.VisualState.AddTile(1, TileType.Red, BombType.None, new Position(3, 4), new Vector2(3, 4));
+        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(3, 4), new Vector2(3, 4));
 
         // Act: Start destroy animation, tick to midpoint
         var events = new GameEvent[]
@@ -89,7 +89,7 @@ public class ChoreographerPlayerIntegrationTests
             {
                 TileId = 1,
                 GridPosition = new Position(3, 4),
-                Type = TileType.Red,
+                Type = ElementType.Item1,
                 Reason = DestroyReason.Match,
                 SimulationTime = 0f
             }
@@ -109,7 +109,7 @@ public class ChoreographerPlayerIntegrationTests
     public void TileDestroy_AfterAnimation_NotBeingAnimated()
     {
         // Arrange
-        _player.VisualState.AddTile(1, TileType.Red, BombType.None, new Position(3, 4), new Vector2(3, 4));
+        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(3, 4), new Vector2(3, 4));
 
         var events = new GameEvent[]
         {
@@ -117,7 +117,7 @@ public class ChoreographerPlayerIntegrationTests
             {
                 TileId = 1,
                 GridPosition = new Position(3, 4),
-                Type = TileType.Red,
+                Type = ElementType.Item1,
                 Reason = DestroyReason.Match,
                 SimulationTime = 0f
             }
@@ -141,7 +141,7 @@ public class ChoreographerPlayerIntegrationTests
             {
                 TileId = 1,
                 GridPosition = new Position(3, 0),
-                Type = TileType.Blue,
+                Type = ElementType.Item3,
                 Bomb = BombType.None,
                 SpawnPosition = new Vector2(3, -1),
                 SimulationTime = 0f
@@ -156,7 +156,7 @@ public class ChoreographerPlayerIntegrationTests
         // Note: Physical movement to GridPosition is handled by physics system, not Choreographer
         var tile = _player.VisualState.GetTile(1);
         Assert.NotNull(tile);
-        Assert.Equal(TileType.Blue, tile.TileType);
+        Assert.Equal(ElementType.Item3, tile.TileType);
         Assert.Equal(3f, tile.Position.X, 0.001f);
         Assert.Equal(-1f, tile.Position.Y, 0.001f);  // At SpawnPosition, physics controls falling
     }
@@ -165,8 +165,8 @@ public class ChoreographerPlayerIntegrationTests
     public void TileSwap_FullFlow_SwapsTilePositions()
     {
         // Arrange
-        _player.VisualState.AddTile(1, TileType.Red, BombType.None, new Position(3, 4), new Vector2(3, 4));
-        _player.VisualState.AddTile(2, TileType.Blue, BombType.None, new Position(4, 4), new Vector2(4, 4));
+        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(3, 4), new Vector2(3, 4));
+        _player.VisualState.AddTile(2, ElementType.Item3, BombType.None, new Position(4, 4), new Vector2(4, 4));
 
         // Act
         var events = new GameEvent[]
@@ -203,8 +203,8 @@ public class ChoreographerPlayerIntegrationTests
     public void DestroyThenMove_FullFlow_ProperSequencing()
     {
         // Arrange: Tile at (3,3) will move to (3,4) after tile at (3,4) is destroyed
-        _player.VisualState.AddTile(1, TileType.Red, BombType.None, new Position(3, 4), new Vector2(3, 4));
-        _player.VisualState.AddTile(2, TileType.Blue, BombType.None, new Position(3, 3), new Vector2(3, 3));
+        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(3, 4), new Vector2(3, 4));
+        _player.VisualState.AddTile(2, ElementType.Item3, BombType.None, new Position(3, 3), new Vector2(3, 3));
 
         // Act
         var events = new GameEvent[]
@@ -213,7 +213,7 @@ public class ChoreographerPlayerIntegrationTests
             {
                 TileId = 1,
                 GridPosition = new Position(3, 4),
-                Type = TileType.Red,
+                Type = ElementType.Item1,
                 Reason = DestroyReason.Match,
                 SimulationTime = 0f
             },
@@ -230,9 +230,10 @@ public class ChoreographerPlayerIntegrationTests
         var commands = _choreographer.Choreograph(events);
         _player.Load(commands);
 
-        // Verify sequencing: destroy should complete before move starts
+        // Verify sequencing: destroy should complete before the actual move starts
+        // (first MoveTileCommand may be a hold-in-place command)
         var destroyCmd = commands.OfType<DestroyTileCommand>().First();
-        var moveCmd = commands.OfType<MoveTileCommand>().First();
+        var moveCmd = commands.OfType<MoveTileCommand>().Last();
         Assert.True(moveCmd.StartTime >= destroyCmd.StartTime + destroyCmd.Duration);
 
         _player.SkipToEnd();
@@ -248,9 +249,9 @@ public class ChoreographerPlayerIntegrationTests
     public void MultipleDestroysAndMoves_FullFlow_AllTilesEndUpCorrectly()
     {
         // Arrange: 3 tiles in column 3
-        _player.VisualState.AddTile(1, TileType.Red, BombType.None, new Position(3, 5), new Vector2(3, 5));  // Will be destroyed
-        _player.VisualState.AddTile(2, TileType.Blue, BombType.None, new Position(3, 4), new Vector2(3, 4)); // Will move to 5
-        _player.VisualState.AddTile(3, TileType.Green, BombType.None, new Position(3, 3), new Vector2(3, 3)); // Will move to 4
+        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(3, 5), new Vector2(3, 5));  // Will be destroyed
+        _player.VisualState.AddTile(2, ElementType.Item3, BombType.None, new Position(3, 4), new Vector2(3, 4)); // Will move to 5
+        _player.VisualState.AddTile(3, ElementType.Item2, BombType.None, new Position(3, 3), new Vector2(3, 3)); // Will move to 4
 
         var events = new GameEvent[]
         {
@@ -258,7 +259,7 @@ public class ChoreographerPlayerIntegrationTests
             {
                 TileId = 1,
                 GridPosition = new Position(3, 5),
-                Type = TileType.Red,
+                Type = ElementType.Item1,
                 Reason = DestroyReason.Match,
                 SimulationTime = 0f
             },
@@ -298,7 +299,7 @@ public class ChoreographerPlayerIntegrationTests
     public void DestroySpawnAndMove_FullFlow_RefillScenario()
     {
         // Arrange: Simulate a typical match-destroy-refill cycle
-        _player.VisualState.AddTile(1, TileType.Red, BombType.None, new Position(3, 4), new Vector2(3, 4));
+        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(3, 4), new Vector2(3, 4));
 
         var events = new GameEvent[]
         {
@@ -307,7 +308,7 @@ public class ChoreographerPlayerIntegrationTests
             {
                 TileId = 1,
                 GridPosition = new Position(3, 4),
-                Type = TileType.Red,
+                Type = ElementType.Item1,
                 Reason = DestroyReason.Match,
                 SimulationTime = 0f
             },
@@ -316,7 +317,7 @@ public class ChoreographerPlayerIntegrationTests
             {
                 TileId = 2,
                 GridPosition = new Position(3, 4),
-                Type = TileType.Blue,
+                Type = ElementType.Item3,
                 Bomb = BombType.None,
                 SpawnPosition = new Vector2(3, -1),
                 SimulationTime = 0.3f
@@ -331,7 +332,7 @@ public class ChoreographerPlayerIntegrationTests
         Assert.Null(_player.VisualState.GetTile(1));
         var tile2 = _player.VisualState.GetTile(2);
         Assert.NotNull(tile2);
-        Assert.Equal(TileType.Blue, tile2.TileType);
+        Assert.Equal(ElementType.Item3, tile2.TileType);
         // Tile spawns at SpawnPosition; physics system controls falling to GridPosition
         Assert.Equal(-1f, tile2.Position.Y, 0.001f);
     }
@@ -344,16 +345,17 @@ public class ChoreographerPlayerIntegrationTests
     public void BombCreation_FullFlow_UpdatesTileBombType()
     {
         // Arrange
-        _player.VisualState.AddTile(1, TileType.Red, BombType.None, new Position(3, 4), new Vector2(3, 4));
+        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(3, 4), new Vector2(3, 4));
 
         var events = new GameEvent[]
         {
             new BombCreatedEvent
             {
                 TileId = 1,
+                NewTileId = 2,
                 Position = new Position(3, 4),
                 BombType = BombType.Horizontal,
-                BaseType = TileType.Red,
+                BaseType = ElementType.Item1,
                 SimulationTime = 0f
             }
         };
@@ -362,8 +364,9 @@ public class ChoreographerPlayerIntegrationTests
         _player.Load(commands);
         _player.SkipToEnd();
 
-        // Assert
-        var tile = _player.VisualState.GetTile(1);
+        // Assert: old tile removed, new tile has bomb
+        Assert.Null(_player.VisualState.GetTile(1));
+        var tile = _player.VisualState.GetTile(2);
         Assert.NotNull(tile);
         Assert.Equal(BombType.Horizontal, tile.BombType);
     }
@@ -447,9 +450,9 @@ public class ChoreographerPlayerIntegrationTests
         // Row 0: will spawn new tiles
         for (int x = 0; x < 3; x++)
         {
-            _player.VisualState.AddTile(x + 1, TileType.Red, BombType.None,
+            _player.VisualState.AddTile(x + 1, ElementType.Item1, BombType.None,
                 new Position(x, 2), new Vector2(x, 2));
-            _player.VisualState.AddTile(x + 4, TileType.Blue, BombType.None,
+            _player.VisualState.AddTile(x + 4, ElementType.Item3, BombType.None,
                 new Position(x, 1), new Vector2(x, 1));
         }
 
@@ -458,7 +461,7 @@ public class ChoreographerPlayerIntegrationTests
         // Match detected
         events.Add(new MatchDetectedEvent
         {
-            Type = TileType.Red,
+            Type = ElementType.Item1,
             Positions = new[] { new Position(0, 2), new Position(1, 2), new Position(2, 2) },
             TileCount = 3,
             SimulationTime = 0f
@@ -471,7 +474,7 @@ public class ChoreographerPlayerIntegrationTests
             {
                 TileId = x + 1,
                 GridPosition = new Position(x, 2),
-                Type = TileType.Red,
+                Type = ElementType.Item1,
                 Reason = DestroyReason.Match,
                 SimulationTime = 0.05f
             });
@@ -497,7 +500,7 @@ public class ChoreographerPlayerIntegrationTests
             {
                 TileId = x + 7,
                 GridPosition = new Position(x, 1),
-                Type = TileType.Green,
+                Type = ElementType.Item2,
                 Bomb = BombType.None,
                 SpawnPosition = new Vector2(x, -1),
                 SimulationTime = 0.5f
@@ -527,7 +530,7 @@ public class ChoreographerPlayerIntegrationTests
         {
             var tile = _player.VisualState.GetTile(x + 7);
             Assert.NotNull(tile);
-            Assert.Equal(TileType.Green, tile.TileType);
+            Assert.Equal(ElementType.Item2, tile.TileType);
             Assert.Equal(-1f, tile.Position.Y, 0.001f);  // At SpawnPosition
         }
     }
@@ -536,7 +539,7 @@ public class ChoreographerPlayerIntegrationTests
     public void AppendEventsWhilePlaying_FullFlow_ContinuesSeamlessly()
     {
         // Initial setup
-        _player.VisualState.AddTile(1, TileType.Red, BombType.None, new Position(3, 3), new Vector2(3, 3));
+        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(3, 3), new Vector2(3, 3));
 
         // First batch of events
         var events1 = new GameEvent[]
@@ -558,7 +561,7 @@ public class ChoreographerPlayerIntegrationTests
         _player.Tick(_choreographer.Config.MoveDuration / 2);
 
         // Append more events
-        _player.VisualState.AddTile(2, TileType.Blue, BombType.None, new Position(4, 3), new Vector2(4, 3));
+        _player.VisualState.AddTile(2, ElementType.Item3, BombType.None, new Position(4, 3), new Vector2(4, 3));
         var events2 = new GameEvent[]
         {
             new TileMovedEvent

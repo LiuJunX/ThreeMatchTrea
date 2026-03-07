@@ -48,24 +48,24 @@
     {
         return obj.TargetLayer switch
         {
-            ObjectiveTargetLayer.Tile => GetTileIcon((TileType)obj.ElementType),
+            ObjectiveTargetLayer.Tile => GetTileIcon((ElementType)obj.ElementType),
             ObjectiveTargetLayer.Cover => GetCoverIcon((CoverType)obj.ElementType),
             ObjectiveTargetLayer.Ground => GetGroundIcon((GroundType)obj.ElementType),
             _ => "?"
         };
     }
 
-    private string GetTileIcon(TileType type)
+    private string GetTileIcon(ElementType type)
     {
         return type switch
         {
-            TileType.Red => "R",
-            TileType.Green => "G",
-            TileType.Blue => "B",
-            TileType.Yellow => "Y",
-            TileType.Purple => "P",
-            TileType.Orange => "O",
-            TileType.Rainbow => "*",
+            ElementType.Item1 => "R",
+            ElementType.Item2 => "G",
+            ElementType.Item3 => "B",
+            ElementType.Item4 => "Y",
+            ElementType.Item5 => "P",
+            ElementType.Item6 => "O",
+            ElementType.Universal => "*",
             _ => "T"
         };
     }

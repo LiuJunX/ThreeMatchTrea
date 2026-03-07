@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using System.Text;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
@@ -29,7 +29,7 @@ public class RefillStressTests
 
     private class StubSpawnModel : ISpawnModel
     {
-        public TileType Predict(ref GameState state, int spawnX, in SpawnContext context) => TileType.Blue;
+        public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context) => ElementType.Item3;
     }
 
     private class StubRandom : Match3.Random.IRandom
@@ -70,7 +70,7 @@ public class RefillStressTests
 
         // 3. Check that only the top slot is filled
         var topTile = state.GetTile(0, 0);
-        Assert.NotEqual(TileType.None, topTile.Type);
+        Assert.NotEqual(ElementType.None, topTile.Type);
         Assert.True(topTile.IsFalling);
         Assert.Equal(-1.0f, topTile.Position.Y, 0.01f);
 
@@ -78,7 +78,7 @@ public class RefillStressTests
         for (int y = 1; y < height; y++)
         {
             var tile = state.GetTile(0, y);
-            Assert.Equal(TileType.None, tile.Type);
+            Assert.Equal(ElementType.None, tile.Type);
         }
     }
 
@@ -92,20 +92,20 @@ public class RefillStressTests
 
         // Place a tile at (0, 1) that has fallen slightly
         // Logical position is (0, 1), Physical position is 0.5f
-        var fallingTile = new Tile(100, TileType.Red, 0, 1);
+        var fallingTile = new Tile(100, ElementType.Item1, 0, 1);
         fallingTile.Position = new Vector2(0, 0.5f);
         fallingTile.IsFalling = true;
         state.SetTile(0, 1, fallingTile);
 
         // Ensure (0, 0) is empty
-        state.SetTile(0, 0, new Tile(0, TileType.None, 0, 0));
+        state.SetTile(0, 0, new Tile(0, ElementType.None, 0, 0));
 
         // 2. Run refill
         refill.Update(ref state);
 
         // 3. Check new tile at (0, 0)
         var newTile = state.GetTile(0, 0);
-        Assert.NotEqual(TileType.None, newTile.Type);
+        Assert.NotEqual(ElementType.None, newTile.Type);
 
         // New behavior: Always spawn at -1.0f, gravity system handles following
         Assert.Equal(-1.0f, newTile.Position.Y, 0.001f);
@@ -137,7 +137,7 @@ public class RefillStressTests
         for (int y = 0; y < height; y++)
         {
             var tile = state.GetTile(0, y);
-            Assert.NotEqual(TileType.None, tile.Type);
+            Assert.NotEqual(ElementType.None, tile.Type);
             Assert.False(tile.IsFalling, $"Tile at {y} is still falling at {tile.Position.Y}");
             Assert.Equal((float)y, tile.Position.Y, 0.1f);
         }
@@ -154,21 +154,21 @@ public class RefillStressTests
 
         // Place a tile at (0, 1) that has already crossed 0.5 cells
         // Position.Y = 1.6 means it has moved 0.6 cells from row 1
-        var fallingTile = new Tile(100, TileType.Red, 0, 1);
+        var fallingTile = new Tile(100, ElementType.Item1, 0, 1);
         fallingTile.Position = new Vector2(0, 1.6f);
         fallingTile.Velocity = new Vector2(0, 10.0f);
         fallingTile.IsFalling = true;
         state.SetTile(0, 1, fallingTile);
 
         // Ensure (0, 0) is empty
-        state.SetTile(0, 0, new Tile(0, TileType.None, 0, 0));
+        state.SetTile(0, 0, new Tile(0, ElementType.None, 0, 0));
 
         // 2. Run Refill to spawn the new tile
         refill.Update(ref state);
         var newTile = state.GetTile(0, 0);
 
         // New tile always spawns at -1.0f
-        Assert.NotEqual(TileType.None, newTile.Type);
+        Assert.NotEqual(ElementType.None, newTile.Type);
         Assert.Equal(-1.0f, newTile.Position.Y, 0.001f);
 
         // 3. Run gravity - the new tile should start falling immediately
@@ -188,7 +188,7 @@ public class RefillStressTests
             for (int y = 0; y < state.Height; y++)
             {
                 var t = state.GetTile(x, y);
-                if (t.Type == TileType.None) return false;
+                if (t.Type == ElementType.None) return false;
                 if (t.IsFalling) return false;
                 if (Math.Abs(t.Position.Y - y) > 0.01f) return false;
             }
@@ -217,7 +217,7 @@ public class RefillStressTests
         for (int x = 0; x < state.Width; x++)
         {
             var tile = state.GetTile(x, 0);
-            Assert.NotEqual(TileType.None, tile.Type);
+            Assert.NotEqual(ElementType.None, tile.Type);
             Assert.True(tile.IsFalling);
         }
     }
@@ -232,9 +232,9 @@ public class RefillStressTests
         state.MoveCount = 18;
 
         // Setup potential match: if Red spawned at column 2, it would match
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(0, TileType.None, 2, 0)); // Empty spawn point
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(0, ElementType.None, 2, 0)); // Empty spawn point
 
         var spawnModel = new RuleBasedSpawnModel(new StubRandom());
         var refill = new RealtimeRefillSystem(spawnModel);
@@ -245,10 +245,11 @@ public class RefillStressTests
         // Assert: With only 2 moves left and GoalProgress=0, Help mode should trigger
         // Help mode tries to spawn colors that create matches
         var spawnedTile = state.GetTile(2, 0);
-        Assert.NotEqual(TileType.None, spawnedTile.Type);
+        Assert.NotEqual(ElementType.None, spawnedTile.Type);
         // In Help mode, Red should be spawned to complete the match
-        Assert.Equal(TileType.Red, spawnedTile.Type);
+        Assert.Equal(ElementType.Item1, spawnedTile.Type);
     }
 
     #endregion
 }
+

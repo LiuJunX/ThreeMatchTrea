@@ -1,4 +1,4 @@
-using Match3.Core.Config;
+﻿using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Physics;
@@ -48,9 +48,9 @@ public class SingleGapFallingTests
         // Arrange: 1 column, 3 rows
         var state = new GameState(1, 3, 6, new StubRandom());
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));   // D (top)
-        state.SetTile(0, 1, new Tile(2, TileType.Blue, 0, 1));  // A (middle)
-        state.SetTile(0, 2, new Tile(0, TileType.None, 0, 2));  // Empty (bottom)
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));   // D (top)
+        state.SetTile(0, 1, new Tile(2, ElementType.Item3, 0, 1));  // A (middle)
+        state.SetTile(0, 2, new Tile(0, ElementType.None, 0, 2));  // Empty (bottom)
 
         // Use slow physics to observe the exact threshold
         var config = new Match3Config
@@ -81,12 +81,12 @@ public class SingleGapFallingTests
             for (int y = 0; y < 3; y++)
             {
                 var t = state.GetTile(0, y);
-                if (t.Type == TileType.Blue)
+                if (t.Type == ElementType.Item3)
                 {
                     tileA = t;
                     aGridY = y;
                 }
-                if (t.Type == TileType.Red) tileD = t;
+                if (t.Type == ElementType.Item1) tileD = t;
             }
 
             if (tileA == null || tileD == null) break;
@@ -132,10 +132,10 @@ public class SingleGapFallingTests
         // Arrange: 1 column, 4 rows
         var state = new GameState(1, 4, 6, new StubRandom());
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));   // D (top)
-        state.SetTile(0, 1, new Tile(2, TileType.Blue, 0, 1));  // A (middle)
-        state.SetTile(0, 2, new Tile(0, TileType.None, 0, 2));  // Empty
-        state.SetTile(0, 3, new Tile(0, TileType.None, 0, 3));  // Empty (bottom)
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));   // D (top)
+        state.SetTile(0, 1, new Tile(2, ElementType.Item3, 0, 1));  // A (middle)
+        state.SetTile(0, 2, new Tile(0, ElementType.None, 0, 2));  // Empty
+        state.SetTile(0, 3, new Tile(0, ElementType.None, 0, 3));  // Empty (bottom)
 
         var config = new Match3Config
         {
@@ -164,12 +164,12 @@ public class SingleGapFallingTests
             for (int y = 0; y < 4; y++)
             {
                 var t = state.GetTile(0, y);
-                if (t.Type == TileType.Blue)
+                if (t.Type == ElementType.Item3)
                 {
                     tileA = t;
                     aGridY = y;
                 }
-                if (t.Type == TileType.Red) tileD = t;
+                if (t.Type == ElementType.Item1) tileD = t;
             }
 
             if (tileA == null || tileD == null) break;
@@ -230,19 +230,19 @@ public class SingleGapFallingTests
         var state = new GameState(3, 3, 6, new StubRandom());
 
         // Row 0: D E F
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));    // D
-        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0));   // E
-        state.SetTile(2, 0, new Tile(3, TileType.Green, 2, 0));  // F
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));    // D
+        state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0));   // E
+        state.SetTile(2, 0, new Tile(3, ElementType.Item2, 2, 0));  // F
 
         // Row 1: A B C
-        state.SetTile(0, 1, new Tile(4, TileType.Yellow, 0, 1)); // A
-        state.SetTile(1, 1, new Tile(5, TileType.Purple, 1, 1)); // B
-        state.SetTile(2, 1, new Tile(6, TileType.Red, 2, 1));    // C
+        state.SetTile(0, 1, new Tile(4, ElementType.Item4, 0, 1)); // A
+        state.SetTile(1, 1, new Tile(5, ElementType.Item5, 1, 1)); // B
+        state.SetTile(2, 1, new Tile(6, ElementType.Item1, 2, 1));    // C
 
         // Row 2: Empty (eliminated)
-        state.SetTile(0, 2, new Tile(0, TileType.None, 0, 2));
-        state.SetTile(1, 2, new Tile(0, TileType.None, 1, 2));
-        state.SetTile(2, 2, new Tile(0, TileType.None, 2, 2));
+        state.SetTile(0, 2, new Tile(0, ElementType.None, 0, 2));
+        state.SetTile(1, 2, new Tile(0, ElementType.None, 1, 2));
+        state.SetTile(2, 2, new Tile(0, ElementType.None, 2, 2));
 
         var config = new Match3Config
         {
@@ -272,12 +272,12 @@ public class SingleGapFallingTests
             for (int y = 0; y < 3; y++)
             {
                 var t = state.GetTile(0, y);
-                if (t.Type == TileType.Yellow)
+                if (t.Type == ElementType.Item4)
                 {
                     tileA = t;
                     aGridY = y;
                 }
-                if (t.Type == TileType.Red && t.Id == 1) tileD = t;
+                if (t.Type == ElementType.Item1 && t.Id == 1) tileD = t;
             }
 
             if (tileA == null || tileD == null) break;
@@ -310,12 +310,12 @@ public class SingleGapFallingTests
         int height = 2 + gapSize; // D, A, + empty cells
         var state = new GameState(1, height, 6, new StubRandom());
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));   // D
-        state.SetTile(0, 1, new Tile(2, TileType.Blue, 0, 1));  // A
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));   // D
+        state.SetTile(0, 1, new Tile(2, ElementType.Item3, 0, 1));  // A
 
         for (int y = 2; y < height; y++)
         {
-            state.SetTile(0, y, new Tile(0, TileType.None, 0, y)); // Empty
+            state.SetTile(0, y, new Tile(0, ElementType.None, 0, y)); // Empty
         }
 
         var config = new Match3Config
@@ -338,8 +338,8 @@ public class SingleGapFallingTests
             for (int y = 0; y < height; y++)
             {
                 var t = state.GetTile(0, y);
-                if (t.Type == TileType.Blue) tileA = t;
-                if (t.Type == TileType.Red) tileD = t;
+                if (t.Type == ElementType.Item3) tileA = t;
+                if (t.Type == ElementType.Item1) tileD = t;
             }
 
             if (tileA == null || tileD == null) break;
@@ -353,3 +353,4 @@ public class SingleGapFallingTests
         return -1f; // D never started
     }
 }
+

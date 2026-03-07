@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading;
 using Match3.Core.AI;
@@ -67,21 +67,21 @@ public class MonteCarloSimulationTests
             return _physics ??= new RealtimeGravitySystem(Config, MoveRandom);
         }
 
-        public RandomSpawnModel GetSpawnModel(int tileTypesCount)
+        public RandomSpawnModel GetSpawnModel(int TileTypesCount)
         {
             if (_spawnModel == null)
             {
-                _spawnModel = new RandomSpawnModel(tileTypesCount);
-                _lastTileTypesCount = tileTypesCount;
+                _spawnModel = new RandomSpawnModel(TileTypesCount);
+                _lastTileTypesCount = TileTypesCount;
             }
             return _spawnModel;
         }
 
-        public RealtimeRefillSystem GetRefill(int tileTypesCount)
+        public RealtimeRefillSystem GetRefill(int TileTypesCount)
         {
             if (_refill == null)
             {
-                _refill = new RealtimeRefillSystem(GetSpawnModel(tileTypesCount));
+                _refill = new RealtimeRefillSystem(GetSpawnModel(TileTypesCount));
             }
             return _refill;
         }
@@ -93,7 +93,7 @@ public class MonteCarloSimulationTests
 
         public StandardMatchProcessor GetMatchProcessor()
         {
-            return _matchProcessor ??= new StandardMatchProcessor(ScoreSystem, BombEffects);
+            return _matchProcessor ??= new StandardMatchProcessor(ScoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), BombEffects);
         }
 
         public PowerUpHandler GetPowerUpHandler()
@@ -104,13 +104,13 @@ public class MonteCarloSimulationTests
         /// <summary>
         /// Reset all stateful components for a new simulation.
         /// </summary>
-        public void ResetForSimulation(ulong seed, int tileTypesCount)
+        public void ResetForSimulation(ulong seed, int TileTypesCount)
         {
             StateRandom.SetState(seed);
             MoveRandom.SetState(seed + 1);
 
             // Reset spawn model counter for deterministic simulation
-            _spawnModel?.Reset(tileTypesCount);
+            _spawnModel?.Reset(TileTypesCount);
         }
 
     }
@@ -442,7 +442,7 @@ public class MonteCarloSimulationTests
             {
                 var t1 = state.GetTile(x, y);
                 var t2 = state.GetTile(x + 1, y);
-                if (t1.Type != TileType.None && t2.Type != TileType.None && t1.Type != t2.Type)
+                if (t1.Type != ElementType.None && t2.Type != ElementType.None && t1.Type != t2.Type)
                 {
                     moves.Add(new Move(new Position(x, y), new Position(x + 1, y)));
                 }
@@ -455,7 +455,7 @@ public class MonteCarloSimulationTests
             {
                 var t1 = state.GetTile(x, y);
                 var t2 = state.GetTile(x, y + 1);
-                if (t1.Type != TileType.None && t2.Type != TileType.None && t1.Type != t2.Type)
+                if (t1.Type != ElementType.None && t2.Type != ElementType.None && t1.Type != t2.Type)
                 {
                     moves.Add(new Move(new Position(x, y), new Position(x, y + 1)));
                 }
@@ -481,25 +481,25 @@ public class MonteCarloSimulationTests
                 var t1 = state.GetTile(x, y);
                 var t2 = state.GetTile(x + 1, y);
                 var t3 = state.GetTile(x + 2, y);
-                if (t1.Type == t2.Type && t2.Type == t3.Type && t1.Type != TileType.None)
+                if (t1.Type == t2.Type && t2.Type == t3.Type && t1.Type != ElementType.None)
                 {
                     matches++;
                     // "Clear" matched tiles
-                    state.SetTile(x, y, new Tile(t1.Id, TileType.None, x, y));
-                    state.SetTile(x + 1, y, new Tile(t2.Id, TileType.None, x + 1, y));
-                    state.SetTile(x + 2, y, new Tile(t3.Id, TileType.None, x + 2, y));
+                    state.SetTile(x, y, new Tile(t1.Id, ElementType.None, x, y));
+                    state.SetTile(x + 1, y, new Tile(t2.Id, ElementType.None, x + 1, y));
+                    state.SetTile(x + 2, y, new Tile(t3.Id, ElementType.None, x + 2, y));
                 }
             }
         }
 
         // Simulate gravity - fill empty spots
-        var types = new[] { TileType.Red, TileType.Blue, TileType.Green, TileType.Yellow, TileType.Purple };
+        var types = new[] { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4, ElementType.Item5 };
         for (int y = 0; y < state.Height; y++)
         {
             for (int x = 0; x < state.Width; x++)
             {
                 var tile = state.GetTile(x, y);
-                if (tile.Type == TileType.None)
+                if (tile.Type == ElementType.None)
                 {
                     state.SetTile(x, y, new Tile(tile.Id, types[random.Next(types.Length)], x, y));
                 }
@@ -755,17 +755,17 @@ public class MonteCarloSimulationTests
     private sealed class SimpleScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(MatchGroup match) => match.Positions.Count * 10;
-        public int CalculateSpecialMoveScore(TileType t1, BombType b1, TileType t2, BombType b2) => 100;
+        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 100;
     }
 
     private sealed class RandomSpawnModel : ISpawnModel
     {
         private int _typeCount;
         private int _counter;
-        private static readonly TileType[] AllTypes =
+        private static readonly ElementType[] AllTypes =
         {
-            TileType.Red, TileType.Blue, TileType.Green,
-            TileType.Yellow, TileType.Purple, TileType.Orange
+            ElementType.Item1, ElementType.Item3, ElementType.Item2,
+            ElementType.Item4, ElementType.Item5, ElementType.Item6
         };
 
         public RandomSpawnModel(int typeCount)
@@ -782,7 +782,7 @@ public class MonteCarloSimulationTests
             _counter = 0;
         }
 
-        public TileType Predict(ref GameState state, int spawnX, in SpawnContext context)
+        public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context)
         {
             // Simple deterministic spawn based on position and counter
             int idx = (_counter++ + spawnX) % _typeCount;
@@ -800,7 +800,7 @@ public class MonteCarloSimulationTests
         var state = new GameState(width, height, 5, random);
         state.MoveLimit = moveLimit;
 
-        var types = new[] { TileType.Red, TileType.Blue, TileType.Green, TileType.Yellow, TileType.Purple };
+        var types = new[] { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4, ElementType.Item5 };
 
         // Create a board without initial matches
         for (int y = 0; y < height; y++)
@@ -808,7 +808,7 @@ public class MonteCarloSimulationTests
             for (int x = 0; x < width; x++)
             {
                 int idx = y * width + x;
-                TileType type;
+                ElementType type;
 
                 // Avoid creating 3-in-a-row matches
                 do
@@ -823,7 +823,7 @@ public class MonteCarloSimulationTests
         return state;
     }
 
-    private static bool WouldCreateMatch(in GameState state, int x, int y, TileType type)
+    private static bool WouldCreateMatch(in GameState state, int x, int y, ElementType type)
     {
         // Check horizontal match (left 2 tiles)
         if (x >= 2)
@@ -848,3 +848,6 @@ public class MonteCarloSimulationTests
 
     #endregion
 }
+
+
+

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Match3.Core.Systems.Core;
 using Match3.Core.Systems.Generation;
@@ -40,7 +40,7 @@ namespace Match3.Core.Tests.Systems.Matching
             {
                 int x = i % 10;
                 int y = i / 10;
-                state.SetTile(x, y, new Tile(i, TileType.Red, x, y));
+                state.SetTile(x, y, new Tile(i, ElementType.Item1, x, y));
             }
 
             // Act
@@ -71,3 +71,4 @@ namespace Match3.Core.Tests.Systems.Matching
         }
     }
 }
+

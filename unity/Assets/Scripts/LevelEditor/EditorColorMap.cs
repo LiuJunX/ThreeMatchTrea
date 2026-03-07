@@ -9,15 +9,20 @@ namespace Match3.Unity.LevelEditor
     /// </summary>
     public static class EditorColorMap
     {
-        private static readonly Dictionary<TileType, Color> TileColors = new Dictionary<TileType, Color>
+        private static readonly Dictionary<ElementType, Color> ElementColors = new Dictionary<ElementType, Color>
         {
-            { TileType.Red,     new Color(0.90f, 0.22f, 0.21f) },
-            { TileType.Green,   new Color(0.30f, 0.69f, 0.31f) },
-            { TileType.Blue,    new Color(0.26f, 0.52f, 0.96f) },
-            { TileType.Yellow,  new Color(1.00f, 0.76f, 0.03f) },
-            { TileType.Purple,  new Color(0.61f, 0.32f, 0.88f) },
-            { TileType.Orange,  new Color(1.00f, 0.60f, 0.00f) },
-            { TileType.Rainbow, new Color(0.95f, 0.95f, 0.95f) },
+            { ElementType.Item1,      new Color(0.90f, 0.22f, 0.21f) }, // Red
+            { ElementType.Item2,      new Color(0.30f, 0.69f, 0.31f) }, // Green
+            { ElementType.Item3,      new Color(0.26f, 0.52f, 0.96f) }, // Blue
+            { ElementType.Item4,      new Color(1.00f, 0.76f, 0.03f) }, // Yellow
+            { ElementType.Item5,      new Color(0.61f, 0.32f, 0.88f) }, // Purple
+            { ElementType.Item6,      new Color(1.00f, 0.60f, 0.00f) }, // Orange
+            { ElementType.Universal,  new Color(0.95f, 0.95f, 0.95f) }, // Rainbow
+            { ElementType.None,       new Color(0.20f, 0.20f, 0.20f) },
+        };
+
+        private static readonly Dictionary<TileType, Color> StructuralColors = new Dictionary<TileType, Color>
+        {
             { TileType.None,    new Color(0.20f, 0.20f, 0.20f) },
             { TileType.Wall,    new Color(0.45f, 0.35f, 0.25f) },
             { TileType.Hole,    new Color(0.10f, 0.10f, 0.10f) },
@@ -49,9 +54,14 @@ namespace Match3.Unity.LevelEditor
             { BombType.Square5x5,  "■" },
         };
 
-        public static Color GetTileColor(TileType type)
+        public static Color GetTileColor(ElementType type)
         {
-            return TileColors.TryGetValue(type, out var c) ? c : Color.magenta;
+            return ElementColors.TryGetValue(type, out var c) ? c : Color.magenta;
+        }
+
+        public static Color GetStructuralColor(TileType type)
+        {
+            return StructuralColors.TryGetValue(type, out var c) ? c : Color.magenta;
         }
 
         public static Color GetCoverColor(CoverType type)

@@ -45,7 +45,7 @@ public static class GridUtility
         var tileTo = state.GetTile(to.X, to.Y);
 
         // 不能交换空格
-        if (tileFrom.Type == TileType.None || tileTo.Type == TileType.None)
+        if (tileFrom.Type == ElementType.None || tileTo.Type == ElementType.None)
             return false;
 
         // 不能交换正在下落的方块

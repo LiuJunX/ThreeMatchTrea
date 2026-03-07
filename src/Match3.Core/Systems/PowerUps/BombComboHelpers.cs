@@ -57,7 +57,7 @@ internal static class BombComboHelpers
                     var pos = new Position(x, y);
                     if (pos.X == exclude.X && pos.Y == exclude.Y) continue;
                     if (alreadyAffected.Contains(pos)) continue;
-                    if (state.GetType(x, y) != TileType.None)
+                    if (state.GetType(x, y) != ElementType.None)
                     {
                         candidates.Add(pos);
                     }
@@ -80,15 +80,15 @@ internal static class BombComboHelpers
     /// <summary>
     /// Find the most frequent color on the board.
     /// </summary>
-    public static TileType FindMostFrequentColor(ref GameState state)
+    public static ElementType FindMostFrequentColor(ref GameState state)
     {
-        var counts = Pools.Obtain<Dictionary<TileType, int>>();
+        var counts = Pools.Obtain<Dictionary<ElementType, int>>();
         try
         {
             for (int i = 0; i < state.Grid.Length; i++)
             {
                 var t = state.Grid[i];
-                if (t.Type != TileType.None && t.Type != TileType.Rainbow && t.Type != TileType.Bomb)
+                if (t.Type != ElementType.None && t.Type != ElementType.Universal)
                 {
                     // Use TryGetValue to minimize lookups
                     if (counts.TryGetValue(t.Type, out int existingCount))
@@ -102,7 +102,7 @@ internal static class BombComboHelpers
                 }
             }
 
-            TileType maxType = TileType.None;
+            ElementType maxType = ElementType.None;
             int maxCount = -1;
             foreach (var kvp in counts)
             {
@@ -126,7 +126,7 @@ internal static class BombComboHelpers
     /// </summary>
     public static BombType GetEffectiveBombType(Tile tile)
     {
-        if (tile.Type == TileType.Rainbow || tile.Bomb == BombType.Color)
+        if (tile.Type == ElementType.Universal || tile.Bomb == BombType.Color)
             return BombType.Color;
         return tile.Bomb;
     }
@@ -144,10 +144,10 @@ internal static class BombComboHelpers
     /// </summary>
     public static bool IsColorBombWithNormalTile(Tile t1, Tile t2)
     {
-        bool t1IsColorBomb = t1.Type == TileType.Rainbow || t1.Bomb == BombType.Color;
-        bool t2IsColorBomb = t2.Type == TileType.Rainbow || t2.Bomb == BombType.Color;
-        bool t1IsNormal = !t1IsColorBomb && t1.Bomb == BombType.None && t1.Type != TileType.None && t1.Type != TileType.Bomb;
-        bool t2IsNormal = !t2IsColorBomb && t2.Bomb == BombType.None && t2.Type != TileType.None && t2.Type != TileType.Bomb;
+        bool t1IsColorBomb = t1.Type == ElementType.Universal || t1.Bomb == BombType.Color;
+        bool t2IsColorBomb = t2.Type == ElementType.Universal || t2.Bomb == BombType.Color;
+        bool t1IsNormal = !t1IsColorBomb && t1.Bomb == BombType.None && t1.Type != ElementType.None;
+        bool t2IsNormal = !t2IsColorBomb && t2.Bomb == BombType.None && t2.Type != ElementType.None;
 
         return (t1IsColorBomb && t2IsNormal) || (t2IsColorBomb && t1IsNormal);
     }

@@ -5,5 +5,5 @@ namespace Match3.Core.Systems.Generation;
 
 public interface ITileGenerator
 {
-    TileType GenerateNonMatchingTile(ref GameState state, int x, int y);
+    ElementType GenerateNonMatchingTile(ref GameState state, int x, int y);
 }

@@ -50,7 +50,7 @@ namespace Match3.Unity.Views
             public Transform Root;
             public MeshRenderer Renderer;
             public TextMesh CountText;
-            public TileType TileType;
+            public ElementType ElementType;
             public int CoreCount;   // latest count from Core (authoritative)
             public int Target;
             public int InFlightCount; // number of flies in the air for this icon
@@ -149,18 +149,18 @@ namespace Match3.Unity.Views
                 var p = state.ObjectiveProgress[i];
                 if (!p.IsActive) continue;
 
-                var tileType = p.TargetLayer == ObjectiveTargetLayer.Tile
-                    ? (TileType)p.ElementType
-                    : TileType.None;
+                var elementType = p.TargetLayer == ObjectiveTargetLayer.Tile
+                    ? (ElementType)p.ElementType
+                    : ElementType.None;
 
                 float x = startX + slot * IconSpacing;
-                var icon = CreateIcon(i, tileType, p.CurrentCount, p.TargetCount, new Vector3(x, baseY, 0f));
+                var icon = CreateIcon(i, elementType, p.CurrentCount, p.TargetCount, new Vector3(x, baseY, 0f));
                 _icons.Add(icon);
                 slot++;
             }
         }
 
-        private ObjectiveIcon CreateIcon(int index, TileType tileType, int current, int target, Vector3 position)
+        private ObjectiveIcon CreateIcon(int index, ElementType elementType, int current, int target, Vector3 position)
         {
             var go = new GameObject($"Objective_{index}");
             go.transform.SetParent(_iconContainer, false);
@@ -171,13 +171,12 @@ namespace Match3.Unity.Views
             var mf = go.AddComponent<MeshFilter>();
             var mr = go.AddComponent<MeshRenderer>();
 
-            if (tileType != TileType.None)
+            if (elementType != ElementType.None)
             {
-                mf.sharedMesh = MeshFactory.GetTileMesh(tileType);
-                var isColorType = (tileType & (TileType.Red | TileType.Green | TileType.Blue |
-                                               TileType.Yellow | TileType.Purple | TileType.Orange)) != 0;
+                mf.sharedMesh = MeshFactory.GetTileMesh(elementType);
+                var isColorType = elementType >= ElementType.Item1 && elementType <= ElementType.Item6;
                 mr.sharedMaterial = isColorType
-                    ? MeshFactory.GetTileMaterial(tileType)
+                    ? MeshFactory.GetTileMaterial(elementType)
                     : MeshFactory.GetFallbackMaterial();
             }
             else
@@ -212,7 +211,7 @@ namespace Match3.Unity.Views
                 Root = go.transform,
                 Renderer = mr,
                 CountText = textMesh,
-                TileType = tileType,
+                ElementType = elementType,
                 CoreCount = current,
                 Target = target,
                 InFlightCount = 0,

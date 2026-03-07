@@ -34,7 +34,7 @@ public class UfoEffect : IBombEffect
                     if (x == origin.X && y == origin.Y + 1) continue;
 
                     var t = state.GetTile(x, y);
-                    if (t.Type != TileType.None)
+                    if (t.Type != ElementType.None)
                     {
                         candidates.Add(new Position(x, y));
                     }

@@ -39,7 +39,7 @@ namespace Match3.Editor.Logic
                     objectives[i] = new LevelObjective
                     {
                         TargetLayer = ObjectiveTargetLayer.Tile,
-                        ElementType = (int)TileType.Red,
+                        ElementType = (int)ElementType.Item1,
                         TargetCount = 10
                     };
                     return true;
@@ -73,7 +73,7 @@ namespace Match3.Editor.Logic
 
             obj.ElementType = layer switch
             {
-                ObjectiveTargetLayer.Tile => (int)TileType.Red,
+                ObjectiveTargetLayer.Tile => (int)ElementType.Item1,
                 ObjectiveTargetLayer.Cover => (int)CoverType.Cage,
                 ObjectiveTargetLayer.Ground => (int)GroundType.Ice,
                 _ => 0
@@ -120,12 +120,12 @@ namespace Match3.Editor.Logic
             {
                 ObjectiveTargetLayer.Tile => new[]
                 {
-                    ((int)TileType.Red, "Red"),
-                    ((int)TileType.Green, "Green"),
-                    ((int)TileType.Blue, "Blue"),
-                    ((int)TileType.Yellow, "Yellow"),
-                    ((int)TileType.Purple, "Purple"),
-                    ((int)TileType.Orange, "Orange"),
+                    ((int)ElementType.Item1, "Red"),
+                    ((int)ElementType.Item2, "Green"),
+                    ((int)ElementType.Item3, "Blue"),
+                    ((int)ElementType.Item4, "Yellow"),
+                    ((int)ElementType.Item5, "Purple"),
+                    ((int)ElementType.Item6, "Orange"),
                 },
                 ObjectiveTargetLayer.Cover => new[]
                 {
@@ -148,7 +148,7 @@ namespace Match3.Editor.Logic
         {
             return layer switch
             {
-                ObjectiveTargetLayer.Tile => ((TileType)elementType).ToString(),
+                ObjectiveTargetLayer.Tile => ((ElementType)elementType).ToString(),
                 ObjectiveTargetLayer.Cover => ((CoverType)elementType).ToString(),
                 ObjectiveTargetLayer.Ground => ((GroundType)elementType).ToString(),
                 _ => "Unknown"

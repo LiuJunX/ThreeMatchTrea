@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Match3.Core.Config;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
@@ -48,15 +48,15 @@ public class SimulationPerformanceTests
     private class StubScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(MatchGroup match) => match.Positions.Count * 10;
-        public int CalculateSpecialMoveScore(TileType t1, BombType b1, TileType t2, BombType b2) => 100;
+        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 100;
     }
 
     private class StubSpawnModel : ISpawnModel
     {
         private int _counter = 0;
-        private static readonly TileType[] _types = { TileType.Red, TileType.Blue, TileType.Green, TileType.Yellow, TileType.Purple };
+        private static readonly ElementType[] _types = { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4, ElementType.Item5 };
 
-        public TileType Predict(ref GameState state, int spawnX, in SpawnContext context)
+        public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context)
         {
             return _types[(_counter++ + spawnX) % _types.Length];
         }
@@ -210,7 +210,7 @@ public class SimulationPerformanceTests
                 SimulationTime = i * 0.016f,
                 TileId = i,
                 GridPosition = new Position(i % 8, i / 8),
-                Type = TileType.Red,
+                Type = ElementType.Item1,
                 Bomb = BombType.None,
                 Reason = Match3.Core.Events.Enums.DestroyReason.Match
             });
@@ -374,7 +374,7 @@ public class SimulationPerformanceTests
         var bombGenerator = new BombGenerator();
         var matchFinder = new ClassicMatchFinder(bombGenerator);
         var scoreSystem = new StubScoreSystem();
-        var matchProcessor = new StandardMatchProcessor(scoreSystem, BombEffectRegistry.CreateDefault());
+        var matchProcessor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), BombEffectRegistry.CreateDefault());
         var powerUpHandler = new PowerUpHandler(scoreSystem);
         var projectileSystem = new ProjectileSystem();
 
@@ -393,7 +393,7 @@ public class SimulationPerformanceTests
     private GameState CreateTestState(int width, int height)
     {
         var state = new GameState(width, height, 5, new StubRandom());
-        var types = new[] { TileType.Red, TileType.Blue, TileType.Green, TileType.Yellow, TileType.Purple };
+        var types = new[] { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4, ElementType.Item5 };
 
         for (int y = 0; y < height; y++)
         {
@@ -410,3 +410,5 @@ public class SimulationPerformanceTests
 
     #endregion
 }
+
+

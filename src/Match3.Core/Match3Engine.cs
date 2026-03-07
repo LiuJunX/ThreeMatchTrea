@@ -213,12 +213,12 @@ public sealed class Match3Engine : IDisposable
     }
     
     // Helpers exposed for tests/debug
-    public void DebugSetTile(Position p, TileType t)
+    public void DebugSetTile(Position p, ElementType t)
     {
         _state.SetTile(p.X, p.Y, new Tile(_state.NextTileId++, t, p.X, p.Y));
     }
     
-    public void SetTileWithBomb(int x, int y, TileType t, BombType b)
+    public void SetTileWithBomb(int x, int y, ElementType t, BombType b)
     {
         _state.SetTile(x, y, new Tile(_state.NextTileId++, t, x, y, b));
     }

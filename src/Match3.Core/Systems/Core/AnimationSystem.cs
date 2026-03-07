@@ -39,7 +39,7 @@ public class AnimationSystem : IAnimationSystem
         for (int i = 0; i < state.Grid.Length; i++)
         {
             ref var tile = ref state.Grid[i];
-            if (tile.Type == TileType.None) continue;
+            if (tile.Type == ElementType.None) continue;
 
             // 跳过正在掉落的 tile，让 RealtimeGravitySystem 控制其位置
             if (tile.IsFalling) continue;
@@ -77,7 +77,7 @@ public class AnimationSystem : IAnimationSystem
     public bool IsVisualAtTarget(in GameState state, Position p)
     {
         var tile = state.GetTile(p.X, p.Y);
-        if (tile.Type == TileType.None) return true; // Empty is considered stable
+        if (tile.Type == ElementType.None) return true; // Empty is considered stable
 
         var target = new Vector2(p.X, p.Y);
         return Vector2.DistanceSquared(tile.Position, target) <= Epsilon * Epsilon;

@@ -21,7 +21,7 @@ public class ChoreographerTests
             {
                 TileId = 1,
                 GridPosition = new Position(3, 4),
-                Type = TileType.Red,
+                Type = ElementType.Item1,
                 Reason = DestroyReason.Match,
                 SimulationTime = 0.5f
             }
@@ -67,7 +67,7 @@ public class ChoreographerTests
             {
                 TileId = 1,
                 GridPosition = new Position(3, 0),
-                Type = TileType.Red,
+                Type = ElementType.Item1,
                 Bomb = BombType.None,
                 SpawnPosition = new Vector2(3, -1),
                 SimulationTime = 0.5f
@@ -114,7 +114,7 @@ public class ChoreographerTests
         {
             new MatchDetectedEvent
             {
-                Type = TileType.Red,
+                Type = ElementType.Item1,
                 Positions = new[] { new Position(0, 0), new Position(1, 0), new Position(2, 0) },
                 TileCount = 3,
                 SimulationTime = 0f
@@ -138,7 +138,7 @@ public class ChoreographerTests
                 NewTileId = 10,
                 Position = new Position(3, 4),
                 BombType = BombType.Horizontal,
-                BaseType = TileType.Red,
+                BaseType = ElementType.Item1,
                 SimulationTime = 0f
             }
         };
@@ -157,7 +157,7 @@ public class ChoreographerTests
         var spawnCmd = commands.OfType<SpawnTileCommand>().First();
         Assert.Equal(10, spawnCmd.TileId);
         Assert.Equal(BombType.Horizontal, spawnCmd.Bomb);
-        Assert.Equal(TileType.Red, spawnCmd.Type);
+        Assert.Equal(ElementType.Item1, spawnCmd.Type);
 
         Assert.Contains(commands, c => c is ShowEffectCommand { EffectType: "bomb_created" });
     }
@@ -243,7 +243,7 @@ public class ChoreographerTests
             {
                 TileId = 1,
                 GridPosition = new Position(3, 4),
-                Type = TileType.Red,
+                Type = ElementType.Item1,
                 Reason = DestroyReason.Match,
                 SimulationTime = 0f
             },
@@ -279,7 +279,7 @@ public class ChoreographerTests
             {
                 TileId = 1,
                 GridPosition = new Position(3, 0),
-                Type = TileType.Red,
+                Type = ElementType.Item1,
                 Reason = DestroyReason.Match,
                 SimulationTime = 0f
             },
@@ -287,7 +287,7 @@ public class ChoreographerTests
             {
                 TileId = 2,
                 GridPosition = new Position(3, 0),
-                Type = TileType.Blue,
+                Type = ElementType.Item3,
                 Bomb = BombType.None,
                 SpawnPosition = new Vector2(3, -1),
                 SimulationTime = 0f
@@ -360,7 +360,7 @@ public class ChoreographerTests
             {
                 TileId = 1,
                 GridPosition = new Position(2, 4),
-                Type = TileType.Red,
+                Type = ElementType.Item1,
                 Reason = DestroyReason.Match,
                 SimulationTime = 0f
             },
@@ -392,7 +392,7 @@ public class ChoreographerTests
             {
                 TileId = 1,
                 GridPosition = new Position(3, 4),
-                Type = TileType.Red,
+                Type = ElementType.Item1,
                 Reason = DestroyReason.Match,
                 SimulationTime = 0f
             },
@@ -400,7 +400,7 @@ public class ChoreographerTests
             {
                 TileId = 2,
                 GridPosition = new Position(3, 4),
-                Type = TileType.Blue,
+                Type = ElementType.Item3,
                 Bomb = BombType.None,
                 SpawnPosition = new Vector2(3, -1),
                 SimulationTime = 0.1f
@@ -464,7 +464,7 @@ public class ChoreographerTests
     #region Bomb Events
 
     [Fact]
-    public void Choreograph_BombActivated_GeneratesEffect()
+    public void Choreograph_BombActivated_Square_GeneratesGenericExplosion()
     {
         var events = new GameEvent[]
         {
@@ -472,14 +472,111 @@ public class ChoreographerTests
             {
                 TileId = 1,
                 Position = new Position(3, 4),
-                BombType = BombType.Horizontal,
+                BombType = BombType.Square5x5,
                 SimulationTime = 0f
             }
         };
 
         var commands = _choreographer.Choreograph(events);
 
+        Assert.Contains(commands, c => c is ShowEffectCommand { EffectType: "bomb_flash" });
         Assert.Contains(commands, c => c is ShowEffectCommand { EffectType: "bomb_explosion" });
+    }
+
+    [Fact]
+    public void Choreograph_BombActivated_Horizontal_GeneratesRocketEffects()
+    {
+        var affected = new[]
+        {
+            new Position(1, 4), new Position(2, 4), new Position(3, 4),
+            new Position(4, 4), new Position(5, 4)
+        };
+        var events = new GameEvent[]
+        {
+            new BombActivatedEvent
+            {
+                TileId = 1,
+                Position = new Position(3, 4),
+                BombType = BombType.Horizontal,
+                AffectedPositions = affected,
+                SimulationTime = 0f
+            }
+        };
+
+        var commands = _choreographer.Choreograph(events);
+        var effects = commands.OfType<ShowEffectCommand>().ToList();
+
+        Assert.Contains(effects, c => c.EffectType == "bomb_flash");
+        Assert.Contains(effects, c => c.EffectType == "rocket_trail_h");
+        Assert.Contains(effects, c => c.EffectType == "rocket_head");
+        // Should NOT contain generic explosion
+        Assert.DoesNotContain(effects, c => c.EffectType == "bomb_explosion");
+    }
+
+    [Fact]
+    public void Choreograph_BombActivated_Horizontal_TrailsAccelerate()
+    {
+        // 5 cells: origin at 3, affected at 1,2,3,4,5 → distances 2,1,0,1,2
+        var affected = new[]
+        {
+            new Position(1, 4), new Position(2, 4), new Position(3, 4),
+            new Position(4, 4), new Position(5, 4)
+        };
+        var events = new GameEvent[]
+        {
+            new BombActivatedEvent
+            {
+                TileId = 1,
+                Position = new Position(3, 4),
+                BombType = BombType.Horizontal,
+                AffectedPositions = affected,
+                SimulationTime = 0f
+            }
+        };
+
+        var commands = _choreographer.Choreograph(events);
+        var trails = commands.OfType<ShowEffectCommand>()
+            .Where(c => c.EffectType == "rocket_trail_h")
+            .OrderBy(c => c.StartTime)
+            .ToList();
+
+        // dist=1 trails should come before dist=2 trails
+        Assert.True(trails.Count >= 2);
+        float firstDelay = trails[0].StartTime;
+        float secondDelay = trails[2].StartTime; // dist=2 trail
+
+        // Gap between dist1→dist2 should be SMALLER than gap from origin→dist1 (acceleration)
+        float gap1 = firstDelay;             // 0 → dist1
+        float gap2 = secondDelay - firstDelay; // dist1 → dist2
+        Assert.True(gap2 < gap1, $"Trail interval should decrease: gap1={gap1}, gap2={gap2}");
+    }
+
+    [Fact]
+    public void Choreograph_BombActivated_Color_GeneratesColorBombEffects()
+    {
+        var affected = new[]
+        {
+            new Position(3, 4), new Position(1, 1), new Position(7, 7)
+        };
+        var events = new GameEvent[]
+        {
+            new BombActivatedEvent
+            {
+                TileId = 1,
+                Position = new Position(3, 4),
+                BombType = BombType.Color,
+                AffectedPositions = affected,
+                SimulationTime = 0f
+            }
+        };
+
+        var commands = _choreographer.Choreograph(events);
+        var effects = commands.OfType<ShowEffectCommand>().ToList();
+
+        Assert.Contains(effects, c => c.EffectType == "bomb_flash");
+        Assert.Contains(effects, c => c.EffectType == "color_bomb_wave");
+        Assert.Contains(effects, c => c.EffectType == "color_bomb_hit");
+        Assert.DoesNotContain(effects, c => c.EffectType == "bomb_explosion");
     }
 
     [Fact]
@@ -583,7 +680,7 @@ public class ChoreographerTests
             {
                 TileId = 3,
                 GridPosition = new Position(5, 4),
-                Type = TileType.Red,
+                Type = ElementType.Item1,
                 Reason = DestroyReason.Match,
                 SimulationTime = 5.1f // Second event at t=5.1 (0.1s later)
             }
@@ -603,3 +700,4 @@ public class ChoreographerTests
 
     #endregion
 }
+

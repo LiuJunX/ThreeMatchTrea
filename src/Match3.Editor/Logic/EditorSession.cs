@@ -128,7 +128,7 @@ namespace Match3.Editor.Logic
                 CurrentLevel.Objectives[0] = new LevelObjective
                 {
                     TargetLayer = ObjectiveTargetLayer.Tile,
-                    ElementType = (int)TileType.Red,
+                    ElementType = (int)ElementType.Item1,
                     TargetCount = 20
                 };
             }

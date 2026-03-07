@@ -1,4 +1,4 @@
-using Match3.Core.Config;
+﻿using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Physics;
@@ -36,10 +36,10 @@ public class SequentialFallingTests
         // y=3: Floor (Green, static)
         var state = new GameState(1, 4, 6, new StubRandom());
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));   // A
-        state.SetTile(0, 1, new Tile(2, TileType.Blue, 0, 1));  // B
-        state.SetTile(0, 2, new Tile(0, TileType.None, 0, 2));  // Empty (C eliminated)
-        state.SetTile(0, 3, new Tile(3, TileType.Green, 0, 3)); // Floor
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));   // A
+        state.SetTile(0, 1, new Tile(2, ElementType.Item3, 0, 1));  // B
+        state.SetTile(0, 2, new Tile(0, ElementType.None, 0, 2));  // Empty (C eliminated)
+        state.SetTile(0, 3, new Tile(3, ElementType.Item2, 0, 3)); // Floor
 
         var config = new Match3Config { GravitySpeed = 35.0f, MaxFallSpeed = 20.0f };
         var physics = new RealtimeGravitySystem(config, new StubRandom());
@@ -61,8 +61,8 @@ public class SequentialFallingTests
             for (int y = 0; y < 4; y++)
             {
                 var t = state.GetTile(0, y);
-                if (t.Type == TileType.Red) tileA = t;
-                if (t.Type == TileType.Blue) tileB = t;
+                if (t.Type == ElementType.Item1) tileA = t;
+                if (t.Type == ElementType.Item3) tileB = t;
             }
 
             Assert.NotNull(tileA);
@@ -113,9 +113,9 @@ public class SequentialFallingTests
         // Arrange
         var state = new GameState(1, 3, 6, new StubRandom());
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));   // A at top
-        state.SetTile(0, 1, new Tile(2, TileType.Blue, 0, 1));  // B in middle
-        state.SetTile(0, 2, new Tile(0, TileType.None, 0, 2));  // Empty at bottom
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));   // A at top
+        state.SetTile(0, 1, new Tile(2, ElementType.Item3, 0, 1));  // B in middle
+        state.SetTile(0, 2, new Tile(0, ElementType.None, 0, 2));  // Empty at bottom
 
         var config = new Match3Config { GravitySpeed = 10.0f, MaxFallSpeed = 5.0f }; // Slow fall
         var physics = new RealtimeGravitySystem(config, new StubRandom());
@@ -131,10 +131,10 @@ public class SequentialFallingTests
             var tileB = state.GetTile(0, 1);
 
             // B should be falling but not yet at midpoint
-            if (tileB.Type == TileType.Blue && tileB.Position.Y < 1.5f)
+            if (tileB.Type == ElementType.Item3 && tileB.Position.Y < 1.5f)
             {
                 // Assert: A should still be at y=0 and not falling
-                Assert.Equal(TileType.Red, tileA.Type);
+                Assert.Equal(ElementType.Item1, tileA.Type);
                 Assert.Equal(0.0f, tileA.Position.Y, 0.001f);
                 Assert.False(tileA.IsFalling, $"Frame {frame}: A should not be falling while B is in transit");
             }
@@ -154,9 +154,9 @@ public class SequentialFallingTests
         // y=2: Empty
         var state = new GameState(1, 3, 6, new StubRandom());
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(0, 1, new Tile(2, TileType.Blue, 0, 1));
-        state.SetTile(0, 2, new Tile(0, TileType.None, 0, 2));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(0, 1, new Tile(2, ElementType.Item3, 0, 1));
+        state.SetTile(0, 2, new Tile(0, ElementType.None, 0, 2));
 
         var config = new Match3Config { GravitySpeed = 35.0f, MaxFallSpeed = 20.0f };
         var physics = new RealtimeGravitySystem(config, new StubRandom());
@@ -174,9 +174,9 @@ public class SequentialFallingTests
         var tile1 = state.GetTile(0, 1);
         var tile2 = state.GetTile(0, 2);
 
-        Assert.Equal(TileType.None, tile0.Type); // y=0 should be empty
-        Assert.Equal(TileType.Red, tile1.Type);  // A should be at y=1
-        Assert.Equal(TileType.Blue, tile2.Type); // B should be at y=2
+        Assert.Equal(ElementType.None, tile0.Type); // y=0 should be empty
+        Assert.Equal(ElementType.Item1, tile1.Type);  // A should be at y=1
+        Assert.Equal(ElementType.Item3, tile2.Type); // B should be at y=2
 
         Assert.Equal(1.0f, tile1.Position.Y, 0.001f);
         Assert.Equal(2.0f, tile2.Position.Y, 0.001f);
@@ -195,11 +195,11 @@ public class SequentialFallingTests
         // y=0: A, y=1: B, y=2: C, y=3: Empty (D eliminated), y=4: Floor
         var state = new GameState(1, 5, 6, new StubRandom());
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));    // A
-        state.SetTile(0, 1, new Tile(2, TileType.Blue, 0, 1));   // B
-        state.SetTile(0, 2, new Tile(3, TileType.Green, 0, 2));  // C
-        state.SetTile(0, 3, new Tile(0, TileType.None, 0, 3));   // Empty
-        state.SetTile(0, 4, new Tile(4, TileType.Yellow, 0, 4)); // Floor
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));    // A
+        state.SetTile(0, 1, new Tile(2, ElementType.Item3, 0, 1));   // B
+        state.SetTile(0, 2, new Tile(3, ElementType.Item2, 0, 2));  // C
+        state.SetTile(0, 3, new Tile(0, ElementType.None, 0, 3));   // Empty
+        state.SetTile(0, 4, new Tile(4, ElementType.Item4, 0, 4)); // Floor
 
         var config = new Match3Config { GravitySpeed = 35.0f, MaxFallSpeed = 20.0f };
         var physics = new RealtimeGravitySystem(config, new StubRandom());
@@ -213,10 +213,11 @@ public class SequentialFallingTests
         }
 
         // Assert: Final positions - each tile moved down by 1
-        Assert.Equal(TileType.None, state.GetTile(0, 0).Type);   // Empty
-        Assert.Equal(TileType.Red, state.GetTile(0, 1).Type);    // A at y=1
-        Assert.Equal(TileType.Blue, state.GetTile(0, 2).Type);   // B at y=2
-        Assert.Equal(TileType.Green, state.GetTile(0, 3).Type);  // C at y=3
-        Assert.Equal(TileType.Yellow, state.GetTile(0, 4).Type); // Floor unchanged
+        Assert.Equal(ElementType.None, state.GetTile(0, 0).Type);   // Empty
+        Assert.Equal(ElementType.Item1, state.GetTile(0, 1).Type);    // A at y=1
+        Assert.Equal(ElementType.Item3, state.GetTile(0, 2).Type);   // B at y=2
+        Assert.Equal(ElementType.Item2, state.GetTile(0, 3).Type);  // C at y=3
+        Assert.Equal(ElementType.Item4, state.GetTile(0, 4).Type); // Floor unchanged
     }
 }
+

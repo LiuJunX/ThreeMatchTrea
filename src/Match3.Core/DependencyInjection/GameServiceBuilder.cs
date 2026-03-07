@@ -11,6 +11,8 @@ using Match3.Core.Systems.Projectiles;
 using Match3.Core.Systems.Scoring;
 using Match3.Core.Systems.Spawning;
 using Match3.Random;
+using Match3.Core.Systems.Layers;
+using Match3.Core.Systems.Objectives;
 
 namespace Match3.Core.DependencyInjection;
 
@@ -179,7 +181,7 @@ public sealed class GameServiceBuilder
         _physicsFactory = (config, rng) => new RealtimeGravitySystem(config, rng);
         _refillFactory = spawnModel => new RealtimeRefillSystem(spawnModel);
         _matchFinderFactory = bombGen => new ClassicMatchFinder(bombGen);
-        _matchProcessorFactory = (score, registry) => new StandardMatchProcessor(score, registry);
+        _matchProcessorFactory = (score, registry) => new StandardMatchProcessor(score, new CoverSystem(), new GroundSystem(), registry);
         _powerUpFactory = score => new PowerUpHandler(score);
         _projectileFactory = () => new ProjectileSystem();
         _explosionFactory = () => new ExplosionSystem();
@@ -190,7 +192,7 @@ public sealed class GameServiceBuilder
         _spawnModelFactory = rng => new RuleBasedSpawnModel(rng);
         _tileGeneratorFactory = rng => new StandardTileGenerator(rng);
         _deadlockDetectorFactory = matchFinder => new DeadlockDetectionSystem(matchFinder);
-        _shuffleSystemFactory = deadlockDetector => new BoardShuffleSystem(deadlockDetector);
+        _shuffleSystemFactory = deadlockDetector => new BoardShuffleSystem(new ClassicMatchFinder(new BombGenerator()));
 
         return this;
     }
@@ -226,7 +228,7 @@ public sealed class GameServiceBuilder
         _physicsFactory ??= (config, rng) => new RealtimeGravitySystem(config, rng);
         _refillFactory ??= spawnModel => new RealtimeRefillSystem(spawnModel);
         _matchFinderFactory ??= bombGen => new ClassicMatchFinder(bombGen);
-        _matchProcessorFactory ??= (score, registry) => new StandardMatchProcessor(score, registry);
+        _matchProcessorFactory ??= (score, registry) => new StandardMatchProcessor(score, new CoverSystem(), new GroundSystem(), registry);
         _powerUpFactory ??= score => new PowerUpHandler(score);
         _projectileFactory ??= () => new ProjectileSystem();
         _explosionFactory ??= () => new ExplosionSystem();
@@ -237,6 +239,6 @@ public sealed class GameServiceBuilder
         _spawnModelFactory ??= rng => new RuleBasedSpawnModel(rng);
         _tileGeneratorFactory ??= rng => new StandardTileGenerator(rng);
         _deadlockDetectorFactory ??= matchFinder => new DeadlockDetectionSystem(matchFinder);
-        _shuffleSystemFactory ??= deadlockDetector => new BoardShuffleSystem(deadlockDetector);
+        _shuffleSystemFactory ??= deadlockDetector => new BoardShuffleSystem(new ClassicMatchFinder(new BombGenerator()));
     }
 }

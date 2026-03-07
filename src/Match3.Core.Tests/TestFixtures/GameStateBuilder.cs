@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Random;
@@ -13,7 +13,7 @@ public class GameStateBuilder
 {
     private int _width = 8;
     private int _height = 8;
-    private int _tileTypesCount = 6;
+    private int _TileTypesCount = 6;
     private IRandom _random;
     private Func<int, int, Tile>? _tileFactory;
     private Action<GameState>? _customizer;
@@ -38,7 +38,7 @@ public class GameStateBuilder
     /// </summary>
     public GameStateBuilder WithTileTypesCount(int count)
     {
-        _tileTypesCount = count;
+        _TileTypesCount = count;
         return this;
     }
 
@@ -63,7 +63,7 @@ public class GameStateBuilder
     /// <summary>
     /// Fills all tiles with the same type.
     /// </summary>
-    public GameStateBuilder WithAllTiles(TileType type)
+    public GameStateBuilder WithAllTiles(ElementType type)
     {
         return WithTiles((x, y) => new Tile(y * _width + x, type, x, y));
     }
@@ -73,14 +73,14 @@ public class GameStateBuilder
     /// </summary>
     public GameStateBuilder WithEmptyTiles()
     {
-        return WithAllTiles(TileType.None);
+        return WithAllTiles(ElementType.None);
     }
 
     /// <summary>
     /// Initializes tiles in a checkerboard pattern using two tile types.
     /// Useful for testing scenarios with no possible matches.
     /// </summary>
-    public GameStateBuilder WithCheckerboard(TileType type1, TileType type2)
+    public GameStateBuilder WithCheckerboard(ElementType type1, ElementType type2)
     {
         return WithTiles((x, y) =>
         {
@@ -103,7 +103,7 @@ public class GameStateBuilder
     /// </summary>
     public GameState Build()
     {
-        var state = new GameState(_width, _height, _tileTypesCount, _random);
+        var state = new GameState(_width, _height, _TileTypesCount, _random);
         state.SelectedPosition = Position.Invalid;
 
         // Initialize tiles
@@ -124,7 +124,7 @@ public class GameStateBuilder
             {
                 for (int x = 0; x < _width; x++)
                 {
-                    state.SetTile(x, y, new Tile(y * _width + x, TileType.None, x, y));
+                    state.SetTile(x, y, new Tile(y * _width + x, ElementType.None, x, y));
                 }
             }
         }
@@ -146,10 +146,10 @@ public class GameStateBuilder
             .WithEmptyTiles()
             .WithCustomization(state =>
             {
-                state.SetTile(0, 0, new Tile(0, TileType.Red, 0, 0));
-                state.SetTile(1, 0, new Tile(1, TileType.Red, 1, 0));
-                state.SetTile(2, 0, new Tile(2, TileType.Blue, 2, 0));
-                state.SetTile(3, 0, new Tile(3, TileType.Red, 3, 0));
+                state.SetTile(0, 0, new Tile(0, ElementType.Item1, 0, 0));
+                state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
+                state.SetTile(2, 0, new Tile(2, ElementType.Item3, 2, 0));
+                state.SetTile(3, 0, new Tile(3, ElementType.Item1, 3, 0));
             })
             .Build();
     }
@@ -165,10 +165,10 @@ public class GameStateBuilder
             .WithEmptyTiles()
             .WithCustomization(state =>
             {
-                state.SetTile(0, 0, new Tile(0, TileType.Red, 0, 0));
-                state.SetTile(0, 1, new Tile(8, TileType.Red, 0, 1));
-                state.SetTile(0, 2, new Tile(16, TileType.Blue, 0, 2));
-                state.SetTile(0, 3, new Tile(24, TileType.Red, 0, 3));
+                state.SetTile(0, 0, new Tile(0, ElementType.Item1, 0, 0));
+                state.SetTile(0, 1, new Tile(8, ElementType.Item1, 0, 1));
+                state.SetTile(0, 2, new Tile(16, ElementType.Item3, 0, 2));
+                state.SetTile(0, 3, new Tile(24, ElementType.Item1, 0, 3));
             })
             .Build();
     }
@@ -180,7 +180,7 @@ public class GameStateBuilder
     {
         return new GameStateBuilder()
             .WithSize(width, height)
-            .WithCheckerboard(TileType.Red, TileType.Blue)
+            .WithCheckerboard(ElementType.Item1, ElementType.Item3)
             .Build();
     }
 
@@ -195,3 +195,5 @@ public class GameStateBuilder
             .Build();
     }
 }
+
+

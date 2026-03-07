@@ -17,7 +17,7 @@ public class ScenarioAssertion
 {
     public int X { get; set; }
     public int Y { get; set; }
-    public TileType? Type { get; set; }
+    public ElementType? Type { get; set; }
     public BombType? Bomb { get; set; }
 }
 

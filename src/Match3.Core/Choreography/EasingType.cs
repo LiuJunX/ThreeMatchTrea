@@ -18,5 +18,8 @@ public enum EasingType
     InOutCubic,
 
     /// <summary>Bounce effect at the end.</summary>
-    OutBounce
+    OutBounce,
+
+    /// <summary>Overshoot past target then settle back (pop-in effect).</summary>
+    OutBack
 }

@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Match3.Core.AI;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
@@ -46,15 +46,15 @@ public class AIPerformanceTests
     private class StubScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(MatchGroup match) => match.Positions.Count * 10;
-        public int CalculateSpecialMoveScore(TileType t1, BombType b1, TileType t2, BombType b2) => 100;
+        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 100;
     }
 
     private class StubSpawnModel : ISpawnModel
     {
         private int _counter = 0;
-        private static readonly TileType[] _types = { TileType.Red, TileType.Blue, TileType.Green, TileType.Yellow, TileType.Purple };
+        private static readonly ElementType[] _types = { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4, ElementType.Item5 };
 
-        public TileType Predict(ref GameState state, int spawnX, in SpawnContext context)
+        public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context)
         {
             return _types[(_counter++ + spawnX) % _types.Length];
         }
@@ -302,7 +302,7 @@ public class AIPerformanceTests
         var bombGenerator = new BombGenerator();
         var matchFinder = new ClassicMatchFinder(bombGenerator);
         var scoreSystem = new StubScoreSystem();
-        var matchProcessor = new StandardMatchProcessor(scoreSystem, BombEffectRegistry.CreateDefault());
+        var matchProcessor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), BombEffectRegistry.CreateDefault());
         var powerUpHandler = new PowerUpHandler(scoreSystem);
 
         return new AIService(
@@ -320,7 +320,7 @@ public class AIPerformanceTests
         random.SetState(seed);
 
         var state = new GameState(width, height, 5, random);
-        var types = new[] { TileType.Red, TileType.Blue, TileType.Green, TileType.Yellow, TileType.Purple };
+        var types = new[] { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4, ElementType.Item5 };
 
         for (int y = 0; y < height; y++)
         {
@@ -338,3 +338,5 @@ public class AIPerformanceTests
 
     #endregion
 }
+
+

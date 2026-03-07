@@ -134,10 +134,10 @@ namespace Match3.Editor.Tests
             var intent = new LevelIntent
             {
                 Type = LevelIntentType.PaintTile,
-                Parameters = new Dictionary<string, object> { { "tileType", "Blue" } }
+                Parameters = new Dictionary<string, object> { { "tileType", "Item3" } }
             };
 
-            Assert.Equal(TileType.Blue, intent.GetEnum<TileType>("tileType"));
+            Assert.Equal(ElementType.Item3, intent.GetEnum<ElementType>("tileType"));
         }
 
         [Fact]
@@ -177,20 +177,20 @@ namespace Match3.Editor.Tests
         }
 
         [Fact]
-        public void GetEnum_AllTileTypes_ParseCorrectly()
+        public void GetEnum_AllElementTypes_ParseCorrectly()
         {
-            var tileTypes = new[] { "Red", "Green", "Blue", "Yellow", "Purple", "Orange", "Rainbow", "None" };
-            var expected = new[] { TileType.Red, TileType.Green, TileType.Blue, TileType.Yellow,
-                                   TileType.Purple, TileType.Orange, TileType.Rainbow, TileType.None };
+            var elementTypes = new[] { "Item1", "Item2", "Item3", "Item4", "Item5", "Item6", "Universal", "None" };
+            var expected = new[] { ElementType.Item1, ElementType.Item2, ElementType.Item3, ElementType.Item4,
+                                   ElementType.Item5, ElementType.Item6, ElementType.Universal, ElementType.None };
 
-            for (int i = 0; i < tileTypes.Length; i++)
+            for (int i = 0; i < elementTypes.Length; i++)
             {
                 var intent = new LevelIntent
                 {
                     Type = LevelIntentType.PaintTile,
-                    Parameters = new Dictionary<string, object> { { "type", tileTypes[i] } }
+                    Parameters = new Dictionary<string, object> { { "type", elementTypes[i] } }
                 };
-                Assert.Equal(expected[i], intent.GetEnum<TileType>("type"));
+                Assert.Equal(expected[i], intent.GetEnum<ElementType>("type"));
             }
         }
 

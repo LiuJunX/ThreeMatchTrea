@@ -1,4 +1,4 @@
-using Match3.Core.Config;
+﻿using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Xunit;
 
@@ -57,7 +57,7 @@ public class ConfigParserLevelTests
             "objectives": [
                 {
                     "targetLayer": "Tile",
-                    "elementType": 128,
+                    "elementType": 1,
                     "targetCount": 10
                 }
             ]
@@ -68,7 +68,7 @@ public class ConfigParserLevelTests
 
         Assert.NotNull(config.Objectives);
         Assert.Equal(ObjectiveTargetLayer.Tile, config.Objectives[0].TargetLayer);
-        Assert.Equal(128, config.Objectives[0].ElementType); // TileType.Red
+        Assert.Equal(1, config.Objectives[0].ElementType); // ElementType.Item1
         Assert.Equal(10, config.Objectives[0].TargetCount);
     }
 
@@ -78,9 +78,9 @@ public class ConfigParserLevelTests
         const string json = """
         {
             "objectives": [
-                { "targetLayer": "Tile", "elementType": 128, "targetCount": 10 },
-                { "targetLayer": "Tile", "elementType": 512, "targetCount": 10 },
-                { "targetLayer": "Tile", "elementType": 1024, "targetCount": 8 }
+                { "targetLayer": "Tile", "elementType": 1, "targetCount": 10 },
+                { "targetLayer": "Tile", "elementType": 3, "targetCount": 10 },
+                { "targetLayer": "Tile", "elementType": 4, "targetCount": 8 }
             ]
         }
         """;
@@ -89,15 +89,15 @@ public class ConfigParserLevelTests
 
         // First 3 slots active, 4th slot should be None (fixed-size array)
         Assert.Equal(ObjectiveTargetLayer.Tile, config.Objectives[0].TargetLayer);
-        Assert.Equal(128, config.Objectives[0].ElementType);
+        Assert.Equal(1, config.Objectives[0].ElementType);
         Assert.Equal(10, config.Objectives[0].TargetCount);
 
         Assert.Equal(ObjectiveTargetLayer.Tile, config.Objectives[1].TargetLayer);
-        Assert.Equal(512, config.Objectives[1].ElementType);
+        Assert.Equal(3, config.Objectives[1].ElementType);
         Assert.Equal(10, config.Objectives[1].TargetCount);
 
         Assert.Equal(ObjectiveTargetLayer.Tile, config.Objectives[2].TargetLayer);
-        Assert.Equal(1024, config.Objectives[2].ElementType);
+        Assert.Equal(4, config.Objectives[2].ElementType);
         Assert.Equal(8, config.Objectives[2].TargetCount);
 
         // 4th slot should be inactive (None)
@@ -177,7 +177,7 @@ public class ConfigParserLevelTests
             "HEIGHT": 7,
             "moveLimit": 15,
             "Objectives": [
-                { "TargetLayer": "Tile", "ElementType": 256, "TargetCount": 6 }
+                { "TargetLayer": "Tile", "ElementType": 2, "TargetCount": 6 }
             ]
         }
         """;
@@ -188,8 +188,34 @@ public class ConfigParserLevelTests
         Assert.Equal(7, config.Height);
         Assert.Equal(15, config.MoveLimit);
         Assert.Equal(ObjectiveTargetLayer.Tile, config.Objectives[0].TargetLayer);
-        Assert.Equal(256, config.Objectives[0].ElementType);
+        Assert.Equal(2, config.Objectives[0].ElementType);
         Assert.Equal(6, config.Objectives[0].TargetCount);
+    }
+
+    #endregion
+
+    #region Cells Array Deserialization
+
+    [Fact]
+    public void ParseLevelConfig_WithCellsArray_DeserializesVoidAndSlot()
+    {
+        const string json = """
+        {
+            "width": 3,
+            "height": 3,
+            "grid": null,
+            "cells": [0, 1, 1, 1, 1, 1, 1, 1, 0]
+        }
+        """;
+
+        var config = ConfigParser.ParseLevelConfig(json);
+
+        Assert.Null(config.Grid);
+        Assert.NotNull(config.Cells);
+        Assert.Equal(9, config.Cells.Length);
+        Assert.Equal(CellKind.Void, config.Cells[0]);
+        Assert.Equal(CellKind.Slot, config.Cells[1]);
+        Assert.Equal(CellKind.Void, config.Cells[8]);
     }
 
     #endregion
@@ -229,7 +255,7 @@ public class ConfigParserLevelTests
             // This is a comment
             "width": 6,
             "objectives": [
-                { "targetLayer": "Tile", "elementType": 128, "targetCount": 5, },
+                { "targetLayer": "Tile", "elementType": 1, "targetCount": 5, },
             ],
         }
         """;
@@ -237,7 +263,7 @@ public class ConfigParserLevelTests
         var config = ConfigParser.ParseLevelConfig(json);
 
         Assert.Equal(6, config.Width);
-        Assert.Equal(128, config.Objectives[0].ElementType);
+        Assert.Equal(1, config.Objectives[0].ElementType);
     }
 
     [Fact]
@@ -253,9 +279,9 @@ public class ConfigParserLevelTests
             "moveLimit": 20,
             "targetDifficulty": 0.3,
             "objectives": [
-                { "targetLayer": "Tile", "elementType": 128, "targetCount": 10 },
-                { "targetLayer": "Tile", "elementType": 512, "targetCount": 10 },
-                { "targetLayer": "Tile", "elementType": 1024, "targetCount": 8 }
+                { "targetLayer": "Tile", "elementType": 1, "targetCount": 10 },
+                { "targetLayer": "Tile", "elementType": 3, "targetCount": 10 },
+                { "targetLayer": "Tile", "elementType": 4, "targetCount": 8 }
             ],
             "grid": null
         }
@@ -270,15 +296,15 @@ public class ConfigParserLevelTests
 
         // Verify all 3 objectives
         Assert.Equal(ObjectiveTargetLayer.Tile, config.Objectives[0].TargetLayer);
-        Assert.Equal(128, config.Objectives[0].ElementType);
+        Assert.Equal(1, config.Objectives[0].ElementType);
         Assert.Equal(10, config.Objectives[0].TargetCount);
 
         Assert.Equal(ObjectiveTargetLayer.Tile, config.Objectives[1].TargetLayer);
-        Assert.Equal(512, config.Objectives[1].ElementType);
+        Assert.Equal(3, config.Objectives[1].ElementType);
         Assert.Equal(10, config.Objectives[1].TargetCount);
 
         Assert.Equal(ObjectiveTargetLayer.Tile, config.Objectives[2].TargetLayer);
-        Assert.Equal(1024, config.Objectives[2].ElementType);
+        Assert.Equal(4, config.Objectives[2].ElementType);
         Assert.Equal(8, config.Objectives[2].TargetCount);
 
         // 4th slot inactive
@@ -305,7 +331,7 @@ public class ConfigParserLevelTests
             new Match3.Core.Models.Gameplay.LevelObjective
             {
                 TargetLayer = ObjectiveTargetLayer.Tile,
-                ElementType = 128,
+                ElementType = (int)ElementType.Item1,
                 TargetCount = 5
             },
             new Match3.Core.Models.Gameplay.LevelObjective

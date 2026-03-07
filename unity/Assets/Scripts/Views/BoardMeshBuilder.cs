@@ -157,6 +157,68 @@ namespace Match3.Unity.Views
         }
 
         /// <summary>
+        /// Build a flat mesh (quads only) for the given layout.
+        /// Useful for vignette or simple overlays that need to match the board shape.
+        /// UVs are mapped 0..1 relative to the full board bounds.
+        /// </summary>
+        public static Mesh BuildFlatMesh(bool[,] layout, float cellSize, Vector2 origin, int height)
+        {
+            int rows = layout.GetLength(0);
+            int cols = layout.GetLength(1);
+
+            float boardWidth = cols * cellSize;
+            float boardHeight = rows * cellSize;
+
+            var vertices = new List<Vector3>();
+            var uvs = new List<Vector2>();
+            var triangles = new List<int>();
+
+            for (int r = 0; r < rows; r++)
+            {
+                for (int c = 0; c < cols; c++)
+                {
+                    if (!layout[r, c]) continue;
+
+                    // Calculate cell corners
+                    float x0 = origin.x + c * cellSize;
+                    float x1 = x0 + cellSize;
+                    float y0 = origin.y + (height - 1 - r) * cellSize;
+                    float y1 = y0 + cellSize;
+
+                    int baseIdx = vertices.Count;
+
+                    vertices.Add(new Vector3(x0, y0, 0)); // BL
+                    vertices.Add(new Vector3(x1, y0, 0)); // BR
+                    vertices.Add(new Vector3(x1, y1, 0)); // TR
+                    vertices.Add(new Vector3(x0, y1, 0)); // TL
+
+                    // UVs normalized to board bounds
+                    uvs.Add(new Vector2((x0 - origin.x) / boardWidth, (y0 - origin.y) / boardHeight));
+                    uvs.Add(new Vector2((x1 - origin.x) / boardWidth, (y0 - origin.y) / boardHeight));
+                    uvs.Add(new Vector2((x1 - origin.x) / boardWidth, (y1 - origin.y) / boardHeight));
+                    uvs.Add(new Vector2((x0 - origin.x) / boardWidth, (y1 - origin.y) / boardHeight));
+
+                    triangles.Add(baseIdx + 0);
+                    triangles.Add(baseIdx + 2);
+                    triangles.Add(baseIdx + 1);
+                    triangles.Add(baseIdx + 0);
+                    triangles.Add(baseIdx + 3);
+                    triangles.Add(baseIdx + 2);
+                }
+            }
+
+            var mesh = new Mesh { name = "BoardFlatMesh" };
+            if (vertices.Count > 65535) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            mesh.SetVertices(vertices);
+            mesh.SetUVs(0, uvs);
+            mesh.SetTriangles(triangles, 0);
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+
+            return mesh;
+        }
+
+        /// <summary>
         /// Place edge modules between adjacent cells sharing the same boundary direction.
         /// Groups boundary faces by direction, finds consecutive runs, places edges at grid lines.
         /// </summary>

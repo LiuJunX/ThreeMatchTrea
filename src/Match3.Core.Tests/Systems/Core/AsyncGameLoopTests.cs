@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
@@ -27,7 +27,7 @@ public class AsyncGameLoopTests
 
     private class StubSpawnModel : ISpawnModel
     {
-        public TileType Predict(ref GameState state, int spawnX, in SpawnContext context) => TileType.Blue;
+        public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context) => ElementType.Item3;
     }
 
     private class MockMatchFinder : IMatchFinder
@@ -60,12 +60,23 @@ public class AsyncGameLoopTests
     
     private class StubPowerUp : IPowerUpHandler
     {
+        public bool ActivateBombCalled { get; private set; }
+        public Position LastActivatedPosition { get; private set; }
+
         public void ActivateBomb(ref GameState state, Position p) { }
         public void ActivateBomb(ref GameState state, Position p, int tick, float simTime, IEventCollector events) { }
         public void HandlePowerUp(ref GameState state, Position p, BombType bomb) { }
         public bool TryActivate(ref GameState state, Position p) => false;
         public void ProcessSpecialMove(ref GameState state, Position a, Position b, out int score) { score = 0; }
         public void ProcessSpecialMove(ref GameState state, Position a, Position b, int tick, float simTime, IEventCollector events, out int score) { score = 0; }
+        
+        public void ActivateBomb(ref GameState state, Position p, int tick, float simTime, IEventCollector events, bool isChainReaction)
+        {
+            ActivateBombCalled = true;
+            LastActivatedPosition = p;
+        }
+        
+        public IPowerUpHandler WithExplosionSystem(IExplosionSystem? explosionSystem) => this;
     }
 
     private class StubRandom : IRandom
@@ -94,12 +105,12 @@ public class AsyncGameLoopTests
         var loop = new AsyncGameLoopSystem(physics, refill, finder, processor, powerUp);
 
         // Setup match
-        var group = new MatchGroup { Type = TileType.Red };
+        var group = new MatchGroup { Type = ElementType.Item1 };
         group.Positions.Add(new Position(0, 0));
         finder.GroupsToReturn.Add(group);
 
         // Pre-fill board to ensure stability
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
 
         // Act
         loop.Update(ref state, 0.1f);
@@ -150,11 +161,11 @@ public class AsyncGameLoopTests
         var loop = new AsyncGameLoopSystem(physics, refill, finder, processor, powerUp);
 
         // Setup falling tile at match position
-        var fallingTile = new Tile(1, TileType.Red, 0, 0) { IsFalling = true };
+        var fallingTile = new Tile(1, ElementType.Item1, 0, 0) { IsFalling = true };
         state.SetTile(0, 0, fallingTile);
 
         // Setup match group containing falling tile
-        var group = new MatchGroup { Type = TileType.Red };
+        var group = new MatchGroup { Type = ElementType.Item1 };
         group.Positions.Add(new Position(0, 0));
         finder.GroupsToReturn.Add(group);
 
@@ -181,23 +192,23 @@ public class AsyncGameLoopTests
         var loop = new AsyncGameLoopSystem(physics, refill, finder, processor, powerUp);
 
         // Setup stable tiles
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0) { IsFalling = false });
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0) { IsFalling = false });
-        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0) { IsFalling = false });
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0) { IsFalling = false });
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0) { IsFalling = false });
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0) { IsFalling = false });
 
         // Setup falling tiles
-        state.SetTile(0, 1, new Tile(4, TileType.Blue, 0, 1) { IsFalling = true });
-        state.SetTile(1, 1, new Tile(5, TileType.Blue, 1, 1) { IsFalling = true });
-        state.SetTile(2, 1, new Tile(6, TileType.Blue, 2, 1) { IsFalling = true });
+        state.SetTile(0, 1, new Tile(4, ElementType.Item3, 0, 1) { IsFalling = true });
+        state.SetTile(1, 1, new Tile(5, ElementType.Item3, 1, 1) { IsFalling = true });
+        state.SetTile(2, 1, new Tile(6, ElementType.Item3, 2, 1) { IsFalling = true });
 
         // Stable group
-        var stableGroup = new MatchGroup { Type = TileType.Red };
+        var stableGroup = new MatchGroup { Type = ElementType.Item1 };
         stableGroup.Positions.Add(new Position(0, 0));
         stableGroup.Positions.Add(new Position(1, 0));
         stableGroup.Positions.Add(new Position(2, 0));
 
         // Falling group
-        var fallingGroup = new MatchGroup { Type = TileType.Blue };
+        var fallingGroup = new MatchGroup { Type = ElementType.Item3 };
         fallingGroup.Positions.Add(new Position(0, 1));
         fallingGroup.Positions.Add(new Position(1, 1));
         fallingGroup.Positions.Add(new Position(2, 1));
@@ -314,7 +325,7 @@ public class AsyncGameLoopTests
             LastActivatedPosition = p;
         }
 
-        public void ActivateBomb(ref GameState state, Position p, int tick, float simTime, IEventCollector events)
+        public void ActivateBomb(ref GameState state, Position p, int tick, float simTime, IEventCollector events, bool isChainReaction)
         {
             ActivateBombCalled = true;
             LastActivatedPosition = p;
@@ -324,6 +335,8 @@ public class AsyncGameLoopTests
         public bool TryActivate(ref GameState state, Position p) => false;
         public void ProcessSpecialMove(ref GameState state, Position a, Position b, out int score) { score = 0; }
         public void ProcessSpecialMove(ref GameState state, Position a, Position b, int tick, float simTime, IEventCollector events, out int score) { score = 0; }
+
+        public IPowerUpHandler WithExplosionSystem(IExplosionSystem? explosionSystem) => this;
     }
 
     #endregion
@@ -345,8 +358,8 @@ public class AsyncGameLoopTests
         var loop = new AsyncGameLoopSystem(physics, refill, finder, processor, powerUp);
 
         // Setup stable match
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        var group = new MatchGroup { Type = TileType.Red };
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        var group = new MatchGroup { Type = ElementType.Item1 };
         group.Positions.Add(new Position(0, 0));
         finder.GroupsToReturn.Add(group);
 
@@ -432,7 +445,7 @@ public class AsyncGameLoopTests
         // Clear board
         for (int y = 0; y < 8; y++)
             for (int x = 0; x < 8; x++)
-                state.SetTile(x, y, new Tile(0, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(0, ElementType.None, x, y));
 
         // Act & Assert - Should not throw
         var exception = Record.Exception(() => loop.Update(ref state, 0.1f));
@@ -458,13 +471,13 @@ public class AsyncGameLoopTests
         {
             for (int x = 0; x < 3; x++)
             {
-                var tile = new Tile(y * 3 + x + 1, TileType.Red, x, y) { IsFalling = true };
+                var tile = new Tile(y * 3 + x + 1, ElementType.Item1, x, y) { IsFalling = true };
                 state.SetTile(x, y, tile);
             }
         }
 
         // Setup match groups for all positions
-        var group = new MatchGroup { Type = TileType.Red };
+        var group = new MatchGroup { Type = ElementType.Item1 };
         for (int y = 0; y < 3; y++)
             for (int x = 0; x < 3; x++)
                 group.Positions.Add(new Position(x, y));
@@ -484,7 +497,7 @@ public class AsyncGameLoopTests
 
     private static void FillBoard(ref GameState state)
     {
-        var types = new[] { TileType.Red, TileType.Blue, TileType.Green, TileType.Yellow };
+        var types = new[] { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4 };
         int id = 1;
         for (int y = 0; y < state.Height; y++)
         {
@@ -498,3 +511,4 @@ public class AsyncGameLoopTests
 
     #endregion
 }
+

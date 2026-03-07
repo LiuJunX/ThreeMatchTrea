@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
@@ -45,7 +45,7 @@ public class AnimationSystemTests
         {
             for (int x = 0; x < width; x++)
             {
-                var tile = new Tile(id++, TileType.Red, x, y);
+                var tile = new Tile(id++, ElementType.Item1, x, y);
                 tile.Position = new Vector2(x, y); // Visual position matches grid position
                 state.SetTile(x, y, tile);
             }
@@ -335,7 +335,7 @@ public class AnimationSystemTests
         var system = new AnimationSystem(config);
         var state = CreateState();
 
-        state.SetTile(0, 0, new Tile(0, TileType.None, 0, 0));
+        state.SetTile(0, 0, new Tile(0, ElementType.None, 0, 0));
 
         // Act
         bool atTarget = system.IsVisualAtTarget(in state, new Position(0, 0));
@@ -346,3 +346,4 @@ public class AnimationSystemTests
 
     #endregion
 }
+

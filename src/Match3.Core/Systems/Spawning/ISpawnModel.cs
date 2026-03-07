@@ -16,5 +16,5 @@ public interface ISpawnModel
     /// <param name="spawnX">X coordinate of the spawn point</param>
     /// <param name="context">Spawn context with difficulty and game progress info</param>
     /// <returns>The tile type to spawn</returns>
-    TileType Predict(ref GameState state, int spawnX, in SpawnContext context);
+    ElementType Predict(ref GameState state, int spawnX, in SpawnContext context);
 }

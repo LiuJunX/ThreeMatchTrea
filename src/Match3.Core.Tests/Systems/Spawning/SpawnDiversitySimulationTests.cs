@@ -1,4 +1,4 @@
-using Match3.Core.Models.Enums;
+﻿using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Spawning;
 using Match3.Random;
@@ -15,10 +15,10 @@ public class SpawnDiversitySimulationTests
 {
     private readonly ITestOutputHelper _output;
 
-    private static readonly TileType[] Colors =
+    private static readonly ElementType[] Colors =
     {
-        TileType.Red, TileType.Green, TileType.Blue,
-        TileType.Yellow, TileType.Purple, TileType.Orange
+        ElementType.Item1, ElementType.Item2, ElementType.Item3,
+        ElementType.Item4, ElementType.Item5, ElementType.Item6
     };
 
     public SpawnDiversitySimulationTests(ITestOutputHelper output)
@@ -60,21 +60,21 @@ public class SpawnDiversitySimulationTests
 
         float worstRatio = 0f;
         int worstRound = 0;
-        TileType worstColor = TileType.None;
+        ElementType worstColor = ElementType.None;
 
         for (int round = 0; round < rounds; round++)
         {
             // Simulate match: clear a random row
             int clearY = rng.Next(0, height);
             for (int x = 0; x < width; x++)
-                state.SetTile(x, clearY, new Tile(0, TileType.None, x, clearY));
+                state.SetTile(x, clearY, new Tile(0, ElementType.None, x, clearY));
 
             // Refill: spawn new tiles at the cleared positions
             // (Simplified: spawn directly at the cleared row instead of top,
             //  because we're testing color selection, not physics)
             for (int x = 0; x < width; x++)
             {
-                if (state.GetTile(x, clearY).Type == TileType.None)
+                if (state.GetTile(x, clearY).Type == ElementType.None)
                 {
                     var type = model.Predict(ref state, x, in context);
                     state.SetTile(x, clearY,
@@ -152,7 +152,7 @@ public class SpawnDiversitySimulationTests
             {
                 int cx = rng.Next(0, width);
                 int cy = rng.Next(0, height);
-                state.SetTile(cx, cy, new Tile(0, TileType.None, cx, cy));
+                state.SetTile(cx, cy, new Tile(0, ElementType.None, cx, cy));
             }
 
             // Refill empty positions
@@ -160,7 +160,7 @@ public class SpawnDiversitySimulationTests
             {
                 for (int x = 0; x < width; x++)
                 {
-                    if (state.GetTile(x, y).Type == TileType.None)
+                    if (state.GetTile(x, y).Type == ElementType.None)
                     {
                         var type = model.Predict(ref state, x, in context);
                         state.SetTile(x, y,
@@ -225,3 +225,4 @@ public class SpawnDiversitySimulationTests
 
     #endregion
 }
+

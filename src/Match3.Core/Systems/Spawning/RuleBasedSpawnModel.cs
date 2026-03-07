@@ -11,10 +11,10 @@ namespace Match3.Core.Systems.Spawning;
 /// </summary>
 public class RuleBasedSpawnModel : ISpawnModel
 {
-    private static readonly TileType[] Colors = new[]
+    private static readonly ElementType[] Colors = new[]
     {
-        TileType.Red, TileType.Green, TileType.Blue,
-        TileType.Yellow, TileType.Purple, TileType.Orange
+        ElementType.Item1, ElementType.Item2, ElementType.Item3,
+        ElementType.Item4, ElementType.Item5, ElementType.Item6
     };
 
     private readonly IRandom? _rng;
@@ -34,10 +34,10 @@ public class RuleBasedSpawnModel : ISpawnModel
     /// </summary>
     private const int DominanceMultiplier = 2;
 
-    public TileType Predict(ref GameState state, int spawnX, in SpawnContext context)
+    public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context)
     {
         int colorCount = Math.Min(state.TileTypesCount, Colors.Length);
-        if (colorCount <= 0) return TileType.None;
+        if (colorCount <= 0) return ElementType.None;
 
         // Diversity guard: when any color dominates, fall back to balanced weighted random
         if (colorCount > 1 && IsDominant(ref state, colorCount))
@@ -93,7 +93,7 @@ public class RuleBasedSpawnModel : ISpawnModel
     /// <summary>
     /// Spawn a tile that creates or enables a match.
     /// </summary>
-    private TileType SpawnHelpful(ref GameState state, int spawnX, int colorCount)
+    private ElementType SpawnHelpful(ref GameState state, int spawnX, int colorCount)
     {
         Span<bool> wouldMatch = stackalloc bool[6];
         BoardAnalyzer.FindMatchingColors(ref state, spawnX, wouldMatch);
@@ -137,7 +137,7 @@ public class RuleBasedSpawnModel : ISpawnModel
     /// <summary>
     /// Spawn a tile that avoids immediate matches.
     /// </summary>
-    private TileType SpawnChallenging(ref GameState state, int spawnX, int colorCount)
+    private ElementType SpawnChallenging(ref GameState state, int spawnX, int colorCount)
     {
         Span<bool> wouldNotMatch = stackalloc bool[6];
         BoardAnalyzer.FindNonMatchingColors(ref state, spawnX, wouldNotMatch);
@@ -171,7 +171,7 @@ public class RuleBasedSpawnModel : ISpawnModel
     /// <summary>
     /// Spawn a tile with balanced probability (no match avoidance).
     /// </summary>
-    private TileType SpawnNeutral(ref GameState state, int spawnX, int colorCount)
+    private ElementType SpawnNeutral(ref GameState state, int spawnX, int colorCount)
     {
         return SpawnRandom(ref state, colorCount);
     }
@@ -179,7 +179,7 @@ public class RuleBasedSpawnModel : ISpawnModel
     /// <summary>
     /// Spawn a tile that balances color distribution.
     /// </summary>
-    private TileType SpawnBalanced(ref GameState state, int spawnX, int colorCount)
+    private ElementType SpawnBalanced(ref GameState state, int spawnX, int colorCount)
     {
         Span<int> counts = stackalloc int[6];
         BoardAnalyzer.GetColorDistribution(ref state, counts);
@@ -213,15 +213,15 @@ public class RuleBasedSpawnModel : ISpawnModel
     /// <summary>
     /// Returns the color of the first non-empty tile in the column (top to bottom).
     /// </summary>
-    private static TileType GetColumnTopColor(ref GameState state, int x)
+    private static ElementType GetColumnTopColor(ref GameState state, int x)
     {
         for (int y = 0; y < state.Height; y++)
         {
             var type = state.GetType(x, y);
-            if (type != TileType.None)
+            if (type != ElementType.None)
                 return type;
         }
-        return TileType.None;
+        return ElementType.None;
     }
 
     private static bool IsDominant(ref GameState state, int colorCount)
@@ -245,7 +245,7 @@ public class RuleBasedSpawnModel : ISpawnModel
         return maxCount * colorCount > total * DominanceMultiplier;
     }
 
-    private TileType SpawnRandom(ref GameState state, int colorCount)
+    private ElementType SpawnRandom(ref GameState state, int colorCount)
     {
         var rng = _rng ?? state.Random;
         int idx = rng.Next(0, colorCount);

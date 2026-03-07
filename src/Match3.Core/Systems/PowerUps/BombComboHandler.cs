@@ -39,8 +39,8 @@ public class BombComboHandler
         }
 
         // 检查是否两个都是炸弹（或彩球）
-        bool isT1Bomb = t1.Bomb != BombType.None || t1.Type == TileType.Rainbow;
-        bool isT2Bomb = t2.Bomb != BombType.None || t2.Type == TileType.Rainbow;
+        bool isT1Bomb = t1.Bomb != BombType.None || t1.Type == ElementType.Universal;
+        bool isT2Bomb = t2.Bomb != BombType.None || t2.Type == ElementType.Universal;
 
         if (!isT1Bomb || !isT2Bomb)
             return false;
@@ -261,7 +261,7 @@ public class BombComboHandler
     {
         // 找出数量最多的颜色
         var targetColor = FindMostFrequentColor(ref state);
-        if (targetColor == TileType.None)
+        if (targetColor == ElementType.None)
             return;
 
         // 收集该颜色的所有位置
@@ -333,7 +333,7 @@ public class BombComboHandler
     private void ApplyColorBombWithNormalTile(ref GameState state, Tile t1, Tile t2, Position p1, Position p2, HashSet<Position> affected)
     {
         // 确定哪个是彩球，哪个是普通方块
-        var targetColor = t1.Type == TileType.Rainbow ? t2.Type : t1.Type;
+        var targetColor = t1.Type == ElementType.Universal ? t2.Type : t1.Type;
 
         // 消除所有该颜色的方块
         for (int y = 0; y < state.Height; y++)
@@ -363,7 +363,7 @@ public class BombComboHandler
     private static void ApplySmallCross(in GameState state, Position center, HashSet<Position> affected) => BombComboHelpers.ApplySmallCross(state, center, affected);
     private static void ApplyArea(in GameState state, Position center, int radius, HashSet<Position> affected) => BombComboHelpers.ApplyArea(state, center, radius, affected);
     private static Position? GetRandomTarget(ref GameState state, Position exclude, HashSet<Position> alreadyAffected) => BombComboHelpers.GetRandomTarget(ref state, exclude, alreadyAffected);
-    private static TileType FindMostFrequentColor(ref GameState state) => BombComboHelpers.FindMostFrequentColor(ref state);
+    private static ElementType FindMostFrequentColor(ref GameState state) => BombComboHelpers.FindMostFrequentColor(ref state);
 
     #endregion
 }

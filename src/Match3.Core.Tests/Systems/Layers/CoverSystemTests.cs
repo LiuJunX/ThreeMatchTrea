@@ -1,4 +1,4 @@
-using Match3.Core.Events;
+﻿using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Layers;
@@ -36,7 +36,7 @@ public class CoverSystemTests
         {
             for (int x = 0; x < width; x++)
             {
-                state.SetTile(x, y, new Tile(y * width + x, TileType.Red, x, y));
+                state.SetTile(x, y, new Tile(y * width + x, ElementType.Item1, x, y));
             }
         }
         return state;
@@ -443,7 +443,7 @@ public class CoverSystemTests
     public void CanInteract_EmptyCell_ReturnsFalse()
     {
         var state = CreateState();
-        state.SetTile(3, 3, default); // TileType.None
+        state.SetTile(3, 3, default); // ElementType.None
 
         Assert.False(state.CanInteract(3, 3));
     }
@@ -619,3 +619,4 @@ public class CoverSystemTests
 
     #endregion
 }
+

@@ -113,7 +113,7 @@ namespace Match3.Editor.Logic
             switch (layer)
             {
                 case ObjectiveTargetLayer.Tile:
-                    return FromAIIndex<TileType>(aiIndex);
+                    return FromAIIndex<ElementType>(aiIndex);
                 case ObjectiveTargetLayer.Cover:
                     return FromAIIndex<CoverType>(aiIndex);
                 case ObjectiveTargetLayer.Ground:
@@ -133,7 +133,7 @@ namespace Match3.Editor.Logic
             switch (layer)
             {
                 case ObjectiveTargetLayer.Tile:
-                    return GetPromptDescription<TileType>();
+                    return GetPromptDescription<ElementType>();
                 case ObjectiveTargetLayer.Cover:
                     return GetPromptDescription<CoverType>();
                 case ObjectiveTargetLayer.Ground:
@@ -155,7 +155,7 @@ namespace Match3.Editor.Logic
             switch (layer)
             {
                 case ObjectiveTargetLayer.Tile:
-                    entries = GetEntries<TileType>();
+                    entries = GetEntries<ElementType>();
                     break;
                 case ObjectiveTargetLayer.Cover:
                     entries = GetEntries<CoverType>();

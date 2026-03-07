@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Threading.Tasks;
 using Match3.Core.Analysis.MCTS;
 using Match3.Core.Config;
@@ -50,7 +50,7 @@ public class MCTSAnalyzerTests
             new LevelObjective
             {
                 TargetLayer = ObjectiveTargetLayer.Tile,
-                ElementType = (int)TileType.Red,
+                ElementType = (int)ElementType.Item1,
                 TargetCount = 3 // Very easy objective
             }
         };
@@ -212,7 +212,7 @@ public class MCTSAnalyzerTests
             new LevelObjective
             {
                 TargetLayer = ObjectiveTargetLayer.Tile,
-                ElementType = (int)TileType.Red,
+                ElementType = (int)ElementType.Item1,
                 TargetCount = 10
             }
         };
@@ -317,11 +317,11 @@ public class MCTSAnalyzerTests
     {
         int width = 8;
         int height = 8;
-        var grid = new TileType[width * height];
+        var grid = new ElementType[width * height];
 
         for (int i = 0; i < grid.Length; i++)
         {
-            grid[i] = TileType.None;
+            grid[i] = ElementType.None;
         }
 
         return new LevelConfig
@@ -335,10 +335,11 @@ public class MCTSAnalyzerTests
                 new LevelObjective
                 {
                     TargetLayer = ObjectiveTargetLayer.Tile,
-                    ElementType = (int)TileType.Red,
+                    ElementType = (int)ElementType.Item1,
                     TargetCount = 10
                 }
             }
         };
     }
 }
+

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
@@ -53,7 +53,7 @@ public class InteractionSystemTests
         state.SelectedPosition = Position.Invalid;
         for (int y = 0; y < height; y++)
             for (int x = 0; x < width; x++)
-                state.SetTile(x, y, new Tile(y * width + x + 1, TileType.Red, x, y));
+                state.SetTile(x, y, new Tile(y * width + x + 1, ElementType.Item1, x, y));
         return state;
     }
 
@@ -527,3 +527,4 @@ public class InteractionSystemTests
 
     #endregion
 }
+

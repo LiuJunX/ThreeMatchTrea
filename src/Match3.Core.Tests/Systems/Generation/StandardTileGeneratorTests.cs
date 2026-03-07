@@ -1,4 +1,4 @@
-using Match3.Core.Models.Enums;
+﻿using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Generation;
 using Match3.Random;
@@ -51,7 +51,7 @@ public class StandardTileGeneratorTests
         {
             for (int x = 0; x < width; x++)
             {
-                state.SetTile(x, y, new Tile(y * width + x, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(y * width + x, ElementType.None, x, y));
             }
         }
         return state;
@@ -70,7 +70,7 @@ public class StandardTileGeneratorTests
         var type = generator.GenerateNonMatchingTile(ref state, 0, 0);
 
         // Assert
-        Assert.NotEqual(TileType.None, type);
+        Assert.NotEqual(ElementType.None, type);
     }
 
     [Fact]
@@ -86,8 +86,8 @@ public class StandardTileGeneratorTests
         // Assert: 应该是有效的颜色类型
         var validTypes = new[]
         {
-            TileType.Red, TileType.Green, TileType.Blue,
-            TileType.Yellow, TileType.Purple, TileType.Orange
+            ElementType.Item1, ElementType.Item2, ElementType.Item3,
+            ElementType.Item4, ElementType.Item5, ElementType.Item6
         };
         Assert.Contains(type, validTypes);
     }
@@ -102,14 +102,14 @@ public class StandardTileGeneratorTests
         // Arrange: 左边两个相同
         var generator = new StandardTileGenerator(new SequentialRandom());
         var state = CreateState();
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
 
         // Act: 在 (2, 0) 生成
         var type = generator.GenerateNonMatchingTile(ref state, 2, 0);
 
         // Assert: 不应该是 Red（会形成三连）
-        Assert.NotEqual(TileType.Red, type);
+        Assert.NotEqual(ElementType.Item1, type);
     }
 
     [Fact]
@@ -118,14 +118,14 @@ public class StandardTileGeneratorTests
         // Arrange: 上面两个相同
         var generator = new StandardTileGenerator(new SequentialRandom());
         var state = CreateState();
-        state.SetTile(0, 0, new Tile(1, TileType.Blue, 0, 0));
-        state.SetTile(0, 1, new Tile(2, TileType.Blue, 0, 1));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item3, 0, 0));
+        state.SetTile(0, 1, new Tile(2, ElementType.Item3, 0, 1));
 
         // Act: 在 (0, 2) 生成
         var type = generator.GenerateNonMatchingTile(ref state, 0, 2);
 
         // Assert: 不应该是 Blue（会形成三连）
-        Assert.NotEqual(TileType.Blue, type);
+        Assert.NotEqual(ElementType.Item3, type);
     }
 
     [Fact]
@@ -134,14 +134,14 @@ public class StandardTileGeneratorTests
         // Arrange: 左边只有一个相同的
         var generator = new StandardTileGenerator(new StubRandom(0)); // 总是返回 Red
         var state = CreateState();
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0)); // 不同颜色
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0)); // 不同颜色
 
         // Act: 在 (2, 0) 生成
         var type = generator.GenerateNonMatchingTile(ref state, 2, 0);
 
         // Assert: 可以是 Red（只有一个相邻，不会形成三连）
-        Assert.Equal(TileType.Red, type);
+        Assert.Equal(ElementType.Item1, type);
     }
 
     #endregion
@@ -159,7 +159,7 @@ public class StandardTileGeneratorTests
         var type = generator.GenerateNonMatchingTile(ref state, 0, 0);
 
         // Assert: 应该能正常生成
-        Assert.NotEqual(TileType.None, type);
+        Assert.NotEqual(ElementType.None, type);
     }
 
     [Fact]
@@ -168,14 +168,14 @@ public class StandardTileGeneratorTests
         // Arrange: 在第一行，只检查左边
         var generator = new StandardTileGenerator(new SequentialRandom());
         var state = CreateState();
-        state.SetTile(0, 0, new Tile(1, TileType.Green, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Green, 1, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item2, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item2, 1, 0));
 
         // Act
         var type = generator.GenerateNonMatchingTile(ref state, 2, 0);
 
         // Assert
-        Assert.NotEqual(TileType.Green, type);
+        Assert.NotEqual(ElementType.Item2, type);
     }
 
     [Fact]
@@ -184,25 +184,25 @@ public class StandardTileGeneratorTests
         // Arrange: 在第一列，只检查上面
         var generator = new StandardTileGenerator(new SequentialRandom());
         var state = CreateState();
-        state.SetTile(0, 0, new Tile(1, TileType.Yellow, 0, 0));
-        state.SetTile(0, 1, new Tile(2, TileType.Yellow, 0, 1));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item4, 0, 0));
+        state.SetTile(0, 1, new Tile(2, ElementType.Item4, 0, 1));
 
         // Act
         var type = generator.GenerateNonMatchingTile(ref state, 0, 2);
 
         // Assert
-        Assert.NotEqual(TileType.Yellow, type);
+        Assert.NotEqual(ElementType.Item4, type);
     }
 
     [Fact]
-    public void GenerateNonMatchingTile_LimitedTileTypes_StillWorks()
+    public void GenerateNonMatchingTile_LimitedElementTypes_StillWorks()
     {
         // Arrange: 只有 2 种方块类型
         var rng = new SequentialRandom();
         var state = new GameState(3, 3, 2, rng); // 只有 2 种
         for (int y = 0; y < 3; y++)
             for (int x = 0; x < 3; x++)
-                state.SetTile(x, y, new Tile(y * 3 + x, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(y * 3 + x, ElementType.None, x, y));
 
         var generator = new StandardTileGenerator(rng);
 
@@ -222,14 +222,14 @@ public class StandardTileGeneratorTests
     }
 
     [Fact]
-    public void GenerateNonMatchingTile_ZeroTileTypes_ReturnsNone()
+    public void GenerateNonMatchingTile_ZeroElementTypes_ReturnsNone()
     {
         // Arrange: 0 种方块类型（边界情况）
         var rng = new SequentialRandom();
         var state = new GameState(3, 3, 0, rng); // 0 种
         for (int y = 0; y < 3; y++)
             for (int x = 0; x < 3; x++)
-                state.SetTile(x, y, new Tile(y * 3 + x, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(y * 3 + x, ElementType.None, x, y));
 
         var generator = new StandardTileGenerator(rng);
 
@@ -237,7 +237,7 @@ public class StandardTileGeneratorTests
         var type = generator.GenerateNonMatchingTile(ref state, 0, 0);
 
         // Assert
-        Assert.Equal(TileType.None, type);
+        Assert.Equal(ElementType.None, type);
     }
 
     #endregion
@@ -257,7 +257,7 @@ public class StandardTileGeneratorTests
         var type = generator.GenerateNonMatchingTile(ref state, 0, 0);
 
         // Assert: 应该返回 Blue（索引 2）
-        Assert.Equal(TileType.Blue, type);
+        Assert.Equal(ElementType.Item3, type);
     }
 
     [Fact]
@@ -269,14 +269,15 @@ public class StandardTileGeneratorTests
         var state = new GameState(3, 3, 6, stateRng);
         for (int y = 0; y < 3; y++)
             for (int x = 0; x < 3; x++)
-                state.SetTile(x, y, new Tile(y * 3 + x, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(y * 3 + x, ElementType.None, x, y));
 
         // Act
         var type = generator.GenerateNonMatchingTile(ref state, 0, 0);
 
         // Assert: 应该使用 state 的 RNG
-        Assert.NotEqual(TileType.None, type);
+        Assert.NotEqual(ElementType.None, type);
     }
 
     #endregion
 }
+

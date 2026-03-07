@@ -5,7 +5,7 @@
 <div class="controls">
     <button @onclick="ResetGame" class="btn-reset">New Game</button>
     <button @onclick="ToggleAutoPlay" class="btn-reset" style="margin-left: 10px; background-color: #3b82f6;">
-        @(GameService.IsAutoPlaying ? "Stop Auto" : "Auto Play")
+        @(GameService.IsAutoPlaying ? "Stop" : "Auto Play")
     </button>
     <button @onclick="TogglePause" class="btn-reset" style="margin-left: 10px; background-color: @(GameService.IsPaused ? "#10b981" : "#f59e0b");">
         @(GameService.IsPaused ? "Continue" : "Pause")

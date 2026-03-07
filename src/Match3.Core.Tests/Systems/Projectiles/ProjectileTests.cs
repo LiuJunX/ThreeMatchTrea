@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
@@ -249,7 +249,7 @@ public class UfoProjectileTests
             for (int x = 0; x < 8; x++)
             {
                 int idx = y * 8 + x;
-                state.SetTile(x, y, new Tile(idx + 1, TileType.Red, x, y));
+                state.SetTile(x, y, new Tile(idx + 1, ElementType.Item1, x, y));
             }
         }
         return state;
@@ -265,3 +265,4 @@ public class UfoProjectileTests
 
     #endregion
 }
+

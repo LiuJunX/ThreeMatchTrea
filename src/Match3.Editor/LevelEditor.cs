@@ -35,7 +35,20 @@ namespace Match3.Editor
         /// <summary>0 = Tiles, 1 = Covers, 2 = Grounds</summary>
         public int ActiveLayer { get; private set; }
 
-        public TileType SelectedTileType { get; private set; } = TileType.Red;
+        public Match3.Core.Models.Enums.ElementType SelectedTileType { get; private set; } = Match3.Core.Models.Enums.ElementType.Item1;
+
+        // Property for binding to UI if needed
+        public int ElementType
+        {
+            get => (int)SelectedTileType;
+            set
+            {
+                if ((int)SelectedTileType != value)
+                {
+                    SetSelectedTileType((Match3.Core.Models.Enums.ElementType)value);
+                }
+            }
+        }
         public BombType SelectedBombType { get; private set; } = BombType.None;
         public CoverType SelectedCoverType { get; private set; } = CoverType.None;
         public GroundType SelectedGroundType { get; private set; } = GroundType.None;
@@ -74,7 +87,7 @@ namespace Match3.Editor
             Notify();
         }
 
-        public void SetSelectedTileType(TileType type)
+        public void SetSelectedTileType(Match3.Core.Models.Enums.ElementType type)
         {
             SelectedTileType = type;
             Notify();
@@ -322,7 +335,7 @@ namespace Match3.Editor
             Level.Objectives[0] = new LevelObjective
             {
                 TargetLayer = ObjectiveTargetLayer.Tile,
-                ElementType = (int)TileType.Red,
+                ElementType = (int)Match3.Core.Models.Enums.ElementType.Item1,
                 TargetCount = 20
             };
 

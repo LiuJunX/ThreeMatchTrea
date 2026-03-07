@@ -1,4 +1,4 @@
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Match3.Core.Analysis;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
@@ -31,7 +31,7 @@ public class LevelAnalysisServiceTests
             new LevelObjective
             {
                 TargetLayer = ObjectiveTargetLayer.Tile,
-                ElementType = (int)TileType.Red,
+                ElementType = (int)ElementType.Item1,
                 TargetCount = 1 // Very easy - just need to clear 1 red tile
             }
         };
@@ -82,7 +82,7 @@ public class LevelAnalysisServiceTests
             new LevelObjective
             {
                 TargetLayer = ObjectiveTargetLayer.Tile,
-                ElementType = (int)TileType.Red,
+                ElementType = (int)ElementType.Item1,
                 TargetCount = 10000 // Impossible to clear this many
             }
         };
@@ -116,7 +116,7 @@ public class LevelAnalysisServiceTests
             new LevelObjective
             {
                 TargetLayer = ObjectiveTargetLayer.Tile,
-                ElementType = (int)TileType.Red,
+                ElementType = (int)ElementType.Item1,
                 TargetCount = 3 // Easy - clear 3 red tiles
             }
         };
@@ -145,13 +145,13 @@ public class LevelAnalysisServiceTests
             new LevelObjective
             {
                 TargetLayer = ObjectiveTargetLayer.Tile,
-                ElementType = (int)TileType.Red,
+                ElementType = (int)ElementType.Item1,
                 TargetCount = 2
             },
             new LevelObjective
             {
                 TargetLayer = ObjectiveTargetLayer.Tile,
-                ElementType = (int)TileType.Blue,
+                ElementType = (int)ElementType.Item3,
                 TargetCount = 2
             }
         };
@@ -185,7 +185,7 @@ public class LevelAnalysisServiceTests
             new LevelObjective
             {
                 TargetLayer = ObjectiveTargetLayer.Tile,
-                ElementType = (int)TileType.Red,
+                ElementType = (int)ElementType.Item1,
                 TargetCount = 5
             }
         };
@@ -296,7 +296,7 @@ public class LevelAnalysisServiceTests
             new LevelObjective
             {
                 TargetLayer = ObjectiveTargetLayer.Tile,
-                ElementType = (int)TileType.Red,
+                ElementType = (int)ElementType.Item1,
                 TargetCount = 10
             }
         };
@@ -333,7 +333,7 @@ public class LevelAnalysisServiceTests
             new LevelObjective
             {
                 TargetLayer = ObjectiveTargetLayer.Tile,
-                ElementType = (int)TileType.Red,
+                ElementType = (int)ElementType.Item1,
                 TargetCount = 1
             }
         };
@@ -368,13 +368,13 @@ public class LevelAnalysisServiceTests
     {
         const int width = 8;
         const int height = 8;
-        var grid = new TileType[width * height];
+        var grid = new ElementType[width * height];
 
-        // Use TileType.None to let the system generate random tiles
+        // Use ElementType.None to let the system generate random tiles
         // This ensures a playable board with valid moves
         for (int i = 0; i < grid.Length; i++)
         {
-            grid[i] = TileType.None;
+            grid[i] = ElementType.None;
         }
 
         return new LevelConfig
@@ -389,3 +389,4 @@ public class LevelAnalysisServiceTests
 
     #endregion
 }
+

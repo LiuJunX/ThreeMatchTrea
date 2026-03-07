@@ -67,7 +67,7 @@ public static class FastMoveScorer
         // 获取交换后该位置的类型
         var type = state.GetType(swapWith);
 
-        if (type == TileType.None || type == TileType.Rainbow || type == TileType.Bomb)
+        if (type == ElementType.None || type == ElementType.Universal)
             return (0, MatchDirection.None);
 
         if (!state.CanMatch(pos))
@@ -123,13 +123,13 @@ public static class FastMoveScorer
         return (0, MatchDirection.None);
     }
 
-    private static bool CanMatchType(in GameState state, int x, int y, TileType type, Position exclude)
+    private static bool CanMatchType(in GameState state, int x, int y, ElementType type, Position exclude)
     {
         if (x == exclude.X && y == exclude.Y) return false;
         return state.CanMatch(x, y) && state.GetType(x, y) == type;
     }
 
-    private static bool Has2x2Square(in GameState state, int x, int y, TileType type, Position exclude)
+    private static bool Has2x2Square(in GameState state, int x, int y, ElementType type, Position exclude)
     {
         int w = state.Width;
         int h = state.Height;
@@ -232,7 +232,7 @@ public static class FastMoveScorer
             // 如果目标是特定颜色的 Tile
             if (progress.TargetLayer == Models.Enums.ObjectiveTargetLayer.Tile)
             {
-                var targetType = (TileType)progress.ElementType;
+                var targetType = (ElementType)progress.ElementType;
 
                 if (fromType == targetType || toType == targetType)
                 {

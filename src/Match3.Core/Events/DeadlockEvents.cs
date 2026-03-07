@@ -8,7 +8,7 @@ namespace Match3.Core.Events;
 /// <summary>
 /// 表示单个棋子的类型变化
 /// </summary>
-public readonly record struct TileTypeChange(int TileId, Position Position, TileType NewType);
+public readonly record struct TileTypeChange(int TileId, Position Position, ElementType FromType, ElementType ToType);
 
 /// <summary>
 /// 事件：检测到死锁（棋盘无可行移动）

@@ -10,7 +10,7 @@ public struct LevelObjective
     /// <summary>The layer the target element belongs to.</summary>
     public ObjectiveTargetLayer TargetLayer;
 
-    /// <summary>The element type value (TileType, CoverType, or GroundType cast to int).</summary>
+    /// <summary>The element type value (ElementType, CoverType, or GroundType cast to int).</summary>
     public int ElementType;
 
     /// <summary>Number of elements required to clear.</summary>

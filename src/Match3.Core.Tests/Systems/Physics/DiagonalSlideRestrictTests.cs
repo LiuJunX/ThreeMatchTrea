@@ -1,4 +1,4 @@
-using Match3.Core.Config;
+﻿using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Physics;
@@ -34,15 +34,15 @@ namespace Match3.Core.Tests.Systems.Physics
             var gravity = new RealtimeGravitySystem(config, rng);
 
             // Setup
-            state.SetTile(0, 0, new Tile(0, TileType.None, 0, 0));
-            state.SetTile(0, 1, new Tile(0, TileType.None, 0, 1));
+            state.SetTile(0, 0, new Tile(0, ElementType.None, 0, 0));
+            state.SetTile(0, 1, new Tile(0, ElementType.None, 0, 1));
             
-            state.SetTile(1, 0, new Tile(1, TileType.Normal, 1, 0)); // TileA (Top)
-            state.SetTile(1, 1, new Tile(2, TileType.Normal, 1, 1)); // TileB (Bottom) - Acting as floor
+            state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0)); // TileA (Top)
+            state.SetTile(1, 1, new Tile(2, ElementType.Item1, 1, 1)); // TileB (Bottom) - Acting as floor
 
             // Verify initial state
-            Assert.Equal(TileType.Normal, state.GetTile(1, 0).Type);
-            Assert.Equal(TileType.Normal, state.GetTile(1, 1).Type);
+            Assert.Equal(ElementType.Item1, state.GetTile(1, 0).Type);
+            Assert.Equal(ElementType.Item1, state.GetTile(1, 1).Type);
 
             // Act
             gravity.Update(ref state, 0.02f);
@@ -55,8 +55,8 @@ namespace Match3.Core.Tests.Systems.Physics
             Assert.Equal(0, tileAt10.Velocity.X); // Should be 0
             
             // Should NOT be in Col 0
-            Assert.Equal(TileType.None, state.GetTile(0, 0).Type);
-            Assert.Equal(TileType.None, state.GetTile(0, 1).Type);
+            Assert.Equal(ElementType.None, state.GetTile(0, 0).Type);
+            Assert.Equal(ElementType.None, state.GetTile(0, 1).Type);
         }
 
         [Fact]
@@ -73,11 +73,11 @@ namespace Match3.Core.Tests.Systems.Physics
             var state = new GameState(2, 2, 5, rng);
             var gravity = new RealtimeGravitySystem(config, rng);
 
-            state.SetTile(0, 0, new Tile(0, TileType.None, 0, 0));
-            state.SetTile(0, 1, new Tile(0, TileType.None, 0, 1));
+            state.SetTile(0, 0, new Tile(0, ElementType.None, 0, 0));
+            state.SetTile(0, 1, new Tile(0, ElementType.None, 0, 1));
             
-            state.SetTile(1, 0, new Tile(1, TileType.Normal, 1, 0)); // TileA
-            state.SetTile(1, 1, new Tile(2, TileType.Normal, 1, 1) { IsSuspended = true }); // Obstacle
+            state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0)); // TileA
+            state.SetTile(1, 1, new Tile(2, ElementType.Item1, 1, 1) { IsSuspended = true }); // Obstacle
 
             // Act
             gravity.Update(ref state, 0.02f);
@@ -89,7 +89,7 @@ namespace Match3.Core.Tests.Systems.Physics
             // With 0.02f and speed 10, it might have moved slightly or fully depending on logic
             // But Velocity.X should be non-zero OR position changed
             
-            bool hasMoved = tileAt10.Type == TileType.None || // Moved fully
+            bool hasMoved = tileAt10.Type == ElementType.None || // Moved fully
                             tileAt10.Velocity.X != 0 ||       // Moving
                             tileAt10.Position.X < 0.99f;      // Position changed
 
@@ -107,7 +107,7 @@ namespace Match3.Core.Tests.Systems.Physics
             // Let's check state.
             // If it stays put, test fails.
             
-            if (state.GetTile(1, 0).Type != TileType.None)
+            if (state.GetTile(1, 0).Type != ElementType.None)
             {
                 // Still in source cell, check if moving
                 Assert.True(state.GetTile(1, 0).Position.X < 1.0f || state.GetTile(1, 0).Velocity.X != 0, 
@@ -117,9 +117,11 @@ namespace Match3.Core.Tests.Systems.Physics
             {
                 // Moved fully to (0,0) or (0,1) depending on gravity
                 // If it moved left, it should be in Col 0
-                Assert.True(state.GetTile(0, 0).Type != TileType.None || state.GetTile(0, 1).Type != TileType.None,
+                Assert.True(state.GetTile(0, 0).Type != ElementType.None || state.GetTile(0, 1).Type != ElementType.None,
                     "Tile should have moved to Col 0");
             }
         }
     }
 }
+
+

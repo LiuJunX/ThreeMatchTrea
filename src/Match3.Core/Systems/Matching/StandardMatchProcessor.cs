@@ -11,28 +11,26 @@ using Match3.Core.Utility.Pools;
 
 namespace Match3.Core.Systems.Matching;
 
+/// <summary>
+/// Handles the resolution of matches: scoring, destroying tiles, creating bombs.
+/// </summary>
 public class StandardMatchProcessor : IMatchProcessor
 {
     private readonly IScoreSystem _scoreSystem;
-    private readonly BombEffectRegistry _bombRegistry;
     private readonly ICoverSystem _coverSystem;
     private readonly IGroundSystem _groundSystem;
-
-    public StandardMatchProcessor(IScoreSystem scoreSystem, BombEffectRegistry bombRegistry)
-        : this(scoreSystem, bombRegistry, new CoverSystem(), new GroundSystem())
-    {
-    }
+    private readonly BombEffectRegistry _bombRegistry; // Was IBombRegistry, but based on search it is a class BombEffectRegistry
 
     public StandardMatchProcessor(
         IScoreSystem scoreSystem,
-        BombEffectRegistry bombRegistry,
         ICoverSystem coverSystem,
-        IGroundSystem groundSystem)
+        IGroundSystem groundSystem,
+        BombEffectRegistry bombRegistry)
     {
         _scoreSystem = scoreSystem;
-        _bombRegistry = bombRegistry;
         _coverSystem = coverSystem;
         _groundSystem = groundSystem;
+        _bombRegistry = bombRegistry;
     }
 
     public int ProcessMatches(ref GameState state, List<MatchGroup> groups)
@@ -72,7 +70,7 @@ public class StandardMatchProcessor : IMatchProcessor
                     tilesToClear.Remove(p);
                     protectedTiles.Add(p);
 
-                    var newType = g.SpawnBombType == BombType.Color ? TileType.Rainbow : g.Type;
+                    var newType = g.SpawnBombType == BombType.Color ? ElementType.Universal : g.Type;
                     state.SetTile(p.X, p.Y, new Tile(state.NextTileId++, newType, p.X, p.Y, g.SpawnBombType));
                 }
             }
@@ -89,7 +87,7 @@ public class StandardMatchProcessor : IMatchProcessor
                 if (cleared.Contains(p)) continue;
 
                 var t = state.GetTile(p.X, p.Y);
-                if (t.Type == TileType.None) continue;
+                if (t.Type == ElementType.None) continue;
 
                 // Check cover layer first
                 if (_coverSystem.IsTileProtected(in state, p))
@@ -133,7 +131,7 @@ public class StandardMatchProcessor : IMatchProcessor
                 }
 
                 // Clear the tile
-                state.SetTile(p.X, p.Y, new Tile(0, TileType.None, p.X, p.Y));
+                state.SetTile(p.X, p.Y, new Tile(0, ElementType.None, p.X, p.Y));
 
                 // Notify ground layer
                 _groundSystem.OnTileDestroyed(ref state, p, tick, simTime, events);

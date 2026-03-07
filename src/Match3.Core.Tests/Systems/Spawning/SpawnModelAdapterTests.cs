@@ -1,4 +1,4 @@
-using Match3.Core.Models.Enums;
+﻿using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Spawning;
 using Match3.Random;
@@ -17,12 +17,12 @@ public class SpawnModelAdapterTests
 
     private class MockSpawnModel : ISpawnModel
     {
-        public TileType ReturnType { get; set; } = TileType.Red;
+        public ElementType ReturnType { get; set; } = ElementType.Item1;
         public int CallCount { get; private set; }
         public int LastSpawnX { get; private set; }
         public SpawnContext LastContext { get; private set; }
 
-        public TileType Predict(ref GameState state, int spawnX, in SpawnContext context)
+        public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context)
         {
             CallCount++;
             LastSpawnX = spawnX;
@@ -87,13 +87,13 @@ public class SpawnModelAdapterTests
     [Fact]
     public void GenerateNonMatchingTile_ShouldDelegateToModel()
     {
-        var mockModel = new MockSpawnModel { ReturnType = TileType.Blue };
+        var mockModel = new MockSpawnModel { ReturnType = ElementType.Item3 };
         var adapter = new SpawnModelAdapter(mockModel);
         var state = CreateTestState();
 
         var result = adapter.GenerateNonMatchingTile(ref state, 3, 5);
 
-        Assert.Equal(TileType.Blue, result);
+        Assert.Equal(ElementType.Item3, result);
         Assert.Equal(1, mockModel.CallCount);
     }
 
@@ -110,13 +110,13 @@ public class SpawnModelAdapterTests
     }
 
     [Theory]
-    [InlineData(TileType.Red)]
-    [InlineData(TileType.Blue)]
-    [InlineData(TileType.Green)]
-    [InlineData(TileType.Yellow)]
-    [InlineData(TileType.Purple)]
-    [InlineData(TileType.Orange)]
-    public void GenerateNonMatchingTile_ShouldReturnModelResult(TileType expectedType)
+    [InlineData(ElementType.Item1)]
+    [InlineData(ElementType.Item3)]
+    [InlineData(ElementType.Item2)]
+    [InlineData(ElementType.Item4)]
+    [InlineData(ElementType.Item5)]
+    [InlineData(ElementType.Item6)]
+    public void GenerateNonMatchingTile_ShouldReturnModelResult(ElementType expectedType)
     {
         var mockModel = new MockSpawnModel { ReturnType = expectedType };
         var adapter = new SpawnModelAdapter(mockModel);
@@ -197,18 +197,18 @@ public class SpawnModelAdapterTests
     [Fact]
     public void Adapter_ShouldWorkWithDifferentBoardSizes()
     {
-        var mockModel = new MockSpawnModel { ReturnType = TileType.Green };
+        var mockModel = new MockSpawnModel { ReturnType = ElementType.Item2 };
         var adapter = new SpawnModelAdapter(mockModel);
 
         // Small board
         var smallState = new GameState(5, 5, 6, new StubRandom());
         var result1 = adapter.GenerateNonMatchingTile(ref smallState, 2, 2);
-        Assert.Equal(TileType.Green, result1);
+        Assert.Equal(ElementType.Item2, result1);
 
         // Large board
         var largeState = new GameState(12, 12, 6, new StubRandom());
         var result2 = adapter.GenerateNonMatchingTile(ref largeState, 10, 10);
-        Assert.Equal(TileType.Green, result2);
+        Assert.Equal(ElementType.Item2, result2);
     }
 
     [Fact]
@@ -232,3 +232,4 @@ public class SpawnModelAdapterTests
 
     #endregion
 }
+

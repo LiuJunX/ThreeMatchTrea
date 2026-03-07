@@ -46,11 +46,11 @@ namespace Match3.Editor.Tests
         {
             var editor = CreateEditor();
             editor.SetActiveLayer(0);
-            editor.SetSelectedTileType(TileType.Blue);
+            editor.SetSelectedTileType(ElementType.Item3);
 
             editor.PaintCell(0, 0);
 
-            Assert.Equal(TileType.Blue, editor.Level.Grid[0]);
+            Assert.Equal(ElementType.Item3, editor.Level.Grid[0]);
             Assert.True(editor.IsDirty);
         }
 
@@ -83,7 +83,7 @@ namespace Match3.Editor.Tests
         public void Stroke_groups_as_single_undo()
         {
             var editor = CreateEditor();
-            editor.SetSelectedTileType(TileType.Blue);
+            editor.SetSelectedTileType(ElementType.Item3);
 
             // Save original tile at (0,0)
             var originalTile = editor.Level.Grid[0];
@@ -94,7 +94,7 @@ namespace Match3.Editor.Tests
             editor.PaintCell(2, 0);
             editor.EndStroke();
 
-            Assert.Equal(TileType.Blue, editor.Level.Grid[0]);
+            Assert.Equal(ElementType.Item3, editor.Level.Grid[0]);
             Assert.True(editor.CanUndo);
 
             // Single undo reverts all 3 cells
@@ -106,17 +106,17 @@ namespace Match3.Editor.Tests
         public void Undo_Redo_roundtrip()
         {
             var editor = CreateEditor();
-            editor.SetSelectedTileType(TileType.Green);
+            editor.SetSelectedTileType(ElementType.Item2);
 
             var before = editor.Level.Grid[0];
             editor.PaintCell(0, 0);
-            Assert.Equal(TileType.Green, editor.Level.Grid[0]);
+            Assert.Equal(ElementType.Item2, editor.Level.Grid[0]);
 
             editor.Undo();
             Assert.Equal(before, editor.Level.Grid[0]);
 
             editor.Redo();
-            Assert.Equal(TileType.Green, editor.Level.Grid[0]);
+            Assert.Equal(ElementType.Item2, editor.Level.Grid[0]);
         }
 
         [Fact]
@@ -220,7 +220,7 @@ namespace Match3.Editor.Tests
             var fs = new StubEditorFileSystem();
             var editor = new LevelEditor(fs);
             editor.NewLevel(4, 4);
-            editor.SetSelectedTileType(TileType.Purple);
+            editor.SetSelectedTileType(ElementType.Item5);
             editor.PaintCell(0, 0);
             editor.SaveAs("/levels/test.json");
 
@@ -248,7 +248,7 @@ namespace Match3.Editor.Tests
         public void GenerateRandom_changes_board()
         {
             var editor = CreateEditor();
-            var gridBefore = (TileType[])editor.Level.Grid.Clone();
+            var gridBefore = (ElementType[])editor.Level.Grid.Clone();
 
             editor.GenerateRandom(42);
 
@@ -274,7 +274,7 @@ namespace Match3.Editor.Tests
         public void Resize_preserves_objectives()
         {
             var editor = CreateEditor();
-            editor.SetObjective(0, ObjectiveTargetLayer.Tile, (int)TileType.Blue, 30);
+            editor.SetObjective(0, ObjectiveTargetLayer.Tile, (int)ElementType.Item3, 30);
             editor.AddObjective();
             editor.SetObjective(1, ObjectiveTargetLayer.Cover, (int)CoverType.Cage, 10);
 

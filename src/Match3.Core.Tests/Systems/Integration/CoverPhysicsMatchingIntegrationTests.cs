@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using Match3.Core.Config;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
@@ -45,7 +45,7 @@ public class CoverPhysicsMatchingIntegrationTests
     private class StubScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(Match3.Core.Models.Gameplay.MatchGroup match) => match.Positions.Count * 10;
-        public int CalculateSpecialMoveScore(TileType t1, BombType b1, TileType t2, BombType b2) => 100;
+        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 100;
     }
 
     public CoverPhysicsMatchingIntegrationTests(ITestOutputHelper output)
@@ -70,9 +70,9 @@ public class CoverPhysicsMatchingIntegrationTests
         var rng = new StubRandom();
         var state = new GameState(3, 1, 6, rng);
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
 
         // 在 (2,0) 放置 Cage 覆盖物
         state.SetCover(new Position(2, 0), new Cover(CoverType.Cage, health: 1));
@@ -104,9 +104,9 @@ public class CoverPhysicsMatchingIntegrationTests
         var rng = new StubRandom();
         var state = new GameState(3, 1, 6, rng);
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
 
         // 在 (2,0) 放置 Chain 覆盖物
         state.SetCover(new Position(2, 0), new Cover(CoverType.Chain, health: 1));
@@ -119,7 +119,7 @@ public class CoverPhysicsMatchingIntegrationTests
 
         // Assert: Chain 允许匹配
         Assert.Single(matches);
-        Assert.Equal(TileType.Red, matches[0].Type);
+        Assert.Equal(ElementType.Item1, matches[0].Type);
         Assert.Equal(3, matches[0].Positions.Count);
 
         _output.WriteLine("Chain 覆盖物正确允许了匹配检测");
@@ -143,11 +143,11 @@ public class CoverPhysicsMatchingIntegrationTests
         var rng = new StubRandom();
         var state = new GameState(5, 1, 6, rng);
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
-        state.SetTile(3, 0, new Tile(4, TileType.Green, 3, 0));
-        state.SetTile(4, 0, new Tile(5, TileType.Blue, 4, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
+        state.SetTile(3, 0, new Tile(4, ElementType.Item2, 3, 0));
+        state.SetTile(4, 0, new Tile(5, ElementType.Item3, 4, 0));
 
         // 在 (3,0) 放置 Chain 覆盖物
         state.SetCover(new Position(3, 0), new Cover(CoverType.Chain, health: 1));
@@ -156,7 +156,7 @@ public class CoverPhysicsMatchingIntegrationTests
         var matchFinder = new ClassicMatchFinder(bombGenerator);
         var scoreSystem = new StubScoreSystem();
         var bombRegistry = BombEffectRegistry.CreateDefault();
-        var processor = new StandardMatchProcessor(scoreSystem, bombRegistry);
+        var processor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), bombRegistry);
 
         _output.WriteLine("初始状态:");
         for (int x = 0; x < 5; x++)
@@ -186,16 +186,16 @@ public class CoverPhysicsMatchingIntegrationTests
         }
 
         // Assert: Red 匹配被消除
-        Assert.Equal(TileType.None, state.GetTile(0, 0).Type);
-        Assert.Equal(TileType.None, state.GetTile(1, 0).Type);
-        Assert.Equal(TileType.None, state.GetTile(2, 0).Type);
+        Assert.Equal(ElementType.None, state.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.None, state.GetTile(1, 0).Type);
+        Assert.Equal(ElementType.None, state.GetTile(2, 0).Type);
 
         // Chain 保护的 Green 保持不变
-        Assert.Equal(TileType.Green, state.GetTile(3, 0).Type);
+        Assert.Equal(ElementType.Item2, state.GetTile(3, 0).Type);
         Assert.Equal(CoverType.Chain, state.GetCover(new Position(3, 0)).Type);
 
         // Blue 保持不变
-        Assert.Equal(TileType.Blue, state.GetTile(4, 0).Type);
+        Assert.Equal(ElementType.Item3, state.GetTile(4, 0).Type);
 
         _output.WriteLine("匹配消除正确处理，Chain 覆盖物和其保护的方块保留");
     }
@@ -220,8 +220,8 @@ public class CoverPhysicsMatchingIntegrationTests
         var rng = new StubRandom();
         var state = new GameState(1, 2, 6, rng);
 
-        state.SetTile(0, 0, new Tile(1, TileType.None, 0, 0));
-        var redTile = new Tile(2, TileType.Red, 0, 1);
+        state.SetTile(0, 0, new Tile(1, ElementType.None, 0, 0));
+        var redTile = new Tile(2, ElementType.Item1, 0, 1);
         redTile.Position = new Vector2(0, 1);
         state.SetTile(0, 1, redTile);
 
@@ -240,7 +240,7 @@ public class CoverPhysicsMatchingIntegrationTests
 
         // Assert: 方块不应该移动
         var tile = state.GetTile(0, 1);
-        Assert.Equal(TileType.Red, tile.Type);
+        Assert.Equal(ElementType.Item1, tile.Type);
         Assert.False(tile.IsFalling, "被 Cage 覆盖的方块不应该下落");
 
         _output.WriteLine("Cage 覆盖物正确阻止了方块下落");
@@ -263,9 +263,9 @@ public class CoverPhysicsMatchingIntegrationTests
         var rng = new StubRandom();
         var state = new GameState(1, 3, 6, rng);
 
-        state.SetTile(0, 0, new Tile(1, TileType.None, 0, 0));
-        state.SetTile(0, 1, new Tile(2, TileType.None, 0, 1));
-        var redTile = new Tile(3, TileType.Red, 0, 2);
+        state.SetTile(0, 0, new Tile(1, ElementType.None, 0, 0));
+        state.SetTile(0, 1, new Tile(2, ElementType.None, 0, 1));
+        var redTile = new Tile(3, ElementType.Item1, 0, 2);
         redTile.Position = new Vector2(0, 2);
         state.SetTile(0, 2, redTile);
 
@@ -315,8 +315,8 @@ public class CoverPhysicsMatchingIntegrationTests
         var rng = new StubRandom();
         var state = new GameState(1, 2, 6, rng);
 
-        state.SetTile(0, 0, new Tile(1, TileType.None, 0, 0));
-        var redTile = new Tile(2, TileType.Red, 0, 1);
+        state.SetTile(0, 0, new Tile(1, ElementType.None, 0, 0));
+        var redTile = new Tile(2, ElementType.Item1, 0, 1);
         redTile.Position = new Vector2(0, 1);
         state.SetTile(0, 1, redTile);
 
@@ -381,21 +381,21 @@ public class CoverPhysicsMatchingIntegrationTests
         var state = new GameState(3, 3, 6, rng);
 
         // 第 0 行
-        state.SetTile(0, 0, new Tile(1, TileType.Green, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Yellow, 2, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item2, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item4, 2, 0));
 
         // 第 1 行 - 匹配行
-        state.SetTile(0, 1, new Tile(4, TileType.Red, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Red, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.Red, 2, 1));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item1, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item1, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item1, 2, 1));
 
         // 第 2 行
-        var blueTile = new Tile(7, TileType.Blue, 0, 2);
+        var blueTile = new Tile(7, ElementType.Item3, 0, 2);
         blueTile.Position = new Vector2(0, 2);
         state.SetTile(0, 2, blueTile);
-        state.SetTile(1, 2, new Tile(8, TileType.Green, 1, 2));
-        state.SetTile(2, 2, new Tile(9, TileType.Purple, 2, 2));
+        state.SetTile(1, 2, new Tile(8, ElementType.Item2, 1, 2));
+        state.SetTile(2, 2, new Tile(9, ElementType.Item5, 2, 2));
 
         // 在 (0,2) 放置 Chain 覆盖物
         state.SetCover(new Position(0, 2), new Cover(CoverType.Chain, health: 1));
@@ -405,7 +405,7 @@ public class CoverPhysicsMatchingIntegrationTests
         var matchFinder = new ClassicMatchFinder(bombGenerator);
         var scoreSystem = new StubScoreSystem();
         var bombRegistry = BombEffectRegistry.CreateDefault();
-        var processor = new StandardMatchProcessor(scoreSystem, bombRegistry);
+        var processor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), bombRegistry);
         var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };
         var gravitySystem = new RealtimeGravitySystem(config, rng);
         var animationSystem = new AnimationSystem(config);
@@ -420,16 +420,16 @@ public class CoverPhysicsMatchingIntegrationTests
         // Act 1: 检测匹配
         var matches = matchFinder.FindMatchGroups(in state);
         Assert.Single(matches);
-        Assert.Equal(TileType.Red, matches[0].Type);
+        Assert.Equal(ElementType.Item1, matches[0].Type);
         _output.WriteLine($"检测到匹配: {matches[0].Type}, 数量: {matches[0].Positions.Count}");
 
         // Act 2: 处理匹配
         processor.ProcessMatches(ref state, matches);
 
         // 验证红色被消除
-        Assert.Equal(TileType.None, state.GetTile(0, 1).Type);
-        Assert.Equal(TileType.None, state.GetTile(1, 1).Type);
-        Assert.Equal(TileType.None, state.GetTile(2, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(0, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(1, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(2, 1).Type);
 
         _output.WriteLine("匹配处理后:");
         PrintBoard(ref state);
@@ -470,17 +470,17 @@ public class CoverPhysicsMatchingIntegrationTests
         var rng = new StubRandom();
         var state = new GameState(1, 4, 6, rng);
 
-        state.SetTile(0, 0, new Tile(1, TileType.None, 0, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.None, 0, 0));
 
-        var tile1 = new Tile(2, TileType.Red, 0, 1);
+        var tile1 = new Tile(2, ElementType.Item1, 0, 1);
         tile1.Position = new Vector2(0, 1);
         state.SetTile(0, 1, tile1);
 
-        var tile2 = new Tile(3, TileType.Red, 0, 2);
+        var tile2 = new Tile(3, ElementType.Item1, 0, 2);
         tile2.Position = new Vector2(0, 2);
         state.SetTile(0, 2, tile2);
 
-        var tile3 = new Tile(4, TileType.Red, 0, 3);
+        var tile3 = new Tile(4, ElementType.Item1, 0, 3);
         tile3.Position = new Vector2(0, 3);
         state.SetTile(0, 3, tile3);
 
@@ -503,7 +503,7 @@ public class CoverPhysicsMatchingIntegrationTests
         PrintColumnStatus(ref state);
 
         // Assert: 被 Chain 覆盖的 (0,1) 不应该移动
-        Assert.Equal(TileType.Red, state.GetTile(0, 1).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(0, 1).Type);
         Assert.False(state.GetTile(0, 1).IsFalling);
     }
 
@@ -521,7 +521,7 @@ public class CoverPhysicsMatchingIntegrationTests
                 var t = state.GetTile(x, y);
                 var c = state.GetCover(new Position(x, y));
 
-                string symbol = t.Type == TileType.None ? "_" : t.Type.ToString()[0].ToString();
+                string symbol = t.Type == ElementType.None ? "_" : t.Type.ToString()[0].ToString();
                 if (c.Type != CoverType.None)
                 {
                     symbol = $"[{symbol}]";
@@ -544,3 +544,5 @@ public class CoverPhysicsMatchingIntegrationTests
 
     #endregion
 }
+
+

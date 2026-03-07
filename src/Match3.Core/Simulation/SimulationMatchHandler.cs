@@ -108,7 +108,7 @@ internal sealed class SimulationMatchHandler
             if (!state.IsValid(pos)) continue;
 
             var tile = state.GetTile(pos.X, pos.Y);
-            if (tile.Type == TileType.None) continue;
+            if (tile.Type == ElementType.None) continue;
 
             if (eventCollector.IsEnabled)
             {
@@ -181,7 +181,7 @@ internal sealed class SimulationMatchHandler
                     continue;
 
                 var tile = state.GetTile(pos.X, pos.Y);
-                if (tile.Type == TileType.None) continue;
+                if (tile.Type == ElementType.None) continue;
 
                 if (eventCollector.IsEnabled)
                 {
@@ -214,7 +214,7 @@ internal sealed class SimulationMatchHandler
             {
                 var pos = group.BombOrigin.Value;
                 var tile = state.GetTile(pos.X, pos.Y);
-                if (tile.Type != TileType.None)
+                if (tile.Type != ElementType.None)
                 {
                     _bombOrigins[pos] = tile.Id;
                 }

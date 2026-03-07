@@ -38,7 +38,7 @@ public sealed record TileDestroyedEvent : GameEvent
     public Position GridPosition { get; init; }
 
     /// <summary>Type of the destroyed tile.</summary>
-    public TileType Type { get; init; }
+    public ElementType Type { get; init; }
 
     /// <summary>Bomb type if tile had a bomb attached.</summary>
     public BombType Bomb { get; init; }
@@ -68,7 +68,7 @@ public sealed record TileSpawnedEvent : GameEvent
     public Position GridPosition { get; init; }
 
     /// <summary>Type of the spawned tile.</summary>
-    public TileType Type { get; init; }
+    public ElementType Type { get; init; }
 
     /// <summary>Bomb type if tile was spawned with a bomb.</summary>
     public BombType Bomb { get; init; }

@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
@@ -41,15 +41,15 @@ public class RefillAnimationIntegrationTests
     /// </summary>
     private class SequentialSpawnModel : ISpawnModel
     {
-        private readonly TileType[] _sequence;
+        private readonly ElementType[] _sequence;
         private int _index = 0;
 
-        public SequentialSpawnModel(params TileType[] sequence)
+        public SequentialSpawnModel(params ElementType[] sequence)
         {
             _sequence = sequence;
         }
 
-        public TileType Predict(ref GameState state, int column, in SpawnContext context)
+        public ElementType Predict(ref GameState state, int column, in SpawnContext context)
         {
             var type = _sequence[_index % _sequence.Length];
             _index++;
@@ -78,11 +78,11 @@ public class RefillAnimationIntegrationTests
         var state = new GameState(1, 3, 6, rng);
 
         // 顶行为空
-        state.SetTile(0, 0, new Tile(1, TileType.None, 0, 0));
-        state.SetTile(0, 1, new Tile(2, TileType.Red, 0, 1));
-        state.SetTile(0, 2, new Tile(3, TileType.Blue, 0, 2));
+        state.SetTile(0, 0, new Tile(1, ElementType.None, 0, 0));
+        state.SetTile(0, 1, new Tile(2, ElementType.Item1, 0, 1));
+        state.SetTile(0, 2, new Tile(3, ElementType.Item3, 0, 2));
 
-        var spawnModel = new SequentialSpawnModel(TileType.Green);
+        var spawnModel = new SequentialSpawnModel(ElementType.Item2);
         var refillSystem = new RealtimeRefillSystem(spawnModel);
 
         // Act: 触发填充
@@ -90,7 +90,7 @@ public class RefillAnimationIntegrationTests
 
         // Assert: 新方块应该在 (0, 0) 但位置从 Y=-1 开始
         var newTile = state.GetTile(0, 0);
-        Assert.Equal(TileType.Green, newTile.Type);
+        Assert.Equal(ElementType.Item2, newTile.Type);
         Assert.Equal(-1.0f, newTile.Position.Y, 1);
         Assert.True(newTile.IsFalling, "新生成的方块应该处于下落状态");
 
@@ -110,13 +110,13 @@ public class RefillAnimationIntegrationTests
         var rng = new StubRandom();
         var state = new GameState(1, 2, 6, rng);
 
-        state.SetTile(0, 0, new Tile(1, TileType.None, 0, 0));
-        var redTile = new Tile(2, TileType.Red, 0, 1);
+        state.SetTile(0, 0, new Tile(1, ElementType.None, 0, 0));
+        var redTile = new Tile(2, ElementType.Item1, 0, 1);
         redTile.Position = new Vector2(0, 1);
         state.SetTile(0, 1, redTile);
 
         var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };
-        var spawnModel = new SequentialSpawnModel(TileType.Green);
+        var spawnModel = new SequentialSpawnModel(ElementType.Item2);
         var refillSystem = new RealtimeRefillSystem(spawnModel);
         var gravitySystem = new RealtimeGravitySystem(config, rng);
         var animationSystem = new AnimationSystem(config);
@@ -154,11 +154,11 @@ public class RefillAnimationIntegrationTests
         var rng = new StubRandom();
         var state = new GameState(1, 2, 6, rng);
 
-        state.SetTile(0, 0, new Tile(1, TileType.None, 0, 0));
-        state.SetTile(0, 1, new Tile(2, TileType.Red, 0, 1));
+        state.SetTile(0, 0, new Tile(1, ElementType.None, 0, 0));
+        state.SetTile(0, 1, new Tile(2, ElementType.Item1, 0, 1));
 
         var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };
-        var spawnModel = new SequentialSpawnModel(TileType.Green);
+        var spawnModel = new SequentialSpawnModel(ElementType.Item2);
         var refillSystem = new RealtimeRefillSystem(spawnModel);
         var gravitySystem = new RealtimeGravitySystem(config, rng);
         var animationSystem = new AnimationSystem(config);
@@ -218,14 +218,14 @@ public class RefillAnimationIntegrationTests
         // 顶行全空
         for (int x = 0; x < 3; x++)
         {
-            state.SetTile(x, 0, new Tile(x, TileType.None, x, 0));
-            var tile = new Tile(x + 3, TileType.Red, x, 1);
+            state.SetTile(x, 0, new Tile(x, ElementType.None, x, 0));
+            var tile = new Tile(x + 3, ElementType.Item1, x, 1);
             tile.Position = new Vector2(x, 1);
             state.SetTile(x, 1, tile);
         }
 
         var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };
-        var spawnModel = new SequentialSpawnModel(TileType.Green, TileType.Blue, TileType.Yellow);
+        var spawnModel = new SequentialSpawnModel(ElementType.Item2, ElementType.Item3, ElementType.Item4);
         var refillSystem = new RealtimeRefillSystem(spawnModel);
         var gravitySystem = new RealtimeGravitySystem(config, rng);
         var animationSystem = new AnimationSystem(config);
@@ -287,25 +287,25 @@ public class RefillAnimationIntegrationTests
         var state = new GameState(3, 4, 6, rng);
 
         // Column 0: 1 个空位 (0,0)
-        state.SetTile(0, 0, new Tile(1, TileType.None, 0, 0));
-        state.SetTile(0, 1, new Tile(2, TileType.Red, 0, 1));
-        state.SetTile(0, 2, new Tile(3, TileType.Red, 0, 2));
-        state.SetTile(0, 3, new Tile(4, TileType.Red, 0, 3));
+        state.SetTile(0, 0, new Tile(1, ElementType.None, 0, 0));
+        state.SetTile(0, 1, new Tile(2, ElementType.Item1, 0, 1));
+        state.SetTile(0, 2, new Tile(3, ElementType.Item1, 0, 2));
+        state.SetTile(0, 3, new Tile(4, ElementType.Item1, 0, 3));
 
         // Column 1: 2 个空位 (1,0), (1,1)
-        state.SetTile(1, 0, new Tile(5, TileType.None, 1, 0));
-        state.SetTile(1, 1, new Tile(6, TileType.None, 1, 1));
-        state.SetTile(1, 2, new Tile(7, TileType.Blue, 1, 2));
-        state.SetTile(1, 3, new Tile(8, TileType.Blue, 1, 3));
+        state.SetTile(1, 0, new Tile(5, ElementType.None, 1, 0));
+        state.SetTile(1, 1, new Tile(6, ElementType.None, 1, 1));
+        state.SetTile(1, 2, new Tile(7, ElementType.Item3, 1, 2));
+        state.SetTile(1, 3, new Tile(8, ElementType.Item3, 1, 3));
 
         // Column 2: 3 个空位 (2,0), (2,1), (2,2)
-        state.SetTile(2, 0, new Tile(9, TileType.None, 2, 0));
-        state.SetTile(2, 1, new Tile(10, TileType.None, 2, 1));
-        state.SetTile(2, 2, new Tile(11, TileType.None, 2, 2));
-        state.SetTile(2, 3, new Tile(12, TileType.Green, 2, 3));
+        state.SetTile(2, 0, new Tile(9, ElementType.None, 2, 0));
+        state.SetTile(2, 1, new Tile(10, ElementType.None, 2, 1));
+        state.SetTile(2, 2, new Tile(11, ElementType.None, 2, 2));
+        state.SetTile(2, 3, new Tile(12, ElementType.Item2, 2, 3));
 
         var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };
-        var spawnModel = new SequentialSpawnModel(TileType.Yellow, TileType.Purple, TileType.Orange);
+        var spawnModel = new SequentialSpawnModel(ElementType.Item4, ElementType.Item5, ElementType.Item6);
         var refillSystem = new RealtimeRefillSystem(spawnModel);
         var gravitySystem = new RealtimeGravitySystem(config, rng);
         var animationSystem = new AnimationSystem(config);
@@ -325,7 +325,7 @@ public class RefillAnimationIntegrationTests
             bool hasEmpty = false;
             for (int x = 0; x < state.Width; x++)
             {
-                if (state.GetTile(x, 0).Type == TileType.None)
+                if (state.GetTile(x, 0).Type == ElementType.None)
                 {
                     hasEmpty = true;
                     break;
@@ -363,7 +363,7 @@ public class RefillAnimationIntegrationTests
             for (int x = 0; x < state.Width; x++)
             {
                 var tile = state.GetTile(x, y);
-                Assert.NotEqual(TileType.None, tile.Type);
+                Assert.NotEqual(ElementType.None, tile.Type);
                 Assert.False(tile.IsFalling, $"({x},{y}) 不应该在下落");
             }
         }
@@ -391,28 +391,28 @@ public class RefillAnimationIntegrationTests
         var state = new GameState(3, 3, 6, rng);
 
         // 第 0 行
-        var greenTile = new Tile(1, TileType.Green, 0, 0);
+        var greenTile = new Tile(1, ElementType.Item2, 0, 0);
         greenTile.Position = new Vector2(0, 0);
         state.SetTile(0, 0, greenTile);
-        var blueTile = new Tile(2, TileType.Blue, 1, 0);
+        var blueTile = new Tile(2, ElementType.Item3, 1, 0);
         blueTile.Position = new Vector2(1, 0);
         state.SetTile(1, 0, blueTile);
-        var yellowTile = new Tile(3, TileType.Yellow, 2, 0);
+        var yellowTile = new Tile(3, ElementType.Item4, 2, 0);
         yellowTile.Position = new Vector2(2, 0);
         state.SetTile(2, 0, yellowTile);
 
         // 第 1 行 - 空
-        state.SetTile(0, 1, new Tile(4, TileType.None, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.None, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.None, 2, 1));
+        state.SetTile(0, 1, new Tile(4, ElementType.None, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.None, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.None, 2, 1));
 
         // 第 2 行
-        state.SetTile(0, 2, new Tile(7, TileType.Red, 0, 2));
-        state.SetTile(1, 2, new Tile(8, TileType.Purple, 1, 2));
-        state.SetTile(2, 2, new Tile(9, TileType.Blue, 2, 2));
+        state.SetTile(0, 2, new Tile(7, ElementType.Item1, 0, 2));
+        state.SetTile(1, 2, new Tile(8, ElementType.Item5, 1, 2));
+        state.SetTile(2, 2, new Tile(9, ElementType.Item3, 2, 2));
 
         var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };
-        var spawnModel = new SequentialSpawnModel(TileType.Orange, TileType.Red, TileType.Green);
+        var spawnModel = new SequentialSpawnModel(ElementType.Item6, ElementType.Item1, ElementType.Item2);
         var refillSystem = new RealtimeRefillSystem(spawnModel);
         var gravitySystem = new RealtimeGravitySystem(config, rng);
         var animationSystem = new AnimationSystem(config);
@@ -438,7 +438,7 @@ public class RefillAnimationIntegrationTests
             bool needsRefill = false;
             for (int x = 0; x < state.Width; x++)
             {
-                if (state.GetTile(x, 0).Type == TileType.None)
+                if (state.GetTile(x, 0).Type == ElementType.None)
                 {
                     needsRefill = true;
                     break;
@@ -467,7 +467,7 @@ public class RefillAnimationIntegrationTests
             for (int x = 0; x < state.Width; x++)
             {
                 var tile = state.GetTile(x, y);
-                Assert.NotEqual(TileType.None, tile.Type);
+                Assert.NotEqual(ElementType.None, tile.Type);
             }
         }
 
@@ -495,14 +495,14 @@ public class RefillAnimationIntegrationTests
         {
             for (int x = 0; x < 3; x++)
             {
-                state.SetTile(x, y, new Tile(y * 3 + x, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(y * 3 + x, ElementType.None, x, y));
             }
         }
 
         var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };
         var spawnModel = new SequentialSpawnModel(
-            TileType.Red, TileType.Blue, TileType.Green,
-            TileType.Yellow, TileType.Purple, TileType.Orange
+            ElementType.Item1, ElementType.Item3, ElementType.Item2,
+            ElementType.Item4, ElementType.Item5, ElementType.Item6
         );
         var refillSystem = new RealtimeRefillSystem(spawnModel);
         var gravitySystem = new RealtimeGravitySystem(config, rng);
@@ -528,7 +528,7 @@ public class RefillAnimationIntegrationTests
             {
                 for (int x = 0; x < state.Width; x++)
                 {
-                    if (state.GetTile(x, y).Type == TileType.None)
+                    if (state.GetTile(x, y).Type == ElementType.None)
                     {
                         hasEmpty = true;
                         break;
@@ -556,7 +556,7 @@ public class RefillAnimationIntegrationTests
             for (int x = 0; x < state.Width; x++)
             {
                 var tile = state.GetTile(x, y);
-                Assert.NotEqual(TileType.None, tile.Type);
+                Assert.NotEqual(ElementType.None, tile.Type);
                 Assert.False(tile.IsFalling);
             }
         }
@@ -577,11 +577,11 @@ public class RefillAnimationIntegrationTests
 
         for (int y = 0; y < 4; y++)
         {
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
         }
 
         var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };
-        var spawnModel = new SequentialSpawnModel(TileType.Red, TileType.Blue, TileType.Green, TileType.Yellow);
+        var spawnModel = new SequentialSpawnModel(ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4);
         var refillSystem = new RealtimeRefillSystem(spawnModel);
         var gravitySystem = new RealtimeGravitySystem(config, rng);
         var animationSystem = new AnimationSystem(config);
@@ -601,7 +601,7 @@ public class RefillAnimationIntegrationTests
             bool hasEmpty = false;
             for (int y = 0; y < state.Height; y++)
             {
-                if (state.GetTile(0, y).Type == TileType.None)
+                if (state.GetTile(0, y).Type == ElementType.None)
                 {
                     hasEmpty = true;
                     break;
@@ -623,7 +623,7 @@ public class RefillAnimationIntegrationTests
         for (int y = 0; y < state.Height; y++)
         {
             var tile = state.GetTile(0, y);
-            Assert.NotEqual(TileType.None, tile.Type);
+            Assert.NotEqual(ElementType.None, tile.Type);
             Assert.Equal(y, tile.Position.Y, 1);
             Assert.False(tile.IsFalling);
         }
@@ -641,7 +641,7 @@ public class RefillAnimationIntegrationTests
             for (int x = 0; x < state.Width; x++)
             {
                 var t = state.GetTile(x, y);
-                string symbol = t.Type == TileType.None ? "_" : t.Type.ToString()[0].ToString();
+                string symbol = t.Type == ElementType.None ? "_" : t.Type.ToString()[0].ToString();
                 row += symbol.PadRight(3);
             }
             _output.WriteLine(row);
@@ -659,3 +659,4 @@ public class RefillAnimationIntegrationTests
 
     #endregion
 }
+

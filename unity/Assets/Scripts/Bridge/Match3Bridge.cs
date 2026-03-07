@@ -4,7 +4,6 @@ using Match3.Core.Choreography;
 using Match3.Core.Config;
 using Match3.Core.DependencyInjection;
 using Match3.Core.Events;
-using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Matching;
@@ -79,7 +78,7 @@ namespace Match3.Unity.Bridge
                 var layout = new bool[state.Height, state.Width];
                 for (int y = 0; y < state.Height; y++)
                     for (int x = 0; x < state.Width; x++)
-                        layout[y, x] = state.Grid[y * state.Width + x].Type != Core.Models.Enums.TileType.None;
+                        layout[y, x] = state.Grid[y * state.Width + x].Type != Core.Models.Enums.ElementType.None;
                 return layout;
             }
         }
@@ -178,7 +177,7 @@ namespace Match3.Unity.Bridge
         {
             public int TileId;
             public int ObjectiveIndex;
-            public TileType TileType;
+            public ElementType ElementType;
             public Position SourceGridPosition;
             /// <summary>null = direct fly (3-connect), non-null = bomb merge position.</summary>
             public Position? MergeTarget;
@@ -516,17 +515,17 @@ namespace Match3.Unity.Bridge
                 var p = state.ObjectiveProgress[i];
                 if (!p.IsActive) continue;
 
-                var tileType = p.TargetLayer == ObjectiveTargetLayer.Tile
-                    ? (TileType)p.ElementType
-                    : TileType.None;
+                var elementType = p.TargetLayer == ObjectiveTargetLayer.Tile
+                    ? (ElementType)p.ElementType
+                    : ElementType.None;
 
                 uiObjectives[slot++] = new ObjectiveProgress
                 {
                     Type = p.TargetLayer.ToString(),
                     Current = p.CurrentCount,
                     Target = p.TargetCount,
-                    Color = tileType != TileType.None
-                        ? SpriteFactory.GetTileColor(tileType)
+                    Color = elementType != ElementType.None
+                        ? SpriteFactory.GetTileColor(elementType)
                         : Color.gray
                 };
             }
@@ -727,7 +726,7 @@ namespace Match3.Unity.Bridge
                 return -1;
 
             var tile = state.GetTile(pos.X, pos.Y);
-            return tile.Type != Core.Models.Enums.TileType.None ? tile.Id : -1;
+            return tile.Type != Core.Models.Enums.ElementType.None ? tile.Id : -1;
         }
 
         /// <summary>
@@ -739,7 +738,7 @@ namespace Match3.Unity.Bridge
             if (!_initialized || _session == null) return null;
 
             var state = _session.Engine.State;
-            if (state.Holes == null || column < 0 || column >= state.Width) return null;
+            if (column < 0 || column >= state.Width) return null;
 
             for (int y = 0; y < state.Height; y++)
             {

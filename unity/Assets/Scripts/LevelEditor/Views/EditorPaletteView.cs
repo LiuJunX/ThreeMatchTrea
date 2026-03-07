@@ -18,7 +18,7 @@ namespace Match3.Unity.LevelEditor.Views
         private LevelEditorCore _editor;
         private readonly string[] _layerNames = { "Tiles", "Covers", "Grounds" };
         private int _lastLayer = -1;
-        private TileType _lastTileType;
+        private ElementType _lastTileType;
         private BombType _lastBombType;
         private CoverType _lastCoverType;
         private GroundType _lastGroundType;
@@ -97,26 +97,49 @@ namespace Match3.Unity.LevelEditor.Views
 
         private void BuildTileButtons()
         {
-            var types = new[] {
-                TileType.Red, TileType.Green, TileType.Blue,
-                TileType.Yellow, TileType.Purple, TileType.Orange,
-                TileType.Rainbow, TileType.None, TileType.Wall,
-                TileType.Hole, TileType.Spawner, TileType.Sink
+            // Element types (color/content items)
+            var elementTypes = new[] {
+                ElementType.Item1, ElementType.Item2, ElementType.Item3,
+                ElementType.Item4, ElementType.Item5, ElementType.Item6,
+                ElementType.Universal, ElementType.None
+            };
+            var elementNames = new[] {
+                "Red", "Green", "Blue", "Yellow", "Purple", "Orange", "Rainbow", "None"
             };
 
-            foreach (var t in types)
+            for (int i = 0; i < elementTypes.Length; i++)
             {
-                var type = t;
-                var btn = CreateButton(_typeButtonContainer, type.ToString(), () =>
+                var type = elementTypes[i];
+                var label = elementNames[i];
+                var btn = CreateButton(_typeButtonContainer, label, () =>
                 {
                     _editor.SetSelectedTileType(type);
-                    _editor.SetSelectedBombType(type == TileType.Rainbow ? BombType.Color : BombType.None);
+                    _editor.SetSelectedBombType(type == ElementType.Universal ? BombType.Color : BombType.None);
                 });
                 var img = btn.GetComponent<Image>();
                 if (img != null)
                     img.color = _editor.SelectedTileType == type
                         ? HighlightColor(EditorColorMap.GetTileColor(type))
                         : EditorColorMap.GetTileColor(type);
+            }
+
+            // Structural types (kept as TileType)
+            var structuralTypes = new[] {
+                TileType.Wall, TileType.Hole, TileType.Spawner, TileType.Sink
+            };
+
+            foreach (var t in structuralTypes)
+            {
+                var type = t;
+                var btn = CreateButton(_typeButtonContainer, type.ToString(), () =>
+                {
+                    // Structural types map to ElementType.None for tile content
+                    _editor.SetSelectedTileType(ElementType.None);
+                    _editor.SetSelectedBombType(BombType.None);
+                });
+                var img = btn.GetComponent<Image>();
+                if (img != null)
+                    img.color = EditorColorMap.GetStructuralColor(type);
             }
 
             // Bomb buttons

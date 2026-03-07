@@ -594,7 +594,7 @@ public sealed class MCTSAnalyzer
 
         public RandomSpawnModel GetSpawnModel()
         {
-            _spawnModel ??= new RandomSpawnModel(_tileTypesCount);
+            _spawnModel ??= new RandomSpawnModel(Random, _tileTypesCount);
             return _spawnModel;
         }
 
@@ -604,8 +604,17 @@ public sealed class MCTSAnalyzer
         public ClassicMatchFinder GetMatchFinder() =>
             _matchFinder ??= new ClassicMatchFinder(BombGenerator);
 
-        public StandardMatchProcessor GetMatchProcessor() =>
-            _matchProcessor ??= new StandardMatchProcessor(ScoreSystem, BombEffects);
+        public StandardMatchProcessor GetMatchProcessor()
+        {
+            if (_matchProcessor == null)
+            {
+                var objSys = GetObjectiveSystem();
+                _coverSystem ??= new CoverSystem(objSys);
+                _groundSystem ??= new GroundSystem(objSys);
+                _matchProcessor = new StandardMatchProcessor(ScoreSystem, _coverSystem, _groundSystem, BombEffects);
+            }
+            return _matchProcessor;
+        }
 
         public PowerUpHandler GetPowerUpHandler() =>
             _powerUpHandler ??= new PowerUpHandler(ScoreSystem);
@@ -626,29 +635,33 @@ public sealed class MCTSAnalyzer
         }
     }
 
-    private sealed class RandomSpawnModel : Systems.Spawning.ISpawnModel
+    private class RandomSpawnModel : Systems.Spawning.ISpawnModel
     {
-        private readonly int _typeCount;
-        private int _counter;
-        private static readonly Models.Enums.TileType[] AllTypes =
+        private readonly IRandom _rng;
+        private readonly int _tileTypesCount;
+        private static readonly ElementType[] Colors = new[]
         {
-            Models.Enums.TileType.Red, Models.Enums.TileType.Blue, Models.Enums.TileType.Green,
-            Models.Enums.TileType.Yellow, Models.Enums.TileType.Purple, Models.Enums.TileType.Orange
+            ElementType.Item1, ElementType.Item2, ElementType.Item3,
+            ElementType.Item4, ElementType.Item5, ElementType.Item6
         };
 
-        public RandomSpawnModel(int typeCount) => _typeCount = Math.Min(typeCount, AllTypes.Length);
-
-        public Models.Enums.TileType Predict(ref GameState state, int spawnX, in Systems.Spawning.SpawnContext context)
+        public RandomSpawnModel(IRandom rng, int tileTypesCount)
         {
-            int idx = (_counter++ + spawnX) % _typeCount;
-            return AllTypes[idx];
+            _rng = rng;
+            _tileTypesCount = tileTypesCount;
+        }
+
+        public ElementType Predict(ref GameState state, int spawnX, in Systems.Spawning.SpawnContext context)
+        {
+            int idx = _rng.Next(0, _tileTypesCount);
+            return Colors[idx];
         }
     }
 
     private sealed class SimpleScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(Models.Gameplay.MatchGroup match) => match.Positions.Count * 10;
-        public int CalculateSpecialMoveScore(Models.Enums.TileType t1, Models.Enums.BombType b1,
-            Models.Enums.TileType t2, Models.Enums.BombType b2) => 100;
+        public int CalculateSpecialMoveScore(Models.Enums.ElementType t1, Models.Enums.BombType b1,
+            Models.Enums.ElementType t2, Models.Enums.BombType b2) => 100;
     }
 }

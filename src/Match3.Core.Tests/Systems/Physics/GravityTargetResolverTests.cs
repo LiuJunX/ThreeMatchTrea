@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Physics;
@@ -32,7 +32,7 @@ public class GravityTargetResolverTests
         ClearBoard(ref state);
 
         // Place a tile at (1, 0)
-        state.SetTile(1, 0, new Tile(1, TileType.Red, 1, 0));
+        state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
 
         // Act
         resolver.ClearReservations();
@@ -54,8 +54,8 @@ public class GravityTargetResolverTests
         ClearBoard(ref state);
 
         // Place tiles
-        state.SetTile(1, 0, new Tile(1, TileType.Red, 1, 0));
-        state.SetTile(1, 1, new Tile(2, TileType.Blue, 1, 1)); // Blocking tile
+        state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
+        state.SetTile(1, 1, new Tile(2, ElementType.Item3, 1, 1)); // Blocking tile
 
         // Act
         resolver.ClearReservations();
@@ -77,9 +77,9 @@ public class GravityTargetResolverTests
         ClearBoard(ref state);
 
         // Place a tile at (1, 0)
-        state.SetTile(1, 0, new Tile(1, TileType.Red, 1, 0));
+        state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
         // Place a blocking tile at (1, 3)
-        state.SetTile(1, 3, new Tile(2, TileType.Blue, 1, 3));
+        state.SetTile(1, 3, new Tile(2, ElementType.Item3, 1, 3));
 
         // Act
         resolver.ClearReservations();
@@ -100,7 +100,7 @@ public class GravityTargetResolverTests
         ClearBoard(ref state);
 
         // Place tile at bottom
-        state.SetTile(1, 2, new Tile(1, TileType.Red, 1, 2));
+        state.SetTile(1, 2, new Tile(1, ElementType.Item1, 1, 2));
 
         // Act
         resolver.ClearReservations();
@@ -125,11 +125,11 @@ public class GravityTargetResolverTests
         ClearBoard(ref state);
 
         // Place a falling tile at (1, 0) - current tile is also falling
-        var currentTile = new Tile(1, TileType.Red, 1, 0) { IsFalling = true };
+        var currentTile = new Tile(1, ElementType.Item1, 1, 0) { IsFalling = true };
         state.SetTile(1, 0, currentTile);
 
         // Place a falling tile at (1, 1)
-        var fallingBelow = new Tile(2, TileType.Blue, 1, 1)
+        var fallingBelow = new Tile(2, ElementType.Item3, 1, 1)
         {
             Position = new Vector2(1, 1.5f),
             Velocity = new Vector2(0, 10f),
@@ -158,11 +158,11 @@ public class GravityTargetResolverTests
         ClearBoard(ref state);
 
         // Place a non-falling tile at (1, 0)
-        var currentTile = new Tile(1, TileType.Red, 1, 0) { IsFalling = false };
+        var currentTile = new Tile(1, ElementType.Item1, 1, 0) { IsFalling = false };
         state.SetTile(1, 0, currentTile);
 
         // Place a falling tile at (1, 1) that hasn't cleared the midpoint
-        var fallingBelow = new Tile(2, TileType.Blue, 1, 1)
+        var fallingBelow = new Tile(2, ElementType.Item3, 1, 1)
         {
             Position = new Vector2(1, 1.3f), // < 1.5 midpoint
             Velocity = new Vector2(0, 10f),
@@ -194,15 +194,15 @@ public class GravityTargetResolverTests
         ClearBoard(ref state);
 
         // Tile at (1, 0)
-        state.SetTile(1, 0, new Tile(1, TileType.Red, 1, 0));
+        state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
 
         // Suspended tile at (1, 1) - blocks direct fall
-        var suspended = new Tile(2, TileType.Blue, 1, 1) { IsSuspended = true };
+        var suspended = new Tile(2, ElementType.Item3, 1, 1) { IsSuspended = true };
         state.SetTile(1, 1, suspended);
 
         // Left diagonal open: (0, 1) empty, (0, 0) empty (overhead clear)
         // Right diagonal blocked: (2, 1) has tile
-        state.SetTile(2, 1, new Tile(3, TileType.Green, 2, 1));
+        state.SetTile(2, 1, new Tile(3, ElementType.Item2, 2, 1));
 
         // Act
         resolver.ClearReservations();
@@ -223,14 +223,14 @@ public class GravityTargetResolverTests
         ClearBoard(ref state);
 
         // Tile at (1, 0)
-        state.SetTile(1, 0, new Tile(1, TileType.Red, 1, 0));
+        state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
 
         // Suspended tile at (1, 1)
-        var suspended = new Tile(2, TileType.Blue, 1, 1) { IsSuspended = true };
+        var suspended = new Tile(2, ElementType.Item3, 1, 1) { IsSuspended = true };
         state.SetTile(1, 1, suspended);
 
         // Left diagonal blocked: (0, 1) has tile
-        state.SetTile(0, 1, new Tile(3, TileType.Green, 0, 1));
+        state.SetTile(0, 1, new Tile(3, ElementType.Item2, 0, 1));
 
         // Right diagonal open: (2, 1) empty, (2, 0) empty (overhead clear)
 
@@ -253,10 +253,10 @@ public class GravityTargetResolverTests
         ClearBoard(ref state);
 
         // Tile at (1, 0)
-        state.SetTile(1, 0, new Tile(1, TileType.Red, 1, 0));
+        state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
 
         // Suspended tile at (1, 1)
-        var suspended = new Tile(2, TileType.Blue, 1, 1) { IsSuspended = true };
+        var suspended = new Tile(2, ElementType.Item3, 1, 1) { IsSuspended = true };
         state.SetTile(1, 1, suspended);
 
         // Both diagonals open
@@ -285,17 +285,17 @@ public class GravityTargetResolverTests
         ClearBoard(ref state);
 
         // Tile at (1, 0)
-        state.SetTile(1, 0, new Tile(1, TileType.Red, 1, 0));
+        state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
 
         // Suspended tile at (1, 1)
-        var suspended = new Tile(2, TileType.Blue, 1, 1) { IsSuspended = true };
+        var suspended = new Tile(2, ElementType.Item3, 1, 1) { IsSuspended = true };
         state.SetTile(1, 1, suspended);
 
         // Left diagonal target (0, 1) is open, but overhead (0, 0) is blocked
-        state.SetTile(0, 0, new Tile(3, TileType.Green, 0, 0));
+        state.SetTile(0, 0, new Tile(3, ElementType.Item2, 0, 0));
 
         // Right diagonal blocked at target
-        state.SetTile(2, 1, new Tile(4, TileType.Yellow, 2, 1));
+        state.SetTile(2, 1, new Tile(4, ElementType.Item4, 2, 1));
 
         // Act
         resolver.ClearReservations();
@@ -316,10 +316,10 @@ public class GravityTargetResolverTests
         ClearBoard(ref state);
 
         // Tile at (0, 0) - left edge
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
 
         // Suspended tile at (0, 1)
-        var suspended = new Tile(2, TileType.Blue, 0, 1) { IsSuspended = true };
+        var suspended = new Tile(2, ElementType.Item3, 0, 1) { IsSuspended = true };
         state.SetTile(0, 1, suspended);
 
         // Right diagonal open
@@ -343,10 +343,10 @@ public class GravityTargetResolverTests
         ClearBoard(ref state);
 
         // Tile at (2, 0) - right edge
-        state.SetTile(2, 0, new Tile(1, TileType.Red, 2, 0));
+        state.SetTile(2, 0, new Tile(1, ElementType.Item1, 2, 0));
 
         // Suspended tile at (2, 1)
-        var suspended = new Tile(2, TileType.Blue, 2, 1) { IsSuspended = true };
+        var suspended = new Tile(2, ElementType.Item3, 2, 1) { IsSuspended = true };
         state.SetTile(2, 1, suspended);
 
         // Left diagonal open
@@ -374,8 +374,8 @@ public class GravityTargetResolverTests
         ClearBoard(ref state);
 
         // Place two tiles at top
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0));
 
         // Act - First tile reserves bottom
         resolver.ClearReservations();
@@ -402,7 +402,7 @@ public class GravityTargetResolverTests
         ClearBoard(ref state);
 
         // Place only one tile at top - this will reserve the bottom slot
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
 
         // Act
         resolver.ClearReservations();
@@ -426,7 +426,7 @@ public class GravityTargetResolverTests
         var state = new GameState(1, 5, 5, random);
         ClearBoard(ref state);
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
 
         // Act
         resolver.ClearReservations();
@@ -450,7 +450,7 @@ public class GravityTargetResolverTests
         var random = new StubRandom();
         var resolver = new GravityTargetResolver(random);
         var state = new GameState(1, 1, 5, random);
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
 
         // Act
         resolver.ClearReservations();
@@ -473,7 +473,7 @@ public class GravityTargetResolverTests
         var state = new GameState(10, 5, 5, random);
         ClearBoard(ref state);
 
-        state.SetTile(column, 0, new Tile(1, TileType.Red, column, 0));
+        state.SetTile(column, 0, new Tile(1, ElementType.Item1, column, 0));
 
         // Act
         resolver.ClearReservations();
@@ -498,9 +498,9 @@ public class GravityTargetResolverTests
         ClearBoard(ref state);
 
         // Tile at (0,0) wants to fall
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
         // Static tile at (0,3) — not falling
-        state.SetTile(0, 3, new Tile(2, TileType.Blue, 0, 3));
+        state.SetTile(0, 3, new Tile(2, ElementType.Item3, 0, 3));
 
         // Act
         resolver.ClearReservations();
@@ -521,15 +521,15 @@ public class GravityTargetResolverTests
         ClearBoard(ref state);
 
         // Tile at (1,0)
-        state.SetTile(1, 0, new Tile(1, TileType.Red, 1, 0));
+        state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
 
         // Suspended tile at (1,1) — blocks direct fall
-        var suspended = new Tile(2, TileType.Blue, 1, 1) { IsSuspended = true };
+        var suspended = new Tile(2, ElementType.Item3, 1, 1) { IsSuspended = true };
         state.SetTile(1, 1, suspended);
 
         // Both diagonal targets occupied
-        state.SetTile(0, 1, new Tile(3, TileType.Green, 0, 1));
-        state.SetTile(2, 1, new Tile(4, TileType.Yellow, 2, 1));
+        state.SetTile(0, 1, new Tile(3, ElementType.Item2, 0, 1));
+        state.SetTile(2, 1, new Tile(4, ElementType.Item4, 2, 1));
 
         // Act
         resolver.ClearReservations();
@@ -550,10 +550,11 @@ public class GravityTargetResolverTests
         {
             for (int x = 0; x < state.Width; x++)
             {
-                state.SetTile(x, y, new Tile(0, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(0, ElementType.None, x, y));
             }
         }
     }
 
     #endregion
 }
+

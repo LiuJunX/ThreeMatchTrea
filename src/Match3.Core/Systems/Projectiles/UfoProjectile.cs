@@ -183,7 +183,7 @@ public sealed class UfoProjectile : Projectile
             else
             {
                 var targetTile = state.GetTile(targetX, targetY);
-                if (targetTile.Type == TileType.None)
+                if (targetTile.Type == ElementType.None)
                 {
                     // Target was destroyed, try to retarget
                     if (!TryRetarget(ref state, tick, simTime, events))
@@ -297,7 +297,7 @@ public sealed class UfoProjectile : Projectile
                         continue;
 
                     var tile = state.GetTile(x, y);
-                    if (tile.Type != TileType.None)
+                    if (tile.Type != ElementType.None)
                     {
                         candidates.Add(new Position(x, y));
                     }

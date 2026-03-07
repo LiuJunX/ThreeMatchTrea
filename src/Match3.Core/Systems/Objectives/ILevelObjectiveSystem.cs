@@ -18,7 +18,7 @@ public interface ILevelObjectiveSystem
     /// <summary>
     /// Called when a tile is destroyed.
     /// </summary>
-    void OnTileDestroyed(ref GameState state, TileType type, int tick, float simTime, IEventCollector events);
+    void OnTileDestroyed(ref GameState state, ElementType type, int tick, float simTime, IEventCollector events);
 
     /// <summary>
     /// Called when a cover is destroyed.

@@ -14,7 +14,7 @@ namespace Match3.Unity.Bridge
     /// </summary>
     internal sealed class ObjectiveCollectionProcessor
     {
-        private readonly Dictionary<float, Dictionary<TileType, Queue<(int TileId, Position Pos, Position? MergeTarget)>>>
+        private readonly Dictionary<float, Dictionary<ElementType, Queue<(int TileId, Position Pos, Position? MergeTarget)>>>
             _destroyedBySimTime = new();
         private readonly List<Match3Bridge.FlyCollectionRequest> _pendingFlies = new();
 
@@ -38,7 +38,7 @@ namespace Match3.Unity.Bridge
                 {
                     if (!_destroyedBySimTime.TryGetValue(tde.SimulationTime, out var byType))
                     {
-                        byType = new Dictionary<TileType, Queue<(int, Position, Position?)>>();
+                        byType = new Dictionary<ElementType, Queue<(int, Position, Position?)>>();
                         _destroyedBySimTime[tde.SimulationTime] = byType;
                     }
                     if (!byType.TryGetValue(tde.Type, out var queue))
@@ -57,7 +57,7 @@ namespace Match3.Unity.Bridge
                     if (objProg.TargetLayer != ObjectiveTargetLayer.Tile)
                         continue;
 
-                    var targetType = (TileType)objProg.ElementType;
+                    var targetType = (ElementType)objProg.ElementType;
 
                     if (_destroyedBySimTime.TryGetValue(ope.SimulationTime, out var byType)
                         && byType.TryGetValue(targetType, out var queue)
@@ -68,7 +68,7 @@ namespace Match3.Unity.Bridge
                         {
                             TileId = tileId,
                             ObjectiveIndex = ope.ObjectiveIndex,
-                            TileType = targetType,
+                            ElementType = targetType,
                             SourceGridPosition = pos,
                             MergeTarget = mergeTarget,
                             FlyDelay = 0f,

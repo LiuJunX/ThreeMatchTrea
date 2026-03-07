@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
@@ -25,10 +25,10 @@ public class RealtimeGravityTests
         // Arrange
         var state = new GameState(1, 10, 5, new StubRandom());
         // Clear board
-        for(int y=0; y<10; y++) state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+        for(int y=0; y<10; y++) state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
         // Place a tile at (0, 0) - Top of board
-        var tile = new Tile(100, TileType.Red, 0, 0);
+        var tile = new Tile(100, ElementType.Item1, 0, 0);
         state.SetTile(0, 0, tile);
 
         var physics = new RealtimeGravitySystem(new Match3Config { GravitySpeed = 35.0f }, new StubRandom());
@@ -62,8 +62,8 @@ public class RealtimeGravityTests
         var state = new GameState(1, 2, 5, new StubRandom());
         // (0,0) = Red, (0,1) = None
         // Tile at (0,0) will fall to (0,1)
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(0, 1, new Tile(2, TileType.None, 0, 1));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(0, 1, new Tile(2, ElementType.None, 0, 1));
         
         var physics = new RealtimeGravitySystem(new Match3Config { GravitySpeed = 35.0f }, new StubRandom());
         
@@ -83,8 +83,8 @@ public class RealtimeGravityTests
         var tileAt0 = state.GetTile(0, 0);
         var tileAt1 = state.GetTile(0, 1);
         
-        Assert.Equal(TileType.None, tileAt0.Type); // Should be empty
-        Assert.Equal(TileType.Red, tileAt1.Type); // Should have moved here
+        Assert.Equal(ElementType.None, tileAt0.Type); // Should be empty
+        Assert.Equal(ElementType.Item1, tileAt1.Type); // Should have moved here
         Assert.Equal(1.0f, tileAt1.Position.Y, 0.001f); // Should be exactly at 1.0
         Assert.False(tileAt1.IsFalling, "Tile should have stopped");
         Assert.Equal(0f, tileAt1.Velocity.Y);
@@ -102,21 +102,21 @@ public class RealtimeGravityTests
         var state = new GameState(3, 3, 5, new StubRandom());
         
         // Setup Suspended Tile at (1,1) to force slide
-        var obstacle = new Tile(9, TileType.Green, 1, 1);
+        var obstacle = new Tile(9, ElementType.Item2, 1, 1);
         obstacle.IsSuspended = true; 
         state.SetTile(1, 1, obstacle);
         
         // Target at (0,1) is empty
-        state.SetTile(0, 1, new Tile(0, TileType.None, 0, 1));
+        state.SetTile(0, 1, new Tile(0, ElementType.None, 0, 1));
         
         // Falling tile at (1,0)
-        state.SetTile(1, 0, new Tile(1, TileType.Red, 1, 0));
+        state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
 
         // Block Right side (2,1) to force Left Slide
-        state.SetTile(2, 1, new Tile(8, TileType.Blue, 2, 1));
+        state.SetTile(2, 1, new Tile(8, ElementType.Item3, 2, 1));
 
         // Block (0,2) so it stops at (0,1)
-        state.SetTile(0, 2, new Tile(10, TileType.Green, 0, 2));
+        state.SetTile(0, 2, new Tile(10, ElementType.Item2, 0, 2));
 
         var physics = new RealtimeGravitySystem(new Match3Config { GravitySpeed = 35.0f }, new StubRandom());
 
@@ -131,7 +131,7 @@ public class RealtimeGravityTests
         // Tile should have moved from (1,0) to (0,1)
         var tileAtTarget = state.GetTile(0, 1);
         
-        Assert.Equal(TileType.Red, tileAtTarget.Type);
+        Assert.Equal(ElementType.Item1, tileAtTarget.Type);
         Assert.Equal(1.0f, tileAtTarget.Position.Y, 0.05f); // Allow small epsilon for sliding snap
         Assert.Equal(0.0f, tileAtTarget.Position.X, 0.05f);
     }
@@ -142,8 +142,8 @@ public class RealtimeGravityTests
         // Arrange
         var state = new GameState(1, 2, 5, new StubRandom());
         // (0,0) = Red, (0,1) = None
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(0, 1, new Tile(2, TileType.None, 0, 1));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(0, 1, new Tile(2, ElementType.None, 0, 1));
 
         var config = new Match3Config { GravitySpeed = 35.0f, MaxFallSpeed = 20.0f };
         var physics = new RealtimeGravitySystem(config, new StubRandom());
@@ -165,8 +165,8 @@ public class RealtimeGravityTests
             var tile1 = state.GetTile(0, 1);
             
             Tile currentTile;
-            if (tile0.Type == TileType.Red) currentTile = tile0;
-            else if (tile1.Type == TileType.Red) currentTile = tile1;
+            if (tile0.Type == ElementType.Item1) currentTile = tile0;
+            else if (tile1.Type == ElementType.Item1) currentTile = tile1;
             else 
             {
                 Assert.Fail("Tile disappeared!");
@@ -248,15 +248,15 @@ public class RealtimeGravityTests
         // Clear board
         for (int y = 0; y < 8; y++)
             for (int x = 0; x < 8; x++)
-                state.SetTile(x, y, new Tile(0, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(0, ElementType.None, x, y));
 
         // Place tiles at top that need to fall (creates column competition)
         int id = 1;
         for (int x = 0; x < 8; x++)
         {
             // Place 2 tiles per column at top
-            state.SetTile(x, 0, new Tile(id++, TileType.Red, x, 0));
-            state.SetTile(x, 1, new Tile(id++, TileType.Blue, x, 1));
+            state.SetTile(x, 0, new Tile(id++, ElementType.Item1, x, 0));
+            state.SetTile(x, 1, new Tile(id++, ElementType.Item3, x, 1));
         }
 
         return state;
@@ -270,9 +270,9 @@ public class RealtimeGravityTests
         // Arrange: Cage（静态 Cover）阻止棋子参与重力
         var state = new GameState(1, 3, 5, new StubRandom());
         for (int y = 0; y < 3; y++)
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
-        state.SetTile(0, 0, new Tile(100, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(100, ElementType.Item1, 0, 0));
         state.SetCover(new Position(0, 0), new Cover(CoverType.Cage, 1));
 
         var physics = new RealtimeGravitySystem(
@@ -284,7 +284,7 @@ public class RealtimeGravityTests
 
         // Assert: tile stays at (0,0) because Cage blocks movement
         var tile = state.GetTile(0, 0);
-        Assert.Equal(TileType.Red, tile.Type);
+        Assert.Equal(ElementType.Item1, tile.Type);
         Assert.Equal(100, tile.Id);
     }
 
@@ -294,9 +294,9 @@ public class RealtimeGravityTests
         // Arrange: Chain（静态 Cover）也阻止移动
         var state = new GameState(1, 3, 5, new StubRandom());
         for (int y = 0; y < 3; y++)
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
-        state.SetTile(0, 0, new Tile(100, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(100, ElementType.Item1, 0, 0));
         state.SetCover(new Position(0, 0), new Cover(CoverType.Chain, 1));
 
         var physics = new RealtimeGravitySystem(
@@ -308,7 +308,7 @@ public class RealtimeGravityTests
 
         // Assert: tile stays at (0,0)
         var tile = state.GetTile(0, 0);
-        Assert.Equal(TileType.Red, tile.Type);
+        Assert.Equal(ElementType.Item1, tile.Type);
         Assert.Equal(100, tile.Id);
     }
 
@@ -318,9 +318,9 @@ public class RealtimeGravityTests
         // Arrange: Bubble（动态 Cover）不阻止下落
         var state = new GameState(1, 3, 5, new StubRandom());
         for (int y = 0; y < 3; y++)
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
-        state.SetTile(0, 0, new Tile(100, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(100, ElementType.Item1, 0, 0));
         state.SetCover(new Position(0, 0), new Cover(CoverType.Bubble, 1, true));
 
         var physics = new RealtimeGravitySystem(
@@ -332,7 +332,7 @@ public class RealtimeGravityTests
 
         // Assert: tile should have fallen to bottom (0,2)
         var tileAtBottom = state.GetTile(0, 2);
-        Assert.Equal(TileType.Red, tileAtBottom.Type);
+        Assert.Equal(ElementType.Item1, tileAtBottom.Type);
         Assert.Equal(100, tileAtBottom.Id);
     }
 
@@ -342,9 +342,9 @@ public class RealtimeGravityTests
         // Arrange: Cage initially blocks, then removed → tile should fall
         var state = new GameState(1, 3, 5, new StubRandom());
         for (int y = 0; y < 3; y++)
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
-        state.SetTile(0, 0, new Tile(100, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(100, ElementType.Item1, 0, 0));
         state.SetCover(new Position(0, 0), new Cover(CoverType.Cage, 1));
 
         var physics = new RealtimeGravitySystem(
@@ -353,7 +353,7 @@ public class RealtimeGravityTests
         // Phase 1: with cover — tile shouldn't move
         for (int i = 0; i < 10; i++)
             physics.Update(ref state, 0.016f);
-        Assert.Equal(TileType.Red, state.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(0, 0).Type);
 
         // Phase 2: remove cover
         state.SetCover(new Position(0, 0), Cover.Empty);
@@ -363,9 +363,10 @@ public class RealtimeGravityTests
             physics.Update(ref state, 0.016f);
 
         var tileAtBottom = state.GetTile(0, 2);
-        Assert.Equal(TileType.Red, tileAtBottom.Type);
+        Assert.Equal(ElementType.Item1, tileAtBottom.Type);
         Assert.Equal(100, tileAtBottom.Id);
     }
 
     #endregion
 }
+

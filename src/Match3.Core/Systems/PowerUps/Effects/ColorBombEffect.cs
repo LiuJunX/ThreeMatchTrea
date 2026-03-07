@@ -12,7 +12,7 @@ public class ColorBombEffect : IBombEffect
     public void Apply(in GameState state, Position origin, HashSet<Position> affectedTiles)
     {
         // 彩球爆炸：消除出现最多的一种颜色
-        var counts = Pools.Obtain<Dictionary<TileType, int>>();
+        var counts = Pools.Obtain<Dictionary<ElementType, int>>();
 
         try
         {
@@ -20,7 +20,7 @@ public class ColorBombEffect : IBombEffect
             for (int i = 0; i < state.Grid.Length; i++)
             {
                 var t = state.Grid[i];
-                if (t.Type != TileType.None && t.Type != TileType.Rainbow && t.Type != TileType.Bomb)
+                if (t.Type != ElementType.None && t.Type != ElementType.Universal)
                 {
                     // Use TryGetValue to minimize lookups
                     if (counts.TryGetValue(t.Type, out int existingCount))
@@ -35,7 +35,7 @@ public class ColorBombEffect : IBombEffect
             }
 
             // 2. 找出数量最多的颜色
-            TileType maxType = TileType.None;
+            ElementType maxType = ElementType.None;
             int maxCount = -1;
             foreach (var kvp in counts)
             {
@@ -47,7 +47,7 @@ public class ColorBombEffect : IBombEffect
             }
 
             // 3. 消除该颜色的所有方块
-            if (maxType != TileType.None)
+            if (maxType != ElementType.None)
             {
                 for (int y = 0; y < state.Height; y++)
                 {

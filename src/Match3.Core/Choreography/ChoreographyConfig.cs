@@ -26,6 +26,15 @@ public sealed class ChoreographyConfig
     /// <summary>Arc height for projectile launch.</summary>
     public float ProjectileArcHeight { get; set; } = 1.5f;
 
+    /// <summary>Duration for bomb pop-in scale animation after merge.</summary>
+    public float BombPopDuration { get; set; } = 0.15f;
+
     /// <summary>Duration for drop acceptance delay after match destroy (cell lock).</summary>
     public float DropDelay { get; set; } = 0.12f;
+
+    /// <summary>Duration for drop acceptance delay after bomb destroy (cell lock). Longer than match to let the explosion settle.</summary>
+    public float BombDropDelay { get; set; } = 0.3f;
+
+    /// <summary>Delay per cell for rocket trail effect staggering.</summary>
+    public float RocketTrailInterval { get; set; } = 0.015f;
 }

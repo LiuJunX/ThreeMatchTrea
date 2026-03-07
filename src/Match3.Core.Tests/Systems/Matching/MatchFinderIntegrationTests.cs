@@ -1,4 +1,4 @@
-using Match3.Core.Models.Enums;
+﻿using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Matching.Generation;
@@ -49,31 +49,31 @@ public class MatchFinderIntegrationTests
         var state = CreateState(3, 3);
 
         // Row 0: A A A
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
 
         // Row 1: D E B
-        state.SetTile(0, 1, new Tile(4, TileType.Green, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Yellow, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.Blue, 2, 1));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item2, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item4, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item3, 2, 1));
 
         // Row 2: F B B
-        state.SetTile(0, 2, new Tile(7, TileType.Purple, 0, 2));
-        state.SetTile(1, 2, new Tile(8, TileType.Blue, 1, 2));
-        state.SetTile(2, 2, new Tile(9, TileType.Blue, 2, 2));
+        state.SetTile(0, 2, new Tile(7, ElementType.Item5, 0, 2));
+        state.SetTile(1, 2, new Tile(8, ElementType.Item3, 1, 2));
+        state.SetTile(2, 2, new Tile(9, ElementType.Item3, 2, 2));
 
         var matches = _finder.FindMatchGroups(in state);
 
         // Should only find 1 match: the Red horizontal line
         Assert.Single(matches);
-        Assert.Equal(TileType.Red, matches[0].Type);
+        Assert.Equal(ElementType.Item1, matches[0].Type);
         Assert.Equal(3, matches[0].Positions.Count);
 
         // Verify Blue L-shape was NOT matched
         foreach (var match in matches)
         {
-            Assert.NotEqual(TileType.Blue, match.Type);
+            Assert.NotEqual(ElementType.Item3, match.Type);
         }
 
         ClassicMatchFinder.ReleaseGroups(matches);
@@ -94,34 +94,34 @@ public class MatchFinderIntegrationTests
         var state = CreateState(4, 4);
 
         // Row 0
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Green, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
-        state.SetTile(3, 0, new Tile(4, TileType.Purple, 3, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item2, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
+        state.SetTile(3, 0, new Tile(4, ElementType.Item5, 3, 0));
 
         // Row 1
-        state.SetTile(0, 1, new Tile(5, TileType.Yellow, 0, 1));
-        state.SetTile(1, 1, new Tile(6, TileType.Purple, 1, 1));
-        state.SetTile(2, 1, new Tile(7, TileType.Purple, 2, 1));
-        state.SetTile(3, 1, new Tile(8, TileType.Purple, 3, 1));
+        state.SetTile(0, 1, new Tile(5, ElementType.Item4, 0, 1));
+        state.SetTile(1, 1, new Tile(6, ElementType.Item5, 1, 1));
+        state.SetTile(2, 1, new Tile(7, ElementType.Item5, 2, 1));
+        state.SetTile(3, 1, new Tile(8, ElementType.Item5, 3, 1));
 
         // Row 2
-        state.SetTile(0, 2, new Tile(9, TileType.Red, 0, 2));
-        state.SetTile(1, 2, new Tile(10, TileType.Blue, 1, 2));
-        state.SetTile(2, 2, new Tile(11, TileType.Green, 2, 2));
-        state.SetTile(3, 2, new Tile(12, TileType.Purple, 3, 2));
+        state.SetTile(0, 2, new Tile(9, ElementType.Item1, 0, 2));
+        state.SetTile(1, 2, new Tile(10, ElementType.Item3, 1, 2));
+        state.SetTile(2, 2, new Tile(11, ElementType.Item2, 2, 2));
+        state.SetTile(3, 2, new Tile(12, ElementType.Item5, 3, 2));
 
         // Row 3
-        state.SetTile(0, 3, new Tile(13, TileType.Purple, 0, 3));
-        state.SetTile(1, 3, new Tile(14, TileType.Purple, 1, 3));
-        state.SetTile(2, 3, new Tile(15, TileType.Blue, 2, 3));
-        state.SetTile(3, 3, new Tile(16, TileType.Purple, 3, 3));
+        state.SetTile(0, 3, new Tile(13, ElementType.Item5, 0, 3));
+        state.SetTile(1, 3, new Tile(14, ElementType.Item5, 1, 3));
+        state.SetTile(2, 3, new Tile(15, ElementType.Item3, 2, 3));
+        state.SetTile(3, 3, new Tile(16, ElementType.Item5, 3, 3));
 
         var matches = _finder.FindMatchGroups(in state);
 
         // Should find Purple match (has valid lines: horizontal 3 at row 1, vertical 4 at col 3)
         Assert.Single(matches);
-        Assert.Equal(TileType.Purple, matches[0].Type);
+        Assert.Equal(ElementType.Item5, matches[0].Type);
 
         // Purple at (0,3) and (1,3) should NOT be in the match
         // because they only form a 2-horizontal, not connected to the main purple group
@@ -142,15 +142,15 @@ public class MatchFinderIntegrationTests
     {
         var state = CreateState(3, 3);
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Green, 2, 0));
-        state.SetTile(0, 1, new Tile(4, TileType.Yellow, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Purple, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.Orange, 2, 1));
-        state.SetTile(0, 2, new Tile(7, TileType.Blue, 0, 2));
-        state.SetTile(1, 2, new Tile(8, TileType.Red, 1, 2));
-        state.SetTile(2, 2, new Tile(9, TileType.Green, 2, 2));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item2, 2, 0));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item4, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item5, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item6, 2, 1));
+        state.SetTile(0, 2, new Tile(7, ElementType.Item3, 0, 2));
+        state.SetTile(1, 2, new Tile(8, ElementType.Item1, 1, 2));
+        state.SetTile(2, 2, new Tile(9, ElementType.Item2, 2, 2));
 
         var matches = _finder.FindMatchGroups(in state);
         Assert.Empty(matches);
@@ -166,15 +166,15 @@ public class MatchFinderIntegrationTests
         // R R B
         // G B R
         // B G G
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Blue, 2, 0));
-        state.SetTile(0, 1, new Tile(4, TileType.Green, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Blue, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.Red, 2, 1));
-        state.SetTile(0, 2, new Tile(7, TileType.Blue, 0, 2));
-        state.SetTile(1, 2, new Tile(8, TileType.Green, 1, 2));
-        state.SetTile(2, 2, new Tile(9, TileType.Green, 2, 2));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item3, 2, 0));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item2, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item3, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item1, 2, 1));
+        state.SetTile(0, 2, new Tile(7, ElementType.Item3, 0, 2));
+        state.SetTile(1, 2, new Tile(8, ElementType.Item2, 1, 2));
+        state.SetTile(2, 2, new Tile(9, ElementType.Item2, 2, 2));
 
         var matches = _finder.FindMatchGroups(in state);
         Assert.Empty(matches);
@@ -190,15 +190,15 @@ public class MatchFinderIntegrationTests
         // R B G
         // B R G
         // G B R
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Green, 2, 0));
-        state.SetTile(0, 1, new Tile(4, TileType.Blue, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Red, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.Green, 2, 1));
-        state.SetTile(0, 2, new Tile(7, TileType.Green, 0, 2));
-        state.SetTile(1, 2, new Tile(8, TileType.Blue, 1, 2));
-        state.SetTile(2, 2, new Tile(9, TileType.Red, 2, 2));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item2, 2, 0));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item3, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item1, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item2, 2, 1));
+        state.SetTile(0, 2, new Tile(7, ElementType.Item2, 0, 2));
+        state.SetTile(1, 2, new Tile(8, ElementType.Item3, 1, 2));
+        state.SetTile(2, 2, new Tile(9, ElementType.Item1, 2, 2));
 
         // Red forms diagonal: (0,0), (1,1), (2,2) - should NOT match
         var matches = _finder.FindMatchGroups(in state);
@@ -219,19 +219,19 @@ public class MatchFinderIntegrationTests
         // R R R
         // B G B
         // G B G
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
-        state.SetTile(0, 1, new Tile(4, TileType.Blue, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Green, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.Blue, 2, 1));
-        state.SetTile(0, 2, new Tile(7, TileType.Green, 0, 2));
-        state.SetTile(1, 2, new Tile(8, TileType.Blue, 1, 2));
-        state.SetTile(2, 2, new Tile(9, TileType.Green, 2, 2));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item3, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item2, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item3, 2, 1));
+        state.SetTile(0, 2, new Tile(7, ElementType.Item2, 0, 2));
+        state.SetTile(1, 2, new Tile(8, ElementType.Item3, 1, 2));
+        state.SetTile(2, 2, new Tile(9, ElementType.Item2, 2, 2));
 
         var matches = _finder.FindMatchGroups(in state);
         Assert.Single(matches);
-        Assert.Equal(TileType.Red, matches[0].Type);
+        Assert.Equal(ElementType.Item1, matches[0].Type);
         Assert.Equal(3, matches[0].Positions.Count);
 
         ClassicMatchFinder.ReleaseGroups(matches);
@@ -245,19 +245,19 @@ public class MatchFinderIntegrationTests
         // R B G
         // R G B
         // R B G
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Green, 2, 0));
-        state.SetTile(0, 1, new Tile(4, TileType.Red, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Green, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.Blue, 2, 1));
-        state.SetTile(0, 2, new Tile(7, TileType.Red, 0, 2));
-        state.SetTile(1, 2, new Tile(8, TileType.Blue, 1, 2));
-        state.SetTile(2, 2, new Tile(9, TileType.Green, 2, 2));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item2, 2, 0));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item1, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item2, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item3, 2, 1));
+        state.SetTile(0, 2, new Tile(7, ElementType.Item1, 0, 2));
+        state.SetTile(1, 2, new Tile(8, ElementType.Item3, 1, 2));
+        state.SetTile(2, 2, new Tile(9, ElementType.Item2, 2, 2));
 
         var matches = _finder.FindMatchGroups(in state);
         Assert.Single(matches);
-        Assert.Equal(TileType.Red, matches[0].Type);
+        Assert.Equal(ElementType.Item1, matches[0].Type);
         Assert.Equal(3, matches[0].Positions.Count);
 
         ClassicMatchFinder.ReleaseGroups(matches);
@@ -271,15 +271,15 @@ public class MatchFinderIntegrationTests
         // R R R  <- Red horizontal
         // B B B  <- Blue horizontal
         // G G G  <- Green horizontal
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
-        state.SetTile(0, 1, new Tile(4, TileType.Blue, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Blue, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.Blue, 2, 1));
-        state.SetTile(0, 2, new Tile(7, TileType.Green, 0, 2));
-        state.SetTile(1, 2, new Tile(8, TileType.Green, 1, 2));
-        state.SetTile(2, 2, new Tile(9, TileType.Green, 2, 2));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item3, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item3, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item3, 2, 1));
+        state.SetTile(0, 2, new Tile(7, ElementType.Item2, 0, 2));
+        state.SetTile(1, 2, new Tile(8, ElementType.Item2, 1, 2));
+        state.SetTile(2, 2, new Tile(9, ElementType.Item2, 2, 2));
 
         var matches = _finder.FindMatchGroups(in state);
         Assert.Equal(3, matches.Count);
@@ -296,12 +296,12 @@ public class MatchFinderIntegrationTests
     {
         var state = CreateState(3, 3);
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
-        state.SetTile(0, 1, new Tile(4, TileType.Blue, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Green, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.Yellow, 2, 1));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item3, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item2, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item4, 2, 1));
 
         Assert.True(_finder.HasMatchAt(in state, new Position(0, 0)));
         Assert.True(_finder.HasMatchAt(in state, new Position(1, 0)));
@@ -314,9 +314,9 @@ public class MatchFinderIntegrationTests
     {
         var state = CreateState(3, 3);
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Blue, 2, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item3, 2, 0));
 
         Assert.False(_finder.HasMatchAt(in state, new Position(0, 0)));
         Assert.False(_finder.HasMatchAt(in state, new Position(1, 0)));
@@ -324,3 +324,4 @@ public class MatchFinderIntegrationTests
 
     #endregion
 }
+

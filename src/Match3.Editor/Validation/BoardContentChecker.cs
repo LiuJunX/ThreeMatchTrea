@@ -26,7 +26,7 @@ namespace Match3.Editor.Validation
             bool hasPlayableCell = false;
             foreach (var tile in config.Grid)
             {
-                if (tile != TileType.None && tile != TileType.Hole && tile != TileType.Wall)
+                if (tile != ElementType.None && tile != ElementType.Unmatchable)
                 {
                     hasPlayableCell = true;
                     break;

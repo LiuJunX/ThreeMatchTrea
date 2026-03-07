@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Physics;
@@ -21,9 +21,9 @@ public class RealtimeRefillSystemTests
 
     private class FixedSpawnModel : ISpawnModel
     {
-        public TileType TypeToSpawn { get; set; } = TileType.Blue;
+        public ElementType TypeToSpawn { get; set; } = ElementType.Item3;
 
-        public TileType Predict(ref GameState state, int spawnX, in SpawnContext context)
+        public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context)
         {
             return TypeToSpawn;
         }
@@ -31,16 +31,16 @@ public class RealtimeRefillSystemTests
 
     private class SequentialSpawnModel : ISpawnModel
     {
-        private readonly TileType[] _sequence;
+        private readonly ElementType[] _sequence;
         private int _index;
 
-        public SequentialSpawnModel(params TileType[] sequence)
+        public SequentialSpawnModel(params ElementType[] sequence)
         {
             _sequence = sequence;
             _index = 0;
         }
 
-        public TileType Predict(ref GameState state, int spawnX, in SpawnContext context)
+        public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context)
         {
             var type = _sequence[_index % _sequence.Length];
             _index++;
@@ -57,7 +57,7 @@ public class RealtimeRefillSystemTests
         var state = new GameState(3, 3, 5, new StubRandom());
         ClearBoard(ref state);
 
-        var spawnModel = new FixedSpawnModel { TypeToSpawn = TileType.Red };
+        var spawnModel = new FixedSpawnModel { TypeToSpawn = ElementType.Item1 };
         var refill = new RealtimeRefillSystem(spawnModel);
 
         // Act
@@ -67,7 +67,7 @@ public class RealtimeRefillSystemTests
         for (int x = 0; x < 3; x++)
         {
             var tile = state.GetTile(x, 0);
-            Assert.Equal(TileType.Red, tile.Type);
+            Assert.Equal(ElementType.Item1, tile.Type);
             Assert.True(tile.IsFalling, $"Tile at ({x},0) should be falling");
         }
     }
@@ -80,11 +80,11 @@ public class RealtimeRefillSystemTests
         ClearBoard(ref state);
 
         // Place existing tiles at top row
-        state.SetTile(0, 0, new Tile(1, TileType.Green, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Green, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Green, 2, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item2, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item2, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item2, 2, 0));
 
-        var spawnModel = new FixedSpawnModel { TypeToSpawn = TileType.Red };
+        var spawnModel = new FixedSpawnModel { TypeToSpawn = ElementType.Item1 };
         var refill = new RealtimeRefillSystem(spawnModel);
 
         // Act
@@ -94,7 +94,7 @@ public class RealtimeRefillSystemTests
         for (int x = 0; x < 3; x++)
         {
             var tile = state.GetTile(x, 0);
-            Assert.Equal(TileType.Green, tile.Type);
+            Assert.Equal(ElementType.Item2, tile.Type);
         }
     }
 
@@ -106,18 +106,18 @@ public class RealtimeRefillSystemTests
         ClearBoard(ref state);
 
         // Occupy column 1 only
-        state.SetTile(1, 0, new Tile(1, TileType.Green, 1, 0));
+        state.SetTile(1, 0, new Tile(1, ElementType.Item2, 1, 0));
 
-        var spawnModel = new FixedSpawnModel { TypeToSpawn = TileType.Red };
+        var spawnModel = new FixedSpawnModel { TypeToSpawn = ElementType.Item1 };
         var refill = new RealtimeRefillSystem(spawnModel);
 
         // Act
         refill.Update(ref state);
 
         // Assert
-        Assert.Equal(TileType.Red, state.GetTile(0, 0).Type);   // Spawned
-        Assert.Equal(TileType.Green, state.GetTile(1, 0).Type); // Unchanged
-        Assert.Equal(TileType.Red, state.GetTile(2, 0).Type);   // Spawned
+        Assert.Equal(ElementType.Item1, state.GetTile(0, 0).Type);   // Spawned
+        Assert.Equal(ElementType.Item2, state.GetTile(1, 0).Type); // Unchanged
+        Assert.Equal(ElementType.Item1, state.GetTile(2, 0).Type);   // Spawned
     }
 
     #endregion
@@ -131,7 +131,7 @@ public class RealtimeRefillSystemTests
         var state = new GameState(3, 3, 5, new StubRandom());
         ClearBoard(ref state);
 
-        var spawnModel = new FixedSpawnModel { TypeToSpawn = TileType.Blue };
+        var spawnModel = new FixedSpawnModel { TypeToSpawn = ElementType.Item3 };
         var refill = new RealtimeRefillSystem(spawnModel);
 
         // Act
@@ -153,7 +153,7 @@ public class RealtimeRefillSystemTests
         var state = new GameState(3, 3, 5, new StubRandom());
         ClearBoard(ref state);
 
-        var spawnModel = new FixedSpawnModel { TypeToSpawn = TileType.Blue };
+        var spawnModel = new FixedSpawnModel { TypeToSpawn = ElementType.Item3 };
         var refill = new RealtimeRefillSystem(spawnModel);
 
         // Act
@@ -175,7 +175,7 @@ public class RealtimeRefillSystemTests
         ClearBoard(ref state);
 
         // Place a falling tile at (0, 1) with position partially through the cell
-        var fallingTile = new Tile(1, TileType.Green, 0, 1)
+        var fallingTile = new Tile(1, ElementType.Item2, 0, 1)
         {
             Position = new Vector2(0, 0.5f), // Halfway through cell 0
             Velocity = new Vector2(0, 5.0f),
@@ -183,7 +183,7 @@ public class RealtimeRefillSystemTests
         };
         state.SetTile(0, 1, fallingTile);
 
-        var spawnModel = new FixedSpawnModel { TypeToSpawn = TileType.Red };
+        var spawnModel = new FixedSpawnModel { TypeToSpawn = ElementType.Item1 };
         var refill = new RealtimeRefillSystem(spawnModel);
 
         // Act
@@ -192,7 +192,7 @@ public class RealtimeRefillSystemTests
         // Assert - New tile always spawns at fixed position -1.0
         // (Gravity system handles following via GravityTargetResolver)
         var newTile = state.GetTile(0, 0);
-        Assert.Equal(TileType.Red, newTile.Type);
+        Assert.Equal(ElementType.Item1, newTile.Type);
         Assert.Equal(-1.0f, newTile.Position.Y, 0.01f);
     }
 
@@ -208,7 +208,7 @@ public class RealtimeRefillSystemTests
         ClearBoard(ref state);
         state.NextTileId = 100;
 
-        var spawnModel = new FixedSpawnModel { TypeToSpawn = TileType.Blue };
+        var spawnModel = new FixedSpawnModel { TypeToSpawn = ElementType.Item3 };
         var refill = new RealtimeRefillSystem(spawnModel);
 
         // Act
@@ -234,7 +234,7 @@ public class RealtimeRefillSystemTests
         ClearBoard(ref state);
         state.NextTileId = 1;
 
-        var spawnModel = new FixedSpawnModel { TypeToSpawn = TileType.Blue };
+        var spawnModel = new FixedSpawnModel { TypeToSpawn = ElementType.Item3 };
         var refill = new RealtimeRefillSystem(spawnModel);
 
         // Act - First spawn
@@ -242,7 +242,7 @@ public class RealtimeRefillSystemTests
         var firstId = state.GetTile(0, 0).Id;
 
         // Clear and spawn again
-        state.SetTile(0, 0, new Tile(0, TileType.None, 0, 0));
+        state.SetTile(0, 0, new Tile(0, ElementType.None, 0, 0));
         refill.Update(ref state);
         var secondId = state.GetTile(0, 0).Id;
 
@@ -314,10 +314,10 @@ public class RealtimeRefillSystemTests
             _onPredict = onPredict;
         }
 
-        public TileType Predict(ref GameState state, int spawnX, in SpawnContext context)
+        public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context)
         {
             _onPredict(context);
-            return TileType.Blue;
+            return ElementType.Item3;
         }
     }
 
@@ -336,28 +336,28 @@ public class RealtimeRefillSystemTests
         ClearBoard(ref state);
 
         // Mark column 0 and 2, row 0 as holes
-        state.Holes[0 * 3 + 0] = true; // (0,0)
-        state.Holes[0 * 3 + 2] = true; // (2,0)
+        state.Cells[0 * 3 + 0] = CellKind.Void; // (0,0)
+        state.Cells[0 * 3 + 2] = CellKind.Void; // (2,0)
 
-        var spawnModel = new FixedSpawnModel { TypeToSpawn = TileType.Red };
+        var spawnModel = new FixedSpawnModel { TypeToSpawn = ElementType.Item1 };
         var refill = new RealtimeRefillSystem(spawnModel);
 
         // Act
         refill.Update(ref state);
 
         // Assert: column 0 spawns at row 1 (first non-hole)
-        Assert.Equal(TileType.None, state.GetTile(0, 0).Type);
-        Assert.Equal(TileType.Red, state.GetTile(0, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(0, 1).Type);
         Assert.True(state.GetTile(0, 1).IsFalling);
         Assert.Equal(0.0f, state.GetTile(0, 1).Position.Y); // spawnY - 1 = 0
 
         // Assert: column 1 spawns at row 0 (normal)
-        Assert.Equal(TileType.Red, state.GetTile(1, 0).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(1, 0).Type);
         Assert.Equal(-1.0f, state.GetTile(1, 0).Position.Y);
 
         // Assert: column 2 spawns at row 1 (first non-hole)
-        Assert.Equal(TileType.None, state.GetTile(2, 0).Type);
-        Assert.Equal(TileType.Red, state.GetTile(2, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(2, 0).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(2, 1).Type);
         Assert.Equal(0.0f, state.GetTile(2, 1).Position.Y);
     }
 
@@ -369,9 +369,9 @@ public class RealtimeRefillSystemTests
         ClearBoard(ref state);
 
         for (int y = 0; y < 3; y++)
-            state.Holes[y * 2 + 0] = true;
+            state.Cells[y * 2 + 0] = CellKind.Void;
 
-        var spawnModel = new FixedSpawnModel { TypeToSpawn = TileType.Red };
+        var spawnModel = new FixedSpawnModel { TypeToSpawn = ElementType.Item1 };
         var refill = new RealtimeRefillSystem(spawnModel);
 
         // Act
@@ -379,10 +379,10 @@ public class RealtimeRefillSystemTests
 
         // Assert: column 0 has no tiles anywhere
         for (int y = 0; y < 3; y++)
-            Assert.Equal(TileType.None, state.GetTile(0, y).Type);
+            Assert.Equal(ElementType.None, state.GetTile(0, y).Type);
 
         // Column 1 should be refilled normally
-        Assert.Equal(TileType.Red, state.GetTile(1, 0).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(1, 0).Type);
     }
 
     #endregion
@@ -396,7 +396,7 @@ public class RealtimeRefillSystemTests
         var state = new GameState(5, 5, 5, new StubRandom());
         ClearBoard(ref state);
 
-        var types = new[] { TileType.Red, TileType.Green, TileType.Blue, TileType.Yellow, TileType.Purple };
+        var types = new[] { ElementType.Item1, ElementType.Item2, ElementType.Item3, ElementType.Item4, ElementType.Item5 };
         var spawnModel = new SequentialSpawnModel(types);
         var refill = new RealtimeRefillSystem(spawnModel);
 
@@ -417,14 +417,14 @@ public class RealtimeRefillSystemTests
         var state = new GameState(1, 5, 5, new StubRandom());
         ClearBoard(ref state);
 
-        var spawnModel = new FixedSpawnModel { TypeToSpawn = TileType.Red };
+        var spawnModel = new FixedSpawnModel { TypeToSpawn = ElementType.Item1 };
         var refill = new RealtimeRefillSystem(spawnModel);
 
         // Act
         refill.Update(ref state);
 
         // Assert
-        Assert.Equal(TileType.Red, state.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(0, 0).Type);
     }
 
     [Fact]
@@ -434,7 +434,7 @@ public class RealtimeRefillSystemTests
         var state = new GameState(10, 3, 5, new StubRandom());
         ClearBoard(ref state);
 
-        var spawnModel = new FixedSpawnModel { TypeToSpawn = TileType.Blue };
+        var spawnModel = new FixedSpawnModel { TypeToSpawn = ElementType.Item3 };
         var refill = new RealtimeRefillSystem(spawnModel);
 
         // Act
@@ -443,7 +443,7 @@ public class RealtimeRefillSystemTests
         // Assert
         for (int x = 0; x < 10; x++)
         {
-            Assert.Equal(TileType.Blue, state.GetTile(x, 0).Type);
+            Assert.Equal(ElementType.Item3, state.GetTile(x, 0).Type);
         }
     }
 
@@ -457,10 +457,12 @@ public class RealtimeRefillSystemTests
         {
             for (int x = 0; x < state.Width; x++)
             {
-                state.SetTile(x, y, new Tile(0, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(0, ElementType.None, x, y));
             }
         }
     }
 
     #endregion
 }
+
+

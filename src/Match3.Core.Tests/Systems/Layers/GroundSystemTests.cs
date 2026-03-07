@@ -1,4 +1,4 @@
-using Match3.Core.Events;
+﻿using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Layers;
@@ -35,7 +35,7 @@ public class GroundSystemTests
         {
             for (int x = 0; x < width; x++)
             {
-                state.SetTile(x, y, new Tile(y * width + x, TileType.Red, x, y));
+                state.SetTile(x, y, new Tile(y * width + x, ElementType.Item1, x, y));
             }
         }
         return state;
@@ -375,7 +375,7 @@ public class GroundSystemTests
         // Assert - Tile operations should work normally
         // Ice doesn't affect matching, movement, or swapping
         var tile = state.GetTile(pos);
-        Assert.NotEqual(TileType.None, tile.Type); // Tile exists above ice
+        Assert.NotEqual(ElementType.None, tile.Type); // Tile exists above ice
         Assert.True(state.HasGround(pos)); // Ice exists
     }
 
@@ -428,3 +428,4 @@ public class GroundSystemTests
 
     #endregion
 }
+

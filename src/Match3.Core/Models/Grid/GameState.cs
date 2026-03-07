@@ -13,6 +13,12 @@ namespace Match3.Core.Models.Grid;
 public struct GameState
 {
     /// <summary>
+    /// Static structure layer. Defines Void/Slot/Wall/Spawner/Sink roles.
+    /// Array size: Width * Height.
+    /// </summary>
+    public CellKind[] Cells;
+
+    /// <summary>
     /// The 1D array representing the 2D grid (Tile layer).
     /// Index = y * Width + x
     /// </summary>
@@ -35,10 +41,7 @@ public struct GameState
     /// </summary>
     public uint[] CellLocks;
 
-    /// <summary>
-    /// Per-cell hole mask. True = permanent hole (tiles pass through, never land).
-    /// </summary>
-    public bool[] Holes;
+    // REMOVED: Holes[] is replaced by Cells[i] == CellKind.Void
 
     public int Width;
     public int Height;
@@ -81,11 +84,14 @@ public struct GameState
         Height = height;
         TileTypesCount = tileTypesCount;
         var size = width * height;
+        
+        Cells = new CellKind[size]; // Default Void(0)
         Grid = new Tile[size];
         GroundLayer = new Ground[size];
         CoverLayer = new Cover[size];
         CellLocks = new uint[size];
-        Holes = new bool[size];
+        // Holes removed
+        
         Score = 0;
         MoveCount = 0;
         NextTileId = 1;
@@ -95,6 +101,9 @@ public struct GameState
         Random = random;
         ObjectiveProgress = new ObjectiveProgress[4];
         LevelStatus = LevelStatus.InProgress;
+
+        // Init Cells to Slot by default to avoid breaking existing logic immediately
+        Array.Fill(Cells, CellKind.Slot);
     }
 
     public GameState Clone()
@@ -109,11 +118,12 @@ public struct GameState
         // Use logical size (Width * Height) instead of array length
         // to support arrays from ArrayPool which may be larger
         int size = Width * Height;
+        Array.Copy(Cells, clone.Cells, size); // Clone Cells
         Array.Copy(Grid, clone.Grid, size);
         Array.Copy(GroundLayer, clone.GroundLayer, size);
         Array.Copy(CoverLayer, clone.CoverLayer, size);
         Array.Copy(CellLocks, clone.CellLocks, size);
-        Array.Copy(Holes, clone.Holes, size);
+        // Holes removed
         clone.ObjectiveProgress = new ObjectiveProgress[4];
         Array.Copy(ObjectiveProgress, clone.ObjectiveProgress, 4);
         clone.LevelStatus = LevelStatus;
@@ -132,13 +142,26 @@ public struct GameState
 
     public void SetTile(Position p, Tile tile) => Grid[p.Y * Width + p.X] = tile;
 
-    public readonly TileType GetType(int x, int y) => Grid[y * Width + x].Type;
+    public readonly ElementType GetType(int x, int y) => Grid[y * Width + x].Type;
 
-    public readonly TileType GetType(Position p) => Grid[p.Y * Width + p.X].Type;
+    public readonly ElementType GetType(Position p) => Grid[p.Y * Width + p.X].Type;
 
     #endregion
 
-    #region Ground Layer Access
+    #region Cell Layer Access (NEW)
+
+    public readonly CellKind GetCell(int x, int y) => Cells[y * Width + x];
+    public void SetCell(int x, int y, CellKind kind) => Cells[y * Width + x] = kind;
+    
+    // IsHole is now IsVoid (CellKind.Void)
+    public readonly bool IsVoid(int x, int y) => Cells[y * Width + x] == CellKind.Void;
+    public readonly bool IsVoid(Position p) => Cells[p.Y * Width + p.X] == CellKind.Void;
+    
+    // Backward compatibility for IsHole
+    public readonly bool IsHole(int x, int y) => IsVoid(x, y);
+    public readonly bool IsHole(Position p) => IsVoid(p);
+
+    #endregion
 
     public readonly ref Ground GetGround(int x, int y) => ref GroundLayer[y * Width + x];
 
@@ -152,22 +175,20 @@ public struct GameState
 
     public readonly bool HasGround(Position p) => GroundLayer[p.Y * Width + p.X].Type != GroundType.None;
 
-    #endregion
-
     #region Cover Layer Access
-
+    
     public readonly ref Cover GetCover(int x, int y) => ref CoverLayer[y * Width + x];
-
+    
     public readonly ref Cover GetCover(Position p) => ref CoverLayer[p.Y * Width + p.X];
-
+    
     public void SetCover(int x, int y, Cover cover) => CoverLayer[y * Width + x] = cover;
-
+    
     public void SetCover(Position p, Cover cover) => CoverLayer[p.Y * Width + p.X] = cover;
-
+    
     public readonly bool HasCover(int x, int y) => CoverLayer[y * Width + x].Type != CoverType.None;
-
+    
     public readonly bool HasCover(Position p) => CoverLayer[p.Y * Width + p.X].Type != CoverType.None;
-
+    
     #endregion
 
     #region Convenience Query Methods
@@ -184,7 +205,7 @@ public struct GameState
         if (CellLockOps.IsLocked(CellLocks[idx], CellLockType.Swap)) return false;
 
         var tile = GetTile(x, y);
-        if (tile.Type == TileType.None) return false;
+        if (tile.Type == ElementType.None) return false;
         if (tile.IsFalling || tile.IsSuspended) return false;
 
         return true;
@@ -287,16 +308,6 @@ public struct GameState
 
     #region Utility
 
-    /// <summary>
-    /// Returns true if the cell is a permanent hole (tiles pass through).
-    /// </summary>
-    public readonly bool IsHole(int x, int y) => Holes[y * Width + x];
-
-    /// <summary>
-    /// Returns true if the cell is a permanent hole (tiles pass through).
-    /// </summary>
-    public readonly bool IsHole(Position p) => Holes[p.Y * Width + p.X];
-
     public readonly int Index(int x, int y) => y * Width + x;
 
     public readonly int Index(Position p) => p.Y * Width + p.X;
@@ -304,18 +315,12 @@ public struct GameState
     /// <summary>
     /// Checks if a position is within the grid boundaries.
     /// </summary>
-    public readonly bool IsValid(Position p)
-    {
-        return p.X >= 0 && p.X < Width && p.Y >= 0 && p.Y < Height;
-    }
+    public readonly bool IsValid(Position p) => p.X >= 0 && p.X < Width && p.Y >= 0 && p.Y < Height;
 
     /// <summary>
     /// Checks if coordinates are within the grid boundaries.
     /// </summary>
-    public readonly bool IsValid(int x, int y)
-    {
-        return x >= 0 && x < Width && y >= 0 && y < Height;
-    }
+    public readonly bool IsValid(int x, int y) => x >= 0 && x < Width && y >= 0 && y < Height;
 
     #endregion
 }

@@ -1,4 +1,4 @@
-using Match3.Core.Events;
+﻿using Match3.Core.Events;
 using Match3.Core.Events.Enums;
 using Match3.Core.Models.Grid;
 using Xunit;
@@ -27,7 +27,7 @@ public class EventCollectorTests
             SimulationTime = 0.016f,
             TileId = 1,
             GridPosition = new Position(0, 0),
-            Type = Match3.Core.Models.Enums.TileType.Red,
+            Type = Match3.Core.Models.Enums.ElementType.Item1,
             Reason = DestroyReason.Match
         };
 
@@ -66,7 +66,7 @@ public class EventCollectorTests
             SimulationTime = 0.016f,
             TileId = 1,
             GridPosition = new Position(0, 0),
-            Type = Match3.Core.Models.Enums.TileType.Red,
+            Type = Match3.Core.Models.Enums.ElementType.Item1,
             Reason = DestroyReason.Match
         };
 
@@ -163,3 +163,4 @@ public class EventCollectorTests
 
     #endregion
 }
+

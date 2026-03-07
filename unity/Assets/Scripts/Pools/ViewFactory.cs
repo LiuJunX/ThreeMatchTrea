@@ -155,6 +155,38 @@ namespace Match3.Unity.Pools
                     main.startSpeed = 0f;
                     main.startLifetime = 0.2f;
                     break;
+
+                case "bomb_shockwave":
+                    // Ring-shaped outward burst for shockwave
+                    main.startLifetime = 0.4f;
+                    main.startSpeed = new ParticleSystem.MinMaxCurve(4f, 6f);
+                    main.startSize = new ParticleSystem.MinMaxCurve(0.05f, 0.1f);
+                    main.startColor = new ParticleSystem.MinMaxGradient(
+                        new Color(1f, 0.9f, 0.5f, 0.8f),
+                        new Color(1f, 0.7f, 0.3f, 0.6f));
+                    emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 30, 40) });
+                    shape.shapeType = ParticleSystemShapeType.Circle;
+                    shape.radius = 0.1f;
+                    shape.radiusThickness = 0f; // Edge only (ring shape)
+                    var shockVel = ps.velocityOverLifetime;
+                    shockVel.enabled = true;
+                    shockVel.speedModifier = new ParticleSystem.MinMaxCurve(1f,
+                        AnimationCurve.EaseInOut(0f, 1f, 1f, 0.3f));
+                    break;
+
+                case "bomb_flash":
+                    // Brief bright flash at explosion center
+                    main.startLifetime = 0.15f;
+                    main.startSpeed = 0f;
+                    main.startSize = new ParticleSystem.MinMaxCurve(0.8f, 1.2f);
+                    main.startColor = new Color(1f, 1f, 0.8f, 1f);
+                    emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 1) });
+                    shape.shapeType = ParticleSystemShapeType.Sphere;
+                    shape.radius = 0.01f;
+                    sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f,
+                        new AnimationCurve(
+                            new Keyframe(0f, 0.5f), new Keyframe(0.3f, 1f), new Keyframe(1f, 0f)));
+                    break;
             }
         }
 

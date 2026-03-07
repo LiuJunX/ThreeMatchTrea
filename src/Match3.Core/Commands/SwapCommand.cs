@@ -45,6 +45,6 @@ public sealed record SwapCommand : IGameCommand
         // Check tiles exist
         var fromTile = state.GetTile(From.X, From.Y);
         var toTile = state.GetTile(To.X, To.Y);
-        return fromTile.Type != TileType.None && toTile.Type != TileType.None;
+        return fromTile.Type != ElementType.None && toTile.Type != ElementType.None;
     }
 }

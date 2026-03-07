@@ -27,7 +27,7 @@ namespace Match3.Editor.Logic
 
         private static string BuildGridSummary(LevelConfig config)
         {
-            var tileCounts = new Dictionary<TileType, int>();
+            var tileCounts = new Dictionary<ElementType, int>();
             var bombCounts = new Dictionary<BombType, int>();
             var coverCounts = new Dictionary<CoverType, int>();
             var groundCounts = new Dictionary<GroundType, int>();
@@ -35,7 +35,7 @@ namespace Match3.Editor.Logic
             for (int i = 0; i < config.Grid.Length; i++)
             {
                 var tile = config.Grid[i];
-                if (tile != TileType.None)
+                if (tile != ElementType.None)
                 {
                     tileCounts.TryGetValue(tile, out var count);
                     tileCounts[tile] = count + 1;

@@ -33,7 +33,7 @@ public class SpawnModelAdapter : ITileGenerator
         _context = context;
     }
 
-    public TileType GenerateNonMatchingTile(ref GameState state, int x, int y)
+    public ElementType GenerateNonMatchingTile(ref GameState state, int x, int y)
     {
         return _model.Predict(ref state, x, in _context);
     }

@@ -16,5 +16,5 @@ public interface IScoreSystem
     /// <summary>
     /// Calculates the score for a special move (e.g., Rainbow + Bomb).
     /// </summary>
-    int CalculateSpecialMoveScore(TileType t1, BombType b1, TileType t2, BombType b2);
+    int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2);
 }

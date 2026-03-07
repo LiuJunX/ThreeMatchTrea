@@ -82,6 +82,7 @@ namespace Match3.Unity.Views
 
                 _tileContainer = new GameObject("TileContainer3D").transform;
                 _tileContainer.SetParent(transform, false);
+                _tileContainer.localRotation = Quaternion.Euler(-10f, 0f, 0f);
 
                 _projectileContainer = new GameObject("ProjectileContainer3D").transform;
                 _projectileContainer.SetParent(transform, false);
@@ -136,7 +137,7 @@ namespace Match3.Unity.Views
             _boardFloor = new GameObject("BoardFloor");
             _boardFloor.transform.SetParent(transform, false);
             // Push behind tiles so it doesn't z-fight
-            _boardFloor.transform.localPosition = new Vector3(0f, 0f, 0.1f);
+            _boardFloor.transform.localPosition = new Vector3(0f, 0f, 0.4f);
 
             _boardFloor.AddComponent<MeshFilter>().mesh = mesh;
             var floorRenderer = _boardFloor.AddComponent<MeshRenderer>();
@@ -178,7 +179,7 @@ namespace Match3.Unity.Views
         }
 
         // Board vignette (subtle inner shadow) caches
-        private static Mesh _vignetteMesh;
+        private Mesh _instancedVignetteMesh;
         private static Material _vignetteMaterial;
         private static Texture2D _vignetteTexture;
 
@@ -190,50 +191,47 @@ namespace Match3.Unity.Views
                 _boardVignette = null;
             }
 
-            var bounds = CoordinateConverter.GetBoardBounds(_bridge.Width, _bridge.Height, _bridge.CellSize, _bridge.BoardOrigin);
+            // Destroy previous mesh if any
+            if (_instancedVignetteMesh != null)
+            {
+                Destroy(_instancedVignetteMesh);
+                _instancedVignetteMesh = null;
+            }
 
             _boardVignette = new GameObject("BoardVignette");
-            _boardVignette.transform.SetParent(transform, false);
-            _boardVignette.transform.localPosition = new Vector3(0f, 0f, 0.095f); // slightly above floor (z=0.1), below tiles (z=0)
+            if (_boardFloor != null)
+            {
+                _boardVignette.transform.SetParent(_boardFloor.transform, false);
+                // slightly above floor (local z = -0.005 => world 0.095 if floor is 0.1)
+                _boardVignette.transform.localPosition = new Vector3(0f, 0f, -0.005f);
+            }
+            else
+            {
+                _boardVignette.transform.SetParent(transform, false);
+                _boardVignette.transform.localPosition = new Vector3(0f, 0f, 0.095f);
+            }
 
             var mf = _boardVignette.AddComponent<MeshFilter>();
-            mf.sharedMesh = GetOrCreateVignetteMesh(bounds);
+
+            // Build mesh matching the grid layout (clipping empty corners)
+            var layout = _bridge.GridLayout;
+            if (layout == null)
+            {
+                // Fallback to full rectangle if no layout provided
+                layout = new bool[_bridge.Height, _bridge.Width];
+                for (int r = 0; r < _bridge.Height; r++)
+                    for (int c = 0; c < _bridge.Width; c++)
+                        layout[r, c] = true;
+            }
+
+            _instancedVignetteMesh = BoardMeshBuilder.BuildFlatMesh(layout, _bridge.CellSize, _bridge.BoardOrigin, _bridge.Height);
+            _instancedVignetteMesh.name = "BoardVignetteMesh";
+            mf.sharedMesh = _instancedVignetteMesh;
 
             var mr = _boardVignette.AddComponent<MeshRenderer>();
             mr.sharedMaterial = GetOrCreateVignetteMaterial();
             mr.shadowCastingMode = ShadowCastingMode.Off;
             mr.receiveShadows = false;
-        }
-
-        private static Mesh GetOrCreateVignetteMesh(Rect bounds)
-        {
-            // Rebuild mesh if board size changed between scenes/configs.
-            // (Bounds are baked into vertices for simplicity.)
-            _vignetteMesh = new Mesh { name = "BoardVignetteQuad" };
-
-            var x0 = bounds.xMin;
-            var x1 = bounds.xMax;
-            var y0 = bounds.yMin;
-            var y1 = bounds.yMax;
-
-            _vignetteMesh.vertices = new[]
-            {
-                new Vector3(x0, y0, 0f),
-                new Vector3(x1, y0, 0f),
-                new Vector3(x1, y1, 0f),
-                new Vector3(x0, y1, 0f)
-            };
-            _vignetteMesh.uv = new[]
-            {
-                new Vector2(0f, 0f),
-                new Vector2(1f, 0f),
-                new Vector2(1f, 1f),
-                new Vector2(0f, 1f)
-            };
-            _vignetteMesh.triangles = new[] { 0, 2, 1, 0, 3, 2 };
-            _vignetteMesh.RecalculateNormals();
-            _vignetteMesh.RecalculateBounds();
-            return _vignetteMesh;
         }
 
         private static Material GetOrCreateVignetteMaterial()
@@ -571,7 +569,6 @@ namespace Match3.Unity.Views
             _columnHoleZones.Clear();
 
             var state = _bridge.CurrentState;
-            if (state.Holes == null) return;
 
             for (int x = 0; x < state.Width; x++)
             {
@@ -663,6 +660,11 @@ namespace Match3.Unity.Views
             {
                 Destroy(_boardVignette);
                 _boardVignette = null;
+            }
+            if (_instancedVignetteMesh != null)
+            {
+                Destroy(_instancedVignetteMesh);
+                _instancedVignetteMesh = null;
             }
         }
     }

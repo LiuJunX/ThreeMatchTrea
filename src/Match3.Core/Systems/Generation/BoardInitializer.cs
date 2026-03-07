@@ -27,24 +27,37 @@ public class BoardInitializer : IBoardInitializer
             // Initialize objectives
             _objectiveSystem?.Initialize(ref state, levelConfig);
 
-            for (int i = 0; i < levelConfig.Grid.Length; i++)
+            var gridSize = levelConfig.Width * levelConfig.Height;
+            for (int i = 0; i < gridSize; i++)
             {
                 int x = i % levelConfig.Width;
                 int y = i / levelConfig.Width;
 
                 if (x < state.Width && y < state.Height)
                 {
-                    // Initialize Tile layer
-                    var type = levelConfig.Grid[i];
-
-                    // Mark permanent holes (TileType.None in level config)
-                    if (type == TileType.None)
+                    // 1. Initialize Cell layer (Structure)
+                    if (levelConfig.Cells != null && i < levelConfig.Cells.Length)
                     {
-                        state.Holes[y * state.Width + x] = true;
+                        state.SetCell(x, y, levelConfig.Cells[i]);
+                    }
+                    else
+                    {
+                         // Fallback default
+                         state.SetCell(x, y, CellKind.Slot);
                     }
 
-                    // Normal = "playable cell with random color"
-                    if (type == TileType.Normal)
+                    // 2. Initialize Element layer (Content)
+                    // Skip tile creation for Void/Wall cells
+                    var cellKind = state.GetCell(x, y);
+                    if (cellKind == CellKind.Void || cellKind == CellKind.Wall)
+                        continue;
+
+                    // ElementType.None in a CellKind.Slot means "Generate Random".
+                    var type = (levelConfig.Grid != null && i < levelConfig.Grid.Length)
+                        ? levelConfig.Grid[i]
+                        : ElementType.None;
+
+                    if (type == ElementType.None)
                     {
                         type = _tileGenerator.GenerateNonMatchingTile(ref state, x, y);
                     }
@@ -91,10 +104,12 @@ public class BoardInitializer : IBoardInitializer
         }
         else
         {
+            // Default random initialization
             for (int y = 0; y < state.Height; y++)
             {
                 for (int x = 0; x < state.Width; x++)
                 {
+                    // Default Cells are already Slots
                     var type = _tileGenerator.GenerateNonMatchingTile(ref state, x, y);
                     state.SetTile(x, y, new Tile(state.NextTileId++, type, x, y));
                     // Ground and Cover layers are already initialized to empty in GameState constructor

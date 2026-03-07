@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Numerics;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
@@ -21,7 +21,7 @@ public class GravityBugTests
 {
     private class StubTileGenerator : ITileGenerator
     {
-        public TileType GenerateNonMatchingTile(ref GameState state, int x, int y) => TileType.Red;
+        public ElementType GenerateNonMatchingTile(ref GameState state, int x, int y) => ElementType.Item1;
     }
 
     private class StubRandom : IRandom
@@ -45,9 +45,9 @@ public class GravityBugTests
         // Y=1: Tile B (Bottom)
         // Y=0: Tile A (Top)
 
-        state.SetTile(0, 4, new Tile(99, TileType.Blue, 0, 4)); // Floor
-        state.SetTile(0, 1, new Tile(2, TileType.Red, 0, 1));
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(0, 4, new Tile(99, ElementType.Item3, 0, 4)); // Floor
+        state.SetTile(0, 1, new Tile(2, ElementType.Item1, 0, 1));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
 
         // Act - Frame 1
         gravity.Update(ref state, 0.05f);
@@ -86,12 +86,12 @@ public class GravityBugTests
         // Tile A at Y=2.5 (Falling). Logically at Y=2.
         // They are falling together.
         
-        var tileB = new Tile(2, TileType.Red, 0, 3);
+        var tileB = new Tile(2, ElementType.Item1, 0, 3);
         tileB.Position = new Vector2(0, 3.5f);
         tileB.IsFalling = true;
         tileB.Velocity = new Vector2(0, 5.0f); // Moving down
 
-        var tileA = new Tile(1, TileType.Red, 0, 2);
+        var tileA = new Tile(1, ElementType.Item1, 0, 2);
         tileA.Position = new Vector2(0, 2.5f);
         tileA.IsFalling = true;
         tileA.Velocity = new Vector2(0, 5.0f); // Moving down
@@ -100,8 +100,8 @@ public class GravityBugTests
         state.SetTile(0, 2, tileA);
         
         // Empty space below B
-        state.SetTile(0, 4, new Tile(0, TileType.None, 0, 4));
-        state.SetTile(0, 5, new Tile(0, TileType.None, 0, 5));
+        state.SetTile(0, 4, new Tile(0, ElementType.None, 0, 4));
+        state.SetTile(0, 5, new Tile(0, ElementType.None, 0, 5));
 
         // Act
         // Gravity update
@@ -151,3 +151,4 @@ public class GravityBugTests
         Assert.True(newA.Velocity.Y > 4.0f, $"Velocity should be maintained (Was {newA.Velocity.Y})");
     }
 }
+

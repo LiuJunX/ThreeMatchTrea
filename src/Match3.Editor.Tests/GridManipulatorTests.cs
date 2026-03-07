@@ -14,23 +14,23 @@ namespace Match3.Editor.Tests
             var manipulator = new GridManipulator();
             var original = new LevelConfig(2, 2);
             // (0,0) = Red
-            original.Grid[0] = TileType.Red;
+            original.Grid[0] = ElementType.Item1;
             // (1,1) = Blue (Index 3)
-            original.Grid[3] = TileType.Blue;
+            original.Grid[3] = ElementType.Item3;
 
             var result = manipulator.ResizeGrid(original, 3, 3);
 
             Assert.Equal(3, result.Width);
             Assert.Equal(3, result.Height);
-            
+
             // Check (0,0)
-            Assert.Equal(TileType.Red, result.Grid[0]);
-            
+            Assert.Equal(ElementType.Item1, result.Grid[0]);
+
             // Check (1,1) -> Index 1*3 + 1 = 4
-            Assert.Equal(TileType.Blue, result.Grid[4]);
-            
+            Assert.Equal(ElementType.Item3, result.Grid[4]);
+
             // Check new area is None
-            Assert.Equal(TileType.None, result.Grid[2]); // (2,0)
+            Assert.Equal(ElementType.None, result.Grid[2]); // (2,0)
         }
 
         [Fact]
@@ -38,21 +38,21 @@ namespace Match3.Editor.Tests
         {
             var manipulator = new GridManipulator();
             var original = new LevelConfig(3, 3);
-            original.Grid[0] = TileType.Red;
-            original.Grid[4] = TileType.Blue; // (1,1)
-            original.Grid[8] = TileType.Green; // (2,2)
+            original.Grid[0] = ElementType.Item1;
+            original.Grid[4] = ElementType.Item3; // (1,1)
+            original.Grid[8] = ElementType.Item2; // (2,2)
 
             var result = manipulator.ResizeGrid(original, 2, 2);
 
             Assert.Equal(2, result.Width);
             Assert.Equal(2, result.Height);
-            
+
             // (0,0) should be Red
-            Assert.Equal(TileType.Red, result.Grid[0]);
-            
+            Assert.Equal(ElementType.Item1, result.Grid[0]);
+
             // (1,1) should be Blue -> Index 1*2 + 1 = 3
-            Assert.Equal(TileType.Blue, result.Grid[3]);
-            
+            Assert.Equal(ElementType.Item3, result.Grid[3]);
+
             // (2,2) is lost
         }
 
@@ -77,18 +77,18 @@ namespace Match3.Editor.Tests
             var config = new LevelConfig(3, 3);
 
             // Paint Color
-            manipulator.PaintTile(config, 0, TileType.Green, BombType.None);
-            Assert.Equal(TileType.Green, config.Grid[0]);
+            manipulator.PaintTile(config, 0, ElementType.Item2, BombType.None);
+            Assert.Equal(ElementType.Item2, config.Grid[0]);
             Assert.Equal(BombType.None, config.Bombs[0]);
 
             // Paint Bomb
-            manipulator.PaintTile(config, 0, TileType.Red, BombType.Horizontal);
-            Assert.Equal(TileType.Red, config.Grid[0]);
+            manipulator.PaintTile(config, 0, ElementType.Item1, BombType.Horizontal);
+            Assert.Equal(ElementType.Item1, config.Grid[0]);
             Assert.Equal(BombType.Horizontal, config.Bombs[0]);
 
             // Paint Rainbow
-            manipulator.PaintTile(config, 1, TileType.Rainbow, BombType.Color);
-            Assert.Equal(TileType.Rainbow, config.Grid[1]);
+            manipulator.PaintTile(config, 1, ElementType.Universal, BombType.Color);
+            Assert.Equal(ElementType.Universal, config.Grid[1]);
             Assert.Equal(BombType.Color, config.Bombs[1]);
         }
 

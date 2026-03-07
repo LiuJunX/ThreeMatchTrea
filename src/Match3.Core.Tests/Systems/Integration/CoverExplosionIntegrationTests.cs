@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Numerics;
 using Match3.Core.Config;
 using Match3.Core.Events;
@@ -45,7 +45,7 @@ public class CoverExplosionIntegrationTests
     private class StubScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(MatchGroup match) => match.Positions.Count * 10;
-        public int CalculateSpecialMoveScore(TileType t1, BombType b1, TileType t2, BombType b2) => 100;
+        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 100;
     }
 
     public CoverExplosionIntegrationTests(ITestOutputHelper output)
@@ -71,19 +71,19 @@ public class CoverExplosionIntegrationTests
         var rng = new StubRandom();
         var state = new GameState(5, 1, 6, rng);
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
 
-        var bombTile = new Tile(2, TileType.Red, 1, 0);
+        var bombTile = new Tile(2, ElementType.Item1, 1, 0);
         bombTile.Bomb = BombType.Horizontal;
         state.SetTile(1, 0, bombTile);
 
-        state.SetTile(2, 0, new Tile(3, TileType.Blue, 2, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item3, 2, 0));
 
-        var greenTile = new Tile(4, TileType.Green, 3, 0);
+        var greenTile = new Tile(4, ElementType.Item2, 3, 0);
         state.SetTile(3, 0, greenTile);
         state.SetCover(new Position(3, 0), new Cover(CoverType.Chain, health: 1));
 
-        state.SetTile(4, 0, new Tile(5, TileType.Yellow, 4, 0));
+        state.SetTile(4, 0, new Tile(5, ElementType.Item4, 4, 0));
 
         var scoreSystem = new StubScoreSystem();
         var powerUpHandler = new PowerUpHandler(scoreSystem);
@@ -98,14 +98,14 @@ public class CoverExplosionIntegrationTests
         PrintRow(ref state, 0);
 
         // Assert: 没有覆盖物的格子被清除
-        Assert.Equal(TileType.None, state.GetTile(0, 0).Type);
-        Assert.Equal(TileType.None, state.GetTile(1, 0).Type); // 炸弹位置
-        Assert.Equal(TileType.None, state.GetTile(2, 0).Type);
-        Assert.Equal(TileType.None, state.GetTile(4, 0).Type);
+        Assert.Equal(ElementType.None, state.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.None, state.GetTile(1, 0).Type); // 炸弹位置
+        Assert.Equal(ElementType.None, state.GetTile(2, 0).Type);
+        Assert.Equal(ElementType.None, state.GetTile(4, 0).Type);
 
         // 有 Chain 覆盖物的格子：覆盖物被破坏，但方块保留（被保护）
         Assert.Equal(CoverType.None, state.GetCover(new Position(3, 0)).Type);
-        Assert.Equal(TileType.Green, state.GetTile(3, 0).Type); // 方块被 Chain 保护
+        Assert.Equal(ElementType.Item2, state.GetTile(3, 0).Type); // 方块被 Chain 保护
 
         _output.WriteLine("水平炸弹正确伤害了覆盖物，被保护的方块保留");
     }
@@ -129,17 +129,17 @@ public class CoverExplosionIntegrationTests
         var rng = new StubRandom();
         var state = new GameState(1, 4, 6, rng);
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
 
-        var bombTile = new Tile(2, TileType.Red, 0, 1);
+        var bombTile = new Tile(2, ElementType.Item1, 0, 1);
         bombTile.Bomb = BombType.Vertical;
         state.SetTile(0, 1, bombTile);
 
-        var blueTile = new Tile(3, TileType.Blue, 0, 2);
+        var blueTile = new Tile(3, ElementType.Item3, 0, 2);
         state.SetTile(0, 2, blueTile);
         state.SetCover(new Position(0, 2), new Cover(CoverType.Cage, health: 1));
 
-        state.SetTile(0, 3, new Tile(4, TileType.Green, 0, 3));
+        state.SetTile(0, 3, new Tile(4, ElementType.Item2, 0, 3));
 
         var scoreSystem = new StubScoreSystem();
         var powerUpHandler = new PowerUpHandler(scoreSystem);
@@ -154,13 +154,13 @@ public class CoverExplosionIntegrationTests
         PrintColumn(ref state, 0);
 
         // Assert: 没有覆盖物的格子被清除
-        Assert.Equal(TileType.None, state.GetTile(0, 0).Type);
-        Assert.Equal(TileType.None, state.GetTile(0, 1).Type); // 炸弹位置
-        Assert.Equal(TileType.None, state.GetTile(0, 3).Type);
+        Assert.Equal(ElementType.None, state.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.None, state.GetTile(0, 1).Type); // 炸弹位置
+        Assert.Equal(ElementType.None, state.GetTile(0, 3).Type);
 
         // 有 Cage 覆盖物的格子：覆盖物被破坏，但方块保留（被保护）
         Assert.Equal(CoverType.None, state.GetCover(new Position(0, 2)).Type);
-        Assert.Equal(TileType.Blue, state.GetTile(0, 2).Type); // 方块被 Cage 保护
+        Assert.Equal(ElementType.Item3, state.GetTile(0, 2).Type); // 方块被 Cage 保护
 
         _output.WriteLine("垂直炸弹正确伤害了覆盖物，被保护的方块保留");
     }
@@ -182,24 +182,24 @@ public class CoverExplosionIntegrationTests
         var state = new GameState(3, 3, 6, rng);
 
         // 第 0 行
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
         state.SetCover(new Position(0, 0), new Cover(CoverType.Chain, health: 1));
-        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Green, 2, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item2, 2, 0));
         state.SetCover(new Position(2, 0), new Cover(CoverType.Chain, health: 1));
 
         // 第 1 行
-        state.SetTile(0, 1, new Tile(4, TileType.Blue, 0, 1));
-        var areaBomb = new Tile(5, TileType.Red, 1, 1);
+        state.SetTile(0, 1, new Tile(4, ElementType.Item3, 0, 1));
+        var areaBomb = new Tile(5, ElementType.Item1, 1, 1);
         areaBomb.Bomb = BombType.Square5x5;
         state.SetTile(1, 1, areaBomb);
-        state.SetTile(2, 1, new Tile(6, TileType.Blue, 2, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item3, 2, 1));
 
         // 第 2 行
-        state.SetTile(0, 2, new Tile(7, TileType.Yellow, 0, 2));
+        state.SetTile(0, 2, new Tile(7, ElementType.Item4, 0, 2));
         state.SetCover(new Position(0, 2), new Cover(CoverType.Chain, health: 1));
-        state.SetTile(1, 2, new Tile(8, TileType.Blue, 1, 2));
-        state.SetTile(2, 2, new Tile(9, TileType.Purple, 2, 2));
+        state.SetTile(1, 2, new Tile(8, ElementType.Item3, 1, 2));
+        state.SetTile(2, 2, new Tile(9, ElementType.Item5, 2, 2));
         state.SetCover(new Position(2, 2), new Cover(CoverType.Chain, health: 1));
 
         var scoreSystem = new StubScoreSystem();
@@ -239,13 +239,13 @@ public class CoverExplosionIntegrationTests
         var rng = new StubRandom();
         var state = new GameState(3, 1, 6, rng);
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
 
-        var bombTile = new Tile(2, TileType.Red, 1, 0);
+        var bombTile = new Tile(2, ElementType.Item1, 1, 0);
         bombTile.Bomb = BombType.Horizontal;
         state.SetTile(1, 0, bombTile);
 
-        state.SetTile(2, 0, new Tile(3, TileType.Blue, 2, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item3, 2, 0));
         // 设置 2 HP 的覆盖物
         state.SetCover(new Position(2, 0), new Cover(CoverType.Chain, health: 2));
 
@@ -303,42 +303,42 @@ public class CoverExplosionIntegrationTests
         var state = new GameState(5, 4, 6, rng);
 
         // 第 0 行
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
         state.SetCover(new Position(0, 0), new Cover(CoverType.Chain, health: 1));
-        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Yellow, 2, 0));
-        state.SetTile(3, 0, new Tile(4, TileType.Green, 3, 0));
-        state.SetTile(4, 0, new Tile(5, TileType.Purple, 4, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item4, 2, 0));
+        state.SetTile(3, 0, new Tile(4, ElementType.Item2, 3, 0));
+        state.SetTile(4, 0, new Tile(5, ElementType.Item5, 4, 0));
 
         // 第 1 行 - 水平炸弹和垂直炸弹
-        state.SetTile(0, 1, new Tile(6, TileType.Red, 0, 1));
-        var hBomb = new Tile(7, TileType.Red, 1, 1);
+        state.SetTile(0, 1, new Tile(6, ElementType.Item1, 0, 1));
+        var hBomb = new Tile(7, ElementType.Item1, 1, 1);
         hBomb.Bomb = BombType.Horizontal;
         state.SetTile(1, 1, hBomb);
-        state.SetTile(2, 1, new Tile(8, TileType.Blue, 2, 1));
-        var vBomb = new Tile(9, TileType.Red, 3, 1);
+        state.SetTile(2, 1, new Tile(8, ElementType.Item3, 2, 1));
+        var vBomb = new Tile(9, ElementType.Item1, 3, 1);
         vBomb.Bomb = BombType.Vertical;
         state.SetTile(3, 1, vBomb);
-        state.SetTile(4, 1, new Tile(10, TileType.Green, 4, 1));
+        state.SetTile(4, 1, new Tile(10, ElementType.Item2, 4, 1));
 
         // 第 2 行
-        state.SetTile(0, 2, new Tile(11, TileType.Blue, 0, 2));
-        state.SetTile(1, 2, new Tile(12, TileType.Green, 1, 2));
-        state.SetTile(2, 2, new Tile(13, TileType.Yellow, 2, 2));
-        state.SetTile(3, 2, new Tile(14, TileType.Red, 3, 2));
-        state.SetTile(4, 2, new Tile(15, TileType.Purple, 4, 2));
+        state.SetTile(0, 2, new Tile(11, ElementType.Item3, 0, 2));
+        state.SetTile(1, 2, new Tile(12, ElementType.Item2, 1, 2));
+        state.SetTile(2, 2, new Tile(13, ElementType.Item4, 2, 2));
+        state.SetTile(3, 2, new Tile(14, ElementType.Item1, 3, 2));
+        state.SetTile(4, 2, new Tile(15, ElementType.Item5, 4, 2));
 
         // 第 3 行
-        state.SetTile(0, 3, new Tile(16, TileType.Yellow, 0, 3));
+        state.SetTile(0, 3, new Tile(16, ElementType.Item4, 0, 3));
         state.SetCover(new Position(0, 3), new Cover(CoverType.Chain, health: 1));
-        state.SetTile(1, 3, new Tile(17, TileType.Purple, 1, 3));
-        state.SetTile(2, 3, new Tile(18, TileType.Blue, 2, 3));
-        state.SetTile(3, 3, new Tile(19, TileType.Green, 3, 3));
-        state.SetTile(4, 3, new Tile(20, TileType.Red, 4, 3));
+        state.SetTile(1, 3, new Tile(17, ElementType.Item5, 1, 3));
+        state.SetTile(2, 3, new Tile(18, ElementType.Item3, 2, 3));
+        state.SetTile(3, 3, new Tile(19, ElementType.Item2, 3, 3));
+        state.SetTile(4, 3, new Tile(20, ElementType.Item1, 4, 3));
 
         var scoreSystem = new StubScoreSystem();
         var bombRegistry = BombEffectRegistry.CreateDefault();
-        var processor = new StandardMatchProcessor(scoreSystem, bombRegistry);
+        var processor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), bombRegistry);
 
         _output.WriteLine("初始状态:");
         PrintBoard(ref state);
@@ -348,7 +348,7 @@ public class CoverExplosionIntegrationTests
         {
             new MatchGroup
             {
-                Type = TileType.Red,
+                Type = ElementType.Item1,
                 Positions = new HashSet<Position> { new(0, 1), new(1, 1), new(2, 1) }
             }
         };
@@ -360,13 +360,13 @@ public class CoverExplosionIntegrationTests
 
         // Assert:
         // 1. 水平炸弹应该清除第 1 行
-        Assert.Equal(TileType.None, state.GetTile(0, 1).Type);
-        Assert.Equal(TileType.None, state.GetTile(4, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(0, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(4, 1).Type);
 
         // 2. 垂直炸弹被触发，应该清除第 3 列
-        Assert.Equal(TileType.None, state.GetTile(3, 0).Type);
-        Assert.Equal(TileType.None, state.GetTile(3, 2).Type);
-        Assert.Equal(TileType.None, state.GetTile(3, 3).Type);
+        Assert.Equal(ElementType.None, state.GetTile(3, 0).Type);
+        Assert.Equal(ElementType.None, state.GetTile(3, 2).Type);
+        Assert.Equal(ElementType.None, state.GetTile(3, 3).Type);
 
         _output.WriteLine("炸弹连锁爆炸正确伤害了覆盖物");
     }
@@ -395,26 +395,26 @@ public class CoverExplosionIntegrationTests
         var state = new GameState(3, 3, 6, rng);
 
         // 第 0 行
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
         state.SetCover(new Position(0, 0), new Cover(CoverType.Cage, health: 1));
-        var greenTile0 = new Tile(2, TileType.Green, 1, 0);
+        var greenTile0 = new Tile(2, ElementType.Item2, 1, 0);
         greenTile0.Position = new Vector2(1, 0);
         state.SetTile(1, 0, greenTile0);
-        var blueTile0 = new Tile(3, TileType.Blue, 2, 0);
+        var blueTile0 = new Tile(3, ElementType.Item3, 2, 0);
         blueTile0.Position = new Vector2(2, 0);
         state.SetTile(2, 0, blueTile0);
 
         // 第 1 行
-        state.SetTile(0, 1, new Tile(4, TileType.Red, 0, 1));
-        var hBomb = new Tile(5, TileType.Red, 1, 1);
+        state.SetTile(0, 1, new Tile(4, ElementType.Item1, 0, 1));
+        var hBomb = new Tile(5, ElementType.Item1, 1, 1);
         hBomb.Bomb = BombType.Horizontal;
         state.SetTile(1, 1, hBomb);
-        state.SetTile(2, 1, new Tile(6, TileType.Blue, 2, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item3, 2, 1));
 
         // 第 2 行
-        state.SetTile(0, 2, new Tile(7, TileType.Green, 0, 2));
-        state.SetTile(1, 2, new Tile(8, TileType.Blue, 1, 2));
-        state.SetTile(2, 2, new Tile(9, TileType.Yellow, 2, 2));
+        state.SetTile(0, 2, new Tile(7, ElementType.Item2, 0, 2));
+        state.SetTile(1, 2, new Tile(8, ElementType.Item3, 1, 2));
+        state.SetTile(2, 2, new Tile(9, ElementType.Item4, 2, 2));
 
         var scoreSystem = new StubScoreSystem();
         var powerUpHandler = new PowerUpHandler(scoreSystem);
@@ -438,9 +438,9 @@ public class CoverExplosionIntegrationTests
         PrintBoard(ref state);
 
         // 验证第 1 行被清除
-        Assert.Equal(TileType.None, state.GetTile(0, 1).Type);
-        Assert.Equal(TileType.None, state.GetTile(1, 1).Type);
-        Assert.Equal(TileType.None, state.GetTile(2, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(0, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(1, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(2, 1).Type);
 
         // Act 2: 运行重力
         int frameCount = helper.UpdateUntilStable(ref state, gravitySystem, animationSystem, maxFrames: 120);
@@ -450,7 +450,7 @@ public class CoverExplosionIntegrationTests
 
         // Assert:
         // 1. 被 Cage 覆盖的 (0,0) 不应该移动
-        Assert.Equal(TileType.Red, state.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(0, 0).Type);
         Assert.Equal(CoverType.Cage, state.GetCover(new Position(0, 0)).Type);
 
         // 2. (1,0) 和 (2,0) 的方块应该下落到第 1 行
@@ -475,7 +475,7 @@ public class CoverExplosionIntegrationTests
                 var c = state.GetCover(new Position(x, y));
 
                 string symbol;
-                if (t.Type == TileType.None)
+                if (t.Type == ElementType.None)
                 {
                     symbol = "_";
                 }
@@ -513,7 +513,7 @@ public class CoverExplosionIntegrationTests
             var t = state.GetTile(x, y);
             var c = state.GetCover(new Position(x, y));
 
-            string symbol = t.Type == TileType.None ? "_" : t.Type.ToString()[0].ToString();
+            string symbol = t.Type == ElementType.None ? "_" : t.Type.ToString()[0].ToString();
             if (t.Bomb != BombType.None)
             {
                 symbol = t.Bomb.ToString()[0].ToString();
@@ -539,3 +539,5 @@ public class CoverExplosionIntegrationTests
 
     #endregion
 }
+
+

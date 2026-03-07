@@ -238,9 +238,16 @@ public class Match3GameService : IDisposable
                 _player.VisualState.UpdateEffects(dt);
 
                 // Auto-play: make random move when stable
-                if (_isAutoPlaying && session.Engine.IsStable() && !HasActiveAnimations)
+                if (_isAutoPlaying)
                 {
-                    TryMakeRandomMove();
+                    if (session.Engine.State.LevelStatus != LevelStatus.InProgress)
+                    {
+                        _isAutoPlaying = false;
+                    }
+                    else if (session.Engine.IsStable() && !HasActiveAnimations)
+                    {
+                        TryMakeRandomMove();
+                    }
                 }
 
                 NotifyStateChanged();

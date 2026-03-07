@@ -20,7 +20,7 @@ public sealed record GameStateSnapshot
     public int TileTypesCount { get; init; }
 
     /// <summary>Flattened tile type array (row-major order).</summary>
-    public TileType[] TileTypes { get; init; } = System.Array.Empty<TileType>();
+    public ElementType[] TileTypes { get; init; } = System.Array.Empty<ElementType>();
 
     /// <summary>Flattened bomb type array (row-major order).</summary>
     public BombType[] BombTypes { get; init; } = System.Array.Empty<BombType>();
@@ -31,8 +31,8 @@ public sealed record GameStateSnapshot
     /// <summary>Flattened ground layer array.</summary>
     public Ground[] GroundLayers { get; init; } = System.Array.Empty<Ground>();
 
-    /// <summary>Per-cell hole mask (static topology).</summary>
-    public bool[] Holes { get; init; } = System.Array.Empty<bool>();
+    /// <summary>Per-cell cell kind (topology).</summary>
+    public CellKind[] Cells { get; init; } = System.Array.Empty<CellKind>();
 
     /// <summary>Next tile ID to assign.</summary>
     public int NextTileId { get; init; }
@@ -49,12 +49,12 @@ public sealed record GameStateSnapshot
     public static GameStateSnapshot FromState(in GameState state)
     {
         int size = state.Width * state.Height;
-        var tileTypes = new TileType[size];
+        var tileTypes = new ElementType[size];
         var bombTypes = new BombType[size];
         var coverLayers = new Cover[size];
         var groundLayers = new Ground[size];
 
-        var holes = new bool[size];
+        var cells = new CellKind[size];
 
         for (int y = 0; y < state.Height; y++)
         {
@@ -66,7 +66,7 @@ public sealed record GameStateSnapshot
                 bombTypes[index] = tile.Bomb;
                 coverLayers[index] = state.GetCover(x, y);
                 groundLayers[index] = state.GetGround(x, y);
-                holes[index] = state.Holes[index];
+                cells[index] = state.Cells[index];
             }
         }
 
@@ -79,7 +79,7 @@ public sealed record GameStateSnapshot
             BombTypes = bombTypes,
             CoverLayers = coverLayers,
             GroundLayers = groundLayers,
-            Holes = holes,
+            Cells = cells,
             NextTileId = state.NextTileId,
             Score = state.Score,
             MoveCount = state.MoveCount
@@ -113,8 +113,8 @@ public sealed record GameStateSnapshot
                 state.SetTile(x, y, tile);
                 state.SetCover(x, y, CoverLayers[index]);
                 state.SetGround(x, y, GroundLayers[index]);
-                if (index < Holes.Length)
-                    state.Holes[index] = Holes[index];
+                if (index < Cells.Length)
+                    state.Cells[index] = Cells[index];
             }
         }
 

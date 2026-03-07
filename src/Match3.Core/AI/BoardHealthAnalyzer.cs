@@ -21,7 +21,7 @@ internal sealed class BoardHealthAnalyzer
         int isolatedCount = 0;
 
         // Use object pool to avoid allocation
-        var typeCounts = Pools.Obtain<Dictionary<TileType, int>>();
+        var typeCounts = Pools.Obtain<Dictionary<ElementType, int>>();
         try
         {
             for (int y = 0; y < state.Height; y++)
@@ -29,7 +29,7 @@ internal sealed class BoardHealthAnalyzer
                 for (int x = 0; x < state.Width; x++)
                 {
                     var tile = state.GetTile(x, y);
-                    if (tile.Type == TileType.None) continue;
+                    if (tile.Type == ElementType.None) continue;
 
                     if (tile.Bomb != BombType.None)
                         bombCount++;
@@ -68,7 +68,7 @@ internal sealed class BoardHealthAnalyzer
         }
     }
 
-    private static bool IsIsolated(in GameState state, int x, int y, TileType type)
+    private static bool IsIsolated(in GameState state, int x, int y, ElementType type)
     {
         ReadOnlySpan<(int dx, int dy)> directions = stackalloc (int, int)[]
         {
@@ -90,7 +90,7 @@ internal sealed class BoardHealthAnalyzer
         return true;
     }
 
-    private static float CalculateVariance(Dictionary<TileType, int> typeCounts)
+    private static float CalculateVariance(Dictionary<ElementType, int> typeCounts)
     {
         if (typeCounts.Count == 0) return 0;
 

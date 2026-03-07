@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Match3.Core.Config;
 using Match3.Core.Events;
@@ -37,14 +37,14 @@ public class ExplosionSystemObjectiveTests
         {
             for (int x = 0; x < width; x++)
             {
-                var type = (TileType)((x + y) % 6 + 1); // Red, Green, Blue, Yellow, Purple, Orange
+                var type = (ElementType)((x + y) % 6 + 1); // Red, Green, Blue, Yellow, Purple, Orange
                 state.SetTile(x, y, new Tile(id++, type, x, y));
             }
         }
         return state;
     }
 
-    private GameState CreateGameStateWithUniformTiles(int width, int height, TileType tileType)
+    private GameState CreateGameStateWithUniformTiles(int width, int height, ElementType ElementType)
     {
         var state = new GameState(width, height, 6, new StubRandom());
         int id = 1;
@@ -52,7 +52,7 @@ public class ExplosionSystemObjectiveTests
         {
             for (int x = 0; x < width; x++)
             {
-                state.SetTile(x, y, new Tile(id++, tileType, x, y));
+                state.SetTile(x, y, new Tile(id++, ElementType, x, y));
             }
         }
         return state;
@@ -70,12 +70,12 @@ public class ExplosionSystemObjectiveTests
             new GroundSystem(objectiveSystem),
             objectiveSystem);
 
-        var state = CreateGameStateWithUniformTiles(10, 10, TileType.Red);
+        var state = CreateGameStateWithUniformTiles(10, 10, ElementType.Item1);
         var config = new LevelConfig();
         config.Objectives[0] = new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Red,
+            ElementType = (int)ElementType.Item1,
             TargetCount = 25
         };
         objectiveSystem.Initialize(ref state, config);
@@ -116,7 +116,7 @@ public class ExplosionSystemObjectiveTests
         {
             for (int x = 0; x < 10; x++)
             {
-                var type = (x + y) % 2 == 0 ? TileType.Red : TileType.Blue;
+                var type = (x + y) % 2 == 0 ? ElementType.Item1 : ElementType.Item3;
                 state.SetTile(x, y, new Tile(id++, type, x, y));
             }
         }
@@ -125,7 +125,7 @@ public class ExplosionSystemObjectiveTests
         config.Objectives[0] = new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Red,
+            ElementType = (int)ElementType.Item1,
             TargetCount = 50
         };
         objectiveSystem.Initialize(ref state, config);
@@ -154,7 +154,7 @@ public class ExplosionSystemObjectiveTests
     {
         // Arrange - ExplosionSystem without objective system
         var explosionSystem = new ExplosionSystem();
-        var state = CreateGameStateWithUniformTiles(10, 10, TileType.Red);
+        var state = CreateGameStateWithUniformTiles(10, 10, ElementType.Item1);
 
         var events = new BufferedEventCollector();
         var origin = new Position(5, 5);
@@ -170,7 +170,7 @@ public class ExplosionSystemObjectiveTests
         }
 
         // Tiles should still be destroyed
-        Assert.Equal(TileType.None, state.GetTile(5, 5).Type);
+        Assert.Equal(ElementType.None, state.GetTile(5, 5).Type);
     }
 
     [Fact]
@@ -183,12 +183,12 @@ public class ExplosionSystemObjectiveTests
             new GroundSystem(objectiveSystem),
             objectiveSystem);
 
-        var state = CreateGameStateWithUniformTiles(5, 5, TileType.Green);
+        var state = CreateGameStateWithUniformTiles(5, 5, ElementType.Item2);
         var config = new LevelConfig();
         config.Objectives[0] = new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Green,
+            ElementType = (int)ElementType.Item2,
             TargetCount = 100
         };
         objectiveSystem.Initialize(ref state, config);
@@ -221,12 +221,12 @@ public class ExplosionSystemObjectiveTests
             new GroundSystem(objectiveSystem),
             objectiveSystem);
 
-        var state = CreateGameStateWithUniformTiles(5, 5, TileType.Yellow);
+        var state = CreateGameStateWithUniformTiles(5, 5, ElementType.Item4);
         var config = new LevelConfig();
         config.Objectives[0] = new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Yellow,
+            ElementType = (int)ElementType.Item4,
             TargetCount = 5 // Only need 5 tiles
         };
         objectiveSystem.Initialize(ref state, config);
@@ -263,12 +263,12 @@ public class ExplosionSystemObjectiveTests
             new GroundSystem(objectiveSystem),
             objectiveSystem);
 
-        var state = CreateGameStateWithUniformTiles(10, 10, TileType.Purple);
+        var state = CreateGameStateWithUniformTiles(10, 10, ElementType.Item5);
         var config = new LevelConfig();
         config.Objectives[0] = new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Purple,
+            ElementType = (int)ElementType.Item5,
             TargetCount = 10
         };
         objectiveSystem.Initialize(ref state, config);
@@ -312,18 +312,18 @@ public class ExplosionSystemObjectiveTests
             new GroundSystem(objectiveSystem),
             objectiveSystem);
 
-        var state = CreateGameStateWithUniformTiles(10, 10, TileType.Orange);
+        var state = CreateGameStateWithUniformTiles(10, 10, ElementType.Item6);
         var config = new LevelConfig();
         config.Objectives[0] = new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Red, // Not matching
+            ElementType = (int)ElementType.Item1, // Not matching
             TargetCount = 10
         };
         config.Objectives[1] = new LevelObjective
         {
             TargetLayer = ObjectiveTargetLayer.Tile,
-            ElementType = (int)TileType.Orange, // Matching
+            ElementType = (int)ElementType.Item6, // Matching
             TargetCount = 10
         };
         objectiveSystem.Initialize(ref state, config);
@@ -348,3 +348,4 @@ public class ExplosionSystemObjectiveTests
 
     #endregion
 }
+

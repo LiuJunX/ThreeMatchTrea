@@ -124,10 +124,10 @@ namespace Match3.Unity.Views
             var go = new GameObject("BoardLight_Key");
             go.transform.SetParent(transform, false);
             go.transform.localPosition = new Vector3(-0.03f, 1.02f, 0.41f);
-            go.transform.rotation = Quaternion.Euler(42.73f, 18.97f, 33.92f);
+            go.transform.rotation = Quaternion.Euler(7.5f, 7.5f, 12.629f);
             _keyLight = go.AddComponent<Light>();
             _keyLight.type = LightType.Directional;
-            _keyLight.color = Color.white;
+            _keyLight.color = new Color(0.92f, 0.92f, 0.92f);
             _keyLight.intensity = 1.0f;
             _keyLight.shadows = LightShadows.Soft;
             _keyLight.shadowStrength = 0.8f;

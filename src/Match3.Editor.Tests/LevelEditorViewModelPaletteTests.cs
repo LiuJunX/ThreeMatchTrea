@@ -11,23 +11,23 @@ namespace Match3.Editor.Tests
         {
             var types = LevelEditorViewModel.TilePaletteTypes;
 
-            Assert.Contains(TileType.Red, types);
-            Assert.Contains(TileType.Green, types);
-            Assert.Contains(TileType.Blue, types);
-            Assert.Contains(TileType.Yellow, types);
-            Assert.Contains(TileType.Purple, types);
-            Assert.Contains(TileType.Orange, types);
-            Assert.Contains(TileType.Rainbow, types);
-            Assert.Contains(TileType.None, types);
+            Assert.Contains(ElementType.Item1, types);
+            Assert.Contains(ElementType.Item2, types);
+            Assert.Contains(ElementType.Item3, types);
+            Assert.Contains(ElementType.Item4, types);
+            Assert.Contains(ElementType.Item5, types);
+            Assert.Contains(ElementType.Item6, types);
+            Assert.Contains(ElementType.Universal, types);
+            Assert.Contains(ElementType.None, types);
             Assert.Equal(8, types.Count);
         }
 
         [Fact]
         public void GetTileBackground_ShouldReturnSolidColorOrGradient()
         {
-            var red = EditorStyleHelper.GetTileColor(TileType.Red);
-            var none = EditorStyleHelper.GetTileColor(TileType.None);
-            var rainbow = EditorStyleHelper.GetTileColor(TileType.Rainbow);
+            var red = EditorStyleHelper.GetTileColor(ElementType.Item1);
+            var none = EditorStyleHelper.GetTileColor(ElementType.None);
+            var rainbow = EditorStyleHelper.GetTileColor(ElementType.Universal);
 
             Assert.Equal("#dc3545", red);
             Assert.Equal("#f8f9fa", none);
@@ -37,9 +37,9 @@ namespace Match3.Editor.Tests
         [Fact]
         public void GetTileCheckmarkClass_ShouldUseDarkTextOnLightBackgrounds()
         {
-            var noneClass = EditorStyleHelper.GetTileCheckmarkClass(TileType.None);
-            var yellowClass = EditorStyleHelper.GetTileCheckmarkClass(TileType.Yellow);
-            var redClass = EditorStyleHelper.GetTileCheckmarkClass(TileType.Red);
+            var noneClass = EditorStyleHelper.GetTileCheckmarkClass(ElementType.None);
+            var yellowClass = EditorStyleHelper.GetTileCheckmarkClass(ElementType.Item4);
+            var redClass = EditorStyleHelper.GetTileCheckmarkClass(ElementType.Item1);
 
             Assert.Equal("text-dark", noneClass);
             Assert.Equal("text-dark", yellowClass);
@@ -47,4 +47,3 @@ namespace Match3.Editor.Tests
         }
     }
 }
-

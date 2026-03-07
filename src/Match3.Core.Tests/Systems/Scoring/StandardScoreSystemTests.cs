@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
@@ -18,7 +18,7 @@ public class StandardScoreSystemTests
     {
         var group = new MatchGroup
         {
-            Type = TileType.Red,
+            Type = ElementType.Item1,
             Positions = new HashSet<Position>
             {
                 new Position(0, 0),
@@ -37,7 +37,7 @@ public class StandardScoreSystemTests
     {
         var group = new MatchGroup
         {
-            Type = TileType.Blue,
+            Type = ElementType.Item3,
             Positions = new HashSet<Position>
             {
                 new Position(0, 0),
@@ -57,7 +57,7 @@ public class StandardScoreSystemTests
     {
         var group = new MatchGroup
         {
-            Type = TileType.Green,
+            Type = ElementType.Item2,
             Positions = new HashSet<Position>
             {
                 new Position(0, 0),
@@ -79,7 +79,7 @@ public class StandardScoreSystemTests
         // T-shape: 5 unique positions
         var group = new MatchGroup
         {
-            Type = TileType.Yellow,
+            Type = ElementType.Item4,
             Shape = MatchShape.Cross,
             Positions = new HashSet<Position>
             {
@@ -110,7 +110,7 @@ public class StandardScoreSystemTests
 
         var group = new MatchGroup
         {
-            Type = TileType.Red,
+            Type = ElementType.Item1,
             Positions = positions
         };
 
@@ -127,8 +127,8 @@ public class StandardScoreSystemTests
     public void CalculateSpecialMoveScore_RainbowPlusRainbow_ShouldReturn5000()
     {
         var score = _system.CalculateSpecialMoveScore(
-            TileType.Rainbow, BombType.None,
-            TileType.Rainbow, BombType.None);
+            ElementType.Universal, BombType.None,
+            ElementType.Universal, BombType.None);
 
         Assert.Equal(5000, score);
     }
@@ -137,8 +137,8 @@ public class StandardScoreSystemTests
     public void CalculateSpecialMoveScore_RainbowPlusNormal_ShouldReturn2000()
     {
         var score = _system.CalculateSpecialMoveScore(
-            TileType.Rainbow, BombType.None,
-            TileType.Red, BombType.None);
+            ElementType.Universal, BombType.None,
+            ElementType.Item1, BombType.None);
 
         Assert.Equal(2000, score);
     }
@@ -148,8 +148,8 @@ public class StandardScoreSystemTests
     {
         // Order shouldn't matter
         var score = _system.CalculateSpecialMoveScore(
-            TileType.Blue, BombType.None,
-            TileType.Rainbow, BombType.None);
+            ElementType.Item3, BombType.None,
+            ElementType.Universal, BombType.None);
 
         Assert.Equal(2000, score);
     }
@@ -163,8 +163,8 @@ public class StandardScoreSystemTests
     public void CalculateSpecialMoveScore_RainbowPlusBomb_ShouldReturn2500(BombType bombType)
     {
         var score = _system.CalculateSpecialMoveScore(
-            TileType.Rainbow, BombType.None,
-            TileType.Red, bombType);
+            ElementType.Universal, BombType.None,
+            ElementType.Item1, bombType);
 
         Assert.Equal(2500, score);
     }
@@ -177,8 +177,8 @@ public class StandardScoreSystemTests
     {
         // Order shouldn't matter
         var score = _system.CalculateSpecialMoveScore(
-            TileType.Red, bombType,
-            TileType.Rainbow, BombType.None);
+            ElementType.Item1, bombType,
+            ElementType.Universal, BombType.None);
 
         Assert.Equal(2500, score);
     }
@@ -198,8 +198,8 @@ public class StandardScoreSystemTests
     public void CalculateSpecialMoveScore_BombPlusBomb_ShouldReturn1000(BombType bomb1, BombType bomb2)
     {
         var score = _system.CalculateSpecialMoveScore(
-            TileType.Red, bomb1,
-            TileType.Blue, bomb2);
+            ElementType.Item1, bomb1,
+            ElementType.Item3, bomb2);
 
         Assert.Equal(1000, score);
     }
@@ -212,8 +212,8 @@ public class StandardScoreSystemTests
     public void CalculateSpecialMoveScore_NormalPlusNormal_ShouldReturn0()
     {
         var score = _system.CalculateSpecialMoveScore(
-            TileType.Red, BombType.None,
-            TileType.Blue, BombType.None);
+            ElementType.Item1, BombType.None,
+            ElementType.Item3, BombType.None);
 
         Assert.Equal(0, score);
     }
@@ -223,11 +223,12 @@ public class StandardScoreSystemTests
     {
         // One bomb, one normal - not a special combo
         var score = _system.CalculateSpecialMoveScore(
-            TileType.Red, BombType.Horizontal,
-            TileType.Blue, BombType.None);
+            ElementType.Item1, BombType.Horizontal,
+            ElementType.Item3, BombType.None);
 
         Assert.Equal(0, score);
     }
 
     #endregion
 }
+

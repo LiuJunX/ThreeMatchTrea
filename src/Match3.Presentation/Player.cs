@@ -325,6 +325,10 @@ public sealed class Player
                     tileToUpdate.TileType = updateType.TileType;
                 }
                 break;
+
+            case ScaleTileCommand scaleCmd:
+                _visualState.SetTileScale(scaleCmd.TileId, scaleCmd.FromScale);
+                break;
         }
 
         // Mark tiles as being animated for position-affecting commands
@@ -397,6 +401,12 @@ public sealed class Player
                 _visualState.SetProjectilePosition(moveProj.ProjectileId, projPos);
                 break;
 
+            case ScaleTileCommand scaleCmd:
+                float scaleEased = ApplyEasing(t, scaleCmd.Easing);
+                var scaleVal = Vector2.Lerp(scaleCmd.FromScale, scaleCmd.ToScale, scaleEased);
+                _visualState.SetTileScale(scaleCmd.TileId, scaleVal);
+                break;
+
             case SpawnProjectileCommand spawnProj:
                 // Takeoff animation - arc upward
                 float arcProgress = (float)Math.Sin(t * Math.PI);
@@ -434,6 +444,10 @@ public sealed class Player
 
             case MoveProjectileCommand moveProj:
                 _visualState.SetProjectilePosition(moveProj.ProjectileId, moveProj.To);
+                break;
+
+            case ScaleTileCommand scaleCmd:
+                _visualState.SetTileScale(scaleCmd.TileId, scaleCmd.ToScale);
                 break;
 
             case ImpactProjectileCommand impact:
@@ -493,6 +507,17 @@ public sealed class Player
                         tileB.ReleaseAnimationRef();
                 }
                 break;
+
+            case ScaleTileCommand scaleTile:
+                var sTile = _visualState.GetTile(scaleTile.TileId);
+                if (sTile != null)
+                {
+                    if (isStarting)
+                        sTile.AddAnimationRef();
+                    else
+                        sTile.ReleaseAnimationRef();
+                }
+                break;
         }
     }
 
@@ -511,6 +536,7 @@ public sealed class Player
                 ? 4f * t * t * t
                 : 1f - (float)Math.Pow(-2f * t + 2f, 3) / 2f,
             EasingType.OutBounce => OutBounce(t),
+            EasingType.OutBack => OutBack(t),
             _ => t
         };
     }
@@ -527,6 +553,13 @@ public sealed class Player
         if (t < 2.5f / d1)
             return n1 * (t -= 2.25f / d1) * t + 0.9375f;
         return n1 * (t -= 2.625f / d1) * t + 0.984375f;
+    }
+
+    private static float OutBack(float t)
+    {
+        const float c1 = 1.70158f;
+        const float c3 = c1 + 1f;
+        return 1f + c3 * (float)Math.Pow(t - 1f, 3) + c1 * (float)Math.Pow(t - 1f, 2);
     }
 
     #endregion

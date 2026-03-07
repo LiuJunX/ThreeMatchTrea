@@ -1,4 +1,4 @@
-using Match3.Core.Models.Enums;
+﻿using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Tests.TestFixtures;
 using Match3.Core.Utility;
@@ -23,7 +23,7 @@ public class GridUtilityTests
     {
         return new GameStateBuilder()
             .WithSize(width, height)
-            .WithAllTiles(TileType.Red)
+            .WithAllTiles(ElementType.Item1)
             .Build();
     }
 
@@ -113,7 +113,7 @@ public class GridUtilityTests
     {
         // Arrange
         var state = CreateFilledState();
-        state.SetTile(0, 0, new Tile(0, TileType.None, 0, 0));
+        state.SetTile(0, 0, new Tile(0, ElementType.None, 0, 0));
 
         // Act
         bool result = GridUtility.IsSwapValid(in state, new Position(0, 0), new Position(1, 0));
@@ -127,7 +127,7 @@ public class GridUtilityTests
     {
         // Arrange
         var state = CreateFilledState();
-        state.SetTile(1, 0, new Tile(1, TileType.None, 1, 0));
+        state.SetTile(1, 0, new Tile(1, ElementType.None, 1, 0));
 
         // Act
         bool result = GridUtility.IsSwapValid(in state, new Position(0, 0), new Position(1, 0));
@@ -354,21 +354,21 @@ public class GridUtilityTests
         // Arrange
         var state = new GameStateBuilder()
             .WithSize(4, 4)
-            .WithTiles((x, y) => new Tile(y * 4 + x, x == 0 && y == 0 ? TileType.Red : TileType.Blue, x, y))
+            .WithTiles((x, y) => new Tile(y * 4 + x, x == 0 && y == 0 ? ElementType.Item1 : ElementType.Item3, x, y))
             .Build();
 
         var posA = new Position(0, 0);
         var posB = new Position(1, 0);
 
-        Assert.Equal(TileType.Red, state.GetTile(posA).Type);
-        Assert.Equal(TileType.Blue, state.GetTile(posB).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(posA).Type);
+        Assert.Equal(ElementType.Item3, state.GetTile(posB).Type);
 
         // Act
         GridUtility.SwapTilesForCheck(ref state, posA, posB);
 
         // Assert
-        Assert.Equal(TileType.Blue, state.GetTile(posA).Type);
-        Assert.Equal(TileType.Red, state.GetTile(posB).Type);
+        Assert.Equal(ElementType.Item3, state.GetTile(posA).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(posB).Type);
     }
 
     [Fact]
@@ -377,7 +377,7 @@ public class GridUtilityTests
         // Arrange
         var state = new GameStateBuilder()
             .WithSize(4, 4)
-            .WithTiles((x, y) => new Tile(y * 4 + x, x == 0 && y == 0 ? TileType.Red : TileType.Blue, x, y))
+            .WithTiles((x, y) => new Tile(y * 4 + x, x == 0 && y == 0 ? ElementType.Item1 : ElementType.Item3, x, y))
             .Build();
 
         var posA = new Position(0, 0);
@@ -405,9 +405,9 @@ public class GridUtilityTests
             .WithSize(4, 4)
             .WithTiles((x, y) =>
             {
-                TileType type = (x + y) % 3 == 0 ? TileType.Red
-                    : (x + y) % 3 == 1 ? TileType.Blue
-                    : TileType.Green;
+                ElementType type = (x + y) % 3 == 0 ? ElementType.Item1
+                    : (x + y) % 3 == 1 ? ElementType.Item3
+                    : ElementType.Item2;
                 return new Tile(y * 4 + x, type, x, y);
             })
             .Build();
@@ -415,7 +415,7 @@ public class GridUtilityTests
         // Capture all tiles except the two being swapped
         var posA = new Position(0, 0);
         var posB = new Position(1, 0);
-        var unaffectedTiles = new List<(Position pos, TileType type)>();
+        var unaffectedTiles = new List<(Position pos, ElementType type)>();
         for (int y = 0; y < 4; y++)
         {
             for (int x = 0; x < 4; x++)
@@ -444,7 +444,7 @@ public class GridUtilityTests
         // Arrange
         var state = new GameStateBuilder()
             .WithSize(4, 4)
-            .WithTiles((x, y) => new Tile(y * 4 + x, y == 0 ? TileType.Red : TileType.Green, x, y))
+            .WithTiles((x, y) => new Tile(y * 4 + x, y == 0 ? ElementType.Item1 : ElementType.Item2, x, y))
             .Build();
 
         var posA = new Position(2, 0);
@@ -454,9 +454,10 @@ public class GridUtilityTests
         GridUtility.SwapTilesForCheck(ref state, posA, posB);
 
         // Assert
-        Assert.Equal(TileType.Green, state.GetTile(posA).Type);
-        Assert.Equal(TileType.Red, state.GetTile(posB).Type);
+        Assert.Equal(ElementType.Item2, state.GetTile(posA).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(posB).Type);
     }
 
     #endregion
 }
+

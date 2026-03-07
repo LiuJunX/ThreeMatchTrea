@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
@@ -45,19 +45,19 @@ public class RaceConditionTests
         
         // Setup Grid
         // Row 0
-        state.SetTile(0, 0, new Tile(1, TileType.Blue, 0, 0)); // B
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));  // A
-        state.SetTile(2, 0, new Tile(3, TileType.Green, 2, 0)); // Blocker/Irrelevant
+        state.SetTile(0, 0, new Tile(1, ElementType.Item3, 0, 0)); // B
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));  // A
+        state.SetTile(2, 0, new Tile(3, ElementType.Item2, 2, 0)); // Blocker/Irrelevant
         
         // Row 1
-        state.SetTile(0, 1, new Tile(4, TileType.Red, 0, 1)); // Block under B
-        state.SetTile(1, 1, new Tile(0, TileType.None, 1, 1)); // Empty Target
-        state.SetTile(2, 1, new Tile(5, TileType.Red, 2, 1)); // Block right
+        state.SetTile(0, 1, new Tile(4, ElementType.Item1, 0, 1)); // Block under B
+        state.SetTile(1, 1, new Tile(0, ElementType.None, 1, 1)); // Empty Target
+        state.SetTile(2, 1, new Tile(5, ElementType.Item1, 2, 1)); // Block right
         
         // Row 2 (Floor)
-        state.SetTile(0, 2, new Tile(6, TileType.Red, 0, 2));
-        state.SetTile(1, 2, new Tile(7, TileType.Red, 1, 2));
-        state.SetTile(2, 2, new Tile(8, TileType.Red, 2, 2));
+        state.SetTile(0, 2, new Tile(6, ElementType.Item1, 0, 2));
+        state.SetTile(1, 2, new Tile(7, ElementType.Item1, 1, 2));
+        state.SetTile(2, 2, new Tile(8, ElementType.Item1, 2, 2));
         
         // Controlling Shuffle:
         // Columns: [0, 1, 2]
@@ -133,13 +133,13 @@ public class RaceConditionTests
         var gravity = new RealtimeGravitySystem(new Match3Config { GravitySpeed = 10f, InitialFallSpeed = 0f }, rng);
         
         // Setup stable column 0
-        var blockFloor = new Tile(1, TileType.Normal, 0, 4) { IsSuspended = true };
+        var blockFloor = new Tile(1, ElementType.Item1, 0, 4) { IsSuspended = true };
         state.SetTile(0, 4, blockFloor); // Floor Block
-        var blockStack = new Tile(2, TileType.Normal, 0, 3) { IsSuspended = true };
+        var blockStack = new Tile(2, ElementType.Item1, 0, 3) { IsSuspended = true };
         state.SetTile(0, 3, blockStack); // Stacked Block
         
         // Tile A at (0, 2)
-        var tileA = new Tile(3, TileType.Normal, 0, 2);
+        var tileA = new Tile(3, ElementType.Item1, 0, 2);
         // Position it close to the border so it crosses into Col 1 in one frame
         tileA.Position = new System.Numerics.Vector2(0.49f, 2f); 
         state.SetTile(0, 2, tileA);
@@ -162,7 +162,7 @@ public class RaceConditionTests
         Assert.Equal(tileA.Id, tileAtTarget.Id);
         
         // Should NOT be at (1, 3) (which would mean it fell after sliding in same frame)
-        Assert.Equal(TileType.None, state.GetTile(1, 3).Type);
+        Assert.Equal(ElementType.None, state.GetTile(1, 3).Type);
         
         // Velocity Check
         // If processed once: v = 0 + g*dt = 10*0.02 = 0.2.
@@ -172,3 +172,5 @@ public class RaceConditionTests
         Assert.Equal(0.12f, tileAtTarget.Velocity.Y, 0.001f);
     }
 }
+
+

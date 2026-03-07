@@ -32,7 +32,7 @@ namespace Match3.Editor.Tests
                 new LevelObjective
                 {
                     TargetLayer = ObjectiveTargetLayer.Tile,
-                    ElementType = (int)TileType.Red,
+                    ElementType = (int)ElementType.Item1,
                     TargetCount = 30
                 }
             };
@@ -44,7 +44,7 @@ namespace Match3.Editor.Tests
             Assert.Equal(4, context.Objectives.Length);
             // First objective should be set
             Assert.Equal(ObjectiveTargetLayer.Tile, context.Objectives[0].TargetLayer);
-            Assert.Equal((int)TileType.Red, context.Objectives[0].ElementType);
+            Assert.Equal((int)ElementType.Item1, context.Objectives[0].ElementType);
             Assert.Equal(30, context.Objectives[0].TargetCount);
         }
 
@@ -73,26 +73,26 @@ namespace Match3.Editor.Tests
         {
             var config = new LevelConfig(3, 3);
             // Set some tiles
-            config.Grid[0] = TileType.Red;
-            config.Grid[1] = TileType.Red;
-            config.Grid[2] = TileType.Blue;
-            config.Grid[3] = TileType.Blue;
-            config.Grid[4] = TileType.Blue;
+            config.Grid[0] = ElementType.Item1;
+            config.Grid[1] = ElementType.Item1;
+            config.Grid[2] = ElementType.Item3;
+            config.Grid[3] = ElementType.Item3;
+            config.Grid[4] = ElementType.Item3;
 
             var context = LevelContextBuilder.Build(config);
 
             Assert.NotNull(context.GridSummary);
-            Assert.Contains("Red=2", context.GridSummary);
-            Assert.Contains("Blue=3", context.GridSummary);
+            Assert.Contains("Item1=2", context.GridSummary);
+            Assert.Contains("Item3=3", context.GridSummary);
         }
 
         [Fact]
         public void Build_WithBombsInGrid_IncludesBombsInSummary()
         {
             var config = new LevelConfig(3, 3);
-            config.Grid[0] = TileType.Red;
+            config.Grid[0] = ElementType.Item1;
             config.Bombs[0] = BombType.Horizontal;
-            config.Grid[1] = TileType.Blue;
+            config.Grid[1] = ElementType.Item3;
             config.Bombs[1] = BombType.Vertical;
 
             var context = LevelContextBuilder.Build(config);
@@ -138,7 +138,7 @@ namespace Match3.Editor.Tests
         public void Build_WithEmptyGrid_ReturnsEmptySummary()
         {
             var config = new LevelConfig(3, 3);
-            // Grid is all TileType.None by default
+            // Grid is all ElementType.None by default
 
             var context = LevelContextBuilder.Build(config);
 
@@ -166,7 +166,7 @@ namespace Match3.Editor.Tests
                 new LevelObjective
                 {
                     TargetLayer = ObjectiveTargetLayer.Tile,
-                    ElementType = (int)TileType.Red,
+                    ElementType = (int)ElementType.Item1,
                     TargetCount = 20
                 },
                 new LevelObjective

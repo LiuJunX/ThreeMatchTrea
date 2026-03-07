@@ -69,7 +69,7 @@ namespace Match3.Editor.Logic
         public void GenerateRandomLevel(LevelConfig config, int seed)
         {
             var rng = new SeedManager(seed).GetRandom(RandomDomain.Refill);
-            var types = new[] { TileType.Red, TileType.Green, TileType.Blue, TileType.Yellow, TileType.Purple, TileType.Orange };
+            var types = new[] { ElementType.Item1, ElementType.Item2, ElementType.Item3, ElementType.Item4, ElementType.Item5, ElementType.Item6 };
 
             for (int i = 0; i < config.Grid.Length; i++)
             {
@@ -101,7 +101,7 @@ namespace Match3.Editor.Logic
             }
         }
 
-        public void PaintTile(LevelConfig config, int index, TileType selectedType, BombType selectedBomb)
+        public void PaintTile(LevelConfig config, int index, ElementType selectedType, BombType selectedBomb)
         {
             if (index < 0 || index >= config.Grid.Length) return;
 
@@ -110,19 +110,19 @@ namespace Match3.Editor.Logic
                 config.Bombs[index] = selectedBomb;
                 if (selectedBomb == BombType.Color)
                 {
-                    config.Grid[index] = TileType.Rainbow;
+                    config.Grid[index] = ElementType.Universal;
                 }
                 else
                 {
                     // Safe check for valid colors
-                    var newColor = IsColorTile(selectedType) ? selectedType : TileType.Red;
+                    var newColor = IsColorTile(selectedType) ? selectedType : ElementType.Item1;
                     config.Grid[index] = newColor;
                 }
             }
             else
             {
                 config.Grid[index] = selectedType;
-                if (selectedType == TileType.Rainbow)
+                if (selectedType == ElementType.Universal)
                 {
                     config.Bombs[index] = BombType.Color;
                 }
@@ -133,10 +133,10 @@ namespace Match3.Editor.Logic
             }
         }
 
-        private bool IsColorTile(TileType t)
+        private bool IsColorTile(ElementType t)
         {
-            return t == TileType.Red || t == TileType.Green || t == TileType.Blue ||
-                   t == TileType.Yellow || t == TileType.Purple || t == TileType.Orange;
+            return t == ElementType.Item1 || t == ElementType.Item2 || t == ElementType.Item3 ||
+                   t == ElementType.Item4 || t == ElementType.Item5 || t == ElementType.Item6;
         }
 
         /// <summary>

@@ -36,7 +36,7 @@ public sealed record SpawnTileCommand : RenderCommand
     public int TileId { get; init; }
 
     /// <summary>Type of the tile.</summary>
-    public TileType Type { get; init; }
+    public ElementType Type { get; init; }
 
     /// <summary>Bomb type (if any).</summary>
     public BombType Bomb { get; init; }
@@ -106,6 +106,24 @@ public sealed record SwapTilesCommand : RenderCommand
 }
 
 /// <summary>
+/// Scale a tile from one size to another.
+/// </summary>
+public sealed record ScaleTileCommand : RenderCommand
+{
+    /// <summary>Unique identifier of the tile.</summary>
+    public int TileId { get; init; }
+
+    /// <summary>Starting scale.</summary>
+    public Vector2 FromScale { get; init; }
+
+    /// <summary>Target scale.</summary>
+    public Vector2 ToScale { get; init; }
+
+    /// <summary>Easing function for interpolation.</summary>
+    public EasingType Easing { get; init; } = EasingType.OutCubic;
+}
+
+/// <summary>
 /// Remove a tile from visual state (after destruction animation completes).
 /// </summary>
 public sealed record RemoveTileCommand : RenderCommand
@@ -141,7 +159,7 @@ public sealed record UpdateTileTypeCommand : RenderCommand
     public Position Position { get; init; }
 
     /// <summary>New tile type.</summary>
-    public TileType TileType { get; init; }
+    public ElementType TileType { get; init; }
 }
 
 #endregion

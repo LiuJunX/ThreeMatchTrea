@@ -1,4 +1,4 @@
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Match3.Core.Analysis;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
@@ -95,7 +95,7 @@ public class StrategyDrivenAnalysisServiceTests
             new LevelObjective
             {
                 TargetLayer = ObjectiveTargetLayer.Tile,
-                ElementType = (int)TileType.Red,
+                ElementType = (int)ElementType.Item1,
                 TargetCount = 5
             }
         };
@@ -196,12 +196,12 @@ public class StrategyDrivenAnalysisServiceTests
     {
         int width = 8;
         int height = 8;
-        var grid = new TileType[width * height];
+        var grid = new ElementType[width * height];
 
         // Fill with None (will be randomly generated)
         for (int i = 0; i < grid.Length; i++)
         {
-            grid[i] = TileType.None;
+            grid[i] = ElementType.None;
         }
 
         return new LevelConfig
@@ -215,10 +215,11 @@ public class StrategyDrivenAnalysisServiceTests
                 new LevelObjective
                 {
                     TargetLayer = ObjectiveTargetLayer.Tile,
-                    ElementType = (int)TileType.Red,
+                    ElementType = (int)ElementType.Item1,
                     TargetCount = 10
                 }
             }
         };
     }
 }
+

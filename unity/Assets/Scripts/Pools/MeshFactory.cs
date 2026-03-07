@@ -12,10 +12,10 @@ namespace Match3.Unity.Pools
     /// </summary>
     public static class MeshFactory
     {
-        private static readonly Dictionary<TileType, Mesh> _tileMeshCache = new();
+        private static readonly Dictionary<ElementType, Mesh> _tileMeshCache = new();
         private static Mesh _fallbackMesh;
-        private static readonly Dictionary<TileType, Material> _materialCache = new();
-        private static readonly Dictionary<TileType, Material[]> _singleMaterialArrayCache = new();
+        private static readonly Dictionary<ElementType, Material> _materialCache = new();
+        private static readonly Dictionary<ElementType, Material[]> _singleMaterialArrayCache = new();
         private static readonly Dictionary<BombType, Mesh> _bombMeshCache = new();
         private static readonly Dictionary<BombType, Material[]> _bombMaterialCache = new();
         private static Shader _litShader;
@@ -34,7 +34,7 @@ namespace Match3.Unity.Pools
         /// Get the mesh for a specific tile type.
         /// Each color type has its own distinct shape.
         /// </summary>
-        public static Mesh GetTileMesh(TileType type)
+        public static Mesh GetTileMesh(ElementType type)
         {
             if (_tileMeshCache.TryGetValue(type, out var cached))
                 return cached;
@@ -130,7 +130,7 @@ namespace Match3.Unity.Pools
         /// Get a cached ceramic material for the given tile type.
         /// Uses confirmed color palette with colored specular highlights.
         /// </summary>
-        public static Material GetTileMaterial(TileType type)
+        public static Material GetTileMaterial(ElementType type)
         {
             if (_materialCache.TryGetValue(type, out var cached))
                 return cached;
@@ -149,14 +149,14 @@ namespace Match3.Unity.Pools
         /// art-directed values with higher saturation to compensate for 3D lighting.
         /// Source of truth: Match3Art/docs/art-direction.md
         /// </summary>
-        private static Color GetCeramicColor(TileType type)
+        private static Color GetCeramicColor(ElementType type)
         {
-            if ((type & TileType.Red) != 0) return new Color(0.900f, 0.092f, 0.018f);
-            if ((type & TileType.Blue) != 0) return new Color(0.070f, 0.367f, 0.880f);
-            if ((type & TileType.Green) != 0) return new Color(0.041f, 0.820f, 0.301f);
-            if ((type & TileType.Yellow) != 0) return new Color(0.950f, 0.724f, 0.048f);
-            if ((type & TileType.Purple) != 0) return new Color(0.482f, 0.140f, 0.780f);
-            if ((type & TileType.Orange) != 0) return new Color(0.950f, 0.464f, 0.038f);
+            if (type == ElementType.Item1) return new Color(0.900f, 0.092f, 0.018f); // Red
+            if (type == ElementType.Item3) return new Color(0.070f, 0.367f, 0.880f); // Blue
+            if (type == ElementType.Item2) return new Color(0.041f, 0.820f, 0.301f); // Green
+            if (type == ElementType.Item4) return new Color(0.950f, 0.724f, 0.048f); // Yellow
+            if (type == ElementType.Item5) return new Color(0.482f, 0.140f, 0.780f); // Purple
+            if (type == ElementType.Item6) return new Color(0.950f, 0.464f, 0.038f); // Orange
             return Color.gray;
         }
 
@@ -164,7 +164,7 @@ namespace Match3.Unity.Pools
         /// Get a cached single-element material array for the given tile type.
         /// Avoids per-frame allocation when setting sharedMaterials.
         /// </summary>
-        public static Material[] GetTileMaterialArray(TileType type, BombType bomb)
+        public static Material[] GetTileMaterialArray(ElementType type, BombType bomb)
         {
             // Bombs use their own multi-material array
             var bombMats = bomb != BombType.None ? GetBombMaterials(bomb) : null;
@@ -226,7 +226,7 @@ namespace Match3.Unity.Pools
         /// <summary>
         /// Get the ceramic base color for a tile type.
         /// </summary>
-        public static Color GetTileColor(TileType type)
+        public static Color GetTileColor(ElementType type)
         {
             return GetCeramicColor(type);
         }
@@ -236,12 +236,12 @@ namespace Match3.Unity.Pools
         /// Darkened + slightly more saturated version of the ceramic color,
         /// mimicking the natural edge darkening of ceramic glaze.
         /// </summary>
-        public static Color GetOutlineColor(TileType type)
+        public static Color GetOutlineColor(ElementType type)
         {
             var baseColor = GetCeramicColor(type);
             Color.RGBToHSV(baseColor, out float h, out float s, out float v);
             s = Mathf.Min(s * 1.1f, 1f);
-            v *= 0.55f;
+            v *= 0.65f;
             return Color.HSVToRGB(h, s, v);
         }
 
@@ -482,14 +482,14 @@ namespace Match3.Unity.Pools
             return _fallbackMaterial;
         }
 
-        private static string GetTileTypeName(TileType type)
+        private static string GetTileTypeName(ElementType type)
         {
-            if ((type & TileType.Red) != 0) return "Red";
-            if ((type & TileType.Green) != 0) return "Green";
-            if ((type & TileType.Blue) != 0) return "Blue";
-            if ((type & TileType.Yellow) != 0) return "Yellow";
-            if ((type & TileType.Purple) != 0) return "Purple";
-            if ((type & TileType.Orange) != 0) return "Orange";
+            if (type == ElementType.Item1) return "Red";
+            if (type == ElementType.Item2) return "Green";
+            if (type == ElementType.Item3) return "Blue";
+            if (type == ElementType.Item4) return "Yellow";
+            if (type == ElementType.Item5) return "Purple";
+            if (type == ElementType.Item6) return "Orange";
             return "Unknown";
         }
     }

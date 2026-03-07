@@ -27,7 +27,7 @@ public class PlayerDestroyAnimationTests
         var spawnCmd = new SpawnTileCommand
         {
             TileId = tileId,
-            Type = TileType.Red,
+            Type = ElementType.Item1,
             Bomb = BombType.None,
             GridPos = new Match3.Core.Models.Grid.Position(0, 0),
             SpawnPos = new Vector2(0, 0),

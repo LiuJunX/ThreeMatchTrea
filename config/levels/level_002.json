@@ -7,10 +7,11 @@
   "moveLimit": 25,
   "targetDifficulty": 0.35,
   "objectives": [
-    { "targetLayer": "Tile", "elementType": 256, "targetCount": 15 },
-    { "targetLayer": "Tile", "elementType": 2048, "targetCount": 15 }
+    { "targetLayer": "Tile", "elementType": 2, "targetCount": 15 },
+    { "targetLayer": "Tile", "elementType": 5, "targetCount": 15 }
   ],
-  "grid": [
+  "grid": null,
+  "cells": [
     1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 0, 1, 1, 1,

@@ -55,7 +55,7 @@ public class ExplosionSystem : IExplosionSystem
 
                     // Suspend the tile immediately to block falling
                     var tile = state.GetTile(x, y);
-                    if (tile.Type != TileType.None)
+                    if (tile.Type != ElementType.None)
                     {
                         tile.IsSuspended = true;
                         state.SetTile(x, y, tile);
@@ -68,6 +68,12 @@ public class ExplosionSystem : IExplosionSystem
     }
 
     public void CreateTargetedExplosion(ref GameState state, Position origin, IEnumerable<Position> targets)
+        => CreateTargetedExplosion(ref state, origin, targets, WaveInterval);
+
+    public void CreateTargetedExplosion(ref GameState state, Position origin, IEnumerable<Position> targets, float waveInterval)
+        => CreateTargetedExplosion(ref state, origin, targets, waveInterval, 1f);
+
+    public void CreateTargetedExplosion(ref GameState state, Position origin, IEnumerable<Position> targets, float waveInterval, float acceleration)
     {
         // 1. Calculate MaxRadius
         int maxRadius = 0;
@@ -82,7 +88,7 @@ public class ExplosionSystem : IExplosionSystem
 
         // 2. Initialize Explosion
         var explosion = Pools.Obtain<Explosion>();
-        explosion.Initialize(origin, maxRadius, WaveInterval);
+        explosion.Initialize(origin, maxRadius, waveInterval, acceleration);
 
         // 3. Populate AffectedArea and Suspend
         foreach (var pos in targets)
@@ -92,7 +98,7 @@ public class ExplosionSystem : IExplosionSystem
             if (pos.X >= 0 && pos.X < state.Width && pos.Y >= 0 && pos.Y < state.Height)
             {
                 var tile = state.GetTile(pos.X, pos.Y);
-                if (tile.Type != TileType.None)
+                if (tile.Type != ElementType.None)
                 {
                     tile.IsSuspended = true;
                     state.SetTile(pos.X, pos.Y, tile);
@@ -122,6 +128,10 @@ public class ExplosionSystem : IExplosionSystem
             {
                 explosion.Timer -= explosion.WaveInterval;
                 ProcessWave(ref state, explosion, tick, simTime, eventCollector, triggeredBombs);
+
+                // Apply acceleration: shrink interval for next wave
+                if (explosion.Acceleration != 1f)
+                    explosion.WaveInterval *= explosion.Acceleration;
             }
 
             if (explosion.IsFinished)
@@ -167,7 +177,7 @@ public class ExplosionSystem : IExplosionSystem
 
                     // Clear suspended flag on the tile (cover absorbed the hit)
                     var suspendedTile = state.GetTile(pos.X, pos.Y);
-                    if (suspendedTile.Type != TileType.None)
+                    if (suspendedTile.Type != ElementType.None)
                     {
                         suspendedTile.IsSuspended = false;
                         state.SetTile(pos.X, pos.Y, suspendedTile);
@@ -178,7 +188,7 @@ public class ExplosionSystem : IExplosionSystem
                 var tile = state.GetTile(pos.X, pos.Y);
 
                 // If tile exists
-                if (tile.Type != TileType.None)
+                if (tile.Type != ElementType.None)
                 {
                     // Check for chain reaction (Bombs)
                     // If it's a bomb and NOT the origin (which is the source of this explosion), trigger it
@@ -210,7 +220,7 @@ public class ExplosionSystem : IExplosionSystem
                     _objectiveSystem?.OnTileDestroyed(ref state, tile.Type, tick, simTime, eventCollector);
 
                     // Destroy (Set to None, clears IsSuspended)
-                    state.SetTile(pos.X, pos.Y, new Tile(0, TileType.None, pos.X, pos.Y));
+                    state.SetTile(pos.X, pos.Y, new Tile(0, ElementType.None, pos.X, pos.Y));
 
                     // Notify ground layer
                     _groundSystem.OnTileDestroyed(ref state, pos, tick, simTime, eventCollector);
@@ -219,7 +229,7 @@ public class ExplosionSystem : IExplosionSystem
                 {
                     // If it was somehow suspended (e.g. from a previous overlapping explosion?), clear it
                     // Creating a new Tile clears flags.
-                    state.SetTile(pos.X, pos.Y, new Tile(0, TileType.None, pos.X, pos.Y));
+                    state.SetTile(pos.X, pos.Y, new Tile(0, ElementType.None, pos.X, pos.Y));
                 }
             }
         }

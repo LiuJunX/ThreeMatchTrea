@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
@@ -34,8 +34,8 @@ namespace Match3.Core.Tests.Systems.Physics
             var gravity = new RealtimeGravitySystem(config, rng);
 
             // Initialize tiles with ID = 0
-            state.SetTile(0, 0, new Tile(0, TileType.Normal, 0, 0));
-            state.SetTile(1, 0, new Tile(0, TileType.Normal, 1, 0));
+            state.SetTile(0, 0, new Tile(0, ElementType.Item1, 0, 0));
+            state.SetTile(1, 0, new Tile(0, ElementType.Item1, 1, 0));
 
             // Act
             // Run enough frames for them to fall at least one cell
@@ -56,12 +56,12 @@ namespace Match3.Core.Tests.Systems.Physics
             // Let's check if they are "Falling" or moved.
             
             // Get the tiles (they might have moved to y=1)
-            var tileA_Pos = state.GetTile(0, 0).Type == TileType.None ? state.GetTile(0, 1) : state.GetTile(0, 0);
-            var tileB_Pos = state.GetTile(1, 0).Type == TileType.None ? state.GetTile(1, 1) : state.GetTile(1, 0);
+            var tileA_Pos = state.GetTile(0, 0).Type == ElementType.None ? state.GetTile(0, 1) : state.GetTile(0, 0);
+            var tileB_Pos = state.GetTile(1, 0).Type == ElementType.None ? state.GetTile(1, 1) : state.GetTile(1, 0);
 
             // Both should be valid tiles
-            Assert.NotEqual(TileType.None, tileA_Pos.Type);
-            Assert.NotEqual(TileType.None, tileB_Pos.Type);
+            Assert.NotEqual(ElementType.None, tileA_Pos.Type);
+            Assert.NotEqual(ElementType.None, tileB_Pos.Type);
 
             // Both should have non-zero velocity or position change
             bool aMoved = tileA_Pos.Position.Y > 0.01f;
@@ -72,3 +72,5 @@ namespace Match3.Core.Tests.Systems.Physics
         }
     }
 }
+
+

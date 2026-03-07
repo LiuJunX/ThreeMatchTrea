@@ -475,8 +475,8 @@ public sealed class DeepAnalysisService
 
         if (prog.TargetLayer == ObjectiveTargetLayer.Tile)
         {
-            var tileType = (TileType)prog.ElementType;
-            return $"{tileType}";
+            var elementType = (ElementType)prog.ElementType;
+            return $"{elementType}";
         }
 
         return $"{layerName}_{prog.ElementType}";

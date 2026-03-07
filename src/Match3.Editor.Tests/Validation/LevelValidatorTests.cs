@@ -11,12 +11,12 @@ namespace Match3.Editor.Tests.Validation
         {
             var config = new LevelConfig(4, 4);
             for (int i = 0; i < config.Grid.Length; i++)
-                config.Grid[i] = TileType.Red;
+                config.Grid[i] = ElementType.Item1;
             config.MoveLimit = 10;
             config.Objectives[0] = new LevelObjective
             {
                 TargetLayer = ObjectiveTargetLayer.Tile,
-                ElementType = (int)TileType.Red,
+                ElementType = (int)ElementType.Item1,
                 TargetCount = 5
             };
             return config;
@@ -36,7 +36,7 @@ namespace Match3.Editor.Tests.Validation
             var validator = new LevelValidator();
             var config = MakeValidLevel();
             for (int i = 0; i < config.Grid.Length; i++)
-                config.Grid[i] = TileType.None;
+                config.Grid[i] = ElementType.None;
 
             var result = validator.Validate(config);
             Assert.True(result.HasErrors);
@@ -49,7 +49,10 @@ namespace Match3.Editor.Tests.Validation
             var validator = new LevelValidator();
             var config = MakeValidLevel();
             for (int i = 0; i < config.Grid.Length; i++)
-                config.Grid[i] = TileType.Hole;
+            {
+                config.Grid[i] = ElementType.None;
+                config.Cells[i] = CellKind.Void;
+            }
 
             var result = validator.Validate(config);
             Assert.True(result.HasErrors);
@@ -76,7 +79,7 @@ namespace Match3.Editor.Tests.Validation
             config.Objectives[0] = new LevelObjective
             {
                 TargetLayer = ObjectiveTargetLayer.Tile,
-                ElementType = (int)TileType.Red,
+                ElementType = (int)ElementType.Item1,
                 TargetCount = 0
             };
 

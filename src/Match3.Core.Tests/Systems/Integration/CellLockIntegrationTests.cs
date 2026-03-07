@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
@@ -32,8 +32,8 @@ public class CellLockIntegrationTests
 
     private class FixedSpawnModel : ISpawnModel
     {
-        public TileType TypeToSpawn { get; set; } = TileType.Blue;
-        public TileType Predict(ref GameState state, int spawnX, in SpawnContext context) => TypeToSpawn;
+        public ElementType TypeToSpawn { get; set; } = ElementType.Item3;
+        public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context) => TypeToSpawn;
     }
 
     public CellLockIntegrationTests(ITestOutputHelper output)
@@ -56,10 +56,10 @@ public class CellLockIntegrationTests
         // 0: Red (should fall)
         // 1: empty + ReceiveLock
         // 2: empty
-        var tile = new Tile(1, TileType.Red, 0, 0);
+        var tile = new Tile(1, ElementType.Item1, 0, 0);
         tile.Position = new Vector2(0, 0);
         state.SetTile(0, 0, tile);
-        // rows 1 and 2 are empty (TileType.None by default)
+        // rows 1 and 2 are empty (ElementType.None by default)
 
         // Lock row 1 to refuse incoming
         state.Lock(0, 1, CellLockType.Receive);
@@ -72,10 +72,10 @@ public class CellLockIntegrationTests
         helper.UpdateUntilStable(ref state, gravity, animation, maxFrames: 120);
 
         // Row 1 should remain empty (locked)
-        Assert.Equal(TileType.None, state.GetTile(0, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(0, 1).Type);
         // Red cannot reach row 2 because row 1 blocks the path
         // It stays at row 0
-        Assert.Equal(TileType.Red, state.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(0, 0).Type);
     }
 
     #endregion
@@ -95,15 +95,15 @@ public class CellLockIntegrationTests
         // Lock column 1 to refuse refill
         state.Lock(1, 0, CellLockType.Receive);
 
-        var spawnModel = new FixedSpawnModel { TypeToSpawn = TileType.Green };
+        var spawnModel = new FixedSpawnModel { TypeToSpawn = ElementType.Item2 };
         var refill = new RealtimeRefillSystem(spawnModel);
 
         refill.Update(ref state);
 
         // Column 0 and 2 should get tiles, column 1 should remain empty
-        Assert.NotEqual(TileType.None, state.GetTile(0, 0).Type);
-        Assert.Equal(TileType.None, state.GetTile(1, 0).Type);
-        Assert.NotEqual(TileType.None, state.GetTile(2, 0).Type);
+        Assert.NotEqual(ElementType.None, state.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.None, state.GetTile(1, 0).Type);
+        Assert.NotEqual(ElementType.None, state.GetTile(2, 0).Type);
     }
 
     #endregion
@@ -120,7 +120,7 @@ public class CellLockIntegrationTests
         var state = new GameState(1, 3, 6, rng);
 
         // Row 0: empty, Row 1: Red with DropLock, Row 2: empty
-        var tile = new Tile(1, TileType.Red, 0, 1);
+        var tile = new Tile(1, ElementType.Item1, 0, 1);
         tile.Position = new Vector2(0, 1);
         state.SetTile(0, 1, tile);
 
@@ -134,7 +134,7 @@ public class CellLockIntegrationTests
         helper.UpdateUntilStable(ref state, gravity, animation, maxFrames: 120);
 
         // Red should stay at row 1, not fall to row 2
-        Assert.Equal(TileType.Red, state.GetTile(0, 1).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(0, 1).Type);
         Assert.False(state.GetTile(0, 1).IsFalling);
     }
 
@@ -151,9 +151,9 @@ public class CellLockIntegrationTests
         var rng = new StubRandom();
         var state = new GameState(3, 1, 6, rng);
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
 
         // Lock the middle tile for matching
         state.Lock(1, 0, CellLockType.Matching);
@@ -176,7 +176,7 @@ public class CellLockIntegrationTests
     {
         var rng = new StubRandom();
         var state = new GameState(3, 3, 6, rng);
-        state.SetTile(1, 1, new Tile(1, TileType.Red, 1, 1));
+        state.SetTile(1, 1, new Tile(1, ElementType.Item1, 1, 1));
 
         Assert.True(state.CanInteract(1, 1));
 
@@ -197,7 +197,7 @@ public class CellLockIntegrationTests
     {
         var rng = new StubRandom();
         var state = new GameState(3, 3, 6, rng);
-        state.SetTile(1, 1, new Tile(1, TileType.Red, 1, 1));
+        state.SetTile(1, 1, new Tile(1, ElementType.Item1, 1, 1));
 
         state.Lock(1, 1, LockPreset.Frozen);
 
@@ -219,7 +219,7 @@ public class CellLockIntegrationTests
     {
         var rng = new StubRandom();
         var state = new GameState(3, 3, 6, rng);
-        state.SetTile(1, 1, new Tile(1, TileType.Red, 1, 1));
+        state.SetTile(1, 1, new Tile(1, ElementType.Item1, 1, 1));
 
         // Two sources lock the same cell
         var tokenA = state.AcquireLock(1, 1, CellLockType.Swap);
@@ -248,7 +248,7 @@ public class CellLockIntegrationTests
     {
         var rng = new StubRandom();
         var state = new GameState(3, 3, 6, rng);
-        state.SetTile(1, 1, new Tile(1, TileType.Red, 1, 1));
+        state.SetTile(1, 1, new Tile(1, ElementType.Item1, 1, 1));
 
         // Cover alone blocks
         state.SetCover(new Position(1, 1), new Cover(CoverType.Cage, health: 1));
@@ -321,8 +321,8 @@ public class CellLockIntegrationTests
         var state = new GameState(3, 5, 6, rng);
 
         // Column 1: simulate merge — rows 3,4 cleared, rows 0-2 have tiles above
-        state.SetTile(1, 0, new Tile(10, TileType.Green, 1, 0));
-        state.SetTile(1, 1, new Tile(11, TileType.Blue, 1, 1));
+        state.SetTile(1, 0, new Tile(10, ElementType.Item2, 1, 0));
+        state.SetTile(1, 1, new Tile(11, ElementType.Item3, 1, 1));
         // rows 2,3,4 empty (merge cleared them)
 
         // Lock rows 2,3,4 with Receive (Bridge would do this during merge)
@@ -338,12 +338,12 @@ public class CellLockIntegrationTests
         helper.UpdateUntilStable(ref state, gravity, animation, maxFrames: 120);
 
         // Tiles should NOT have fallen into locked rows
-        Assert.Equal(TileType.None, state.GetTile(1, 2).Type);
-        Assert.Equal(TileType.None, state.GetTile(1, 3).Type);
-        Assert.Equal(TileType.None, state.GetTile(1, 4).Type);
+        Assert.Equal(ElementType.None, state.GetTile(1, 2).Type);
+        Assert.Equal(ElementType.None, state.GetTile(1, 3).Type);
+        Assert.Equal(ElementType.None, state.GetTile(1, 4).Type);
         // Original tiles stay at top (can't fall past locked cells)
-        Assert.Equal(TileType.Green, state.GetTile(1, 0).Type);
-        Assert.Equal(TileType.Blue, state.GetTile(1, 1).Type);
+        Assert.Equal(ElementType.Item2, state.GetTile(1, 0).Type);
+        Assert.Equal(ElementType.Item3, state.GetTile(1, 1).Type);
     }
 
     /// <summary>
@@ -356,7 +356,7 @@ public class CellLockIntegrationTests
         var state = new GameState(1, 3, 6, rng);
 
         // Single column: tile at row 0, rows 1-2 empty and locked
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
         var token1 = state.AcquireLock(0, 1, CellLockType.Receive);
         var token2 = state.AcquireLock(0, 2, CellLockType.Receive);
 
@@ -367,7 +367,7 @@ public class CellLockIntegrationTests
 
         // Run gravity while locked — tile stays at top
         helper.UpdateUntilStable(ref state, gravity, animation, maxFrames: 120);
-        Assert.Equal(TileType.Red, state.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(0, 0).Type);
 
         // Release locks
         state.ReleaseLock(token1);
@@ -375,8 +375,8 @@ public class CellLockIntegrationTests
 
         // Run gravity again — tile should fall to bottom
         helper.UpdateUntilStable(ref state, gravity, animation, maxFrames: 120);
-        Assert.Equal(TileType.Red, state.GetTile(0, 2).Type);
-        Assert.Equal(TileType.None, state.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(0, 2).Type);
+        Assert.Equal(ElementType.None, state.GetTile(0, 0).Type);
     }
 
     /// <summary>
@@ -389,9 +389,9 @@ public class CellLockIntegrationTests
         var state = new GameState(3, 3, 6, rng);
 
         // Tiles at row 0 in all 3 columns
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Green, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Blue, 2, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item2, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item3, 2, 0));
 
         // Lock only column 1 (merge column)
         state.AcquireLock(1, 1, CellLockType.Receive);
@@ -405,11 +405,11 @@ public class CellLockIntegrationTests
         helper.UpdateUntilStable(ref state, gravity, animation, maxFrames: 120);
 
         // Column 0 and 2: tiles should have fallen to bottom
-        Assert.Equal(TileType.Red, state.GetTile(0, 2).Type);
-        Assert.Equal(TileType.Blue, state.GetTile(2, 2).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(0, 2).Type);
+        Assert.Equal(ElementType.Item3, state.GetTile(2, 2).Type);
 
         // Column 1: tile blocked — can't fall past locked cells
-        Assert.Equal(TileType.Green, state.GetTile(1, 0).Type);
+        Assert.Equal(ElementType.Item2, state.GetTile(1, 0).Type);
     }
 
     #endregion
@@ -432,3 +432,4 @@ public class CellLockIntegrationTests
 
     #endregion
 }
+

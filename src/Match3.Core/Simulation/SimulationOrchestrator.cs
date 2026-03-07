@@ -95,7 +95,7 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
 
             foreach (var pos in triggeredBombs)
             {
-                _powerUpHandler.ActivateBomb(ref state, pos);
+                _powerUpHandler.ActivateBomb(ref state, pos, tick, simTime, events, isChainReaction: true);
             }
         }
         finally

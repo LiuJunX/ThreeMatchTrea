@@ -32,41 +32,31 @@ namespace Match3.Editor.Helpers
         public const string ICON_COVER_CHAIN = "⛓️";
         public const string ICON_COVER_BUBBLE = "🫧";
 
-        public static string GetTileColor(TileType t)
+        public static string GetTileColor(ElementType t) => t switch
         {
-            if (t.HasFlag(TileType.Red)) return COLOR_RED;
-            if (t.HasFlag(TileType.Green)) return COLOR_GREEN;
-            if (t.HasFlag(TileType.Blue)) return COLOR_BLUE;
-            if (t.HasFlag(TileType.Yellow)) return COLOR_YELLOW;
-            if (t.HasFlag(TileType.Purple)) return COLOR_PURPLE;
-            if (t.HasFlag(TileType.Orange)) return COLOR_ORANGE;
-            if (t.HasFlag(TileType.Rainbow)) return COLOR_RAINBOW;
-            
-            return t switch
-            {
-                TileType.None => COLOR_NONE,
-                TileType.Bomb => COLOR_BOMB_BG,
-                _ => COLOR_DEFAULT
-            };
-        }
+            ElementType.Item1 => COLOR_RED,
+            ElementType.Item2 => COLOR_GREEN,
+            ElementType.Item3 => COLOR_BLUE,
+            ElementType.Item4 => COLOR_YELLOW,
+            ElementType.Item5 => COLOR_PURPLE,
+            ElementType.Item6 => COLOR_ORANGE,
+            ElementType.Universal => COLOR_RAINBOW,
+            ElementType.None => COLOR_NONE,
+            _ => COLOR_DEFAULT
+        };
 
-        public static string GetTileColorForCanvas(TileType t)
+        public static string GetTileColorForCanvas(ElementType t) => t switch
         {
-             if (t.HasFlag(TileType.Red)) return COLOR_RED;
-            if (t.HasFlag(TileType.Green)) return COLOR_GREEN;
-            if (t.HasFlag(TileType.Blue)) return COLOR_BLUE;
-            if (t.HasFlag(TileType.Yellow)) return COLOR_YELLOW;
-            if (t.HasFlag(TileType.Purple)) return COLOR_PURPLE;
-            if (t.HasFlag(TileType.Orange)) return COLOR_ORANGE;
-            if (t.HasFlag(TileType.Rainbow)) return COLOR_RAINBOW;
-            
-            return t switch
-            {
-                TileType.None => COLOR_TRANSPARENT,
-                TileType.Bomb => COLOR_BOMB_BG,
-                _ => COLOR_DEFAULT
-            };
-        }
+            ElementType.Item1 => COLOR_RED,
+            ElementType.Item2 => COLOR_GREEN,
+            ElementType.Item3 => COLOR_BLUE,
+            ElementType.Item4 => COLOR_YELLOW,
+            ElementType.Item5 => COLOR_PURPLE,
+            ElementType.Item6 => COLOR_ORANGE,
+            ElementType.Universal => COLOR_RAINBOW,
+            ElementType.None => COLOR_TRANSPARENT,
+            _ => COLOR_DEFAULT
+        };
 
         public static string GetGroundColor(GroundType g) => g switch
         {
@@ -93,14 +83,11 @@ namespace Match3.Editor.Helpers
             _ => ""
         };
 
-        public static string GetTileCheckmarkClass(TileType t)
+        public static string GetTileCheckmarkClass(ElementType t) => t switch
         {
-            return t switch
-            {
-                TileType.None => "text-dark",
-                TileType.Yellow => "text-dark",
-                _ => "text-white"
-            };
-        }
+            ElementType.None => "text-dark",
+            ElementType.Item4 => "text-dark", // Yellow
+            _ => "text-white"
+        };
     }
 }

@@ -63,8 +63,27 @@ internal sealed class SharedSimulationContext : IDisposable
     public ClassicMatchFinder GetMatchFinder() =>
         _matchFinder ??= new ClassicMatchFinder(BombGenerator);
 
-    public StandardMatchProcessor GetMatchProcessor() =>
-        _matchProcessor ??= new StandardMatchProcessor(_scoreSystem, BombEffects);
+    public StandardMatchProcessor GetMatchProcessor()
+    {
+        if (_matchProcessor == null)
+        {
+            var objSys = CreateObjectiveSystem(); // Use new instance or shared? Shared context seems to create new ObjectiveSystem for preview, but main simulation might need one.
+            // Wait, CreateObjectiveSystem returns a NEW one.
+            // But GetMatchProcessor is used for the "main" simulation context.
+            // I should probably use a persistent one if this context is long-lived.
+            // But SharedSimulationContext says "thread unsafe, each thread should have its own".
+            // So I can create one and store it?
+            // But CreateObjectiveSystem() is public.
+            // Let's create one here locally or use null if not needed?
+            // StandardMatchProcessor needs CoverSystem and GroundSystem.
+            // They need ObjectiveSystem.
+            var obj = CreateObjectiveSystem();
+            var cover = new Systems.Layers.CoverSystem(obj);
+            var ground = new Systems.Layers.GroundSystem(obj);
+            _matchProcessor = new StandardMatchProcessor(_scoreSystem, cover, ground, BombEffects);
+        }
+        return _matchProcessor;
+    }
 
     public PowerUpHandler GetPowerUpHandler() =>
         _powerUpHandler ??= new PowerUpHandler(_scoreSystem);
@@ -254,30 +273,26 @@ internal sealed class SharedSimulationContext : IDisposable
     {
         private int _typeCount;
         private int _counter;
-        private static readonly TileType[] AllTypes =
-        {
-            TileType.Red, TileType.Blue, TileType.Green,
-            TileType.Yellow, TileType.Purple, TileType.Orange
-        };
 
-        public AnalysisSpawnModel(int typeCount) => _typeCount = Math.Min(typeCount, AllTypes.Length);
+        public AnalysisSpawnModel(int typeCount) => _typeCount = typeCount;
 
         public void Reset(int typeCount)
         {
-            _typeCount = Math.Min(typeCount, AllTypes.Length);
+            _typeCount = typeCount;
             _counter = 0;
         }
 
-        public TileType Predict(ref GameState state, int spawnX, in Systems.Spawning.SpawnContext context)
+        public ElementType Predict(ref GameState state, int spawnX, in Systems.Spawning.SpawnContext context)
         {
             int idx = (_counter++ + spawnX) % _typeCount;
-            return AllTypes[idx];
+            // Map index to ElementType (1-based, assuming Item1...Item6)
+            return (ElementType)(idx + 1);
         }
     }
 
     private sealed class SimpleScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(Models.Gameplay.MatchGroup match) => match.Positions.Count * 10;
-        public int CalculateSpecialMoveScore(TileType t1, BombType b1, TileType t2, BombType b2) => 100;
+        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 100;
     }
 }

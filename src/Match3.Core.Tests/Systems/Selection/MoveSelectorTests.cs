@@ -1,4 +1,4 @@
-using Match3.Core.Config;
+﻿using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Matching;
@@ -53,7 +53,7 @@ public class MoveSelectorTests
         {
             for (int x = 0; x < width; x++)
             {
-                state.SetTile(x, y, new Tile(y * width + x, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(y * width + x, ElementType.None, x, y));
             }
         }
         return state;
@@ -74,10 +74,10 @@ public class MoveSelectorTests
         var random = new StubRandom(2, 0);
         var state = CreateEmptyState(8, 8, random);
 
-        state.SetTile(0, 0, new Tile(0, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(1, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(2, TileType.Blue, 2, 0));
-        state.SetTile(3, 0, new Tile(3, TileType.Red, 3, 0));
+        state.SetTile(0, 0, new Tile(0, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(2, ElementType.Item3, 2, 0));
+        state.SetTile(3, 0, new Tile(3, ElementType.Item1, 3, 0));
 
         var selector = new RandomMoveSelector(CreateMatchFinder());
 
@@ -112,16 +112,16 @@ public class MoveSelectorTests
         var state = CreateEmptyState(4, 2);
 
         // R R B R - 可以交换 (2,0) 和 (3,0)
-        state.SetTile(0, 0, new Tile(0, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(1, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(2, TileType.Blue, 2, 0));
-        state.SetTile(3, 0, new Tile(3, TileType.Red, 3, 0));
+        state.SetTile(0, 0, new Tile(0, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(2, ElementType.Item3, 2, 0));
+        state.SetTile(3, 0, new Tile(3, ElementType.Item1, 3, 0));
 
         // 第二行填充其他颜色
-        state.SetTile(0, 1, new Tile(4, TileType.Green, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Yellow, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.Purple, 2, 1));
-        state.SetTile(3, 1, new Tile(7, TileType.Orange, 3, 1));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item2, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item4, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item5, 2, 1));
+        state.SetTile(3, 1, new Tile(7, ElementType.Item6, 3, 1));
 
         var selector = new RandomMoveSelector(CreateMatchFinder());
 
@@ -143,11 +143,11 @@ public class MoveSelectorTests
         var random = new StubRandom(0, 0);
         var state = CreateEmptyState(3, 3, random);
 
-        state.SetTile(0, 0, new Tile(0, TileType.Red, 0, 0));
-        state.SetTile(0, 1, new Tile(3, TileType.Blue, 0, 1));
-        state.SetTile(0, 2, new Tile(6, TileType.Red, 0, 2));
-        state.SetTile(1, 0, new Tile(1, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(2, TileType.Red, 2, 0));
+        state.SetTile(0, 0, new Tile(0, ElementType.Item1, 0, 0));
+        state.SetTile(0, 1, new Tile(3, ElementType.Item3, 0, 1));
+        state.SetTile(0, 2, new Tile(6, ElementType.Item1, 0, 2));
+        state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(2, ElementType.Item1, 2, 0));
 
         var selector = new RandomMoveSelector(CreateMatchFinder());
 
@@ -165,10 +165,10 @@ public class MoveSelectorTests
         // Arrange: 小棋盘也不应该崩溃，即使找不到移动
         var state = CreateEmptyState(2, 2);
 
-        state.SetTile(0, 0, new Tile(0, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(1, TileType.Green, 1, 0));
-        state.SetTile(0, 1, new Tile(2, TileType.Blue, 0, 1));
-        state.SetTile(1, 1, new Tile(3, TileType.Yellow, 1, 1));
+        state.SetTile(0, 0, new Tile(0, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(1, ElementType.Item2, 1, 0));
+        state.SetTile(0, 1, new Tile(2, ElementType.Item3, 0, 1));
+        state.SetTile(1, 1, new Tile(3, ElementType.Item4, 1, 1));
 
         var selector = new RandomMoveSelector(CreateMatchFinder());
 
@@ -188,10 +188,10 @@ public class MoveSelectorTests
         var random = new StubRandom(2, 0);
         var state = CreateEmptyState(8, 8, random);
 
-        state.SetTile(0, 0, new Tile(0, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(1, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(2, TileType.Blue, 2, 0));
-        state.SetTile(3, 0, new Tile(3, TileType.Red, 3, 0));
+        state.SetTile(0, 0, new Tile(0, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(2, ElementType.Item3, 2, 0));
+        state.SetTile(3, 0, new Tile(3, ElementType.Item1, 3, 0));
 
         // 保存原始状态
         var originalTileAt2 = state.GetTile(2, 0);
@@ -231,15 +231,15 @@ public class MoveSelectorTests
         var random = new StubRandom(0);
         var state = CreateEmptyState(4, 2, random);
 
-        state.SetTile(0, 0, new Tile(0, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(1, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(2, TileType.Blue, 2, 0));
-        state.SetTile(3, 0, new Tile(3, TileType.Red, 3, 0));
+        state.SetTile(0, 0, new Tile(0, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(2, ElementType.Item3, 2, 0));
+        state.SetTile(3, 0, new Tile(3, ElementType.Item1, 3, 0));
 
-        state.SetTile(0, 1, new Tile(4, TileType.Green, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Yellow, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.Red, 2, 1));
-        state.SetTile(3, 1, new Tile(7, TileType.Orange, 3, 1));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item2, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item4, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item1, 2, 1));
+        state.SetTile(3, 1, new Tile(7, ElementType.Item6, 3, 1));
 
         var selector = new WeightedMoveSelector(CreateMatchFinder(), random);
 
@@ -259,16 +259,16 @@ public class MoveSelectorTests
         var state = CreateEmptyState(4, 2, random);
 
         // 放置一个炸弹
-        var bombTile = new Tile(0, TileType.Red, 0, 0) { Bomb = BombType.Horizontal };
+        var bombTile = new Tile(0, ElementType.Item1, 0, 0) { Bomb = BombType.Horizontal };
         state.SetTile(0, 0, bombTile);
-        state.SetTile(1, 0, new Tile(1, TileType.Blue, 1, 0));
-        state.SetTile(2, 0, new Tile(2, TileType.Green, 2, 0));
-        state.SetTile(3, 0, new Tile(3, TileType.Yellow, 3, 0));
+        state.SetTile(1, 0, new Tile(1, ElementType.Item3, 1, 0));
+        state.SetTile(2, 0, new Tile(2, ElementType.Item2, 2, 0));
+        state.SetTile(3, 0, new Tile(3, ElementType.Item4, 3, 0));
 
-        state.SetTile(0, 1, new Tile(4, TileType.Purple, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Orange, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.Red, 2, 1));
-        state.SetTile(3, 1, new Tile(7, TileType.Blue, 3, 1));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item5, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item6, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item1, 2, 1));
+        state.SetTile(3, 1, new Tile(7, ElementType.Item3, 3, 1));
 
         var selector = new WeightedMoveSelector(CreateMatchFinder(), random);
 
@@ -296,17 +296,17 @@ public class MoveSelectorTests
         var random = new StubRandom(0);
         var state = CreateEmptyState(4, 2, random);
 
-        var bombA = new Tile(0, TileType.Red, 0, 0) { Bomb = BombType.Horizontal };
-        var bombB = new Tile(1, TileType.Blue, 1, 0) { Bomb = BombType.Vertical };
+        var bombA = new Tile(0, ElementType.Item1, 0, 0) { Bomb = BombType.Horizontal };
+        var bombB = new Tile(1, ElementType.Item3, 1, 0) { Bomb = BombType.Vertical };
         state.SetTile(0, 0, bombA);
         state.SetTile(1, 0, bombB);
-        state.SetTile(2, 0, new Tile(2, TileType.Green, 2, 0));
-        state.SetTile(3, 0, new Tile(3, TileType.Yellow, 3, 0));
+        state.SetTile(2, 0, new Tile(2, ElementType.Item2, 2, 0));
+        state.SetTile(3, 0, new Tile(3, ElementType.Item4, 3, 0));
 
-        state.SetTile(0, 1, new Tile(4, TileType.Purple, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Orange, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.Red, 2, 1));
-        state.SetTile(3, 1, new Tile(7, TileType.Blue, 3, 1));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item5, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item6, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item1, 2, 1));
+        state.SetTile(3, 1, new Tile(7, ElementType.Item3, 3, 1));
 
         var selector = new WeightedMoveSelector(CreateMatchFinder(), random);
 
@@ -341,15 +341,15 @@ public class MoveSelectorTests
         var random = new StubRandom(0);
         var state = CreateEmptyState(4, 2, random);
 
-        state.SetTile(0, 0, new Tile(0, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(1, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(2, TileType.Blue, 2, 0));
-        state.SetTile(3, 0, new Tile(3, TileType.Red, 3, 0));
+        state.SetTile(0, 0, new Tile(0, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(2, ElementType.Item3, 2, 0));
+        state.SetTile(3, 0, new Tile(3, ElementType.Item1, 3, 0));
 
-        state.SetTile(0, 1, new Tile(4, TileType.Green, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Yellow, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.Red, 2, 1));
-        state.SetTile(3, 1, new Tile(7, TileType.Orange, 3, 1));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item2, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item4, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item1, 2, 1));
+        state.SetTile(3, 1, new Tile(7, ElementType.Item6, 3, 1));
 
         var selector = new WeightedMoveSelector(CreateMatchFinder(), random);
 
@@ -397,17 +397,17 @@ public class MoveSelectorTests
         var random = new StubRandom(0);
         var state = CreateEmptyState(5, 2, random);
 
-        state.SetTile(0, 0, new Tile(0, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(1, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(2, TileType.Blue, 2, 0));
-        state.SetTile(3, 0, new Tile(3, TileType.Red, 3, 0));
-        state.SetTile(4, 0, new Tile(4, TileType.Red, 4, 0));
+        state.SetTile(0, 0, new Tile(0, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(2, ElementType.Item3, 2, 0));
+        state.SetTile(3, 0, new Tile(3, ElementType.Item1, 3, 0));
+        state.SetTile(4, 0, new Tile(4, ElementType.Item1, 4, 0));
 
-        state.SetTile(0, 1, new Tile(5, TileType.Green, 0, 1));
-        state.SetTile(1, 1, new Tile(6, TileType.Yellow, 1, 1));
-        state.SetTile(2, 1, new Tile(7, TileType.Red, 2, 1));
-        state.SetTile(3, 1, new Tile(8, TileType.Purple, 3, 1));
-        state.SetTile(4, 1, new Tile(9, TileType.Orange, 4, 1));
+        state.SetTile(0, 1, new Tile(5, ElementType.Item2, 0, 1));
+        state.SetTile(1, 1, new Tile(6, ElementType.Item4, 1, 1));
+        state.SetTile(2, 1, new Tile(7, ElementType.Item1, 2, 1));
+        state.SetTile(3, 1, new Tile(8, ElementType.Item5, 3, 1));
+        state.SetTile(4, 1, new Tile(9, ElementType.Item6, 4, 1));
 
         var selector = new WeightedMoveSelector(CreateMatchFinder(), random);
 
@@ -436,3 +436,4 @@ public class MoveSelectorTests
 
     #endregion
 }
+

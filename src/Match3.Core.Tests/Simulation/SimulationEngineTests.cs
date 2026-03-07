@@ -1,4 +1,4 @@
-using System.Linq;
+﻿using System.Linq;
 using Match3.Core.Config;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
@@ -30,12 +30,12 @@ public class SimulationEngineTests
     private class StubScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(MatchGroup match) => 10;
-        public int CalculateSpecialMoveScore(TileType t1, BombType b1, TileType t2, BombType b2) => 100;
+        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 100;
     }
 
     private class StubSpawnModel : ISpawnModel
     {
-        public TileType Predict(ref GameState state, int spawnX, in SpawnContext context) => TileType.Blue;
+        public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context) => ElementType.Item3;
     }
 
     private SimulationEngine CreateEngine(GameState state, IEventCollector? eventCollector = null)
@@ -47,7 +47,7 @@ public class SimulationEngineTests
         var bombGenerator = new BombGenerator();
         var matchFinder = new ClassicMatchFinder(bombGenerator);
         var scoreSystem = new StubScoreSystem();
-        var matchProcessor = new StandardMatchProcessor(scoreSystem, BombEffectRegistry.CreateDefault());
+        var matchProcessor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), BombEffectRegistry.CreateDefault());
         var powerUpHandler = new PowerUpHandler(scoreSystem);
 
         return new SimulationEngine(
@@ -403,14 +403,14 @@ public class SimulationEngineTests
         var state = new GameState(5, 5, 5, new StubRandom());
 
         // Row 0: R G R R R
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Green, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
-        state.SetTile(3, 0, new Tile(4, TileType.Red, 3, 0));
-        state.SetTile(4, 0, new Tile(5, TileType.Red, 4, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item2, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
+        state.SetTile(3, 0, new Tile(4, ElementType.Item1, 3, 0));
+        state.SetTile(4, 0, new Tile(5, ElementType.Item1, 4, 0));
 
         // Fill rest with non-matching pattern
-        var types = new[] { TileType.Blue, TileType.Yellow, TileType.Purple, TileType.Orange };
+        var types = new[] { ElementType.Item3, ElementType.Item4, ElementType.Item5, ElementType.Item6 };
         for (int y = 1; y < 5; y++)
         {
             for (int x = 0; x < 5; x++)
@@ -487,19 +487,19 @@ public class SimulationEngineTests
         var state = new GameState(5, 5, 5, new StubRandom());
 
         // Column 1: A G A A (rows 0-3)
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
-        state.SetTile(1, 1, new Tile(7, TileType.Green, 1, 1));
-        state.SetTile(1, 2, new Tile(12, TileType.Red, 1, 2));
-        state.SetTile(1, 3, new Tile(17, TileType.Red, 1, 3));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(1, 1, new Tile(7, ElementType.Item2, 1, 1));
+        state.SetTile(1, 2, new Tile(12, ElementType.Item1, 1, 2));
+        state.SetTile(1, 3, new Tile(17, ElementType.Item1, 1, 3));
 
         // Column 0: need A at (0,1) to swap with G(1,1)
-        state.SetTile(0, 0, new Tile(1, TileType.Blue, 0, 0));
-        state.SetTile(0, 1, new Tile(6, TileType.Red, 0, 1));  // This A will be swapped
-        state.SetTile(0, 2, new Tile(11, TileType.Blue, 0, 2));
-        state.SetTile(0, 3, new Tile(16, TileType.Blue, 0, 3));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item3, 0, 0));
+        state.SetTile(0, 1, new Tile(6, ElementType.Item1, 0, 1));  // This A will be swapped
+        state.SetTile(0, 2, new Tile(11, ElementType.Item3, 0, 2));
+        state.SetTile(0, 3, new Tile(16, ElementType.Item3, 0, 3));
 
         // Fill rest with non-matching pattern
-        var types = new[] { TileType.Blue, TileType.Yellow, TileType.Purple, TileType.Orange };
+        var types = new[] { ElementType.Item3, ElementType.Item4, ElementType.Item5, ElementType.Item6 };
         for (int y = 0; y < 5; y++)
         {
             for (int x = 2; x < 5; x++)
@@ -521,8 +521,8 @@ public class SimulationEngineTests
         var engine = CreateEngine(state, collector);
 
         // Verify initial state
-        Assert.Equal(TileType.Red, engine.State.GetTile(0, 1).Type); // A to swap
-        Assert.Equal(TileType.Green, engine.State.GetTile(1, 1).Type); // G to swap
+        Assert.Equal(ElementType.Item1, engine.State.GetTile(0, 1).Type); // A to swap
+        Assert.Equal(ElementType.Item2, engine.State.GetTile(1, 1).Type); // G to swap
 
         // Act: Swap A(0,1) with G(1,1)
         // After swap: G at (0,1), A at (1,1)
@@ -563,16 +563,16 @@ public class SimulationEngineTests
         var state = new GameState(5, 5, 5, new StubRandom());
 
         // Row 0: A A _ _ _
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
 
         // Row 1: A B A _ _
-        state.SetTile(0, 1, new Tile(6, TileType.Red, 0, 1));
-        state.SetTile(1, 1, new Tile(7, TileType.Blue, 1, 1));  // B - will be swapped
-        state.SetTile(2, 1, new Tile(8, TileType.Red, 2, 1));   // A - swap target
+        state.SetTile(0, 1, new Tile(6, ElementType.Item1, 0, 1));
+        state.SetTile(1, 1, new Tile(7, ElementType.Item3, 1, 1));  // B - will be swapped
+        state.SetTile(2, 1, new Tile(8, ElementType.Item1, 2, 1));   // A - swap target
 
         // Fill rest with non-matching pattern to prevent cascades
-        var types = new[] { TileType.Yellow, TileType.Purple, TileType.Orange, TileType.Green };
+        var types = new[] { ElementType.Item4, ElementType.Item5, ElementType.Item6, ElementType.Item2 };
         for (int y = 0; y < 5; y++)
         {
             for (int x = 0; x < 5; x++)
@@ -749,29 +749,29 @@ public class SimulationEngineTests
         var state = new GameState(5, 5, 4, new StubRandom());
 
         // 在 (0,0) 放置彩球
-        state.SetTile(0, 0, new Tile(1, TileType.Rainbow, 0, 0) { Bomb = BombType.Color });
+        state.SetTile(0, 0, new Tile(1, ElementType.Universal, 0, 0) { Bomb = BombType.Color });
 
         // 在 (1,0) 放置蓝色普通方块（将被交换）
-        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0));
 
         // 放置更多蓝色方块（应该被消除）
-        state.SetTile(2, 0, new Tile(3, TileType.Blue, 2, 0));
-        state.SetTile(0, 1, new Tile(4, TileType.Blue, 0, 1));
-        state.SetTile(2, 2, new Tile(5, TileType.Blue, 2, 2));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item3, 2, 0));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item3, 0, 1));
+        state.SetTile(2, 2, new Tile(5, ElementType.Item3, 2, 2));
 
         // 放置红色方块（不应该被消除）
-        state.SetTile(3, 0, new Tile(6, TileType.Red, 3, 0));
-        state.SetTile(4, 0, new Tile(7, TileType.Red, 4, 0));
-        state.SetTile(3, 1, new Tile(8, TileType.Red, 3, 1));
+        state.SetTile(3, 0, new Tile(6, ElementType.Item1, 3, 0));
+        state.SetTile(4, 0, new Tile(7, ElementType.Item1, 4, 0));
+        state.SetTile(3, 1, new Tile(8, ElementType.Item1, 3, 1));
 
         // 填充其余位置
-        var types = new[] { TileType.Green, TileType.Yellow, TileType.Purple };
+        var types = new[] { ElementType.Item2, ElementType.Item4, ElementType.Item5 };
         int id = 100;
         for (int y = 0; y < 5; y++)
         {
             for (int x = 0; x < 5; x++)
             {
-                if (state.GetTile(x, y).Type == TileType.None)
+                if (state.GetTile(x, y).Type == ElementType.None)
                 {
                     state.SetTile(x, y, new Tile(id++, types[(x + y) % types.Length], x, y));
                 }
@@ -1175,9 +1175,9 @@ public class SimulationEngineTests
         engine.Tick(0.016f);
 
         // Column 0 and 2 get refilled, column 1 stays empty
-        Assert.NotEqual(TileType.None, engine.State.GetTile(0, 0).Type);
-        Assert.Equal(TileType.None, engine.State.GetTile(1, 0).Type);
-        Assert.NotEqual(TileType.None, engine.State.GetTile(2, 0).Type);
+        Assert.NotEqual(ElementType.None, engine.State.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.None, engine.State.GetTile(1, 0).Type);
+        Assert.NotEqual(ElementType.None, engine.State.GetTile(2, 0).Type);
     }
 
     #endregion
@@ -1188,7 +1188,7 @@ public class SimulationEngineTests
     {
         // Create a 5x5 board with no matches
         var state = new GameState(5, 5, 4, new StubRandom());
-        var types = new[] { TileType.Red, TileType.Blue, TileType.Green, TileType.Yellow };
+        var types = new[] { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4 };
 
         for (int y = 0; y < 5; y++)
         {
@@ -1227,7 +1227,7 @@ public class SimulationEngineTests
     private GameState CreateNoMatchSwapState()
     {
         var state = new GameState(5, 5, 4, new StubRandom());
-        var types = new[] { TileType.Red, TileType.Blue, TileType.Green, TileType.Yellow };
+        var types = new[] { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4 };
 
         for (int y = 0; y < 5; y++)
         {
@@ -1256,14 +1256,14 @@ public class SimulationEngineTests
         var state = new GameState(5, 5, 4, new StubRandom());
 
         // First row: R B R R G - swapping (0,0) R with (1,0) B creates R R R match at 1,2,3
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
-        state.SetTile(3, 0, new Tile(4, TileType.Red, 3, 0));
-        state.SetTile(4, 0, new Tile(5, TileType.Green, 4, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
+        state.SetTile(3, 0, new Tile(4, ElementType.Item1, 3, 0));
+        state.SetTile(4, 0, new Tile(5, ElementType.Item2, 4, 0));
 
         // Fill rest with non-matching pattern
-        var types = new[] { TileType.Blue, TileType.Green, TileType.Yellow, TileType.Purple };
+        var types = new[] { ElementType.Item3, ElementType.Item2, ElementType.Item4, ElementType.Item5 };
         for (int y = 1; y < 5; y++)
         {
             for (int x = 0; x < 5; x++)
@@ -1279,3 +1279,5 @@ public class SimulationEngineTests
 
     #endregion
 }
+
+

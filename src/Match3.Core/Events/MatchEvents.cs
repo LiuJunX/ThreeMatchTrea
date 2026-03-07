@@ -13,7 +13,7 @@ namespace Match3.Core.Events;
 public sealed record MatchDetectedEvent : GameEvent
 {
     /// <summary>Type of tiles in the match.</summary>
-    public TileType Type { get; init; }
+    public ElementType Type { get; init; }
 
     /// <summary>All positions in the match.</summary>
     public IReadOnlyCollection<Position> Positions { get; init; } = Array.Empty<Position>();
@@ -46,7 +46,7 @@ public sealed record BombCreatedEvent : GameEvent
     public BombType BombType { get; init; }
 
     /// <summary>Base tile type of the bomb.</summary>
-    public TileType BaseType { get; init; }
+    public ElementType BaseType { get; init; }
 
     /// <inheritdoc />
     public override void Accept(IEventVisitor visitor) => visitor.Visit(this);

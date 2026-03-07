@@ -1,4 +1,4 @@
-using Match3.Core.Models.Enums;
+﻿using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Spawning;
 using Match3.Random;
@@ -24,7 +24,7 @@ public class BoardAnalyzerTests
         {
             for (int x = 0; x < width; x++)
             {
-                state.SetTile(x, y, new Tile(y * width + x, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(y * width + x, ElementType.None, x, y));
             }
         }
         return state;
@@ -48,10 +48,10 @@ public class BoardAnalyzerTests
     public void GetColorDistribution_MixedBoard_CountsCorrectly()
     {
         var state = CreateState(3, 3);
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Blue, 2, 0));
-        state.SetTile(0, 1, new Tile(4, TileType.Green, 0, 1));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item3, 2, 0));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item2, 0, 1));
 
         Span<int> counts = stackalloc int[6];
         BoardAnalyzer.GetColorDistribution(ref state, counts);
@@ -79,8 +79,8 @@ public class BoardAnalyzerTests
     public void SimulateDropTarget_PartiallyFilled_ReturnsFirstEmpty()
     {
         var state = CreateState(3, 3);
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(0, 1, new Tile(2, TileType.Blue, 0, 1));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(0, 1, new Tile(2, ElementType.Item3, 0, 1));
 
         int target = BoardAnalyzer.SimulateDropTarget(ref state, 0);
 
@@ -92,7 +92,7 @@ public class BoardAnalyzerTests
     {
         var state = CreateState(3, 3);
         for (int y = 0; y < 3; y++)
-            state.SetTile(0, y, new Tile(y + 1, TileType.Red, 0, y));
+            state.SetTile(0, y, new Tile(y + 1, ElementType.Item1, 0, y));
 
         int target = BoardAnalyzer.SimulateDropTarget(ref state, 0);
 
@@ -107,10 +107,10 @@ public class BoardAnalyzerTests
     public void WouldCreateMatch_HorizontalThree_ReturnsTrue()
     {
         var state = CreateState(5, 5);
-        state.SetTile(0, 2, new Tile(1, TileType.Red, 0, 2));
-        state.SetTile(1, 2, new Tile(2, TileType.Red, 1, 2));
+        state.SetTile(0, 2, new Tile(1, ElementType.Item1, 0, 2));
+        state.SetTile(1, 2, new Tile(2, ElementType.Item1, 1, 2));
 
-        bool result = BoardAnalyzer.WouldCreateMatch(ref state, 2, 2, TileType.Red);
+        bool result = BoardAnalyzer.WouldCreateMatch(ref state, 2, 2, ElementType.Item1);
 
         Assert.True(result);
     }
@@ -119,10 +119,10 @@ public class BoardAnalyzerTests
     public void WouldCreateMatch_VerticalThree_ReturnsTrue()
     {
         var state = CreateState(5, 5);
-        state.SetTile(2, 0, new Tile(1, TileType.Blue, 2, 0));
-        state.SetTile(2, 1, new Tile(2, TileType.Blue, 2, 1));
+        state.SetTile(2, 0, new Tile(1, ElementType.Item3, 2, 0));
+        state.SetTile(2, 1, new Tile(2, ElementType.Item3, 2, 1));
 
-        bool result = BoardAnalyzer.WouldCreateMatch(ref state, 2, 2, TileType.Blue);
+        bool result = BoardAnalyzer.WouldCreateMatch(ref state, 2, 2, ElementType.Item3);
 
         Assert.True(result);
     }
@@ -131,9 +131,9 @@ public class BoardAnalyzerTests
     public void WouldCreateMatch_OnlyTwo_ReturnsFalse()
     {
         var state = CreateState(5, 5);
-        state.SetTile(0, 2, new Tile(1, TileType.Red, 0, 2));
+        state.SetTile(0, 2, new Tile(1, ElementType.Item1, 0, 2));
 
-        bool result = BoardAnalyzer.WouldCreateMatch(ref state, 1, 2, TileType.Red);
+        bool result = BoardAnalyzer.WouldCreateMatch(ref state, 1, 2, ElementType.Item1);
 
         Assert.False(result);
     }
@@ -142,10 +142,10 @@ public class BoardAnalyzerTests
     public void WouldCreateMatch_MiddleOfRun_ReturnsTrue()
     {
         var state = CreateState(5, 5);
-        state.SetTile(0, 2, new Tile(1, TileType.Green, 0, 2));
-        state.SetTile(2, 2, new Tile(2, TileType.Green, 2, 2));
+        state.SetTile(0, 2, new Tile(1, ElementType.Item2, 0, 2));
+        state.SetTile(2, 2, new Tile(2, ElementType.Item2, 2, 2));
 
-        bool result = BoardAnalyzer.WouldCreateMatch(ref state, 1, 2, TileType.Green);
+        bool result = BoardAnalyzer.WouldCreateMatch(ref state, 1, 2, ElementType.Item2);
 
         Assert.True(result);
     }
@@ -158,8 +158,8 @@ public class BoardAnalyzerTests
     public void FindMatchingColors_WithPotentialMatch_SetsTrue()
     {
         var state = CreateState(5, 5);
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
 
         Span<bool> wouldMatch = stackalloc bool[6];
         BoardAnalyzer.FindMatchingColors(ref state, 2, wouldMatch);
@@ -172,9 +172,9 @@ public class BoardAnalyzerTests
     {
         var state = CreateState(5, 5);
         // All different colors, no matches possible
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Green, 2, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item2, 2, 0));
 
         Span<bool> wouldMatch = stackalloc bool[6];
         BoardAnalyzer.FindMatchingColors(ref state, 3, wouldMatch);
@@ -192,17 +192,17 @@ public class BoardAnalyzerTests
     {
         var state = CreateState(3, 3);
         // 3 Red, 2 Blue, 1 Green
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
-        state.SetTile(0, 1, new Tile(4, TileType.Blue, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Blue, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.Green, 2, 1));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item3, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item3, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item2, 2, 1));
 
         var rarest = BoardAnalyzer.FindRarestColor(ref state, 6);
 
         // Yellow, Purple, Orange have 0 count, so one of them should be rarest
-        Assert.True(rarest == TileType.Yellow || rarest == TileType.Purple || rarest == TileType.Orange);
+        Assert.True(rarest == ElementType.Item4 || rarest == ElementType.Item5 || rarest == ElementType.Item6);
     }
 
     [Fact]
@@ -210,16 +210,16 @@ public class BoardAnalyzerTests
     {
         var state = CreateState(3, 3);
         // 3 Red, 2 Blue, 1 Green
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
-        state.SetTile(0, 1, new Tile(4, TileType.Blue, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Blue, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.Green, 2, 1));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item3, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item3, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item2, 2, 1));
 
         var mostCommon = BoardAnalyzer.FindMostCommonColor(ref state, 6);
 
-        Assert.Equal(TileType.Red, mostCommon);
+        Assert.Equal(ElementType.Item1, mostCommon);
     }
 
     #endregion
@@ -240,8 +240,8 @@ public class BoardAnalyzerTests
     public void CalculateMatchPotential_AdjacentPairs_CountsThem()
     {
         var state = CreateState(3, 3);
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0)); // Horizontal pair
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0)); // Horizontal pair
 
         int potential = BoardAnalyzer.CalculateMatchPotential(ref state);
 
@@ -250,3 +250,4 @@ public class BoardAnalyzerTests
 
     #endregion
 }
+

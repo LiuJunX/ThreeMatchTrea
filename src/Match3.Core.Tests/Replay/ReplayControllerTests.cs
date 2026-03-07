@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Match3.Core.Commands;
 using Match3.Core.Config;
@@ -9,7 +9,9 @@ using Match3.Core.Models.Grid;
 using Match3.Core.Replay;
 using Match3.Core.Simulation;
 using Match3.Core.Systems.Matching;
+using Match3.Core.Systems.Generation;
 using Match3.Core.Systems.Matching.Generation;
+using Match3.Core.Systems.Objectives;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
@@ -60,7 +62,7 @@ public class ReplayControllerTests
             var bombGenerator = new BombGenerator();
             var matchFinder = new ClassicMatchFinder(bombGenerator);
             var scoreSystem = new StubScoreSystem();
-            var matchProcessor = new StandardMatchProcessor(scoreSystem, BombEffectRegistry.CreateDefault());
+            var matchProcessor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), BombEffectRegistry.CreateDefault());
             var powerUpHandler = new PowerUpHandler(scoreSystem);
 
             return new SimulationEngine(
@@ -77,6 +79,12 @@ public class ReplayControllerTests
 
         public GameSession CreateGameSession(LevelConfig? levelConfig = null)
             => throw new NotSupportedException("Not needed for replay tests");
+        
+        public ISpawnModel CreateSpawnModel(IRandom random) => new StubSpawnModel();
+        public ITileGenerator CreateTileGenerator(IRandom random) => throw new NotSupportedException();
+        public IDeadlockDetectionSystem CreateDeadlockDetector(IMatchFinder matchFinder) => throw new NotSupportedException();
+        public IBoardShuffleSystem CreateShuffleSystem(IDeadlockDetectionSystem deadlockDetector) => throw new NotSupportedException();
+        public ILevelObjectiveSystem? CreateObjectiveSystem() => throw new NotSupportedException();
 
         public GameSession CreateGameSession(GameServiceConfiguration configuration, LevelConfig? levelConfig = null)
             => throw new NotSupportedException("Not needed for replay tests");
@@ -88,7 +96,7 @@ public class ReplayControllerTests
     private static GameStateSnapshot CreateStableSnapshot(int width = 8, int height = 8)
     {
         int size = width * height;
-        var tileTypes = new TileType[size];
+        var ElementTypes = new ElementType[size];
         var bombTypes = new BombType[size];
         var coverLayers = new Cover[size];
         var groundLayers = new Ground[size];
@@ -98,7 +106,7 @@ public class ReplayControllerTests
             for (int x = 0; x < width; x++)
             {
                 int index = y * width + x;
-                tileTypes[index] = (x + y) % 2 == 0 ? TileType.Red : TileType.Blue;
+                ElementTypes[index] = (x + y) % 2 == 0 ? ElementType.Item1 : ElementType.Item3;
                 bombTypes[index] = BombType.None;
                 coverLayers[index] = default;
                 groundLayers[index] = default;
@@ -110,7 +118,7 @@ public class ReplayControllerTests
             Width = width,
             Height = height,
             TileTypesCount = 6,
-            TileTypes = tileTypes,
+            TileTypes = ElementTypes,
             BombTypes = bombTypes,
             CoverLayers = coverLayers,
             GroundLayers = groundLayers,
@@ -912,3 +920,6 @@ public class ReplayControllerTests
 
     #endregion
 }
+
+
+

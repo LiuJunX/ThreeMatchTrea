@@ -17,7 +17,7 @@ public class LegacySpawnModel : ISpawnModel
         _generator = generator;
     }
 
-    public TileType Predict(ref GameState state, int spawnX, in SpawnContext context)
+    public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context)
     {
         // Legacy generator doesn't use context
         return _generator.GenerateNonMatchingTile(ref state, spawnX, 0);

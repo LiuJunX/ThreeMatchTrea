@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
@@ -41,13 +41,13 @@ public class ValidMoveDetectorTests
     {
         return new GameStateBuilder()
             .WithSize(6, 6)
-            .WithCheckerboard(TileType.Yellow, TileType.Purple)
+            .WithCheckerboard(ElementType.Item4, ElementType.Item5)
             .WithCustomization(state =>
             {
-                state.SetTile(0, 0, new Tile(0, TileType.Red, 0, 0));
-                state.SetTile(1, 0, new Tile(1, TileType.Red, 1, 0));
-                state.SetTile(2, 0, new Tile(2, TileType.Blue, 2, 0));
-                state.SetTile(3, 0, new Tile(3, TileType.Red, 3, 0));
+                state.SetTile(0, 0, new Tile(0, ElementType.Item1, 0, 0));
+                state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
+                state.SetTile(2, 0, new Tile(2, ElementType.Item3, 2, 0));
+                state.SetTile(3, 0, new Tile(3, ElementType.Item1, 3, 0));
             })
             .Build();
     }
@@ -65,13 +65,13 @@ public class ValidMoveDetectorTests
     {
         return new GameStateBuilder()
             .WithSize(6, 6)
-            .WithCheckerboard(TileType.Yellow, TileType.Purple)
+            .WithCheckerboard(ElementType.Item4, ElementType.Item5)
             .WithCustomization(state =>
             {
-                state.SetTile(0, 0, new Tile(0, TileType.Red, 0, 0));
-                state.SetTile(0, 1, new Tile(6, TileType.Red, 0, 1));
-                state.SetTile(0, 2, new Tile(12, TileType.Blue, 0, 2));
-                state.SetTile(0, 3, new Tile(18, TileType.Red, 0, 3));
+                state.SetTile(0, 0, new Tile(0, ElementType.Item1, 0, 0));
+                state.SetTile(0, 1, new Tile(6, ElementType.Item1, 0, 1));
+                state.SetTile(0, 2, new Tile(12, ElementType.Item3, 0, 2));
+                state.SetTile(0, 3, new Tile(18, ElementType.Item1, 0, 3));
             })
             .Build();
     }
@@ -86,7 +86,7 @@ public class ValidMoveDetectorTests
     /// </summary>
     private static GameState CreateDeadlockBoard(int width = 6, int height = 6)
     {
-        TileType[] pattern = { TileType.Red, TileType.Green, TileType.Blue };
+        ElementType[] pattern = { ElementType.Item1, ElementType.Item2, ElementType.Item3 };
 
         return new GameStateBuilder()
             .WithSize(width, height)
@@ -189,7 +189,7 @@ public class ValidMoveDetectorTests
         var matchFinder = CreateMatchFinder();
         var state = new GameStateBuilder()
             .WithSize(1, 1)
-            .WithAllTiles(TileType.Red)
+            .WithAllTiles(ElementType.Item1)
             .Build();
 
         bool result = ValidMoveDetector.HasValidMoves(in state, matchFinder);
@@ -423,7 +423,7 @@ public class ValidMoveDetectorTests
         var state = CreateBoardWithOneHorizontalMove();
 
         // Snapshot all tile types before
-        var before = new TileType[state.Width * state.Height];
+        var before = new ElementType[state.Width * state.Height];
         for (int i = 0; i < before.Length; i++)
         {
             before[i] = state.Grid[i].Type;
@@ -448,3 +448,4 @@ public class ValidMoveDetectorTests
 
     #endregion
 }
+

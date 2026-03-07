@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Numerics;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
@@ -45,7 +45,7 @@ public class MatchCascadeIntegrationTests
     private class StubScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(MatchGroup match) => match.Positions.Count * 10;
-        public int CalculateSpecialMoveScore(TileType t1, BombType b1, TileType t2, BombType b2) => 100;
+        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 100;
     }
 
     public MatchCascadeIntegrationTests(ITestOutputHelper output)
@@ -68,32 +68,32 @@ public class MatchCascadeIntegrationTests
         var state = new GameState(5, 3, 6, rng);
 
         // 第 0 行
-        state.SetTile(0, 0, new Tile(1, TileType.Blue, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Green, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Yellow, 2, 0));
-        state.SetTile(3, 0, new Tile(4, TileType.Purple, 3, 0));
-        state.SetTile(4, 0, new Tile(5, TileType.Orange, 4, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item3, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item2, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item4, 2, 0));
+        state.SetTile(3, 0, new Tile(4, ElementType.Item5, 3, 0));
+        state.SetTile(4, 0, new Tile(5, ElementType.Item6, 4, 0));
 
         // 第 1 行 - 有匹配
-        state.SetTile(0, 1, new Tile(6, TileType.Red, 0, 1));
-        state.SetTile(1, 1, new Tile(7, TileType.Red, 1, 1));
-        state.SetTile(2, 1, new Tile(8, TileType.Red, 2, 1));
-        state.SetTile(3, 1, new Tile(9, TileType.Green, 3, 1));
-        state.SetTile(4, 1, new Tile(10, TileType.Blue, 4, 1));
+        state.SetTile(0, 1, new Tile(6, ElementType.Item1, 0, 1));
+        state.SetTile(1, 1, new Tile(7, ElementType.Item1, 1, 1));
+        state.SetTile(2, 1, new Tile(8, ElementType.Item1, 2, 1));
+        state.SetTile(3, 1, new Tile(9, ElementType.Item2, 3, 1));
+        state.SetTile(4, 1, new Tile(10, ElementType.Item3, 4, 1));
 
         // 第 2 行
-        state.SetTile(0, 2, new Tile(11, TileType.Green, 0, 2));
-        state.SetTile(1, 2, new Tile(12, TileType.Blue, 1, 2));
-        state.SetTile(2, 2, new Tile(13, TileType.Yellow, 2, 2));
-        state.SetTile(3, 2, new Tile(14, TileType.Red, 3, 2));
-        state.SetTile(4, 2, new Tile(15, TileType.Purple, 4, 2));
+        state.SetTile(0, 2, new Tile(11, ElementType.Item2, 0, 2));
+        state.SetTile(1, 2, new Tile(12, ElementType.Item3, 1, 2));
+        state.SetTile(2, 2, new Tile(13, ElementType.Item4, 2, 2));
+        state.SetTile(3, 2, new Tile(14, ElementType.Item1, 3, 2));
+        state.SetTile(4, 2, new Tile(15, ElementType.Item5, 4, 2));
 
         // 创建系统
         var bombGenerator = new BombGenerator();
         var matchFinder = new ClassicMatchFinder(bombGenerator);
         var scoreSystem = new StubScoreSystem();
         var bombRegistry = BombEffectRegistry.CreateDefault();
-        var processor = new StandardMatchProcessor(scoreSystem, bombRegistry);
+        var processor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), bombRegistry);
         var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };
         var gravitySystem = new RealtimeGravitySystem(config, rng);
 
@@ -105,9 +105,9 @@ public class MatchCascadeIntegrationTests
         processor.ProcessMatches(ref state, matches);
 
         // 验证第 1 行的红色被消除
-        Assert.Equal(TileType.None, state.GetTile(0, 1).Type);
-        Assert.Equal(TileType.None, state.GetTile(1, 1).Type);
-        Assert.Equal(TileType.None, state.GetTile(2, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(0, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(1, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(2, 1).Type);
 
         // 记录第 0 行方块的原始 ID
         var blueId = state.GetTile(0, 0).Id;
@@ -127,7 +127,7 @@ public class MatchCascadeIntegrationTests
                 for (int x = 0; x < state.Width; x++)
                 {
                     var tile = state.GetTile(x, y);
-                    if (tile.Type != TileType.None && tile.IsFalling)
+                    if (tile.Type != ElementType.None && tile.IsFalling)
                     {
                         allSettled = false;
                         break;
@@ -164,33 +164,33 @@ public class MatchCascadeIntegrationTests
         var state = new GameState(3, 3, 6, rng);
 
         // 第 0 行
-        state.SetTile(0, 0, new Tile(1, TileType.Green, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Green, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Blue, 2, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item2, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item2, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item3, 2, 0));
 
         // 第 1 行 - 第一次匹配
-        state.SetTile(0, 1, new Tile(4, TileType.Red, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Red, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.Red, 2, 1));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item1, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item1, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item1, 2, 1));
 
         // 第 2 行 - 下落后会和上面的 G G 形成匹配
-        state.SetTile(0, 2, new Tile(7, TileType.Green, 0, 2));
-        state.SetTile(1, 2, new Tile(8, TileType.Blue, 1, 2));
-        state.SetTile(2, 2, new Tile(9, TileType.Yellow, 2, 2));
+        state.SetTile(0, 2, new Tile(7, ElementType.Item2, 0, 2));
+        state.SetTile(1, 2, new Tile(8, ElementType.Item3, 1, 2));
+        state.SetTile(2, 2, new Tile(9, ElementType.Item4, 2, 2));
 
         // 创建系统
         var bombGenerator = new BombGenerator();
         var matchFinder = new ClassicMatchFinder(bombGenerator);
         var scoreSystem = new StubScoreSystem();
         var bombRegistry = BombEffectRegistry.CreateDefault();
-        var processor = new StandardMatchProcessor(scoreSystem, bombRegistry);
+        var processor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), bombRegistry);
         var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };
         var gravitySystem = new RealtimeGravitySystem(config, rng);
 
         // Act 1: 第一次匹配检测和消除
         var matches1 = matchFinder.FindMatchGroups(in state);
         Assert.Single(matches1); // 应该只有红色匹配
-        Assert.Equal(TileType.Red, matches1[0].Type);
+        Assert.Equal(ElementType.Item1, matches1[0].Type);
 
         processor.ProcessMatches(ref state, matches1);
 
@@ -242,7 +242,7 @@ public class MatchCascadeIntegrationTests
         var state = new GameState(5, 4, 6, rng);
 
         // 填充棋盘
-        var types = new[] { TileType.Red, TileType.Green, TileType.Blue, TileType.Yellow, TileType.Purple };
+        var types = new[] { ElementType.Item1, ElementType.Item2, ElementType.Item3, ElementType.Item4, ElementType.Item5 };
         int id = 1;
         for (int y = 0; y < 4; y++)
         {
@@ -251,7 +251,7 @@ public class MatchCascadeIntegrationTests
                 if (x == 2 && y == 2)
                 {
                     // 放置水平炸弹
-                    var bombTile = new Tile(id++, TileType.Red, x, y);
+                    var bombTile = new Tile(id++, ElementType.Item1, x, y);
                     bombTile.Bomb = BombType.Horizontal;
                     state.SetTile(x, y, bombTile);
                 }
@@ -275,7 +275,7 @@ public class MatchCascadeIntegrationTests
         // 验证整行被清除
         for (int x = 0; x < 5; x++)
         {
-            Assert.Equal(TileType.None, state.GetTile(x, 2).Type);
+            Assert.Equal(ElementType.None, state.GetTile(x, 2).Type);
         }
 
         // Act 2: 运行重力
@@ -294,7 +294,7 @@ public class MatchCascadeIntegrationTests
             for (int x = 0; x < 5; x++)
             {
                 var t = state.GetTile(x, y);
-                row += (t.Type == TileType.None ? "_" : t.Type.ToString().Substring(0, 1)) + " ";
+                row += (t.Type == ElementType.None ? "_" : t.Type.ToString().Substring(0, 1)) + " ";
             }
             _output.WriteLine($"Row {y}: {row}");
         }
@@ -303,7 +303,7 @@ public class MatchCascadeIntegrationTests
         int nonEmptyInRow2 = 0;
         for (int x = 0; x < 5; x++)
         {
-            if (state.GetTile(x, 2).Type != TileType.None)
+            if (state.GetTile(x, 2).Type != ElementType.None)
             {
                 nonEmptyInRow2++;
             }
@@ -325,26 +325,26 @@ public class MatchCascadeIntegrationTests
         var rng = new StubRandom();
         var state = new GameState(4, 3, 6, rng);
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Green, 2, 0));
-        state.SetTile(3, 0, new Tile(4, TileType.Blue, 3, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item2, 2, 0));
+        state.SetTile(3, 0, new Tile(4, ElementType.Item3, 3, 0));
 
-        state.SetTile(0, 1, new Tile(5, TileType.Green, 0, 1));
-        state.SetTile(1, 1, new Tile(6, TileType.Blue, 1, 1));
-        state.SetTile(2, 1, new Tile(7, TileType.Red, 2, 1));
-        state.SetTile(3, 1, new Tile(8, TileType.Yellow, 3, 1));
+        state.SetTile(0, 1, new Tile(5, ElementType.Item2, 0, 1));
+        state.SetTile(1, 1, new Tile(6, ElementType.Item3, 1, 1));
+        state.SetTile(2, 1, new Tile(7, ElementType.Item1, 2, 1));
+        state.SetTile(3, 1, new Tile(8, ElementType.Item4, 3, 1));
 
-        state.SetTile(0, 2, new Tile(9, TileType.Blue, 0, 2));
-        state.SetTile(1, 2, new Tile(10, TileType.Yellow, 1, 2));
-        state.SetTile(2, 2, new Tile(11, TileType.Green, 2, 2));
-        state.SetTile(3, 2, new Tile(12, TileType.Purple, 3, 2));
+        state.SetTile(0, 2, new Tile(9, ElementType.Item3, 0, 2));
+        state.SetTile(1, 2, new Tile(10, ElementType.Item4, 1, 2));
+        state.SetTile(2, 2, new Tile(11, ElementType.Item2, 2, 2));
+        state.SetTile(3, 2, new Tile(12, ElementType.Item5, 3, 2));
 
         var bombGenerator = new BombGenerator();
         var matchFinder = new ClassicMatchFinder(bombGenerator);
         var scoreSystem = new StubScoreSystem();
         var bombRegistry = BombEffectRegistry.CreateDefault();
-        var processor = new StandardMatchProcessor(scoreSystem, bombRegistry);
+        var processor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), bombRegistry);
         var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };
         var gravitySystem = new RealtimeGravitySystem(config, rng);
 
@@ -403,40 +403,40 @@ public class MatchCascadeIntegrationTests
         var state = new GameState(5, 3, 6, rng);
 
         // 第 0 行 - 水平炸弹和垂直炸弹在同一行
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        var hBomb = new Tile(2, TileType.Red, 1, 0);
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        var hBomb = new Tile(2, ElementType.Item1, 1, 0);
         hBomb.Bomb = BombType.Horizontal;
         state.SetTile(1, 0, hBomb);
-        state.SetTile(2, 0, new Tile(3, TileType.Blue, 2, 0));
-        var vBomb = new Tile(4, TileType.Red, 3, 0);
+        state.SetTile(2, 0, new Tile(3, ElementType.Item3, 2, 0));
+        var vBomb = new Tile(4, ElementType.Item1, 3, 0);
         vBomb.Bomb = BombType.Vertical;
         state.SetTile(3, 0, vBomb);
-        state.SetTile(4, 0, new Tile(5, TileType.Green, 4, 0));
+        state.SetTile(4, 0, new Tile(5, ElementType.Item2, 4, 0));
 
         // 第 1 行
-        state.SetTile(0, 1, new Tile(6, TileType.Green, 0, 1));
-        state.SetTile(1, 1, new Tile(7, TileType.Blue, 1, 1));
-        state.SetTile(2, 1, new Tile(8, TileType.Yellow, 2, 1));
-        state.SetTile(3, 1, new Tile(9, TileType.Red, 3, 1));
-        state.SetTile(4, 1, new Tile(10, TileType.Purple, 4, 1));
+        state.SetTile(0, 1, new Tile(6, ElementType.Item2, 0, 1));
+        state.SetTile(1, 1, new Tile(7, ElementType.Item3, 1, 1));
+        state.SetTile(2, 1, new Tile(8, ElementType.Item4, 2, 1));
+        state.SetTile(3, 1, new Tile(9, ElementType.Item1, 3, 1));
+        state.SetTile(4, 1, new Tile(10, ElementType.Item5, 4, 1));
 
         // 第 2 行
-        state.SetTile(0, 2, new Tile(11, TileType.Blue, 0, 2));
-        state.SetTile(1, 2, new Tile(12, TileType.Red, 1, 2));
-        state.SetTile(2, 2, new Tile(13, TileType.Green, 2, 2));
-        state.SetTile(3, 2, new Tile(14, TileType.Yellow, 3, 2));
-        state.SetTile(4, 2, new Tile(15, TileType.Blue, 4, 2));
+        state.SetTile(0, 2, new Tile(11, ElementType.Item3, 0, 2));
+        state.SetTile(1, 2, new Tile(12, ElementType.Item1, 1, 2));
+        state.SetTile(2, 2, new Tile(13, ElementType.Item2, 2, 2));
+        state.SetTile(3, 2, new Tile(14, ElementType.Item4, 3, 2));
+        state.SetTile(4, 2, new Tile(15, ElementType.Item3, 4, 2));
 
         var scoreSystem = new StubScoreSystem();
         var bombRegistry = BombEffectRegistry.CreateDefault();
-        var processor = new StandardMatchProcessor(scoreSystem, bombRegistry);
+        var processor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), bombRegistry);
 
         // 模拟匹配组包含水平炸弹（会触发整行，进而触发垂直炸弹）
         var groups = new List<MatchGroup>
         {
             new MatchGroup
             {
-                Type = TileType.Red,
+                Type = ElementType.Item1,
                 Positions = new HashSet<Position> { new(0, 0), new(1, 0), new(2, 0) }
             }
         };
@@ -449,14 +449,14 @@ public class MatchCascadeIntegrationTests
 
         // Assert: 验证连锁效果
         // 水平炸弹清除第 0 行
-        Assert.Equal(TileType.None, state.GetTile(0, 0).Type);
-        Assert.Equal(TileType.None, state.GetTile(2, 0).Type);
-        Assert.Equal(TileType.None, state.GetTile(4, 0).Type);
+        Assert.Equal(ElementType.None, state.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.None, state.GetTile(2, 0).Type);
+        Assert.Equal(ElementType.None, state.GetTile(4, 0).Type);
 
         // 垂直炸弹被触发（因为在同一行），清除第 3 列
-        Assert.Equal(TileType.None, state.GetTile(3, 0).Type);
-        Assert.Equal(TileType.None, state.GetTile(3, 1).Type);
-        Assert.Equal(TileType.None, state.GetTile(3, 2).Type);
+        Assert.Equal(ElementType.None, state.GetTile(3, 0).Type);
+        Assert.Equal(ElementType.None, state.GetTile(3, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(3, 2).Type);
     }
 
     private void PrintBoard(ref GameState state)
@@ -467,7 +467,7 @@ public class MatchCascadeIntegrationTests
             for (int x = 0; x < state.Width; x++)
             {
                 var t = state.GetTile(x, y);
-                string symbol = t.Type == TileType.None ? "_" : t.Type.ToString().Substring(0, 1);
+                string symbol = t.Type == ElementType.None ? "_" : t.Type.ToString().Substring(0, 1);
                 if (t.Bomb != BombType.None)
                 {
                     symbol = "[" + symbol + "]";
@@ -502,27 +502,27 @@ public class MatchCascadeIntegrationTests
         // 2 B G P
         // 3 Y P B
 
-        state.SetTile(0, 0, new Tile(1, TileType.Green, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Blue, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Yellow, 2, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item2, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item4, 2, 0));
 
-        state.SetTile(0, 1, new Tile(4, TileType.Red, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Red, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.Red, 2, 1));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item1, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item1, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item1, 2, 1));
 
-        state.SetTile(0, 2, new Tile(7, TileType.Blue, 0, 2));
-        state.SetTile(1, 2, new Tile(8, TileType.Green, 1, 2));
-        state.SetTile(2, 2, new Tile(9, TileType.Purple, 2, 2));
+        state.SetTile(0, 2, new Tile(7, ElementType.Item3, 0, 2));
+        state.SetTile(1, 2, new Tile(8, ElementType.Item2, 1, 2));
+        state.SetTile(2, 2, new Tile(9, ElementType.Item5, 2, 2));
 
-        state.SetTile(0, 3, new Tile(10, TileType.Yellow, 0, 3));
-        state.SetTile(1, 3, new Tile(11, TileType.Purple, 1, 3));
-        state.SetTile(2, 3, new Tile(12, TileType.Blue, 2, 3));
+        state.SetTile(0, 3, new Tile(10, ElementType.Item4, 0, 3));
+        state.SetTile(1, 3, new Tile(11, ElementType.Item5, 1, 3));
+        state.SetTile(2, 3, new Tile(12, ElementType.Item3, 2, 3));
 
         var bombGenerator = new BombGenerator();
         var matchFinder = new ClassicMatchFinder(bombGenerator);
         var scoreSystem = new StubScoreSystem();
         var bombRegistry = BombEffectRegistry.CreateDefault();
-        var processor = new StandardMatchProcessor(scoreSystem, bombRegistry);
+        var processor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), bombRegistry);
         var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };
         var gravitySystem = new RealtimeGravitySystem(config, rng);
         var animationSystem = new AnimationSystem(config);
@@ -535,9 +535,9 @@ public class MatchCascadeIntegrationTests
         processor.ProcessMatches(ref state, matches);
 
         // 验证匹配行被消除
-        Assert.Equal(TileType.None, state.GetTile(0, 1).Type);
-        Assert.Equal(TileType.None, state.GetTile(1, 1).Type);
-        Assert.Equal(TileType.None, state.GetTile(2, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(0, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(1, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(2, 1).Type);
 
         // 记录第 0 行方块的 ID
         var greenId = state.GetTile(0, 0).Id;
@@ -550,7 +550,7 @@ public class MatchCascadeIntegrationTests
         // Assert: 方块应该下落到新位置
         var tileAt01 = state.GetTile(0, 1);
         Assert.Equal(greenId, tileAt01.Id);
-        Assert.Equal(TileType.Green, tileAt01.Type);
+        Assert.Equal(ElementType.Item2, tileAt01.Type);
 
         // 验证位置是整数（被吸附）
         Assert.Equal(0, tileAt01.Position.X, 1);
@@ -576,23 +576,23 @@ public class MatchCascadeIntegrationTests
         var rng = new StubRandom();
         var state = new GameState(3, 3, 6, rng);
 
-        state.SetTile(0, 0, new Tile(1, TileType.Green, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Green, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Blue, 2, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item2, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item2, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item3, 2, 0));
 
-        state.SetTile(0, 1, new Tile(4, TileType.Red, 0, 1));
-        state.SetTile(1, 1, new Tile(5, TileType.Red, 1, 1));
-        state.SetTile(2, 1, new Tile(6, TileType.Red, 2, 1));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item1, 0, 1));
+        state.SetTile(1, 1, new Tile(5, ElementType.Item1, 1, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item1, 2, 1));
 
-        state.SetTile(0, 2, new Tile(7, TileType.Green, 0, 2));
-        state.SetTile(1, 2, new Tile(8, TileType.Blue, 1, 2));
-        state.SetTile(2, 2, new Tile(9, TileType.Yellow, 2, 2));
+        state.SetTile(0, 2, new Tile(7, ElementType.Item2, 0, 2));
+        state.SetTile(1, 2, new Tile(8, ElementType.Item3, 1, 2));
+        state.SetTile(2, 2, new Tile(9, ElementType.Item4, 2, 2));
 
         var bombGenerator = new BombGenerator();
         var matchFinder = new ClassicMatchFinder(bombGenerator);
         var scoreSystem = new StubScoreSystem();
         var bombRegistry = BombEffectRegistry.CreateDefault();
-        var processor = new StandardMatchProcessor(scoreSystem, bombRegistry);
+        var processor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), bombRegistry);
         var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };
         var gravitySystem = new RealtimeGravitySystem(config, rng);
         var animationSystem = new AnimationSystem(config);
@@ -648,23 +648,23 @@ public class MatchCascadeIntegrationTests
         // 2 B R G
         // 3 Y P B
 
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Green, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Blue, 2, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item2, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item3, 2, 0));
 
-        state.SetTile(0, 1, new Tile(4, TileType.Green, 0, 1));
-        var bombTile = new Tile(5, TileType.Red, 1, 1);
+        state.SetTile(0, 1, new Tile(4, ElementType.Item2, 0, 1));
+        var bombTile = new Tile(5, ElementType.Item1, 1, 1);
         bombTile.Bomb = BombType.Horizontal;
         state.SetTile(1, 1, bombTile);
-        state.SetTile(2, 1, new Tile(6, TileType.Yellow, 2, 1));
+        state.SetTile(2, 1, new Tile(6, ElementType.Item4, 2, 1));
 
-        state.SetTile(0, 2, new Tile(7, TileType.Blue, 0, 2));
-        state.SetTile(1, 2, new Tile(8, TileType.Red, 1, 2));
-        state.SetTile(2, 2, new Tile(9, TileType.Green, 2, 2));
+        state.SetTile(0, 2, new Tile(7, ElementType.Item3, 0, 2));
+        state.SetTile(1, 2, new Tile(8, ElementType.Item1, 1, 2));
+        state.SetTile(2, 2, new Tile(9, ElementType.Item2, 2, 2));
 
-        state.SetTile(0, 3, new Tile(10, TileType.Yellow, 0, 3));
-        state.SetTile(1, 3, new Tile(11, TileType.Purple, 1, 3));
-        state.SetTile(2, 3, new Tile(12, TileType.Blue, 2, 3));
+        state.SetTile(0, 3, new Tile(10, ElementType.Item4, 0, 3));
+        state.SetTile(1, 3, new Tile(11, ElementType.Item5, 1, 3));
+        state.SetTile(2, 3, new Tile(12, ElementType.Item3, 2, 3));
 
         var scoreSystem = new StubScoreSystem();
         var powerUpHandler = new PowerUpHandler(scoreSystem);
@@ -683,9 +683,9 @@ public class MatchCascadeIntegrationTests
         powerUpHandler.ActivateBomb(ref state, new Position(1, 1));
 
         // 验证整行被清除
-        Assert.Equal(TileType.None, state.GetTile(0, 1).Type);
-        Assert.Equal(TileType.None, state.GetTile(1, 1).Type);
-        Assert.Equal(TileType.None, state.GetTile(2, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(0, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(1, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(2, 1).Type);
 
         _output.WriteLine("炸弹爆炸后:");
         PrintBoard(ref state);
@@ -708,3 +708,5 @@ public class MatchCascadeIntegrationTests
 
     #endregion
 }
+
+

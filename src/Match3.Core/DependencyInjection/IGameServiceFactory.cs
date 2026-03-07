@@ -2,6 +2,11 @@ using Match3.Core.Config;
 using Match3.Core.Events;
 using Match3.Core.Models.Grid;
 using Match3.Core.Simulation;
+using Match3.Core.Systems.Generation;
+using Match3.Core.Systems.Matching;
+using Match3.Core.Systems.Objectives;
+using Match3.Core.Systems.Spawning;
+using Match3.Random;
 
 namespace Match3.Core.DependencyInjection;
 
@@ -37,4 +42,10 @@ public interface IGameServiceFactory
     /// <param name="levelConfig">Optional level configuration.</param>
     /// <returns>Complete GameSession with engine and services.</returns>
     GameSession CreateGameSession(GameServiceConfiguration configuration, LevelConfig? levelConfig = null);
+
+    ISpawnModel CreateSpawnModel(IRandom random);
+    ITileGenerator CreateTileGenerator(IRandom random);
+    IDeadlockDetectionSystem CreateDeadlockDetector(IMatchFinder matchFinder);
+    IBoardShuffleSystem CreateShuffleSystem(IDeadlockDetectionSystem deadlockDetector);
+    ILevelObjectiveSystem? CreateObjectiveSystem();
 }

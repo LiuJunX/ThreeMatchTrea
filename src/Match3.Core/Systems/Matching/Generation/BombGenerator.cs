@@ -169,7 +169,7 @@ public class BombGenerator : IBombGenerator
         foreach (var p in linePositions) simpleGroup.Positions.Add(p);
         simpleGroup.Shape = MatchShape.Simple3;
         simpleGroup.SpawnBombType = BombType.None;
-        simpleGroup.Type = TileType.None; // Set by caller
+        simpleGroup.Type = ElementType.None; // Set by caller
         simpleGroup.BombOrigin = null;
 
         // Release the linePositions set (caller expects us to take ownership)
@@ -362,7 +362,7 @@ public class BombGenerator : IBombGenerator
 
                 group.Shape = shape.Shape;
                 group.SpawnBombType = _typeSelector.SelectBombType(shape);
-                group.Type = TileType.None; // Set by caller
+                group.Type = ElementType.None; // Set by caller
 
                 // Use placement selector for bomb origin
                 group.BombOrigin = _placementSelector.SelectBombPosition(shape.Cells!, foci, random);
@@ -396,7 +396,7 @@ public class BombGenerator : IBombGenerator
                     foreach (var p in validOrphans) orphanGroup.Positions.Add(p);
                     orphanGroup.Shape = MatchShape.Simple3;
                     orphanGroup.SpawnBombType = BombType.None;
-                    orphanGroup.Type = TileType.None;
+                    orphanGroup.Type = ElementType.None;
                     orphanGroup.BombOrigin = null;
                     results.Add(orphanGroup);
                 }

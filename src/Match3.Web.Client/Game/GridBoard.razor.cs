@@ -58,16 +58,16 @@ public partial class GridBoard : IDisposable
             };
         }
 
-        // Rainbow tile
-        if (visual.TileType.HasFlag(TileType.Rainbow)) return "🌈";
+        // Universal (Rainbow) tile
+        if (visual.TileType == ElementType.Universal) return "🌈";
 
         // Regular tile colors
-        if (visual.TileType.HasFlag(TileType.Red)) return "🔴";
-        if (visual.TileType.HasFlag(TileType.Green)) return "🟢";
-        if (visual.TileType.HasFlag(TileType.Blue)) return "🔵";
-        if (visual.TileType.HasFlag(TileType.Yellow)) return "🟡";
-        if (visual.TileType.HasFlag(TileType.Purple)) return "🟣";
-        if (visual.TileType.HasFlag(TileType.Orange)) return "🟠";
+        if (visual.TileType == ElementType.Item1) return "🔴";
+        if (visual.TileType == ElementType.Item2) return "🟢";
+        if (visual.TileType == ElementType.Item3) return "🔵";
+        if (visual.TileType == ElementType.Item4) return "🟡";
+        if (visual.TileType == ElementType.Item5) return "🟣";
+        if (visual.TileType == ElementType.Item6) return "🟠";
 
         return "";
     }

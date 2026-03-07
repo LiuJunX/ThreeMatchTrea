@@ -19,5 +19,11 @@ public interface IPowerUpHandler
 
     void ActivateBomb(ref GameState state, Position p);
 
-    void ActivateBomb(ref GameState state, Position p, int tick, float simTime, IEventCollector events);
+    void ActivateBomb(ref GameState state, Position p, int tick, float simTime, IEventCollector events,
+        bool isChainReaction = false);
+
+    /// <summary>
+    /// Create a copy of this handler using a different explosion system (for Clone scenarios).
+    /// </summary>
+    IPowerUpHandler WithExplosionSystem(IExplosionSystem? explosionSystem);
 }

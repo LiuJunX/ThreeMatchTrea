@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Match3.Core.Config;
@@ -45,11 +45,11 @@ public class FallSmoothnessDiagnosticTests
         // 清空棋盘
         for (int y = 0; y < 6; y++)
         {
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
         }
 
         // 在 (0, 0) 放置一个红色方块
-        var tile = new Tile(100, TileType.Red, 0, 0);
+        var tile = new Tile(100, ElementType.Item1, 0, 0);
         tile.Position = new Vector2(0, 0);
         tile.Velocity = new Vector2(0, 0);
         state.SetTile(0, 0, tile);
@@ -85,7 +85,7 @@ public class FallSmoothnessDiagnosticTests
             for (int y = 0; y < 6; y++)
             {
                 var t = state.GetTile(0, y);
-                if (t.Type == TileType.Red)
+                if (t.Type == ElementType.Item1)
                 {
                     currentTile = t;
                     gridY = y;
@@ -214,11 +214,11 @@ public class FallSmoothnessDiagnosticTests
         // 清空棋盘
         for (int y = 0; y < 10; y++)
         {
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
         }
 
         // 放置方块
-        var tile = new Tile(100, TileType.Red, 0, 0);
+        var tile = new Tile(100, ElementType.Item1, 0, 0);
         state.SetTile(0, 0, tile);
 
         var config = new Match3Config
@@ -268,10 +268,10 @@ public class FallSmoothnessDiagnosticTests
 
         for (int y = 0; y < 10; y++)
         {
-            state.SetTile(0, y, new Tile(y, TileType.None, 0, y));
+            state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
         }
 
-        var tile = new Tile(100, TileType.Red, 0, 0);
+        var tile = new Tile(100, ElementType.Item1, 0, 0);
         state.SetTile(0, 0, tile);
 
         var config = new Match3Config
@@ -298,7 +298,7 @@ public class FallSmoothnessDiagnosticTests
             for (int y = 0; y < 10; y++)
             {
                 var t = state.GetTile(0, y);
-                if (t.Type == TileType.Red)
+                if (t.Type == ElementType.Item1)
                 {
                     currentPos = t.Position.Y;
                     break;
@@ -342,3 +342,4 @@ public class FallSmoothnessDiagnosticTests
         Assert.Equal(0, issueCount);
     }
 }
+

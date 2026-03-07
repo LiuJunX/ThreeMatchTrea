@@ -1,18 +1,13 @@
 using System;
-using Match3.Core.Systems.Core;
-using Match3.Core.Systems.Generation;
-using Match3.Core.Systems.Input;
-using Match3.Core.Systems.Matching;
-using Match3.Core.Systems.Physics;
-using Match3.Core.Systems.PowerUps;
-using Match3.Core.Systems.Scoring;
-using Match3.Core.View;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Random;
 
 namespace Match3.Core.Systems.Generation;
 
+/// <summary>
+/// Basic generator: avoids immediate 3-matches.
+/// </summary>
 public class StandardTileGenerator : ITileGenerator
 {
     private readonly IRandom? _rng;
@@ -27,20 +22,20 @@ public class StandardTileGenerator : ITileGenerator
         _rng = rng;
     }
 
-    private static readonly TileType[] _colors = new[]
+    private static readonly ElementType[] _colors = new[]
     {
-        TileType.Red,
-        TileType.Green,
-        TileType.Blue,
-        TileType.Yellow,
-        TileType.Purple,
-        TileType.Orange
+        ElementType.Item1,
+        ElementType.Item2,
+        ElementType.Item3,
+        ElementType.Item4,
+        ElementType.Item5,
+        ElementType.Item6
     };
 
-    public TileType GenerateNonMatchingTile(ref GameState state, int x, int y)
+    public ElementType GenerateNonMatchingTile(ref GameState state, int x, int y)
     {
         int count = Math.Min(state.TileTypesCount, _colors.Length);
-        if (count <= 0) return TileType.None;
+        if (count <= 0) return ElementType.None;
 
         for (int i = 0; i < 10; i++)
         {
@@ -54,7 +49,7 @@ public class StandardTileGenerator : ITileGenerator
         return _colors[Next(state, 0, count)];
     }
 
-    private bool CreatesImmediateRun(ref GameState state, int x, int y, TileType t)
+    private bool CreatesImmediateRun(ref GameState state, int x, int y, ElementType t)
     {
         if (x >= 2)
         {

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
@@ -85,7 +85,7 @@ public class StubScoreSystem : IScoreSystem
     public int CalculateMatchScore(MatchGroup match) =>
         match.Positions.Count * MatchScoreMultiplier;
 
-    public int CalculateSpecialMoveScore(TileType t1, BombType b1, TileType t2, BombType b2) =>
+    public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) =>
         SpecialMoveScore;
 }
 
@@ -95,20 +95,20 @@ public class StubScoreSystem : IScoreSystem
 public class StubSpawnModel : ISpawnModel
 {
     private int _counter;
-    private readonly TileType[] _types;
+    private readonly ElementType[] _types;
 
     /// <summary>
     /// Creates a StubSpawnModel that cycles through a sequence of tile types.
     /// Default sequence: Red, Blue, Green, Yellow, Purple.
     /// </summary>
-    public StubSpawnModel(params TileType[] types)
+    public StubSpawnModel(params ElementType[] types)
     {
         _types = types.Length > 0
             ? types
-            : new[] { TileType.Red, TileType.Blue, TileType.Green, TileType.Yellow, TileType.Purple };
+            : new[] { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4, ElementType.Item5 };
     }
 
-    public TileType Predict(ref GameState state, int spawnX, in SpawnContext context)
+    public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context)
     {
         return _types[(_counter++ + spawnX) % _types.Length];
     }
@@ -119,17 +119,17 @@ public class StubSpawnModel : ISpawnModel
 /// </summary>
 public class StubTileGenerator : ITileGenerator
 {
-    private readonly TileType[] _sequence;
+    private readonly ElementType[] _sequence;
     private int _index;
 
-    public StubTileGenerator(params TileType[] sequence)
+    public StubTileGenerator(params ElementType[] sequence)
     {
         _sequence = sequence.Length > 0
             ? sequence
-            : new[] { TileType.Red, TileType.Blue, TileType.Green };
+            : new[] { ElementType.Item1, ElementType.Item3, ElementType.Item2 };
     }
 
-    public TileType GenerateNonMatchingTile(ref GameState state, int x, int y)
+    public ElementType GenerateNonMatchingTile(ref GameState state, int x, int y)
     {
         return _sequence[_index++ % _sequence.Length];
     }
@@ -162,3 +162,4 @@ public class StubEventCollector : IEventCollector
 
     public int Count => _events.Count;
 }
+

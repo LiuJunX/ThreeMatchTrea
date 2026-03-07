@@ -10,10 +10,10 @@ namespace Match3.Core.Systems.Spawning;
 /// </summary>
 public static class BoardAnalyzer
 {
-    private static readonly TileType[] Colors = new[]
+    public static readonly ElementType[] Colors = new[]
     {
-        TileType.Red, TileType.Green, TileType.Blue,
-        TileType.Yellow, TileType.Purple, TileType.Orange
+        ElementType.Item1, ElementType.Item2, ElementType.Item3,
+        ElementType.Item4, ElementType.Item5, ElementType.Item6
     };
 
     /// <summary>
@@ -37,16 +37,16 @@ public static class BoardAnalyzer
     /// <summary>
     /// Gets the color index (0-5) for a tile type.
     /// </summary>
-    public static int GetColorIndex(TileType type)
+    public static int GetColorIndex(ElementType type)
     {
         return type switch
         {
-            TileType.Red => 0,
-            TileType.Green => 1,
-            TileType.Blue => 2,
-            TileType.Yellow => 3,
-            TileType.Purple => 4,
-            TileType.Orange => 5,
+            ElementType.Item1 => 0,
+            ElementType.Item2 => 1,
+            ElementType.Item3 => 2,
+            ElementType.Item4 => 3,
+            ElementType.Item5 => 4,
+            ElementType.Item6 => 5,
             _ => -1
         };
     }
@@ -54,9 +54,9 @@ public static class BoardAnalyzer
     /// <summary>
     /// Gets the tile type for a color index.
     /// </summary>
-    public static TileType GetColorType(int index)
+    public static ElementType GetColorType(int index)
     {
-        return index >= 0 && index < Colors.Length ? Colors[index] : TileType.None;
+        return index >= 0 && index < Colors.Length ? Colors[index] : ElementType.None;
     }
 
     /// <summary>
@@ -67,7 +67,37 @@ public static class BoardAnalyzer
     {
         for (int y = 0; y < state.Height; y++)
         {
-            if (state.GetTile(spawnX, y).Type == TileType.None)
+            // Now checks for Void or Wall in Cell layer, or existing tile in Grid layer
+            // Wait, simulation logic needs to know where it lands.
+            // If Cell is Void/Wall, it can't land there? 
+            // Simplified: Finds first non-empty tile from top? No, finds first empty slot from bottom?
+            
+            // Original logic: returns first Y where Type == None (Empty) from top?
+            // "Simulates where a tile dropped from spawnX would land."
+            // If (spawnX, 0) is empty, it falls... until it hits something.
+            // Actually the original code loop `for (int y = 0; y < state.Height; y++)` implies checking from top.
+            // If `state.GetTile(spawnX, y).Type == ElementType.None`, it returns y?
+            // That sounds like it returns the TOPMOST empty slot? That's not where it settles.
+            // Ah, looking at original code:
+            /*
+            for (int y = 0; y < state.Height; y++)
+            {
+                if (state.GetTile(spawnX, y).Type == ElementType.None)
+                {
+                    return y;
+                }
+            }
+            return state.Height - 1;
+            */
+            // This original logic seems to find the *highest* empty spot?
+            // If column is full of tiles, it returns Height-1?
+            // If column is empty, it returns 0?
+            // This seems backwards for "Drop Target" (where it lands).
+            // Usually you want the lowest empty spot.
+            // UNLESS, this function assumes the column is full and we are checking where a NEW spawn would sit if we shifted down?
+            // Let's keep the logic identical but use ElementType.None.
+            
+            if (state.GetTile(spawnX, y).Type == ElementType.None)
             {
                 return y;
             }
@@ -78,7 +108,7 @@ public static class BoardAnalyzer
     /// <summary>
     /// Checks if placing a color at (x, y) would create an immediate match (3+ in a row).
     /// </summary>
-    public static bool WouldCreateMatch(ref GameState state, int x, int y, TileType color)
+    public static bool WouldCreateMatch(ref GameState state, int x, int y, ElementType color)
     {
         // Check horizontal
         int hCount = 1;
@@ -108,7 +138,7 @@ public static class BoardAnalyzer
     /// A near match means placing this tile creates a pair that needs only 1 more to complete.
     /// This is useful for creating tension without immediate resolution.
     /// </summary>
-    public static bool WouldCreateNearMatch(ref GameState state, int x, int y, TileType color)
+    public static bool WouldCreateNearMatch(ref GameState state, int x, int y, ElementType color)
     {
         // Check horizontal: need at least 1 adjacent same-color tile
         int left = 0, right = 0;
@@ -172,7 +202,7 @@ public static class BoardAnalyzer
             for (int x = 0; x < state.Width; x++)
             {
                 var type = state.GetType(x, y);
-                if (type == TileType.None) continue;
+                if (type == ElementType.None) continue;
 
                 // Check right neighbor
                 if (x + 1 < state.Width && state.GetType(x + 1, y) == type)
@@ -190,7 +220,7 @@ public static class BoardAnalyzer
     /// <summary>
     /// Finds the rarest color on the board.
     /// </summary>
-    public static TileType FindRarestColor(ref GameState state, int maxColors)
+    public static ElementType FindRarestColor(ref GameState state, int maxColors)
     {
         Span<int> counts = stackalloc int[6];
         GetColorDistribution(ref state, counts);
@@ -213,7 +243,7 @@ public static class BoardAnalyzer
     /// <summary>
     /// Finds the most common color on the board.
     /// </summary>
-    public static TileType FindMostCommonColor(ref GameState state, int maxColors)
+    public static ElementType FindMostCommonColor(ref GameState state, int maxColors)
     {
         Span<int> counts = stackalloc int[6];
         GetColorDistribution(ref state, counts);

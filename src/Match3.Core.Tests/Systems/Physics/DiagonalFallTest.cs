@@ -1,4 +1,4 @@
-using Match3.Core.Config;
+﻿using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Physics;
@@ -43,8 +43,8 @@ namespace Match3.Core.Tests.Systems.Physics
             // (0,1): Obstacle (Suspended)
             // Col 1: Empty
             
-            state.SetTile(0, 0, new Tile(1, TileType.Normal, 0, 0));
-            state.SetTile(0, 1, new Tile(2, TileType.Normal, 0, 1) { IsSuspended = true });
+            state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+            state.SetTile(0, 1, new Tile(2, ElementType.Item1, 0, 1) { IsSuspended = true });
             
             // Log positions frame by frame
             StringBuilder log = new StringBuilder();
@@ -124,3 +124,5 @@ namespace Match3.Core.Tests.Systems.Physics
         }
     }
 }
+
+

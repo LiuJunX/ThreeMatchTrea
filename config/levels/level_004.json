@@ -7,11 +7,12 @@
   "moveLimit": 20,
   "targetDifficulty": 0.55,
   "objectives": [
-    { "targetLayer": "Tile", "elementType": 512, "targetCount": 30 },
-    { "targetLayer": "Tile", "elementType": 1024, "targetCount": 30 },
-    { "targetLayer": "Tile", "elementType": 256, "targetCount": 30 }
+    { "targetLayer": "Tile", "elementType": 3, "targetCount": 30 },
+    { "targetLayer": "Tile", "elementType": 4, "targetCount": 30 },
+    { "targetLayer": "Tile", "elementType": 2, "targetCount": 30 }
   ],
-  "grid": [
+  "grid": null,
+  "cells": [
     0, 0, 0, 1, 1, 1, 0, 0, 0,
     0, 0, 0, 1, 1, 1, 0, 0, 0,
     0, 0, 0, 1, 1, 1, 0, 0, 0,

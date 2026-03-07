@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Match3.Core.Events;
 using Match3.Core.Events.Enums;
@@ -82,7 +82,7 @@ public class ExplosionSystemTests : IDisposable
 
         // Assert 1: Center destroyed
         var centerTile = state.GetTile(origin.X, origin.Y);
-        Assert.Equal(TileType.None, centerTile.Type);
+        Assert.Equal(ElementType.None, centerTile.Type);
         Assert.Contains(_eventCollector.EmittedEvents, e => e is TileDestroyedEvent tde && tde.GridPosition.Equals(origin));
 
         // Act 2: Second Update (Wave 1)
@@ -91,18 +91,18 @@ public class ExplosionSystemTests : IDisposable
         // Assert 2: Wave 1 destroyed (Chebyshev distance 1)
         // e.g. (4,4), (4,5), (4,6), (5,4)...
         var wave1Pos = new Position(4, 5); // Distance 1
-        Assert.Equal(TileType.None, state.GetTile(wave1Pos.X, wave1Pos.Y).Type);
+        Assert.Equal(ElementType.None, state.GetTile(wave1Pos.X, wave1Pos.Y).Type);
 
         // Wave 2 should still be suspended
         var wave2Pos = new Position(3, 5); // Distance 2
-        Assert.NotEqual(TileType.None, state.GetTile(wave2Pos.X, wave2Pos.Y).Type);
+        Assert.NotEqual(ElementType.None, state.GetTile(wave2Pos.X, wave2Pos.Y).Type);
         Assert.True(state.GetTile(wave2Pos.X, wave2Pos.Y).IsSuspended);
 
         // Act 3: Third Update (Wave 2)
         _sut.Update(ref state, deltaTime, tick + 2, simTime + 0.2f, _eventCollector, triggeredBombs);
         
         // Assert 3: Wave 2 destroyed
-        Assert.Equal(TileType.None, state.GetTile(wave2Pos.X, wave2Pos.Y).Type);
+        Assert.Equal(ElementType.None, state.GetTile(wave2Pos.X, wave2Pos.Y).Type);
         
         // Explosion should be finished (radius 2 has 3 waves: 0, 1, 2)
         Assert.False(_sut.HasActiveExplosions);
@@ -117,7 +117,7 @@ public class ExplosionSystemTests : IDisposable
         var bombPos = new Position(6, 5); // Distance 1
         
         // Place a bomb
-        var bombTile = new Tile(100, TileType.Red, bombPos.X, bombPos.Y) { Bomb = BombType.Horizontal };
+        var bombTile = new Tile(100, ElementType.Item1, bombPos.X, bombPos.Y) { Bomb = BombType.Horizontal };
         state.SetTile(bombPos.X, bombPos.Y, bombTile);
         
         _sut.CreateExplosion(ref state, origin, 2);
@@ -140,7 +140,7 @@ public class ExplosionSystemTests : IDisposable
         Assert.Equal(bombPos, triggeredBombs[0]);
         var tileAfter = state.GetTile(bombPos.X, bombPos.Y);
         Assert.Equal(BombType.Horizontal, tileAfter.Bomb);
-        Assert.NotEqual(TileType.None, tileAfter.Type);
+        Assert.NotEqual(ElementType.None, tileAfter.Type);
         // Suspended flag is cleared when bomb is triggered (BombActivationSystem will handle it)
         Assert.False(tileAfter.IsSuspended);
     }
@@ -161,7 +161,7 @@ public class ExplosionSystemTests : IDisposable
 
         // Assert
         var tile = state.GetTile(5, 5);
-        Assert.Equal(TileType.None, tile.Type);
+        Assert.Equal(ElementType.None, tile.Type);
         Assert.False(tile.IsSuspended); // Default Tile has IsSuspended = false
     }
 
@@ -172,7 +172,7 @@ public class ExplosionSystemTests : IDisposable
         {
             for (int x = 0; x < width; x++)
             {
-                state.SetTile(x, y, new Tile(y * width + x + 1, TileType.Red, x, y));
+                state.SetTile(x, y, new Tile(y * width + x + 1, ElementType.Item1, x, y));
             }
         }
         return state;
@@ -204,3 +204,4 @@ public class ExplosionSystemTests : IDisposable
         }
     }
 }
+

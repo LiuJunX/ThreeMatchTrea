@@ -16,6 +16,13 @@ public class Explosion
     public float WaveInterval;
 
     /// <summary>
+    /// Per-wave multiplier applied to WaveInterval after each wave.
+    /// Values &lt; 1 make later waves faster (acceleration).
+    /// Default 1.0 = constant speed.
+    /// </summary>
+    public float Acceleration;
+
+    /// <summary>
     /// All tiles affected by this explosion.
     /// Calculated at initialization.
     /// </summary>
@@ -28,11 +35,12 @@ public class Explosion
         AffectedArea = Pools.ObtainHashSet<Position>();
     }
 
-    public void Initialize(Position origin, int radius, float interval)
+    public void Initialize(Position origin, int radius, float interval, float acceleration = 1f)
     {
         Origin = origin;
         MaxRadius = radius;
         WaveInterval = interval;
+        Acceleration = acceleration;
         CurrentWaveRadius = 0;
         Timer = 0f;
         AffectedArea.Clear();

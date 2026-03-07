@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.PowerUps;
@@ -41,7 +41,7 @@ public class BombEffectTests
     private GameState CreateFilledState(int width = 8, int height = 8)
     {
         var state = new GameState(width, height, 6, new StubRandom());
-        var types = new[] { TileType.Red, TileType.Blue, TileType.Green, TileType.Yellow };
+        var types = new[] { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4 };
         int id = 1;
         for (int y = 0; y < height; y++)
         {
@@ -60,7 +60,7 @@ public class BombEffectTests
         {
             for (int x = 0; x < width; x++)
             {
-                state.SetTile(x, y, new Tile(0, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(0, ElementType.None, x, y));
             }
         }
         return state;
@@ -143,7 +143,7 @@ public class BombEffectTests
         var state = new GameState(3, 3, 6, rng);
         for (int y = 0; y < 3; y++)
             for (int x = 0; x < 3; x++)
-                state.SetTile(x, y, new Tile(y * 3 + x + 1, TileType.Red, x, y));
+                state.SetTile(x, y, new Tile(y * 3 + x + 1, ElementType.Item1, x, y));
 
         var effect = new HorizontalRocketEffect();
         var affected = new HashSet<Position>();
@@ -168,7 +168,7 @@ public class BombEffectTests
         var state = new GameState(10, 5, 6, rng);
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 10; x++)
-                state.SetTile(x, y, new Tile(y * 10 + x + 1, TileType.Blue, x, y));
+                state.SetTile(x, y, new Tile(y * 10 + x + 1, ElementType.Item3, x, y));
 
         var effect = new HorizontalRocketEffect();
         var affected = new HashSet<Position>();
@@ -264,7 +264,7 @@ public class BombEffectTests
         var state = new GameState(3, 3, 6, rng);
         for (int y = 0; y < 3; y++)
             for (int x = 0; x < 3; x++)
-                state.SetTile(x, y, new Tile(y * 3 + x + 1, TileType.Red, x, y));
+                state.SetTile(x, y, new Tile(y * 3 + x + 1, ElementType.Item1, x, y));
 
         var effect = new VerticalRocketEffect();
         var affected = new HashSet<Position>();
@@ -289,7 +289,7 @@ public class BombEffectTests
         var state = new GameState(5, 10, 6, rng);
         for (int y = 0; y < 10; y++)
             for (int x = 0; x < 5; x++)
-                state.SetTile(x, y, new Tile(y * 5 + x + 1, TileType.Blue, x, y));
+                state.SetTile(x, y, new Tile(y * 5 + x + 1, ElementType.Item3, x, y));
 
         var effect = new VerticalRocketEffect();
         var affected = new HashSet<Position>();
@@ -488,7 +488,7 @@ public class BombEffectTests
         var state = new GameState(3, 3, 6, rng);
         for (int y = 0; y < 3; y++)
             for (int x = 0; x < 3; x++)
-                state.SetTile(x, y, new Tile(y * 3 + x + 1, TileType.Red, x, y));
+                state.SetTile(x, y, new Tile(y * 3 + x + 1, ElementType.Item1, x, y));
 
         var effect = new SquareBombEffect();
         var affected = new HashSet<Position>();
@@ -520,14 +520,14 @@ public class BombEffectTests
         // 放置 10 个红色
         for (int x = 0; x < 8; x++)
         {
-            state.SetTile(x, 0, new Tile(x + 1, TileType.Red, x, 0));
+            state.SetTile(x, 0, new Tile(x + 1, ElementType.Item1, x, 0));
         }
-        state.SetTile(0, 1, new Tile(9, TileType.Red, 0, 1));
-        state.SetTile(1, 1, new Tile(10, TileType.Red, 1, 1));
+        state.SetTile(0, 1, new Tile(9, ElementType.Item1, 0, 1));
+        state.SetTile(1, 1, new Tile(10, ElementType.Item1, 1, 1));
         // 放置 5 个蓝色
         for (int x = 0; x < 5; x++)
         {
-            state.SetTile(x, 2, new Tile(11 + x, TileType.Blue, x, 2));
+            state.SetTile(x, 2, new Tile(11 + x, ElementType.Item3, x, 2));
         }
 
         var effect = new ColorBombEffect();
@@ -548,25 +548,25 @@ public class BombEffectTests
     }
 
     [Fact]
-    public void ColorBomb_Apply_IgnoresRainbowAndBomb()
+    public void ColorBomb_Apply_IncludesColoredBombs()
     {
-        // Arrange: 有 Rainbow 和 Bomb 类型
+        // Arrange: Colored Bombs (Item1) should be counted and cleared
         var state = CreateEmptyState();
-        // 3 个红色
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
-        state.SetTile(1, 0, new Tile(2, TileType.Red, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Red, 2, 0));
-        // 10 个 Rainbow（不计入统计）
+        // 3 normal Red
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
+        // 10 Rainbows (ignored)
         for (int x = 0; x < 8; x++)
         {
-            state.SetTile(x, 1, new Tile(10 + x, TileType.Rainbow, x, 1));
+            state.SetTile(x, 1, new Tile(10 + x, ElementType.Universal, x, 1));
         }
-        state.SetTile(0, 2, new Tile(20, TileType.Rainbow, 0, 2));
-        state.SetTile(1, 2, new Tile(21, TileType.Rainbow, 1, 2));
-        // 5 个 Bomb 类型（不计入统计）
+        state.SetTile(0, 2, new Tile(20, ElementType.Universal, 0, 2));
+        state.SetTile(1, 2, new Tile(21, ElementType.Universal, 1, 2));
+        // 5 Red Bombs (should be counted)
         for (int x = 0; x < 5; x++)
         {
-            state.SetTile(x, 3, new Tile(30 + x, TileType.Bomb, x, 3));
+            state.SetTile(x, 3, new Tile(30 + x, ElementType.Item1, x, 3) { Bomb = BombType.Horizontal });
         }
 
         var effect = new ColorBombEffect();
@@ -575,11 +575,10 @@ public class BombEffectTests
         // Act
         effect.Apply(in state, new Position(4, 4), affected);
 
-        // Assert: 只清除红色（最多的普通颜色）
-        Assert.Equal(3, affected.Count);
+        // Assert: 3 normal + 5 bombs = 8
+        Assert.Equal(8, affected.Count);
         Assert.Contains(new Position(0, 0), affected);
-        Assert.Contains(new Position(1, 0), affected);
-        Assert.Contains(new Position(2, 0), affected);
+        Assert.Contains(new Position(0, 3), affected);
     }
 
     [Fact]
@@ -605,12 +604,12 @@ public class BombEffectTests
         // 5 个红色
         for (int x = 0; x < 5; x++)
         {
-            state.SetTile(x, 0, new Tile(x + 1, TileType.Red, x, 0));
+            state.SetTile(x, 0, new Tile(x + 1, ElementType.Item1, x, 0));
         }
         // 5 个蓝色
         for (int x = 0; x < 5; x++)
         {
-            state.SetTile(x, 1, new Tile(10 + x, TileType.Blue, x, 1));
+            state.SetTile(x, 1, new Tile(10 + x, ElementType.Item3, x, 1));
         }
 
         var effect = new ColorBombEffect();
@@ -630,7 +629,7 @@ public class BombEffectTests
         var state = CreateEmptyState();
         for (int x = 0; x < 8; x++)
         {
-            state.SetTile(x, 0, new Tile(x + 1, TileType.Green, x, 0));
+            state.SetTile(x, 0, new Tile(x + 1, ElementType.Item2, x, 0));
         }
 
         var effect = new ColorBombEffect();
@@ -648,17 +647,19 @@ public class BombEffectTests
     }
 
     [Fact]
-    public void ColorBomb_Apply_OnlySpecialTypes_NoEffect()
+    public void ColorBomb_Apply_OnlySpecialTypes_ClearsThem()
     {
-        // Arrange: 只有 Bomb 和 Rainbow 类型（无普通颜色）
+        // Arrange: Only Colored Bombs (Item1) and Rainbows
         var state = CreateEmptyState();
+        // 4 Red Bombs
         for (int x = 0; x < 4; x++)
         {
-            state.SetTile(x, 0, new Tile(x + 1, TileType.Bomb, x, 0));
+            state.SetTile(x, 0, new Tile(x + 1, ElementType.Item1, x, 0) { Bomb = BombType.Horizontal });
         }
+        // 4 Rainbows
         for (int x = 0; x < 4; x++)
         {
-            state.SetTile(x, 1, new Tile(10 + x, TileType.Rainbow, x, 1));
+            state.SetTile(x, 1, new Tile(10 + x, ElementType.Universal, x, 1));
         }
 
         var effect = new ColorBombEffect();
@@ -667,8 +668,12 @@ public class BombEffectTests
         // Act
         effect.Apply(in state, new Position(4, 4), affected);
 
-        // Assert: 没有普通颜色可消除
-        Assert.Empty(affected);
+        // Assert: Should clear the 4 Red Bombs
+        Assert.Equal(4, affected.Count);
+        for (int x = 0; x < 4; x++)
+        {
+            Assert.Contains(new Position(x, 0), affected);
+        }
     }
 
     [Fact]
@@ -677,28 +682,28 @@ public class BombEffectTests
         // Arrange: 所有 6 种颜色，紫色最多
         var state = CreateEmptyState();
         // 1 红
-        state.SetTile(0, 0, new Tile(1, TileType.Red, 0, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
         // 2 绿
-        state.SetTile(1, 0, new Tile(2, TileType.Green, 1, 0));
-        state.SetTile(2, 0, new Tile(3, TileType.Green, 2, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item2, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item2, 2, 0));
         // 3 蓝
-        state.SetTile(3, 0, new Tile(4, TileType.Blue, 3, 0));
-        state.SetTile(4, 0, new Tile(5, TileType.Blue, 4, 0));
-        state.SetTile(5, 0, new Tile(6, TileType.Blue, 5, 0));
+        state.SetTile(3, 0, new Tile(4, ElementType.Item3, 3, 0));
+        state.SetTile(4, 0, new Tile(5, ElementType.Item3, 4, 0));
+        state.SetTile(5, 0, new Tile(6, ElementType.Item3, 5, 0));
         // 4 黄
-        state.SetTile(0, 1, new Tile(7, TileType.Yellow, 0, 1));
-        state.SetTile(1, 1, new Tile(8, TileType.Yellow, 1, 1));
-        state.SetTile(2, 1, new Tile(9, TileType.Yellow, 2, 1));
-        state.SetTile(3, 1, new Tile(10, TileType.Yellow, 3, 1));
+        state.SetTile(0, 1, new Tile(7, ElementType.Item4, 0, 1));
+        state.SetTile(1, 1, new Tile(8, ElementType.Item4, 1, 1));
+        state.SetTile(2, 1, new Tile(9, ElementType.Item4, 2, 1));
+        state.SetTile(3, 1, new Tile(10, ElementType.Item4, 3, 1));
         // 5 紫（最多）
-        state.SetTile(4, 1, new Tile(11, TileType.Purple, 4, 1));
-        state.SetTile(5, 1, new Tile(12, TileType.Purple, 5, 1));
-        state.SetTile(6, 1, new Tile(13, TileType.Purple, 6, 1));
-        state.SetTile(7, 1, new Tile(14, TileType.Purple, 7, 1));
-        state.SetTile(0, 2, new Tile(15, TileType.Purple, 0, 2));
+        state.SetTile(4, 1, new Tile(11, ElementType.Item5, 4, 1));
+        state.SetTile(5, 1, new Tile(12, ElementType.Item5, 5, 1));
+        state.SetTile(6, 1, new Tile(13, ElementType.Item5, 6, 1));
+        state.SetTile(7, 1, new Tile(14, ElementType.Item5, 7, 1));
+        state.SetTile(0, 2, new Tile(15, ElementType.Item5, 0, 2));
         // 2 橙
-        state.SetTile(1, 2, new Tile(16, TileType.Orange, 1, 2));
-        state.SetTile(2, 2, new Tile(17, TileType.Orange, 2, 2));
+        state.SetTile(1, 2, new Tile(16, ElementType.Item6, 1, 2));
+        state.SetTile(2, 2, new Tile(17, ElementType.Item6, 2, 2));
 
         var effect = new ColorBombEffect();
         var affected = new HashSet<Position>();
@@ -732,7 +737,7 @@ public class BombEffectTests
         // Arrange
         var rng = new StubRandom(0);
         var state = new GameState(8, 8, 6, rng);
-        var types = new[] { TileType.Red, TileType.Blue, TileType.Green, TileType.Yellow };
+        var types = new[] { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4 };
         int id = 1;
         for (int y = 0; y < 8; y++)
         {
@@ -768,7 +773,7 @@ public class BombEffectTests
         var state = new GameState(5, 5, 6, rng);
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 5; x++)
-                state.SetTile(x, y, new Tile(y * 5 + x + 1, TileType.Red, x, y));
+                state.SetTile(x, y, new Tile(y * 5 + x + 1, ElementType.Item1, x, y));
 
         var effect = new UfoEffect();
         var affected = new HashSet<Position>();
@@ -792,14 +797,14 @@ public class BombEffectTests
         var state = new GameState(5, 5, 6, rng);
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 5; x++)
-                state.SetTile(x, y, new Tile(0, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(0, ElementType.None, x, y));
 
         // 只在小十字范围放置方块
-        state.SetTile(2, 2, new Tile(1, TileType.Red, 2, 2)); // 中心
-        state.SetTile(1, 2, new Tile(2, TileType.Red, 1, 2)); // 左
-        state.SetTile(3, 2, new Tile(3, TileType.Red, 3, 2)); // 右
-        state.SetTile(2, 1, new Tile(4, TileType.Red, 2, 1)); // 上
-        state.SetTile(2, 3, new Tile(5, TileType.Red, 2, 3)); // 下
+        state.SetTile(2, 2, new Tile(1, ElementType.Item1, 2, 2)); // 中心
+        state.SetTile(1, 2, new Tile(2, ElementType.Item1, 1, 2)); // 左
+        state.SetTile(3, 2, new Tile(3, ElementType.Item1, 3, 2)); // 右
+        state.SetTile(2, 1, new Tile(4, ElementType.Item1, 2, 1)); // 上
+        state.SetTile(2, 3, new Tile(5, ElementType.Item1, 2, 3)); // 下
 
         var effect = new UfoEffect();
         var affected = new HashSet<Position>();
@@ -820,7 +825,7 @@ public class BombEffectTests
         var state = new GameState(5, 5, 6, rng);
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 5; x++)
-                state.SetTile(x, y, new Tile(y * 5 + x + 1, TileType.Red, x, y));
+                state.SetTile(x, y, new Tile(y * 5 + x + 1, ElementType.Item1, x, y));
 
         var effect = new UfoEffect();
         var affected = new HashSet<Position>();
@@ -844,7 +849,7 @@ public class BombEffectTests
         var state = new GameState(5, 5, 6, rng);
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 5; x++)
-                state.SetTile(x, y, new Tile(y * 5 + x + 1, TileType.Red, x, y));
+                state.SetTile(x, y, new Tile(y * 5 + x + 1, ElementType.Item1, x, y));
 
         var effect = new UfoEffect();
         var affected = new HashSet<Position>();
@@ -868,7 +873,7 @@ public class BombEffectTests
         var state = new GameState(5, 5, 6, rng);
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 5; x++)
-                state.SetTile(x, y, new Tile(y * 5 + x + 1, TileType.Red, x, y));
+                state.SetTile(x, y, new Tile(y * 5 + x + 1, ElementType.Item1, x, y));
 
         var effect = new UfoEffect();
         var affected = new HashSet<Position>();
@@ -892,7 +897,7 @@ public class BombEffectTests
         var state = new GameState(5, 5, 6, rng);
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 5; x++)
-                state.SetTile(x, y, new Tile(y * 5 + x + 1, TileType.Red, x, y));
+                state.SetTile(x, y, new Tile(y * 5 + x + 1, ElementType.Item1, x, y));
 
         var effect = new UfoEffect();
         var affected = new HashSet<Position>();
@@ -917,7 +922,7 @@ public class BombEffectTests
         var state = new GameState(5, 5, 6, rng);
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 5; x++)
-                state.SetTile(x, y, new Tile(y * 5 + x + 1, TileType.Red, x, y));
+                state.SetTile(x, y, new Tile(y * 5 + x + 1, ElementType.Item1, x, y));
 
         var effect = new UfoEffect();
         var affected = new HashSet<Position>();
@@ -944,7 +949,7 @@ public class BombEffectTests
         var state = new GameState(5, 5, 6, rng);
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 5; x++)
-                state.SetTile(x, y, new Tile(0, TileType.None, x, y));
+                state.SetTile(x, y, new Tile(0, ElementType.None, x, y));
 
         var effect = new UfoEffect();
         var affected = new HashSet<Position>();
@@ -1100,7 +1105,7 @@ public class BombEffectTests
         var state = new GameState(3, 3, 6, rng);
         for (int y = 0; y < 3; y++)
             for (int x = 0; x < 3; x++)
-                state.SetTile(x, y, new Tile(y * 3 + x + 1, TileType.Red, x, y));
+                state.SetTile(x, y, new Tile(y * 3 + x + 1, ElementType.Item1, x, y));
 
         var effects = new IBombEffect[]
         {
@@ -1159,3 +1164,5 @@ public class BombEffectTests
 
     #endregion
 }
+
+

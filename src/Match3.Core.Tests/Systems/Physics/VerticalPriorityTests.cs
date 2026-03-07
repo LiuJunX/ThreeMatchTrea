@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
@@ -41,13 +41,13 @@ namespace Match3.Core.Tests.Systems.Physics
             var gravity = new RealtimeGravitySystem(config, rng);
 
             // Setup
-            state.SetTile(0, 0, new Tile(1, TileType.Normal, 0, 0));
-            state.SetTile(1, 0, new Tile(2, TileType.Normal, 1, 0)); // The falling tile
-            state.SetTile(2, 0, new Tile(3, TileType.Normal, 2, 0));
+            state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+            state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0)); // The falling tile
+            state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
 
-            state.SetTile(0, 1, new Tile(4, TileType.Normal, 0, 1) { IsSuspended = true }); // Block
-            state.SetTile(1, 1, new Tile(0, TileType.None, 1, 1)); // Empty Target
-            state.SetTile(2, 1, new Tile(5, TileType.Normal, 2, 1) { IsSuspended = true }); // Block
+            state.SetTile(0, 1, new Tile(4, ElementType.Item1, 0, 1) { IsSuspended = true }); // Block
+            state.SetTile(1, 1, new Tile(0, ElementType.None, 1, 1)); // Empty Target
+            state.SetTile(2, 1, new Tile(5, ElementType.Item1, 2, 1) { IsSuspended = true }); // Block
 
             // Force Shuffle Order: 0, 1, 2
             // Shuffle Logic: 
@@ -86,3 +86,5 @@ namespace Match3.Core.Tests.Systems.Physics
         }
     }
 }
+
+

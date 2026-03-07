@@ -83,7 +83,7 @@ namespace Match3.Unity.Pools
         /// <summary>
         /// Get color for a tile type.
         /// </summary>
-        public static Color GetTileColor(TileType type)
+        public static Color GetTileColor(ElementType type)
         {
             EnsureConfigLoaded();
 
@@ -95,36 +95,36 @@ namespace Match3.Unity.Pools
             }
 
             // Fallback to hardcoded defaults
-            if ((type & TileType.Red) != 0) return new Color(0.9f, 0.2f, 0.2f);
-            if ((type & TileType.Green) != 0) return new Color(0.2f, 0.8f, 0.3f);
-            if ((type & TileType.Blue) != 0) return new Color(0.2f, 0.4f, 0.9f);
-            if ((type & TileType.Yellow) != 0) return new Color(0.95f, 0.85f, 0.2f);
-            if ((type & TileType.Purple) != 0) return new Color(0.7f, 0.3f, 0.8f);
-            if ((type & TileType.Orange) != 0) return new Color(0.95f, 0.5f, 0.1f);
-            if ((type & TileType.Rainbow) != 0) return new Color(0.9f, 0.9f, 0.9f);
+            if (type == ElementType.Item1) return new Color(0.9f, 0.2f, 0.2f);       // Red
+            if (type == ElementType.Item2) return new Color(0.2f, 0.8f, 0.3f);       // Green
+            if (type == ElementType.Item3) return new Color(0.2f, 0.4f, 0.9f);       // Blue
+            if (type == ElementType.Item4) return new Color(0.95f, 0.85f, 0.2f);     // Yellow
+            if (type == ElementType.Item5) return new Color(0.7f, 0.3f, 0.8f);       // Purple
+            if (type == ElementType.Item6) return new Color(0.95f, 0.5f, 0.1f);      // Orange
+            if (type == ElementType.Universal) return new Color(0.9f, 0.9f, 0.9f);   // Rainbow
 
             return Color.gray;
         }
 
         /// <summary>
-        /// Get the config key name for a TileType.
+        /// Get the config key name for an ElementType.
         /// </summary>
-        private static string GetTileTypeName(TileType type)
+        private static string GetTileTypeName(ElementType type)
         {
-            if ((type & TileType.Red) != 0) return "Red";
-            if ((type & TileType.Green) != 0) return "Green";
-            if ((type & TileType.Blue) != 0) return "Blue";
-            if ((type & TileType.Yellow) != 0) return "Yellow";
-            if ((type & TileType.Purple) != 0) return "Purple";
-            if ((type & TileType.Orange) != 0) return "Orange";
-            if ((type & TileType.Rainbow) != 0) return "Rainbow";
+            if (type == ElementType.Item1) return "Red";
+            if (type == ElementType.Item2) return "Green";
+            if (type == ElementType.Item3) return "Blue";
+            if (type == ElementType.Item4) return "Yellow";
+            if (type == ElementType.Item5) return "Purple";
+            if (type == ElementType.Item6) return "Orange";
+            if (type == ElementType.Universal) return "Rainbow";
             return null;
         }
 
         /// <summary>
         /// Get sprite for a tile type.
         /// </summary>
-        public static Sprite GetTileSprite(TileType type)
+        public static Sprite GetTileSprite(ElementType type)
         {
             var color = GetTileColor(type);
             return GetColorSprite(color);

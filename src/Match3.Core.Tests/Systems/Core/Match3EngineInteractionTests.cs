@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Reflection;
@@ -90,7 +90,7 @@ public class Match3EngineInteractionTests
             {
                 for (int x = 0; x < state.Width; x++)
                 {
-                    var tile = new Tile(y * state.Width + x + 1, TileType.Red, x, y);
+                    var tile = new Tile(y * state.Width + x + 1, ElementType.Item1, x, y);
                     tile.Position = new Vector2(x, y);
                     state.SetTile(x, y, tile);
                 }
@@ -100,7 +100,7 @@ public class Match3EngineInteractionTests
 
     private class StubGameView : IGameView
     {
-        public void RenderBoard(TileType[,] board) { }
+        public void RenderBoard(ElementType[,] board) { }
         public void ShowSwap(Position a, Position b, bool success) { }
         public void ShowMatches(IReadOnlyCollection<Position> matched) { }
         public void ShowGravity(IEnumerable<TileMove> moves) { }
@@ -185,7 +185,7 @@ public class Match3EngineInteractionTests
         var state = (GameState)stateField!.GetValue(engine)!;
 
         // Place a bomb at (0,0)
-        var bombTile = new Tile(1, TileType.Red, 0, 0);
+        var bombTile = new Tile(1, ElementType.Item1, 0, 0);
         bombTile.Bomb = BombType.Horizontal;
         state.SetTile(0, 0, bombTile);
 
@@ -257,9 +257,9 @@ public class Match3EngineInteractionTests
         var stateField = typeof(Match3Engine).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
         var state = (GameState)stateField!.GetValue(engine)!;
 
-        var t1 = new Tile(1, TileType.Red, 0, 0);
+        var t1 = new Tile(1, ElementType.Item1, 0, 0);
         t1.Position = new Vector2(0, 0);
-        var t2 = new Tile(2, TileType.Blue, 1, 0);
+        var t2 = new Tile(2, ElementType.Item3, 1, 0);
         t2.Position = new Vector2(1, 0);
         state.SetTile(0, 0, t1);
         state.SetTile(1, 0, t2);
@@ -272,8 +272,8 @@ public class Match3EngineInteractionTests
         var tileAt10 = engine.State.GetTile(1, 0);
 
         // Tiles should be swapped (Blue at 0,0, Red at 1,0)
-        Assert.Equal(TileType.Blue, tileAt00.Type);
-        Assert.Equal(TileType.Red, tileAt10.Type);
+        Assert.Equal(ElementType.Item3, tileAt00.Type);
+        Assert.Equal(ElementType.Item1, tileAt10.Type);
     }
 
     [Fact]
@@ -304,9 +304,9 @@ public class Match3EngineInteractionTests
         var stateField = typeof(Match3Engine).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
         var state = (GameState)stateField!.GetValue(engine)!;
 
-        var t1 = new Tile(1, TileType.Red, 0, 0);
+        var t1 = new Tile(1, ElementType.Item1, 0, 0);
         t1.Position = new Vector2(0, 0);
-        var t2 = new Tile(2, TileType.Blue, 1, 0);
+        var t2 = new Tile(2, ElementType.Item3, 1, 0);
         t2.Position = new Vector2(1, 0);
         state.SetTile(0, 0, t1);
         state.SetTile(1, 0, t2);
@@ -315,8 +315,8 @@ public class Match3EngineInteractionTests
         engine.OnSwipe(new Position(0, 0), Direction.Right);
 
         // 交换后立即检查 - tiles 应该已经交换（但还没验证回退）
-        Assert.Equal(TileType.Blue, engine.State.GetTile(0, 0).Type);
-        Assert.Equal(TileType.Red, engine.State.GetTile(1, 0).Type);
+        Assert.Equal(ElementType.Item3, engine.State.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.Item1, engine.State.GetTile(1, 0).Type);
 
         // 运行 Update 来触发验证（StubAnimationSystem.IsVisualAtTarget 返回 true，所以立即验证）
         engine.Update(0.016f);
@@ -326,8 +326,8 @@ public class Match3EngineInteractionTests
         var tileAt10 = engine.State.GetTile(1, 0);
 
         // Tiles should be swapped back to original positions
-        Assert.Equal(TileType.Red, tileAt00.Type);
-        Assert.Equal(TileType.Blue, tileAt10.Type);
+        Assert.Equal(ElementType.Item1, tileAt00.Type);
+        Assert.Equal(ElementType.Item3, tileAt10.Type);
     }
 
     [Fact]
@@ -358,9 +358,9 @@ public class Match3EngineInteractionTests
         var stateField = typeof(Match3Engine).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
         var state = (GameState)stateField!.GetValue(engine)!;
 
-        var t1 = new Tile(1, TileType.Red, 0, 0);
+        var t1 = new Tile(1, ElementType.Item1, 0, 0);
         t1.Position = new Vector2(0, 0);
-        var t2 = new Tile(2, TileType.Blue, 1, 0);
+        var t2 = new Tile(2, ElementType.Item3, 1, 0);
         t2.Position = new Vector2(1, 0);
         state.SetTile(0, 0, t1);
         state.SetTile(1, 0, t2);
@@ -410,9 +410,9 @@ public class Match3EngineInteractionTests
         var stateField = typeof(Match3Engine).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
         var state = (GameState)stateField!.GetValue(engine)!;
 
-        var t1 = new Tile(1, TileType.Red, 0, 0);
+        var t1 = new Tile(1, ElementType.Item1, 0, 0);
         t1.Position = new Vector2(0, 0);
-        var t2 = new Tile(2, TileType.Blue, 1, 0);
+        var t2 = new Tile(2, ElementType.Item3, 1, 0);
         t2.Position = new Vector2(1, 0);
         state.SetTile(0, 0, t1);
         state.SetTile(1, 0, t2);
@@ -421,8 +421,8 @@ public class Match3EngineInteractionTests
         engine.OnSwipe(new Position(0, 0), Direction.Right);
 
         // 交换后立即检查 - tiles 应该已经交换
-        Assert.Equal(TileType.Blue, engine.State.GetTile(0, 0).Type);
-        Assert.Equal(TileType.Red, engine.State.GetTile(1, 0).Type);
+        Assert.Equal(ElementType.Item3, engine.State.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.Item1, engine.State.GetTile(1, 0).Type);
 
         // 运行 Update 来触发验证
         engine.Update(0.016f);
@@ -432,8 +432,8 @@ public class Match3EngineInteractionTests
         var tileAt10 = engine.State.GetTile(1, 0);
 
         // Tiles should remain swapped (NOT swapped back)
-        Assert.Equal(TileType.Blue, tileAt00.Type);
-        Assert.Equal(TileType.Red, tileAt10.Type);
+        Assert.Equal(ElementType.Item3, tileAt00.Type);
+        Assert.Equal(ElementType.Item1, tileAt10.Type);
     }
 
     [Fact]
@@ -469,9 +469,9 @@ public class Match3EngineInteractionTests
         var stateField = typeof(Match3Engine).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
         var state = (GameState)stateField!.GetValue(engine)!;
 
-        var t1 = new Tile(1, TileType.Red, 0, 0);
+        var t1 = new Tile(1, ElementType.Item1, 0, 0);
         t1.Position = new Vector2(0, 0);
-        var t2 = new Tile(2, TileType.Blue, 1, 0);
+        var t2 = new Tile(2, ElementType.Item3, 1, 0);
         t2.Position = new Vector2(1, 0);
         state.SetTile(0, 0, t1);
         state.SetTile(1, 0, t2);
@@ -485,8 +485,8 @@ public class Match3EngineInteractionTests
         var tileAt10 = engine.State.GetTile(1, 0);
 
         // Tiles should remain swapped (NOT swapped back)
-        Assert.Equal(TileType.Blue, tileAt00.Type);
-        Assert.Equal(TileType.Red, tileAt10.Type);
+        Assert.Equal(ElementType.Item3, tileAt00.Type);
+        Assert.Equal(ElementType.Item1, tileAt10.Type);
     }
 
     #endregion
@@ -521,9 +521,9 @@ public class Match3EngineInteractionTests
         var stateField = typeof(Match3Engine).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
         var state = (GameState)stateField!.GetValue(engine)!;
 
-        var t1 = new Tile(1, TileType.Red, 0, 0);
+        var t1 = new Tile(1, ElementType.Item1, 0, 0);
         t1.Position = new Vector2(0, 0);
-        var t2 = new Tile(2, TileType.Blue, 0, 1);
+        var t2 = new Tile(2, ElementType.Item3, 0, 1);
         t2.Position = new Vector2(0, 1);
         state.SetTile(0, 0, t1);
         state.SetTile(0, 1, t2);
@@ -536,8 +536,8 @@ public class Match3EngineInteractionTests
         var tileAt01 = engine.State.GetTile(0, 1);
 
         // Tiles should be swapped (Blue at 0,0, Red at 0,1)
-        Assert.Equal(TileType.Blue, tileAt00.Type);
-        Assert.Equal(TileType.Red, tileAt01.Type);
+        Assert.Equal(ElementType.Item3, tileAt00.Type);
+        Assert.Equal(ElementType.Item1, tileAt01.Type);
     }
 
     [Fact]
@@ -568,9 +568,9 @@ public class Match3EngineInteractionTests
         var stateField = typeof(Match3Engine).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
         var state = (GameState)stateField!.GetValue(engine)!;
 
-        var t1 = new Tile(1, TileType.Red, 0, 0);
+        var t1 = new Tile(1, ElementType.Item1, 0, 0);
         t1.Position = new Vector2(0, 0);
-        var t2 = new Tile(2, TileType.Blue, 0, 1);
+        var t2 = new Tile(2, ElementType.Item3, 0, 1);
         t2.Position = new Vector2(0, 1);
         state.SetTile(0, 0, t1);
         state.SetTile(0, 1, t2);
@@ -579,8 +579,8 @@ public class Match3EngineInteractionTests
         engine.OnSwipe(new Position(0, 0), Direction.Down);
 
         // 交换后立即检查 - tiles 应该已经交换（但还没验证回退）
-        Assert.Equal(TileType.Blue, engine.State.GetTile(0, 0).Type);
-        Assert.Equal(TileType.Red, engine.State.GetTile(0, 1).Type);
+        Assert.Equal(ElementType.Item3, engine.State.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.Item1, engine.State.GetTile(0, 1).Type);
 
         // 运行 Update 来触发验证
         engine.Update(0.016f);
@@ -590,8 +590,8 @@ public class Match3EngineInteractionTests
         var tileAt01 = engine.State.GetTile(0, 1);
 
         // Tiles should be swapped back to original positions
-        Assert.Equal(TileType.Red, tileAt00.Type);
-        Assert.Equal(TileType.Blue, tileAt01.Type);
+        Assert.Equal(ElementType.Item1, tileAt00.Type);
+        Assert.Equal(ElementType.Item3, tileAt01.Type);
     }
 
     [Fact]
@@ -622,9 +622,9 @@ public class Match3EngineInteractionTests
         var stateField = typeof(Match3Engine).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
         var state = (GameState)stateField!.GetValue(engine)!;
 
-        var t1 = new Tile(1, TileType.Red, 0, 0);
+        var t1 = new Tile(1, ElementType.Item1, 0, 0);
         t1.Position = new Vector2(0, 0);
-        var t2 = new Tile(2, TileType.Blue, 0, 1);
+        var t2 = new Tile(2, ElementType.Item3, 0, 1);
         t2.Position = new Vector2(0, 1);
         state.SetTile(0, 0, t1);
         state.SetTile(0, 1, t2);
@@ -672,9 +672,9 @@ public class Match3EngineInteractionTests
         var stateField = typeof(Match3Engine).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
         var state = (GameState)stateField!.GetValue(engine)!;
 
-        var t1 = new Tile(1, TileType.Red, 0, 0);
+        var t1 = new Tile(1, ElementType.Item1, 0, 0);
         t1.Position = new Vector2(0, 0);
-        var t2 = new Tile(2, TileType.Blue, 1, 0);
+        var t2 = new Tile(2, ElementType.Item3, 1, 0);
         t2.Position = new Vector2(1, 0);
         state.SetTile(0, 0, t1);
         state.SetTile(1, 0, t2);
@@ -687,9 +687,10 @@ public class Match3EngineInteractionTests
         var tileAt00 = engine.State.GetTile(0, 0);
         var tileAt10 = engine.State.GetTile(1, 0);
 
-        Assert.Equal(TileType.Blue, tileAt00.Type);
-        Assert.Equal(TileType.Red, tileAt10.Type);
+        Assert.Equal(ElementType.Item3, tileAt00.Type);
+        Assert.Equal(ElementType.Item1, tileAt10.Type);
     }
 
     #endregion
 }
+
