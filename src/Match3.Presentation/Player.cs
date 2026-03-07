@@ -57,6 +57,33 @@ public sealed class Player
     public bool HasActiveAnimations => _activeCommands.Count > 0 || _nextCommandIndex < _commands.Count;
 
     /// <summary>
+    /// Diagnostic string showing what's blocking HasActiveAnimations.
+    /// </summary>
+    public string GetAnimationDiagnostics()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append($"time={_currentTime:F3} active={_activeCommands.Count} pending={_commands.Count - _nextCommandIndex}/{_commands.Count}");
+
+        // Show active commands with remaining time
+        for (int i = 0; i < _activeCommands.Count && i < 3; i++)
+        {
+            var ac = _activeCommands[i];
+            float remaining = ac.Command.EndTime - _currentTime;
+            sb.Append($" | [{ac.Command.GetType().Name} end={ac.Command.EndTime:F3} rem={remaining:F3}]");
+        }
+
+        // Show next pending command start time
+        if (_nextCommandIndex < _commands.Count)
+        {
+            var next = _commands[_nextCommandIndex];
+            float wait = next.StartTime - _currentTime;
+            sb.Append($" | next=[{next.GetType().Name} start={next.StartTime:F3} wait={wait:F3}]");
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
     /// Creates a new player with the specified visual state.
     /// </summary>
     public Player(VisualState visualState)
@@ -138,6 +165,19 @@ public sealed class Player
         // This must happen before starting new commands to avoid overwriting
         // the IsBeingAnimated flag set by new commands on the same tiles
         CompleteFinishedCommands(targetTime);
+
+        // Fast-forward: if no active commands but pending commands exist with
+        // future start times, skip ahead to close the gap. This prevents idle
+        // waiting when Choreographer's cascade delays accumulate faster than
+        // real-time playback advances.
+        if (_activeCommands.Count == 0 && _nextCommandIndex < _commands.Count)
+        {
+            float nextStart = _commands[_nextCommandIndex].StartTime;
+            if (nextStart > targetTime)
+            {
+                targetTime = nextStart;
+            }
+        }
 
         // Start new commands (sets IsBeingAnimated)
         while (_nextCommandIndex < _commands.Count && _commands[_nextCommandIndex].StartTime <= targetTime)

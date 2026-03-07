@@ -416,7 +416,7 @@ namespace Match3.Unity.Bridge
                 else if (Time.frameCount % 120 == 0)
                 {
                     var st = _session.Engine.State;
-                    Debug.Log($"[AutoPlay] waiting: stable={_session.Engine.IsStable()} anim={HasActiveAnimations} moves={st.MoveCount}/{st.MoveLimit}");
+                    Debug.Log($"[AutoPlay] waiting: stable={_session.Engine.IsStable()} anim={HasActiveAnimations} moves={st.MoveCount}/{st.MoveLimit} | {_player.GetAnimationDiagnostics()}");
                 }
             }
         }
@@ -769,6 +769,29 @@ namespace Match3.Unity.Bridge
         public bool IsIdle()
         {
             return _initialized && !HasActiveAnimations && _session.Engine.IsStable();
+        }
+
+        /// <summary>
+        /// Try to get a hint move (best available move for the player).
+        /// Returns false if no valid moves available.
+        /// </summary>
+        public bool TryGetHintMove(out MoveAction action)
+        {
+            action = default;
+            if (!_initialized || _autoPlaySelector == null) return false;
+
+            var state = _session.Engine.State;
+            _autoPlaySelector.InvalidateCache();
+            return _autoPlaySelector.TryGetMove(in state, out action);
+        }
+
+        /// <summary>
+        /// Clear the current selection.
+        /// </summary>
+        public void ClearSelection()
+        {
+            if (!_initialized) return;
+            _session.Engine.SetSelectedPosition(Position.Invalid);
         }
 
         /// <summary>
