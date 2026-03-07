@@ -3,7 +3,7 @@ Shader "Match3/Outline"
     Properties
     {
         _OutlineColor ("Outline Color", Color) = (1,1,1,1)
-        _OutlineWidth ("Outline Width", Float) = 0.025
+        _OutlineWidth ("Outline Width", Float) = 0.05
     }
     SubShader
     {

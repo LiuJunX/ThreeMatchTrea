@@ -371,8 +371,8 @@ namespace Match3.Unity.Bridge
             if (events.Count > 0)
             {
                 // Scan for objective collections before choreography
-                if (OnObjectiveCollected != null)
-                    _objectiveCollector.Process(events, _session.Engine.State, OnObjectiveCollected);
+                // Always call Process() so PendingFlies is fresh for lock duration adjustment
+                _objectiveCollector.Process(events, _session.Engine.State, OnObjectiveCollected);
 
                 var commands = _choreographer.Choreograph(events, _player.CurrentTime);
                 _player.Append(commands);

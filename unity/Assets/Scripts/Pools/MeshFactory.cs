@@ -240,8 +240,8 @@ namespace Match3.Unity.Pools
         {
             var baseColor = GetCeramicColor(type);
             Color.RGBToHSV(baseColor, out float h, out float s, out float v);
-            s = Mathf.Min(s * 1.15f, 1f);
-            v *= 0.4f;
+            s = Mathf.Min(s * 1.1f, 1f);
+            v *= 0.55f;
             return Color.HSVToRGB(h, s, v);
         }
 
