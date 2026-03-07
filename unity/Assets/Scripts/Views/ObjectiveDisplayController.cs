@@ -24,6 +24,7 @@ namespace Match3.Unity.Views
         private const float IconSpacing = 1.5f;
         private const float BounceTime = 0.2f;
         private const float CompletedAlpha = 0.5f;
+        private const float IconTiltX = 25f;
 
         private Match3Bridge _bridge;
         private Board3DView _boardView;
@@ -165,6 +166,7 @@ namespace Match3.Unity.Views
             var go = new GameObject($"Objective_{index}");
             go.transform.SetParent(_iconContainer, false);
             go.transform.position = position;
+            go.transform.localEulerAngles = new Vector3(IconTiltX, 0f, 0f);
             go.transform.localScale = Vector3.one * (IconScale * _bridge.CellSize);
 
             // Gem mesh
@@ -459,10 +461,11 @@ namespace Match3.Unity.Views
                     _flyConfig.PopUpZOffset);
                 var pos = Vector3.Lerp(flyFrom, fly.To, easedT);
                 float scale = Mathf.Lerp(_flyConfig.PopUpScale, _flyConfig.EndScale, easedT);
+                float tiltX = Mathf.Lerp(0f, IconTiltX, easedT);
 
                 fly.View.transform.position = pos;
                 fly.View.transform.localScale = Vector3.one * (scale * cellSize);
-                fly.View.transform.localEulerAngles = new Vector3(0f, fly.CurrentRotationY, 0f);
+                fly.View.transform.localEulerAngles = new Vector3(tiltX, fly.CurrentRotationY, 0f);
             }
         }
 
@@ -480,18 +483,19 @@ namespace Match3.Unity.Views
 
             // Rotation synced to duration: exactly one full turn
             fly.CurrentRotationY += (360f / fly.Duration) * dt;
+            float tiltX = Mathf.Lerp(0f, IconTiltX, easedT);
             fly.View.transform.position = pos;
             fly.View.transform.localScale = Vector3.one * (scale * cellSize);
-            fly.View.transform.localEulerAngles = new Vector3(0f, fly.CurrentRotationY, 0f);
+            fly.View.transform.localEulerAngles = new Vector3(tiltX, fly.CurrentRotationY, 0f);
         }
 
         private void OnFlyComplete(ActiveFly fly)
         {
-            // Snap to final state: rotation zero, exact icon scale
+            // Snap to final state: match icon rotation and scale for perfect overlap
             if (fly.View != null)
             {
                 fly.View.transform.position = fly.To;
-                fly.View.transform.localEulerAngles = Vector3.zero;
+                fly.View.transform.localEulerAngles = new Vector3(IconTiltX, 0f, 0f);
                 fly.View.transform.localScale = Vector3.one * (_flyConfig.EndScale * _bridge.CellSize);
             }
 
