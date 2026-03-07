@@ -16,6 +16,7 @@
 ## 性能优化
 
 <!-- 性能相关的优化点 -->
+- [ ] OutlineEffect 描边性能：当前每 tile 一个额外 draw call + MaterialPropertyBlock 打断 SRP Batcher（64 tile = +64 draw call）。可考虑 URP Renderer Feature 方案或 GPU Instancing 合批 (2026-03-07)
 
 ## 代码重构
 

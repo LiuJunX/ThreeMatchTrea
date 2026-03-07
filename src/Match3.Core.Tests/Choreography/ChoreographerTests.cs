@@ -55,7 +55,7 @@ public class ChoreographerTests
         Assert.Equal(1, moveCmd.TileId);
         Assert.Equal(new Vector2(3, 3), moveCmd.From);
         Assert.Equal(new Vector2(3, 4), moveCmd.To);
-        Assert.Equal(_choreographer.MoveDuration, moveCmd.Duration);
+        Assert.Equal(_choreographer.Config.MoveDuration, moveCmd.Duration);
     }
 
     [Fact]
@@ -299,7 +299,7 @@ public class ChoreographerTests
         var spawnCmd = commands.OfType<SpawnTileCommand>().First();
 
         // Spawn is delayed until after destroy animation in the same column
-        Assert.Equal(_choreographer.DestroyDuration, spawnCmd.StartTime, 0.001f);
+        Assert.Equal(_choreographer.Config.DestroyDuration, spawnCmd.StartTime, 0.001f);
     }
 
     [Fact]
@@ -414,7 +414,7 @@ public class ChoreographerTests
         // Spawn is delayed until after destroy animation in the same column.
         // Destroy at simTime=0 ends at DestroyDuration, spawn simTime=0.1 is
         // earlier than that, so spawn is clamped to DestroyDuration.
-        Assert.Equal(_choreographer.DestroyDuration, spawnCmd.StartTime, 0.001f);
+        Assert.Equal(_choreographer.Config.DestroyDuration, spawnCmd.StartTime, 0.001f);
     }
 
     #endregion

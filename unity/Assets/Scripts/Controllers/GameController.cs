@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Selection;
 using Match3.Presentation;
@@ -53,6 +54,7 @@ namespace Match3.Unity.Controllers
         private HintController _hintController;
         private int _lastHintedTileId = -1;
         private int _lastHintGeneration = -1;
+        private readonly List<int> _hintOutlineTileIds = new();
         private float _hintLightIntensity;
         private float _hintLightTime;
         private const float HintLightMaxIntensity = 3f;
@@ -60,14 +62,7 @@ namespace Match3.Unity.Controllers
         private static readonly int HintColorProp = Shader.PropertyToID("_BaseColor");
         private static readonly int HintColorPropFallback = Shader.PropertyToID("_Color");
 
-        // Screen shake state
-        private Camera _cachedCamera;
-        private float _shakeTimer;
-        private float _shakeDuration;
-        private float _shakeIntensity;
-        private Vector3 _cameraOriginalPos;
-        private bool _shakeApplied;
-        private int _lastShakeEffectCount;
+        private readonly CameraShakeController _shakeController = new();
 
         /// <summary>
         /// Bridge instance for external access.
@@ -313,7 +308,7 @@ namespace Match3.Unity.Controllers
             if (!_initialized || !_bridge.IsInitialized) return;
 
             // Restore camera before input processing (InputController.Update runs in same frame)
-            RestoreShake();
+            _shakeController.Restore();
 
             // Tick simulation
             _bridge.Tick(Time.deltaTime);
@@ -342,94 +337,13 @@ namespace Match3.Unity.Controllers
             _objectiveDisplay?.UpdateFlies(Time.deltaTime);
 
             // Screen shake: only trigger on rising edge of effect count
-            int effectCount = CountDestructionEffects(state);
-            if (effectCount > _lastShakeEffectCount)
-            {
-                if (effectCount >= 10)
-                    TriggerShake(0.2f, 0.15f);
-                else if (effectCount >= 5)
-                    TriggerShake(0.1f, 0.08f);
-            }
-            _lastShakeEffectCount = effectCount;
+            _shakeController.UpdateEffectCount(state);
         }
 
         private void LateUpdate()
         {
             // Apply shake in LateUpdate so it doesn't affect input raycasts in Update
-            ApplyShake();
-        }
-
-        private static int CountDestructionEffects(VisualState state)
-        {
-            int count = 0;
-            foreach (var effect in state.Effects)
-            {
-                if (effect.EffectType == "explosion" || effect.EffectType == "bomb_explosion")
-                {
-                    count++;
-                }
-            }
-            return count;
-        }
-
-        private Camera GetCamera()
-        {
-            if (_cachedCamera == null)
-                _cachedCamera = Camera.main;
-            return _cachedCamera;
-        }
-
-        private void TriggerShake(float duration, float intensity)
-        {
-            // Only upgrade to a stronger shake
-            if (_shakeTimer > 0f && intensity <= _shakeIntensity) return;
-
-            _shakeDuration = duration;
-            _shakeIntensity = intensity;
-            _shakeTimer = duration;
-
-            // Capture original position only if not already shaking
-            // (if shaking, _cameraOriginalPos already holds the true position)
-            if (!_shakeApplied)
-            {
-                var cam = GetCamera();
-                if (cam != null)
-                    _cameraOriginalPos = cam.transform.position;
-            }
-        }
-
-        private void RestoreShake()
-        {
-            if (!_shakeApplied) return;
-
-            var cam = GetCamera();
-            if (cam != null)
-                cam.transform.position = _cameraOriginalPos;
-            _shakeApplied = false;
-        }
-
-        private void ApplyShake()
-        {
-            if (_shakeTimer <= 0f) return;
-
-            var cam = GetCamera();
-            if (cam == null) return;
-
-            _shakeTimer -= Time.deltaTime;
-
-            if (_shakeTimer <= 0f)
-            {
-                _shakeTimer = 0f;
-                // Don't apply offset, camera is already restored from RestoreShake
-                return;
-            }
-
-            // Damped random offset
-            var decay = _shakeTimer / _shakeDuration;
-            var offsetX = UnityEngine.Random.Range(-1f, 1f) * _shakeIntensity * decay;
-            var offsetY = UnityEngine.Random.Range(-1f, 1f) * _shakeIntensity * decay;
-            cam.transform.position = _cameraOriginalPos + new Vector3(offsetX, offsetY, 0f);
-            _shakeApplied = true;
+            _shakeController.Apply();
         }
 
         /// <summary>
@@ -437,13 +351,12 @@ namespace Match3.Unity.Controllers
         /// </summary>
         public void Reset()
         {
-            RestoreShake();
-            _shakeTimer = 0f;
-            _lastShakeEffectCount = 0;
+            _shakeController.Reset();
 
             _hintController?.SetEnabled(false);
             _lastHintedTileId = -1;
             _lastHintGeneration = -1;
+            _hintOutlineTileIds.Clear();
             _hintLightIntensity = 0f;
             _hintLightTime = 0f;
 
@@ -471,7 +384,7 @@ namespace Match3.Unity.Controllers
 
         private void OnDestroy()
         {
-            RestoreShake();
+            _shakeController.Restore();
 
             if (_inputController != null)
             {
@@ -514,6 +427,7 @@ namespace Match3.Unity.Controllers
                     ClearHintOnTile(_lastHintedTileId);
                     _lastHintedTileId = -1;
                 }
+                ClearHintOutlines();
                 _lastHintGeneration = gen;
                 // Fade out hint light
                 UpdateHintLight(null, hint, hintChanged);
@@ -541,6 +455,11 @@ namespace Match3.Unity.Controllers
 
                 _lastHintedTileId = hint.TileId;
                 _lastHintGeneration = gen;
+
+                // Outline both swap tiles
+                ClearHintOutlines();
+                if (hint.Type == HintAnimationType.SwapNudge)
+                    ApplySwapOutlines(hint);
             }
 
             // Update hint light position every frame + fade in
@@ -605,6 +524,37 @@ namespace Match3.Unity.Controllers
             {
                 hintLight.enabled = false;
             }
+        }
+
+        private void ApplySwapOutlines(HintResult hint)
+        {
+            if (!(_boardView is Board3DView b3d)) return;
+
+            // Get all positions in the match group (mapped to pre-swap coordinates)
+            var positions = _bridge.GetHintMatchPositions(hint.From, hint.To);
+
+            for (int i = 0; i < positions.Count; i++)
+            {
+                var tileId = _bridge.GetTileIdAt(positions[i]);
+                if (tileId >= 0 && b3d.TryGetTileView(tileId, out var tile))
+                {
+                    tile.SetOutlined(true);
+                    _hintOutlineTileIds.Add(tileId);
+                }
+            }
+        }
+
+        private void ClearHintOutlines()
+        {
+            if (_hintOutlineTileIds.Count == 0) return;
+            if (!(_boardView is Board3DView b3d)) return;
+
+            for (int i = 0; i < _hintOutlineTileIds.Count; i++)
+            {
+                if (b3d.TryGetTileView(_hintOutlineTileIds[i], out var tile))
+                    tile.SetOutlined(false);
+            }
+            _hintOutlineTileIds.Clear();
         }
 
         private void ClearHintOnTile(int tileId)

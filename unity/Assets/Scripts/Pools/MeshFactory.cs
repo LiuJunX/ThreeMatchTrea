@@ -224,11 +224,25 @@ namespace Match3.Unity.Pools
         }
 
         /// <summary>
-        /// Get the ceramic base color for a tile type (for outline tinting etc.).
+        /// Get the ceramic base color for a tile type.
         /// </summary>
         public static Color GetTileColor(TileType type)
         {
             return GetCeramicColor(type);
+        }
+
+        /// <summary>
+        /// Get the outline color for a tile type.
+        /// Darkened + slightly more saturated version of the ceramic color,
+        /// mimicking the natural edge darkening of ceramic glaze.
+        /// </summary>
+        public static Color GetOutlineColor(TileType type)
+        {
+            var baseColor = GetCeramicColor(type);
+            Color.RGBToHSV(baseColor, out float h, out float s, out float v);
+            s = Mathf.Min(s * 1.15f, 1f);
+            v *= 0.4f;
+            return Color.HSVToRGB(h, s, v);
         }
 
         /// <summary>
@@ -350,15 +364,9 @@ namespace Match3.Unity.Pools
                 _fallbackMaterial = null;
             }
 
-            if (_outlineMaterial != null)
-            {
-                Object.Destroy(_outlineMaterial);
-                _outlineMaterial = null;
-            }
-
-            // Note: Do NOT destroy _blobShadowMaterial/_blobShadowTexture/_blobShadowMesh here.
-            // Pooled Tile3DView objects hold references to the blob shadow material created in Awake().
-            // Destroying it turns their shadows magenta on re-use.
+            // Note: Do NOT destroy _outlineMaterial, _blobShadowMaterial, _blobShadowTexture, _blobShadowMesh here.
+            // Pooled Tile3DView objects hold references to these materials created in Awake().
+            // Destroying them turns outlines/shadows magenta on pool re-use.
 
             _bombMeshCache.Clear();
             _bombMaterialCache.Clear();

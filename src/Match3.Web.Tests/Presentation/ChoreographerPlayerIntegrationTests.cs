@@ -40,7 +40,7 @@ public class ChoreographerPlayerIntegrationTests
 
         var commands = _choreographer.Choreograph(events);
         _player.Load(commands);
-        _player.Tick(_choreographer.MoveDuration + 0.01f);
+        _player.Tick(_choreographer.Config.MoveDuration + 0.01f);
 
         // Assert
         var tile = _player.VisualState.GetTile(1);
@@ -97,7 +97,7 @@ public class ChoreographerPlayerIntegrationTests
 
         var commands = _choreographer.Choreograph(events);
         _player.Load(commands);
-        _player.Tick(_choreographer.DestroyDuration * 0.5f); // Midway through animation
+        _player.Tick(_choreographer.Config.DestroyDuration * 0.5f); // Midway through animation
 
         // Assert: Tile should still exist and be marked as animated
         var tile = _player.VisualState.GetTile(1);
@@ -555,7 +555,7 @@ public class ChoreographerPlayerIntegrationTests
         _player.Load(commands1);
 
         // Play partway through
-        _player.Tick(_choreographer.MoveDuration / 2);
+        _player.Tick(_choreographer.Config.MoveDuration / 2);
 
         // Append more events
         _player.VisualState.AddTile(2, TileType.Blue, BombType.None, new Position(4, 3), new Vector2(4, 3));

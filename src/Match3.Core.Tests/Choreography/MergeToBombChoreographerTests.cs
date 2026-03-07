@@ -126,7 +126,7 @@ public class MergeToBombChoreographerTests
         Assert.Equal(new Vector2(3, 2), moveCmd.From);
         Assert.Equal(new Vector2(1, 2), moveCmd.To);
         // Duration scales with distance: dist=2, maxDist=4, scale=0.5
-        Assert.True(moveCmd.Duration > 0f && moveCmd.Duration <= _choreographer.MergeDuration,
+        Assert.True(moveCmd.Duration > 0f && moveCmd.Duration <= _choreographer.Config.MergeDuration,
             $"Merge duration should scale with distance: {moveCmd.Duration}");
     }
 
@@ -149,7 +149,7 @@ public class MergeToBombChoreographerTests
         var removeCmd = commands.OfType<RemoveTileCommand>().First();
         Assert.Equal(10, removeCmd.TileId);
         // Remove should happen after merge completes
-        Assert.Equal(_choreographer.MergeDuration, removeCmd.StartTime, 0.001f);
+        Assert.Equal(_choreographer.Config.MergeDuration, removeCmd.StartTime, 0.001f);
     }
 
     [Fact]
@@ -180,8 +180,8 @@ public class MergeToBombChoreographerTests
         // The actual move (From != To) should be delayed to after merge
         var gravityMove = commands.OfType<MoveTileCommand>()
             .First(c => c.TileId == 11 && c.From != c.To);
-        Assert.True(gravityMove.StartTime >= _choreographer.MergeDuration,
-            $"Gravity move start {gravityMove.StartTime} should be >= MergeDuration {_choreographer.MergeDuration}");
+        Assert.True(gravityMove.StartTime >= _choreographer.Config.MergeDuration,
+            $"Gravity move start {gravityMove.StartTime} should be >= MergeDuration {_choreographer.Config.MergeDuration}");
     }
 
     #endregion
@@ -218,8 +218,8 @@ public class MergeToBombChoreographerTests
         Assert.Equal(new Vector2(3, 1), holdCmd.From);
         Assert.Equal(0f, holdCmd.StartTime, 0.001f);
         // Hold duration should cover until the actual move starts
-        Assert.True(holdCmd.Duration >= _choreographer.MergeDuration - 0.001f,
-            $"Hold duration {holdCmd.Duration} should cover MergeDuration {_choreographer.MergeDuration}");
+        Assert.True(holdCmd.Duration >= _choreographer.Config.MergeDuration - 0.001f,
+            $"Hold duration {holdCmd.Duration} should cover MergeDuration {_choreographer.Config.MergeDuration}");
     }
 
     [Fact]
@@ -277,7 +277,7 @@ public class MergeToBombChoreographerTests
         var holdCmd = commands.OfType<MoveTileCommand>()
             .First(c => c.TileId == 20 && c.From == c.To);
         Assert.Equal(new Vector2(2, 2), holdCmd.From);
-        Assert.Equal(_choreographer.MergeDuration, holdCmd.Duration, 0.001f);
+        Assert.Equal(_choreographer.Config.MergeDuration, holdCmd.Duration, 0.001f);
     }
 
     [Fact]
@@ -298,7 +298,7 @@ public class MergeToBombChoreographerTests
         var commands = _choreographer.Choreograph(events);
 
         var removeCmd = commands.OfType<RemoveTileCommand>().First(c => c.TileId == 20);
-        Assert.Equal(_choreographer.MergeDuration, removeCmd.StartTime, 0.001f);
+        Assert.Equal(_choreographer.Config.MergeDuration, removeCmd.StartTime, 0.001f);
     }
 
     [Fact]
@@ -319,7 +319,7 @@ public class MergeToBombChoreographerTests
         var commands = _choreographer.Choreograph(events);
 
         var spawnCmd = commands.OfType<SpawnTileCommand>().First(c => c.TileId == 200);
-        Assert.Equal(_choreographer.MergeDuration, spawnCmd.StartTime, 0.001f);
+        Assert.Equal(_choreographer.Config.MergeDuration, spawnCmd.StartTime, 0.001f);
         Assert.Equal(BombType.Horizontal, spawnCmd.Bomb);
         Assert.Equal(TileType.Red, spawnCmd.Type);
     }
@@ -352,7 +352,7 @@ public class MergeToBombChoreographerTests
         // Gravity in bomb column should be delayed
         var gravityMove = commands.OfType<MoveTileCommand>()
             .First(c => c.TileId == 21 && c.From != c.To);
-        Assert.True(gravityMove.StartTime >= _choreographer.MergeDuration,
+        Assert.True(gravityMove.StartTime >= _choreographer.Config.MergeDuration,
             $"Gravity in bomb column should wait for merge: start={gravityMove.StartTime}");
 
         // Should have hold command
@@ -389,8 +389,8 @@ public class MergeToBombChoreographerTests
         var commands = _choreographer.Choreograph(events);
 
         var spawnCmd = commands.OfType<SpawnTileCommand>().First(c => c.TileId == 50);
-        Assert.True(spawnCmd.StartTime >= _choreographer.MergeDuration,
-            $"Spawn in merge column should be delayed: start={spawnCmd.StartTime}, merge={_choreographer.MergeDuration}");
+        Assert.True(spawnCmd.StartTime >= _choreographer.Config.MergeDuration,
+            $"Spawn in merge column should be delayed: start={spawnCmd.StartTime}, merge={_choreographer.Config.MergeDuration}");
     }
 
     [Fact]
@@ -429,7 +429,7 @@ public class MergeToBombChoreographerTests
     {
         var events = CreateMergeWithGravityEvents();
         var commands = _choreographer.Choreograph(events);
-        float mergeDuration = _choreographer.MergeDuration;
+        float mergeDuration = _choreographer.Config.MergeDuration;
 
         // --- Merge movement commands ---
         // Tiles 10, 30, 40 should move to BombOrigin (2,2)
@@ -637,7 +637,7 @@ public class MergeToBombChoreographerTests
         var entry = _choreographer.LockEntries[0];
         Assert.Equal(new Position(3, 2), entry.Position);
         Assert.Equal(CellLockType.Receive, entry.LockType);
-        Assert.Equal(_choreographer.DropDelay, entry.Duration, 0.001f);
+        Assert.Equal(_choreographer.Config.DropDelay, entry.Duration, 0.001f);
         Assert.False(entry.IsMerge);
     }
 
@@ -661,7 +661,7 @@ public class MergeToBombChoreographerTests
         var entry = _choreographer.LockEntries[0];
         Assert.Equal(new Position(1, 2), entry.Position);
         Assert.True(entry.IsMerge);
-        Assert.Equal(_choreographer.MergeDuration, entry.Duration, 0.001f);
+        Assert.Equal(_choreographer.Config.MergeDuration, entry.Duration, 0.001f);
     }
 
     [Fact]
@@ -674,7 +674,7 @@ public class MergeToBombChoreographerTests
         var bombOriginLock = _choreographer.LockEntries
             .FirstOrDefault(e => e.Position.Equals(new Position(2, 2)) && e.IsMerge);
         Assert.True(bombOriginLock.IsMerge);
-        Assert.Equal(_choreographer.MergeDuration, bombOriginLock.Duration, 0.001f);
+        Assert.Equal(_choreographer.Config.MergeDuration, bombOriginLock.Duration, 0.001f);
     }
 
     [Fact]

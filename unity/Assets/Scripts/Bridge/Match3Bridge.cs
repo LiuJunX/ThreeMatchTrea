@@ -43,20 +43,8 @@ namespace Match3.Unity.Bridge
 
         private bool _initialized;
 
-        // Per-cell lock tracking: each entry has its own timer
-        private readonly struct ActiveLock
-        {
-            public readonly LockToken Token;
-            public readonly float Duration;
-
-            public ActiveLock(LockToken token, float duration)
-            {
-                Token = token;
-                Duration = duration;
-            }
-        }
-        private readonly List<ActiveLock> _activeLocks = new();
-        private readonly List<float> _lockTimers = new();
+        private CellLockManager _lockManager;
+        private ObjectiveCollectionProcessor _objectiveCollector;
 
         /// <summary>
         /// Cell size in world units.
@@ -275,6 +263,8 @@ namespace Match3.Unity.Bridge
             var state = _session.Engine.State;
             _player.SyncFromGameState(in state);
 
+            _lockManager = new CellLockManager();
+            _objectiveCollector = new ObjectiveCollectionProcessor();
             _initialized = true;
 
             _lastMovesRemaining = -1;
@@ -282,7 +272,7 @@ namespace Match3.Unity.Bridge
             _isPaused = false;
             _isAutoPlaying = false;
             _gameEndFired = false;
-            ReleaseAllLocks();
+            _lastObjectiveHash = -1;
 
             Debug.Log($"Match3Bridge initialized: {_width}x{_height}, seed={seed}, level={levelId}");
         }
@@ -346,6 +336,8 @@ namespace Match3.Unity.Bridge
             var state = _session.Engine.State;
             _player.SyncFromGameState(in state);
 
+            _lockManager = new CellLockManager();
+            _objectiveCollector = new ObjectiveCollectionProcessor();
             _initialized = true;
 
             // Reset UI state tracking
@@ -354,7 +346,7 @@ namespace Match3.Unity.Bridge
             _isPaused = false;
             _isAutoPlaying = false;
             _gameEndFired = false;
-            ReleaseAllLocks();
+            _lastObjectiveHash = -1;
 
             Debug.Log($"Match3Bridge initialized: {width}x{height}, seed={seed}");
         }
@@ -380,13 +372,16 @@ namespace Match3.Unity.Bridge
             {
                 // Scan for objective collections before choreography
                 if (OnObjectiveCollected != null)
-                    ScanForObjectiveCollections(events);
+                    _objectiveCollector.Process(events, _session.Engine.State, OnObjectiveCollected);
 
                 var commands = _choreographer.Choreograph(events, _player.CurrentTime);
                 _player.Append(commands);
 
                 // Acquire per-cell locks from Choreographer's lock schedule
-                AcquireLocksFromSchedule();
+                _lockManager.AcquireFromSchedule(
+                    _choreographer.LockEntries,
+                    _objectiveCollector.PendingFlies,
+                    _session.Engine.AcquireLock);
             }
 
             // Tick the animation player
@@ -396,7 +391,7 @@ namespace Match3.Unity.Bridge
             _player.VisualState.UpdateEffects(scaledDelta);
 
             // Tick per-cell lock timers, release expired ones
-            TickLockTimers(scaledDelta);
+            _lockManager.Tick(scaledDelta, _session.Engine.ReleaseLock);
 
             // Sync falling tiles from game state (physics-driven positions)
             {
@@ -456,195 +451,7 @@ namespace Match3.Unity.Bridge
             }
         }
 
-        /// <summary>
-        /// Read Choreographer.LockEntries, adjust durations based on context, acquire locks.
-        /// </summary>
-        private void AcquireLocksFromSchedule()
-        {
-            var entries = _choreographer.LockEntries;
-            if (entries.Count == 0) return;
-
-            // Build set of positions that will fly to objectives (for duration adjustment)
-            _flyPositionKeys.Clear();
-            foreach (var fly in _pendingFlies)
-            {
-                if (fly.MergeTarget == null)
-                    _flyPositionKeys.Add(PackGridKey(fly.SourceGridPosition.X, fly.SourceGridPosition.Y));
-            }
-
-            for (int i = 0; i < entries.Count; i++)
-            {
-                var entry = entries[i];
-                float duration = entry.Duration;
-
-                if (entry.IsMerge)
-                {
-                    // Merge locks: slightly shorter to let gravity start sooner
-                    duration -= 0.03f;
-                }
-                else
-                {
-                    // Match locks: adjust based on whether tile flies to objective
-                    var key = PackGridKey(entry.Position.X, entry.Position.Y);
-                    duration += _flyPositionKeys.Contains(key) ? 0.05f : -0.05f;
-                }
-
-                duration = Mathf.Max(duration, 0.01f);
-                var token = _session.Engine.AcquireLock(entry.Position, entry.LockType);
-                _activeLocks.Add(new ActiveLock(token, duration));
-                _lockTimers.Add(duration);
-            }
-        }
-        private readonly HashSet<long> _flyPositionKeys = new();
-
-        private static long PackGridKey(int x, int y) => ((long)x << 32) | (uint)y;
-
-        /// <summary>
-        /// Tick all active lock timers, release expired ones.
-        /// </summary>
-        private void TickLockTimers(float deltaTime)
-        {
-            for (int i = _lockTimers.Count - 1; i >= 0; i--)
-            {
-                _lockTimers[i] -= deltaTime;
-                if (_lockTimers[i] <= 0f)
-                {
-                    _session.Engine.ReleaseLock(_activeLocks[i].Token);
-                    _activeLocks.RemoveAt(i);
-                    _lockTimers.RemoveAt(i);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Release all active locks immediately.
-        /// </summary>
-        private void ReleaseAllLocks()
-        {
-            for (int i = 0; i < _activeLocks.Count; i++)
-                _session.Engine.ReleaseLock(_activeLocks[i].Token);
-            _activeLocks.Clear();
-            _lockTimers.Clear();
-        }
-
-        // Reusable collections for ScanForObjectiveCollections (avoid GC)
-        private readonly Dictionary<float, Dictionary<TileType, Queue<(int TileId, Position Pos, Position? MergeTarget)>>>
-            _destroyedBySimTime = new();
-        private readonly List<FlyCollectionRequest> _pendingFlies = new();
         private int _lastObjectiveHash = -1;
-
-        private void ScanForObjectiveCollections(IReadOnlyList<GameEvent> events)
-        {
-            _destroyedBySimTime.Clear();
-            _pendingFlies.Clear();
-
-            var state = _session.Engine.State;
-
-            foreach (var evt in events)
-            {
-                if (evt is TileDestroyedEvent tde && tde.Reason == DestroyReason.Match)
-                {
-                    if (!_destroyedBySimTime.TryGetValue(tde.SimulationTime, out var byType))
-                    {
-                        byType = new Dictionary<TileType, Queue<(int, Position, Position?)>>();
-                        _destroyedBySimTime[tde.SimulationTime] = byType;
-                    }
-                    if (!byType.TryGetValue(tde.Type, out var queue))
-                    {
-                        queue = new Queue<(int, Position, Position?)>();
-                        byType[tde.Type] = queue;
-                    }
-                    queue.Enqueue((tde.TileId, tde.GridPosition, tde.MergeTarget));
-                }
-                else if (evt is ObjectiveProgressEvent ope)
-                {
-                    if (ope.ObjectiveIndex < 0 || ope.ObjectiveIndex >= state.ObjectiveProgress.Length)
-                        continue;
-
-                    var objProg = state.ObjectiveProgress[ope.ObjectiveIndex];
-                    if (objProg.TargetLayer != ObjectiveTargetLayer.Tile)
-                        continue;
-
-                    var targetType = (TileType)objProg.ElementType;
-
-                    if (_destroyedBySimTime.TryGetValue(ope.SimulationTime, out var byType)
-                        && byType.TryGetValue(targetType, out var queue)
-                        && queue.Count > 0)
-                    {
-                        var (tileId, pos, mergeTarget) = queue.Dequeue();
-                        _pendingFlies.Add(new FlyCollectionRequest
-                        {
-                            TileId = tileId,
-                            ObjectiveIndex = ope.ObjectiveIndex,
-                            TileType = targetType,
-                            SourceGridPosition = pos,
-                            MergeTarget = mergeTarget,
-                            FlyDelay = 0f,
-                            NewCount = ope.CurrentCount,
-                            TargetCount = ope.TargetCount
-                        });
-                    }
-                }
-            }
-
-            // Post-process: assign stagger delays for merge groups
-            if (_pendingFlies.Count > 0)
-                AssignMergeDelays();
-
-            // Fire events
-            foreach (var fly in _pendingFlies)
-                OnObjectiveCollected?.Invoke(fly);
-        }
-
-        private void AssignMergeDelays()
-        {
-            // Group merge flies by MergeTarget, sort by distance, assign delays
-            var mergeGroups = new Dictionary<Position, List<int>>();
-
-            for (int i = 0; i < _pendingFlies.Count; i++)
-            {
-                var fly = _pendingFlies[i];
-                if (fly.MergeTarget == null) continue;
-
-                var target = fly.MergeTarget.Value;
-                if (!mergeGroups.TryGetValue(target, out var indices))
-                {
-                    indices = new List<int>();
-                    mergeGroups[target] = indices;
-                }
-                indices.Add(i);
-            }
-
-            const float stagger = 0.08f;
-            foreach (var kvp in mergeGroups)
-            {
-                var target = kvp.Key;
-                var indices = kvp.Value;
-                if (indices.Count <= 1) continue;
-
-                // Sort by distance to merge target
-                indices.Sort((a, b) =>
-                {
-                    var da = GridDistance(_pendingFlies[a].SourceGridPosition, target);
-                    var db = GridDistance(_pendingFlies[b].SourceGridPosition, target);
-                    return da.CompareTo(db);
-                });
-
-                for (int j = 0; j < indices.Count; j++)
-                {
-                    var fly = _pendingFlies[indices[j]];
-                    fly.FlyDelay = j * stagger;
-                    _pendingFlies[indices[j]] = fly;
-                }
-            }
-        }
-
-        private static float GridDistance(Position a, Position b)
-        {
-            float dx = a.X - b.X;
-            float dy = a.Y - b.Y;
-            return Mathf.Sqrt(dx * dx + dy * dy);
-        }
 
         private void CheckStateChanges()
         {
@@ -847,6 +654,46 @@ namespace Match3.Unity.Bridge
         }
 
         /// <summary>
+        /// Get all pre-swap positions of tiles that would match with the highlighted tile after swap.
+        /// hintFrom = highlighted tile's current position, hintTo = swap destination.
+        /// Returns positions mapped back to current (pre-swap) coordinates.
+        /// </summary>
+        private readonly List<Position> _hintMatchPositions = new();
+        public IReadOnlyList<Position> GetHintMatchPositions(Position hintFrom, Position hintTo)
+        {
+            _hintMatchPositions.Clear();
+            if (!_initialized) return _hintMatchPositions;
+
+            var state = _session.Engine.State;
+            var matchFinder = new ClassicMatchFinder(new BombGenerator());
+
+            GridUtility.SwapTilesForCheck(ref state, hintFrom, hintTo);
+
+            // Find match groups at hintTo (where highlighted tile lands after swap)
+            var foci = new[] { hintTo };
+            var groups = matchFinder.FindMatchGroups(in state, foci);
+
+            foreach (var g in groups)
+            {
+                foreach (var pos in g.Positions)
+                {
+                    // Map post-swap positions back to pre-swap (current) positions
+                    if (pos == hintTo)
+                        _hintMatchPositions.Add(hintFrom);
+                    else if (pos == hintFrom)
+                        _hintMatchPositions.Add(hintTo);
+                    else
+                        _hintMatchPositions.Add(pos);
+                }
+            }
+            ClassicMatchFinder.ReleaseGroups(groups);
+
+            GridUtility.SwapTilesForCheck(ref state, hintFrom, hintTo); // swap back
+
+            return _hintMatchPositions;
+        }
+
+        /// <summary>
         /// Clear the current selection.
         /// </summary>
         public void ClearSelection()
@@ -917,7 +764,7 @@ namespace Match3.Unity.Bridge
         {
             if (_session != null)
             {
-                ReleaseAllLocks();
+                _lockManager?.ReleaseAll(_session.Engine.ReleaseLock);
             }
             _session?.Dispose();
             _session = null;

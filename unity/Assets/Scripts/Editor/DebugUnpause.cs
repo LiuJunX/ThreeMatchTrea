@@ -105,8 +105,8 @@ namespace Match3.Unity.Editor
         public static void ToggleOutline()
         {
             if (!EditorApplication.isPlaying) return;
-            Tile3DView.OutlineEnabled = !Tile3DView.OutlineEnabled;
-            Debug.Log($"[Debug] Outline={Tile3DView.OutlineEnabled}");
+            OutlineEffect.Enabled = !OutlineEffect.Enabled;
+            Debug.Log($"[Debug] Outline={OutlineEffect.Enabled}");
         }
 
         private static void ClearConsole()

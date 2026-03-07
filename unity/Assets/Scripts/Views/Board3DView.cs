@@ -46,8 +46,6 @@ namespace Match3.Unity.Views
         }
         private readonly Dictionary<int, HoleZone> _columnHoleZones = new();
 
-        private static Cubemap _reflectionCubemap;
-
         public int ActiveTileCount => _activeTiles.Count;
 
         /// <summary>
@@ -156,7 +154,7 @@ namespace Match3.Unity.Views
 
             // Reflection source: solid warm-white cubemap for clean Fresnel highlights.
             // No real skybox needed — camera still uses solid color background.
-            SetupReflectionCubemap();
+            ReflectionCubemapManager.Setup();
 
             // Background: garden green (confirmed from mockup)
             var cam = Camera.main;
@@ -167,53 +165,6 @@ namespace Match3.Unity.Views
             }
         }
 
-        /// <summary>
-        /// Create a tiny solid-color cubemap as the reflection source.
-        /// This gives Fresnel highlights a warm tint instead of reflecting black.
-        /// </summary>
-        private static void SetupReflectionCubemap()
-        {
-            const int size = 16; // Minimal — just simple gradients, no detail needed
-            _reflectionCubemap ??= new Cubemap(size, TextureFormat.RGBA32, false);
-
-            ApplyReflectionCubemapColors(
-                sky: new Color(0.42f, 0.40f, 0.37f),
-                side: new Color(0.30f, 0.29f, 0.27f),
-                ground: new Color(0.18f, 0.17f, 0.16f));
-
-            _reflectionCubemap.Apply();
-
-            RenderSettings.defaultReflectionMode = UnityEngine.Rendering.DefaultReflectionMode.Custom;
-            RenderSettings.customReflectionTexture = _reflectionCubemap;
-            RenderSettings.reflectionIntensity = 1.08f;
-        }
-
-        private static void Fill(Color[] pixels, Color c)
-        {
-            for (int i = 0; i < pixels.Length; i++)
-                pixels[i] = c;
-        }
-
-        private static void ApplyReflectionCubemapColors(Color sky, Color side, Color ground)
-        {
-            if (_reflectionCubemap == null) return;
-
-            int size = _reflectionCubemap.width;
-            var facePixels = new Color[size * size];
-
-            Fill(facePixels, side);
-            _reflectionCubemap.SetPixels(facePixels, CubemapFace.PositiveX);
-            _reflectionCubemap.SetPixels(facePixels, CubemapFace.NegativeX);
-            _reflectionCubemap.SetPixels(facePixels, CubemapFace.PositiveZ);
-            _reflectionCubemap.SetPixels(facePixels, CubemapFace.NegativeZ);
-
-            Fill(facePixels, sky);
-            _reflectionCubemap.SetPixels(facePixels, CubemapFace.PositiveY);
-
-            Fill(facePixels, ground);
-            _reflectionCubemap.SetPixels(facePixels, CubemapFace.NegativeY);
-        }
-
         public void ApplyRenderTuning(RenderTuningSettings settings)
         {
             if (settings == null) return;
@@ -222,15 +173,8 @@ namespace Match3.Unity.Views
                 _lightingController.SetBaseIntensities(settings.KeyIntensity, settings.KeyShadowStrength, settings.FillIntensity);
 
             // Reflections (Fresnel)
-            if (_reflectionCubemap == null)
-                SetupReflectionCubemap();
-
-            ApplyReflectionCubemapColors(settings.ReflectionSky, settings.ReflectionSide, settings.ReflectionGround);
-            _reflectionCubemap.Apply();
-
-            RenderSettings.defaultReflectionMode = UnityEngine.Rendering.DefaultReflectionMode.Custom;
-            RenderSettings.customReflectionTexture = _reflectionCubemap;
-            RenderSettings.reflectionIntensity = settings.ReflectionIntensity;
+            ReflectionCubemapManager.UpdateColors(settings.ReflectionSky, settings.ReflectionSide, settings.ReflectionGround);
+            ReflectionCubemapManager.SetIntensity(settings.ReflectionIntensity);
         }
 
         // Board vignette (subtle inner shadow) caches

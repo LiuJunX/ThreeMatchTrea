@@ -89,25 +89,8 @@ namespace Match3.Unity.Views
             _meshFilter = GetComponent<MeshFilter>();
             _meshRenderer = GetComponent<MeshRenderer>();
             _propBlock = new MaterialPropertyBlock();
-            CreateOutline();
+            _outline = gameObject.AddComponent<OutlineEffect>();
             CreateBlobShadow();
-        }
-
-        private void CreateOutline()
-        {
-            _outlineGo = new GameObject("Outline");
-            _outlineGo.transform.SetParent(transform, false);
-
-            _outlineFilter = _outlineGo.AddComponent<MeshFilter>();
-            _outlineRenderer = _outlineGo.AddComponent<MeshRenderer>();
-            var mat = MeshFactory.GetOutlineMaterial();
-            if (mat != null)
-                _outlineRenderer.sharedMaterial = mat;
-            _outlineRenderer.shadowCastingMode = ShadowCastingMode.Off;
-            _outlineRenderer.receiveShadows = false;
-            _outlinePropBlock = new MaterialPropertyBlock();
-
-            _outlineGo.SetActive(s_outlineEnabled);
         }
 
         private void CreateBlobShadow()
@@ -145,18 +128,8 @@ namespace Match3.Unity.Views
             ViewHelper.SetMesh(_meshFilter, targetMesh);
             ViewHelper.SetMaterials(_meshRenderer, MeshFactory.GetTileMaterialArray(type, bomb));
 
-            // Sync outline mesh and color
-            if (_outlineFilter != null)
-            {
-                ViewHelper.SetMesh(_outlineFilter, targetMesh);
-                if (s_outlineEnabled)
-                {
-                    var color = MeshFactory.GetTileColor(type);
-                    _outlineRenderer.GetPropertyBlock(_outlinePropBlock);
-                    _outlinePropBlock.SetColor(OutlineColorProp, color);
-                    _outlineRenderer.SetPropertyBlock(_outlinePropBlock);
-                }
-            }
+            if (_outline != null)
+                _outline.OutlineColor = MeshFactory.GetOutlineColor(type);
         }
 
         /// <summary>
@@ -312,6 +285,15 @@ namespace Match3.Unity.Views
         }
 
         /// <summary>
+        /// Show/hide per-instance outline (used by hint system).
+        /// </summary>
+        public void SetOutlined(bool outlined)
+        {
+            if (_outline != null)
+                _outline.SetForceVisible(outlined);
+        }
+
+        /// <summary>
         /// Set highlight state for selection feedback.
         /// </summary>
         public void SetHighlighted(bool highlighted)
@@ -453,8 +435,8 @@ namespace Match3.Unity.Views
             transform.localScale = Vector3.one;
             transform.localEulerAngles = Vector3.zero;
             _meshRenderer.SetPropertyBlock(null);
-            if (_outlineGo != null)
-                _outlineGo.SetActive(s_outlineEnabled);
+            if (_outline != null)
+                _outline.ResetState();
         }
 
         public void OnDespawn()

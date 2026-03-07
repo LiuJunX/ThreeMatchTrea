@@ -27,6 +27,7 @@ namespace Match3.Unity.Tests
             "Match3.Unity.Views.Tile3DView",
             "Match3.Unity.Views.ProjectileView",
             "Match3.Unity.Views.Projectile3DView",
+            "Match3.Unity.Views.OutlineEffect",
         };
 
         [Test]

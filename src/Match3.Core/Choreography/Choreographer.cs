@@ -18,30 +18,10 @@ public sealed class Choreographer : IEventVisitor
     private float _baseTime;
     private float _minSimulationTime;
 
-    // Timing configuration
-    /// <summary>Duration for tile movement animation.</summary>
-    public float MoveDuration { get; set; } = 0.15f;
-
-    /// <summary>Duration for tile destruction animation.</summary>
-    public float DestroyDuration { get; set; } = 0.2f;
-
-    /// <summary>Duration for match highlight before destruction.</summary>
-    public float MatchHighlightDuration { get; set; } = 0.1f;
-
-    /// <summary>Duration for swap animation.</summary>
-    public float SwapDuration { get; set; } = 0.15f;
-
-    /// <summary>Duration for merge-to-bomb animation.</summary>
-    public float MergeDuration { get; set; } = 0.3f;
-
-    /// <summary>Duration for projectile launch takeoff.</summary>
-    public float ProjectileTakeoffDuration { get; set; } = 0.3f;
-
-    /// <summary>Arc height for projectile launch.</summary>
-    public float ProjectileArcHeight { get; set; } = 1.5f;
-
-    /// <summary>Duration for drop acceptance delay after match destroy (cell lock).</summary>
-    public float DropDelay { get; set; } = 0.12f;
+    /// <summary>
+    /// Timing configuration for all choreography animations.
+    /// </summary>
+    public ChoreographyConfig Config { get; set; } = new();
 
     /// <summary>
     /// Whether the last Choreograph() call produced a bomb merge sequence.
@@ -150,14 +130,14 @@ public sealed class Choreographer : IEventVisitor
             From = evt.FromPosition,
             To = evt.ToPosition,
             StartTime = startTime,
-            Duration = MoveDuration,
+            Duration = Config.MoveDuration,
             Easing = EasingType.OutCubic
         };
 
         _commands.Add(command);
 
         // Track this move for cascade timing
-        TrackMove(column, startTime, startTime + MoveDuration, targetRow, evt.FromPosition, evt.ToPosition);
+        TrackMove(column, startTime, startTime + Config.MoveDuration, targetRow, evt.FromPosition, evt.ToPosition);
     }
 
     /// <inheritdoc />
@@ -178,11 +158,11 @@ public sealed class Choreographer : IEventVisitor
                 From = position,
                 To = target,
                 StartTime = startTime,
-                Duration = MergeDuration,
+                Duration = Config.MergeDuration,
                 Easing = EasingType.InOutCubic
             });
 
-            float endTime = startTime + MergeDuration;
+            float endTime = startTime + Config.MergeDuration;
 
             // Remove tile after merge completes
             _commands.Add(new RemoveTileCommand
@@ -198,7 +178,7 @@ public sealed class Choreographer : IEventVisitor
             {
                 Position = evt.GridPosition,
                 LockType = CellLockType.Receive,
-                Duration = MergeDuration,
+                Duration = Config.MergeDuration,
                 IsMerge = true
             });
 
@@ -217,7 +197,7 @@ public sealed class Choreographer : IEventVisitor
             {
                 Position = evt.GridPosition,
                 LockType = CellLockType.Receive,
-                Duration = DropDelay,
+                Duration = Config.DropDelay,
                 IsMerge = false
             });
 
@@ -228,10 +208,10 @@ public sealed class Choreographer : IEventVisitor
                 Position = position,
                 Reason = evt.Reason,
                 StartTime = startTime,
-                Duration = DestroyDuration
+                Duration = Config.DestroyDuration
             });
 
-            float endTime = startTime + DestroyDuration;
+            float endTime = startTime + Config.DestroyDuration;
 
             if (!_columnDestroyEndTimes.TryGetValue(column, out float existing) || endTime > existing)
             {
@@ -253,7 +233,7 @@ public sealed class Choreographer : IEventVisitor
                 EffectType = effectType,
                 Position = position,
                 StartTime = startTime,
-                Duration = DestroyDuration
+                Duration = Config.DestroyDuration
             });
 
             // Remove tile after destroy animation completes
@@ -314,7 +294,7 @@ public sealed class Choreographer : IEventVisitor
             PosB = posB,
             IsRevert = evt.IsRevert,
             StartTime = startTime,
-            Duration = SwapDuration,
+            Duration = Config.SwapDuration,
             Easing = EasingType.OutCubic
         };
         _commands.Add(swapCommand);
@@ -337,7 +317,7 @@ public sealed class Choreographer : IEventVisitor
         {
             Positions = positions,
             StartTime = startTime,
-            Duration = MatchHighlightDuration
+            Duration = Config.MatchHighlightDuration
         };
         _commands.Add(highlightCommand);
     }
@@ -352,12 +332,12 @@ public sealed class Choreographer : IEventVisitor
         {
             Position = evt.Position,
             LockType = CellLockType.Receive,
-            Duration = MergeDuration,
+            Duration = Config.MergeDuration,
             IsMerge = true
         });
 
         float baseStart = GetStartTime(evt);
-        float mergeEndTime = baseStart + MergeDuration;
+        float mergeEndTime = baseStart + Config.MergeDuration;
         var position = new Vector2(evt.Position.X, evt.Position.Y);
         int column = evt.Position.X;
 
@@ -370,7 +350,7 @@ public sealed class Choreographer : IEventVisitor
             From = position,
             To = position,
             StartTime = baseStart,
-            Duration = MergeDuration,
+            Duration = Config.MergeDuration,
             Easing = EasingType.Linear
         });
 
@@ -485,10 +465,10 @@ public sealed class Choreographer : IEventVisitor
         {
             ProjectileId = evt.ProjectileId,
             Origin = evt.Origin,
-            ArcHeight = ProjectileArcHeight,
+            ArcHeight = Config.ProjectileArcHeight,
             Type = evt.Type,
             StartTime = startTime,
-            Duration = ProjectileTakeoffDuration
+            Duration = Config.ProjectileTakeoffDuration
         };
         _commands.Add(spawnCommand);
     }
