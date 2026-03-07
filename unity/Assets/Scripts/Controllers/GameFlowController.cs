@@ -215,6 +215,10 @@ namespace Match3.Unity.Controllers
 
         private void OnGameEnded(bool isVictory, int score)
         {
+            // Stop auto-play when game ends
+            _gameController.Bridge.IsAutoPlaying = false;
+            _gameController.UI?.SetAutoPlay(false);
+
             _lastStars = 0;
             _lastVictory = isVictory;
             if (isVictory)

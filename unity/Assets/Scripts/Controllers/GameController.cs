@@ -353,6 +353,10 @@ namespace Match3.Unity.Controllers
         {
             _shakeController.Reset();
 
+            // Stop auto-play on reset
+            _bridge.IsAutoPlaying = false;
+            _uiManager?.SetAutoPlay(false);
+
             _hintController?.SetEnabled(false);
             _lastHintedTileId = -1;
             _lastHintGeneration = -1;
