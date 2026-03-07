@@ -23,6 +23,7 @@ namespace Match3.Unity.Views
         private Light _fillLight;
         private Light _rimLight;
         private Light _selectionLight;
+        private Light _hintLight;
 
         private float _baseKeyIntensity;
         private float _baseKeyShadowStrength;
@@ -38,6 +39,7 @@ namespace Match3.Unity.Views
         private readonly List<Light> _dynamicLights = new();
 
         public Light SelectionLight => _selectionLight;
+        public Light HintLight => _hintLight;
 
         public void Initialize()
         {
@@ -45,6 +47,7 @@ namespace Match3.Unity.Views
             CreateFillLight();
             CreateRimLight();
             CreateSelectionLight();
+            CreateHintLight();
         }
 
         public void SetBaseIntensities(float keyIntensity, float keyShadowStrength, float fillIntensity)
@@ -183,6 +186,21 @@ namespace Match3.Unity.Views
             RegisterDynamicLight(_selectionLight);
         }
 
+        private void CreateHintLight()
+        {
+            var go = new GameObject("HintLight");
+            go.transform.SetParent(transform, false);
+            _hintLight = go.AddComponent<Light>();
+            _hintLight.type = LightType.Point;
+            _hintLight.range = 1.5f;
+            _hintLight.intensity = 3f;
+            _hintLight.shadows = LightShadows.None;
+            _hintLight.renderMode = LightRenderMode.ForcePixel;
+            _hintLight.enabled = false;
+
+            RegisterDynamicLight(_hintLight);
+        }
+
         private void OnDestroy()
         {
             _dynamicLights.Clear();
@@ -206,6 +224,11 @@ namespace Match3.Unity.Views
             {
                 Destroy(_selectionLight.gameObject);
                 _selectionLight = null;
+            }
+            if (_hintLight != null)
+            {
+                Destroy(_hintLight.gameObject);
+                _hintLight = null;
             }
         }
     }

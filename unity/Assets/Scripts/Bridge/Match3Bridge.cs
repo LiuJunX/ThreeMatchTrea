@@ -10,6 +10,7 @@ using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Matching.Generation;
 using Match3.Core.Systems.Selection;
+using Match3.Core.Utility;
 using Match3.Presentation;
 using Match3.Random;
 using Match3.Unity.Pools;
@@ -783,6 +784,66 @@ namespace Match3.Unity.Bridge
             var state = _session.Engine.State;
             _autoPlaySelector.InvalidateCache();
             return _autoPlaySelector.TryGetMove(in state, out action);
+        }
+
+        /// <summary>
+        /// For a swap move, determine which tile to highlight:
+        /// the one that will be eliminated after the swap.
+        /// If both match, prefer the one forming a bomb.
+        /// </summary>
+        public Position GetHintHighlightPosition(MoveAction action)
+        {
+            if (action.ActionType != MoveActionType.Swap) return action.From;
+            if (!_initialized) return action.From;
+
+            var state = _session.Engine.State;
+            var from = action.From;
+            var to = action.To;
+
+            // Both bombs → always highlight from
+            var tileA = state.GetTile(from.X, from.Y);
+            var tileB = state.GetTile(to.X, to.Y);
+            if (tileA.Bomb != BombType.None && tileB.Bomb != BombType.None) return from;
+
+            var matchFinder = new ClassicMatchFinder(new BombGenerator());
+
+            GridUtility.SwapTilesForCheck(ref state, from, to);
+
+            bool fromPosMatches = matchFinder.HasMatchAt(in state, from);
+            bool toPosMatches = matchFinder.HasMatchAt(in state, to);
+
+            var result = from; // default: highlight the tile at 'from'
+
+            if (fromPosMatches && toPosMatches)
+            {
+                // Both match → check bomb formation, prefer the side forming a bomb
+                var foci = new[] { from, to };
+                var groups = matchFinder.FindMatchGroups(in state, foci);
+
+                bool fromPosBomb = false;
+                foreach (var g in groups)
+                {
+                    if (g.SpawnBombType == BombType.None) continue;
+                    foreach (var pos in g.Positions)
+                    {
+                        if (pos == from) { fromPosBomb = true; break; }
+                    }
+                    if (fromPosBomb) break;
+                }
+                ClassicMatchFinder.ReleaseGroups(groups);
+
+                // fromPosBomb: tile at 'from' after swap (originally at 'to') forms bomb → highlight 'to'
+                if (fromPosBomb) result = to;
+            }
+            else if (fromPosMatches && !toPosMatches)
+            {
+                // Only the tile now at 'from' (originally at 'to') matches → highlight 'to'
+                result = to;
+            }
+
+            GridUtility.SwapTilesForCheck(ref state, from, to); // swap back
+
+            return result;
         }
 
         /// <summary>

@@ -1,4 +1,6 @@
 using System;
+using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Selection;
 using Match3.Presentation;
 using Match3.Unity.Bridge;
 using Match3.Unity.UI;
@@ -48,6 +50,15 @@ namespace Match3.Unity.Controllers
 
         private bool _initialized;
         private ObjectiveDisplayController _objectiveDisplay;
+        private HintController _hintController;
+        private int _lastHintedTileId = -1;
+        private int _lastHintGeneration = -1;
+        private float _hintLightIntensity;
+        private float _hintLightTime;
+        private const float HintLightMaxIntensity = 3f;
+        private const float HintLightFadeSpeed = 16f;
+        private static readonly int HintColorProp = Shader.PropertyToID("_BaseColor");
+        private static readonly int HintColorPropFallback = Shader.PropertyToID("_Color");
 
         // Screen shake state
         private Camera _cachedCamera;
@@ -140,6 +151,10 @@ namespace Match3.Unity.Controllers
 
             // Initialize input
             _inputController.Initialize(_bridge);
+            _inputController.OnUserInput += OnUserInput;
+
+            // Initialize hint system
+            _hintController = new HintController(new BridgeHintContext(_bridge));
 
             // Initialize UI
             if (_enableUI)
@@ -222,6 +237,11 @@ namespace Match3.Unity.Controllers
 
             // Initialize input
             _inputController.Initialize(_bridge);
+            _inputController.OnUserInput -= OnUserInput; // prevent double-subscribe
+            _inputController.OnUserInput += OnUserInput;
+
+            // Initialize hint system
+            _hintController = new HintController(new BridgeHintContext(_bridge));
 
             // Initialize UI
             if (_enableUI && _uiManager == null)
@@ -255,6 +275,10 @@ namespace Match3.Unity.Controllers
             _effectManager.Initialize(_bridge);
             InitializeObjectiveDisplay();
             _inputController.Initialize(_bridge);
+            _inputController.OnUserInput -= OnUserInput;
+            _inputController.OnUserInput += OnUserInput;
+
+            _hintController = new HintController(new BridgeHintContext(_bridge));
 
             if (_enableUI && _uiManager == null)
             {
@@ -299,6 +323,17 @@ namespace Match3.Unity.Controllers
 
             // Render board
             _boardView.Render(state);
+
+            // Update hint system
+            if (_hintController != null)
+            {
+                bool gameInProgress = _bridge.CurrentState.LevelStatus == Core.Models.Enums.LevelStatus.InProgress;
+                bool canHint = !_bridge.IsPaused && !_bridge.IsAutoPlaying && gameInProgress;
+                _hintController.SetEnabled(canHint);
+                if (canHint)
+                    _hintController.Update(Time.deltaTime);
+                ApplyHintToView(_hintController.CurrentHint);
+            }
 
             // Update effects
             _effectManager.UpdateEffects(state);
@@ -406,6 +441,12 @@ namespace Match3.Unity.Controllers
             _shakeTimer = 0f;
             _lastShakeEffectCount = 0;
 
+            _hintController?.SetEnabled(false);
+            _lastHintedTileId = -1;
+            _lastHintGeneration = -1;
+            _hintLightIntensity = 0f;
+            _hintLightTime = 0f;
+
             _objectiveDisplay?.Clear();
             _boardView?.Clear();
             _effectManager?.Clear();
@@ -432,6 +473,11 @@ namespace Match3.Unity.Controllers
         {
             RestoreShake();
 
+            if (_inputController != null)
+            {
+                _inputController.OnUserInput -= OnUserInput;
+            }
+
             if (_objectiveDisplay != null)
             {
                 Destroy(_objectiveDisplay.gameObject);
@@ -449,6 +495,181 @@ namespace Match3.Unity.Controllers
                 Destroy(_uiManager.gameObject);
                 _uiManager = null;
             }
+        }
+
+        private void OnUserInput()
+        {
+            _hintController?.OnUserInput();
+        }
+
+        private void ApplyHintToView(HintResult hint)
+        {
+            var gen = _hintController.HintGeneration;
+            bool hintChanged = gen != _lastHintGeneration;
+
+            if (!hint.IsActive || hint.TileId < 0)
+            {
+                if (_lastHintedTileId >= 0)
+                {
+                    ClearHintOnTile(_lastHintedTileId);
+                    _lastHintedTileId = -1;
+                }
+                _lastHintGeneration = gen;
+                // Fade out hint light
+                UpdateHintLight(null, hint, hintChanged);
+                return;
+            }
+
+            // On hint change: clear old tile, apply new hint (resets _hintTime)
+            if (hintChanged)
+            {
+                if (_lastHintedTileId >= 0)
+                    ClearHintOnTile(_lastHintedTileId);
+
+                var nudgeDir = Vector2.zero;
+                if (hint.Type == HintAnimationType.SwapNudge)
+                {
+                    nudgeDir = new Vector2(hint.To.X - hint.From.X, -(hint.To.Y - hint.From.Y));
+                    if (nudgeDir.sqrMagnitude > 0.001f)
+                        nudgeDir.Normalize();
+                }
+
+                if (_boardView is Board3DView b3d && b3d.TryGetTileView(hint.TileId, out var tile3D))
+                    tile3D.SetHinted(true, hint.Type, nudgeDir);
+                else if (_boardView is BoardView b2d && b2d.TryGetTileView(hint.TileId, out var tile2D))
+                    tile2D.SetHinted(true, hint.Type, nudgeDir);
+
+                _lastHintedTileId = hint.TileId;
+                _lastHintGeneration = gen;
+            }
+
+            // Update hint light position every frame + fade in
+            if (_boardView is Board3DView board3DView && board3DView.TryGetTileView(hint.TileId, out var tile))
+            {
+                UpdateHintLight(tile, hint, hintChanged);
+            }
+        }
+
+        private void UpdateHintLight(Tile3DView tile, HintResult hint, bool colorChanged)
+        {
+            if (!(_boardView is Board3DView board3DView)) return;
+            var hintLight = board3DView.GetLightingController()?.HintLight;
+            if (hintLight == null) return;
+
+            bool active = hint.IsActive && hint.TileId >= 0;
+
+            // Compute target intensity
+            float target;
+            if (active)
+            {
+                _hintLightTime += Time.deltaTime;
+                if (hint.Type == HintAnimationType.BombPulse)
+                {
+                    var pulse = Mathf.Lerp(0.3f, 1f, (Mathf.Sin(_hintLightTime * 2f * Mathf.PI * 2f) + 1f) * 0.5f);
+                    target = HintLightMaxIntensity * pulse;
+                }
+                else
+                {
+                    target = HintLightMaxIntensity;
+                }
+            }
+            else
+            {
+                target = 0f;
+            }
+
+            // Smooth tracking: fade in follows pulse, fade out decays from current value
+            _hintLightIntensity = Mathf.Lerp(_hintLightIntensity, target, HintLightFadeSpeed * Time.deltaTime);
+            if (_hintLightIntensity < 0.01f) { _hintLightIntensity = 0f; _hintLightTime = 0f; }
+
+            var intensity = _hintLightIntensity;
+            hintLight.intensity = intensity;
+
+            if (intensity > 0.01f)
+            {
+                hintLight.enabled = true;
+                if (tile != null)
+                {
+                    var tilePos = tile.transform.position;
+                    hintLight.transform.position = new Vector3(tilePos.x, tilePos.y, tilePos.z - 1f);
+                    if (colorChanged)
+                    {
+                        var mat = tile.GetComponent<MeshRenderer>().sharedMaterial;
+                        hintLight.color = mat.HasProperty(HintColorProp)
+                            ? mat.GetColor(HintColorProp)
+                            : mat.GetColor(HintColorPropFallback);
+                    }
+                }
+            }
+            else
+            {
+                hintLight.enabled = false;
+            }
+        }
+
+        private void ClearHintOnTile(int tileId)
+        {
+            if (_boardView is Board3DView b3d)
+            {
+                if (b3d.TryGetTileView(tileId, out var tile3D))
+                    tile3D.SetHinted(false);
+            }
+            else if (_boardView is BoardView b2d)
+            {
+                if (b2d.TryGetTileView(tileId, out var tile2D))
+                    tile2D.SetHinted(false);
+            }
+        }
+
+        private sealed class BridgeHintContext : IHintContext
+        {
+            private readonly Match3Bridge _bridge;
+
+            public BridgeHintContext(Match3Bridge bridge)
+            {
+                _bridge = bridge;
+            }
+
+            public bool IsIdle => _bridge.IsIdle();
+
+            public bool HasSelection => _bridge.CurrentState.SelectedPosition != Position.Invalid;
+
+            public void ClearSelection() => _bridge.ClearSelection();
+
+            public bool TryGetHintMove(out int actionType, out Position from, out Position to)
+            {
+                if (_bridge.TryGetHintMove(out var action))
+                {
+                    actionType = (int)action.ActionType;
+                    if (action.ActionType == MoveActionType.Swap)
+                    {
+                        var highlight = _bridge.GetHintHighlightPosition(action);
+                        // Swap from/to so 'from' is always the highlighted tile
+                        if (highlight == action.To)
+                        {
+                            from = action.To;
+                            to = action.From;
+                        }
+                        else
+                        {
+                            from = action.From;
+                            to = action.To;
+                        }
+                    }
+                    else
+                    {
+                        from = action.From;
+                        to = action.To;
+                    }
+                    return true;
+                }
+                actionType = 0;
+                from = default;
+                to = default;
+                return false;
+            }
+
+            public int GetTileIdAt(Position pos) => _bridge.GetTileIdAt(pos);
         }
     }
 }

@@ -214,6 +214,14 @@ namespace Match3.Unity.Views
         }
 
         /// <summary>
+        /// Try get tile view by ID.
+        /// </summary>
+        public bool TryGetTileView(int tileId, out TileView view)
+        {
+            return _activeTiles.TryGetValue(tileId, out view);
+        }
+
+        /// <summary>
         /// Get projectile view by ID.
         /// </summary>
         public ProjectileView GetProjectileView(int projectileId)

@@ -1,4 +1,5 @@
 using Match3.Unity.Controllers;
+using Match3.Unity.Views;
 using UnityEditor;
 using UnityEngine;
 
@@ -98,6 +99,14 @@ namespace Match3.Unity.Editor
                 }
             }
             catch { }
+        }
+
+        [MenuItem("Match3/Debug/Toggle Outline")]
+        public static void ToggleOutline()
+        {
+            if (!EditorApplication.isPlaying) return;
+            Tile3DView.OutlineEnabled = !Tile3DView.OutlineEnabled;
+            Debug.Log($"[Debug] Outline={Tile3DView.OutlineEnabled}");
         }
 
         private static void ClearConsole()

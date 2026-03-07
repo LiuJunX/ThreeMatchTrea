@@ -1,6 +1,7 @@
 using Match3.Core.Models.Enums;
 using Match3.Presentation;
 using Match3.Unity.Bridge;
+using Match3.Unity.Controllers;
 using Match3.Unity.Pools;
 using UnityEngine;
 
@@ -24,6 +25,10 @@ namespace Match3.Unity.Views
 
         private Vector3 _baseScale = Vector3.one;
         private bool _isHighlighted;
+        private bool _isHinted;
+        private HintAnimationType _hintType;
+        private Vector2 _hintNudgeDir;
+        private float _hintTime;
         private bool _wasAnimated;
         private float _bounceTime = -1f;
         private float _highlightTime;
@@ -76,8 +81,6 @@ namespace Match3.Unity.Views
             var pos = (Vector3)worldPos;
             // NOTE: Idle breathing intentionally disabled (keep tiles perfectly still when idle).
 
-            transform.position = pos;
-
             // Update scale (store base scale for highlight effect)
             var scale = visual.Scale;
             _baseScale = new Vector3(scale.X * cellSize, scale.Y * cellSize, 1f);
@@ -97,6 +100,31 @@ namespace Match3.Unity.Views
             {
                 _bounceTime = -1f;
             }
+
+            // Hint animation (selection overrides hint)
+            if (_isHinted && !_isHighlighted)
+            {
+                _hintTime += Time.deltaTime;
+                if (_hintType == HintAnimationType.BombPulse)
+                {
+                    var pulse = 1f + Mathf.Sin(_hintTime * 2f * Mathf.PI * 2f) * 0.06f;
+                    finalScale *= pulse;
+                }
+                else if (_hintType == HintAnimationType.SwapNudge)
+                {
+                    var phase = Mathf.Sin(_hintTime * Mathf.PI * 2f);
+                    var pulse = 1f + phase * 0.04f;
+                    finalScale *= pulse;
+                    var nudge = Mathf.Max(phase, 0f) * 0.12f * cellSize;
+                    pos += new Vector3(_hintNudgeDir.x * nudge, _hintNudgeDir.y * nudge, 0f);
+                    // Tilt toward movement direction during nudge
+                    var tilt = Mathf.Max(phase, 0f) * 6f * (-_hintNudgeDir.x + _hintNudgeDir.y);
+                    transform.localEulerAngles = new Vector3(0f, 0f, tilt);
+                }
+            }
+
+            // Apply final position
+            transform.position = pos;
 
             // Selection pulse
             if (_isHighlighted)
@@ -143,6 +171,21 @@ namespace Match3.Unity.Views
         }
 
         /// <summary>
+        /// Set hint animation state.
+        /// </summary>
+        public void SetHinted(bool hinted, HintAnimationType type = HintAnimationType.None, Vector2 nudgeDir = default)
+        {
+            _isHinted = hinted;
+            _hintType = type;
+            _hintNudgeDir = nudgeDir;
+            if (!hinted)
+            {
+                _hintTime = 0f;
+                transform.localEulerAngles = Vector3.zero;
+            }
+        }
+
+        /// <summary>
         /// Update base scale (called after UpdateFromVisual sets the scale).
         /// </summary>
         public void SetBaseScale(Vector3 scale)
@@ -161,6 +204,9 @@ namespace Match3.Unity.Views
             TileId = -1;
             _baseScale = Vector3.one;
             _isHighlighted = false;
+            _isHinted = false;
+            _hintType = HintAnimationType.None;
+            _hintTime = 0f;
             _wasAnimated = false;
             _bounceTime = -1f;
             _highlightTime = 0f;

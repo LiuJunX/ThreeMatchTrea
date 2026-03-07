@@ -1,6 +1,7 @@
 using Match3.Core.Models.Enums;
 using Match3.Presentation;
 using Match3.Unity.Bridge;
+using Match3.Unity.Controllers;
 using Match3.Unity.Pools;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -21,6 +22,8 @@ namespace Match3.Unity.Views
         private MaterialPropertyBlock _shadowPropBlock;
         private Transform _shadowTransform;
 
+        private OutlineEffect _outline;
+
         // Cached shadow state so blob tweaks can refresh instantly
         private bool _hasLastShadowState;
         private Vector3 _lastShadowWorldPos;
@@ -32,6 +35,10 @@ namespace Match3.Unity.Views
 
         private Vector3 _baseScale = Vector3.one;
         private bool _isHighlighted;
+        private bool _isHinted;
+        private HintAnimationType _hintType;
+        private Vector2 _hintNudgeDir;
+        private float _hintTime;
         private bool _wasAnimated;
         private float _bounceTime = -1f;
         private float _highlightTime;
@@ -82,7 +89,25 @@ namespace Match3.Unity.Views
             _meshFilter = GetComponent<MeshFilter>();
             _meshRenderer = GetComponent<MeshRenderer>();
             _propBlock = new MaterialPropertyBlock();
+            CreateOutline();
             CreateBlobShadow();
+        }
+
+        private void CreateOutline()
+        {
+            _outlineGo = new GameObject("Outline");
+            _outlineGo.transform.SetParent(transform, false);
+
+            _outlineFilter = _outlineGo.AddComponent<MeshFilter>();
+            _outlineRenderer = _outlineGo.AddComponent<MeshRenderer>();
+            var mat = MeshFactory.GetOutlineMaterial();
+            if (mat != null)
+                _outlineRenderer.sharedMaterial = mat;
+            _outlineRenderer.shadowCastingMode = ShadowCastingMode.Off;
+            _outlineRenderer.receiveShadows = false;
+            _outlinePropBlock = new MaterialPropertyBlock();
+
+            _outlineGo.SetActive(s_outlineEnabled);
         }
 
         private void CreateBlobShadow()
@@ -119,6 +144,19 @@ namespace Match3.Unity.Views
                 : MeshFactory.GetTileMesh(type);
             ViewHelper.SetMesh(_meshFilter, targetMesh);
             ViewHelper.SetMaterials(_meshRenderer, MeshFactory.GetTileMaterialArray(type, bomb));
+
+            // Sync outline mesh and color
+            if (_outlineFilter != null)
+            {
+                ViewHelper.SetMesh(_outlineFilter, targetMesh);
+                if (s_outlineEnabled)
+                {
+                    var color = MeshFactory.GetTileColor(type);
+                    _outlineRenderer.GetPropertyBlock(_outlinePropBlock);
+                    _outlinePropBlock.SetColor(OutlineColorProp, color);
+                    _outlineRenderer.SetPropertyBlock(_outlinePropBlock);
+                }
+            }
         }
 
         /// <summary>
@@ -147,7 +185,6 @@ namespace Match3.Unity.Views
                 var floatZ = Mathf.Sin(_highlightTime * 5f) * 0.04f * cellSize;
                 pos.z += floatZ;
             }
-            transform.position = pos;
 
             // Scale (uniform 3D, Z tracks min of X/Y for natural shrink)
             var scaleFactor = cellSize * TileScaleMultiplier;
@@ -173,6 +210,44 @@ namespace Match3.Unity.Views
             {
                 _bounceTime = -1f;
             }
+
+            // Hint animation (selection overrides hint)
+            if (_isHinted && !_isHighlighted)
+            {
+                _hintTime += Time.deltaTime;
+                if (_hintType == HintAnimationType.BombPulse)
+                {
+                    var pulse = 1f + Mathf.Sin(_hintTime * 2f * Mathf.PI * 2f) * 0.06f;
+                    finalScale *= pulse;
+                }
+                else if (_hintType == HintAnimationType.SwapNudge)
+                {
+                    var phase = Mathf.Sin(_hintTime * Mathf.PI * 2f);
+                    var pulse = 1f + phase * 0.04f;
+                    finalScale *= pulse;
+                    var nudge = Mathf.Max(phase, 0f) * 0.12f * cellSize;
+                    pos += new Vector3(_hintNudgeDir.x * nudge, _hintNudgeDir.y * nudge, 0f);
+                    // Tilt toward movement direction during nudge
+                    var tiltAngle = Mathf.Max(phase, 0f) * 6f;
+                    var tiltX = -_hintNudgeDir.y * tiltAngle; // vertical: X axis
+                    var tiltY = _hintNudgeDir.x * tiltAngle;  // horizontal: Y axis
+                    transform.localEulerAngles = new Vector3(tiltX, tiltY, 0f);
+                }
+
+                // Emission pulse for hint
+                _meshRenderer.GetPropertyBlock(_propBlock);
+                var mat = _meshRenderer.sharedMaterial;
+                var baseColor = mat.HasProperty(ColorProp)
+                    ? mat.GetColor(ColorProp)
+                    : mat.GetColor(ColorPropFallback);
+                var emFreq = _hintType == HintAnimationType.SwapNudge ? 1f : 2f;
+                var emissionStrength = Mathf.Lerp(0.1f, 0.15f, (Mathf.Sin(_hintTime * emFreq * Mathf.PI * 2f) + 1f) * 0.5f);
+                _propBlock.SetColor(EmissionColorProp, baseColor * emissionStrength);
+                _meshRenderer.SetPropertyBlock(_propBlock);
+            }
+
+            // Apply final position (after all highlight/hint modifications)
+            transform.position = pos;
 
             // Selection pulse (scale + rotation; _highlightTime already updated above)
             if (_isHighlighted)
@@ -204,7 +279,7 @@ namespace Match3.Unity.Views
                 _propBlock.SetColor(ColorPropFallback, color);
                 _meshRenderer.SetPropertyBlock(_propBlock);
             }
-            else
+            else if (!_isHinted && !_isHighlighted)
             {
                 _meshRenderer.SetPropertyBlock(null);
             }
@@ -214,6 +289,26 @@ namespace Match3.Unity.Views
 
             // Immediate mode: sync appearance from visual state every frame
             ApplyAppearance(visual.TileType, visual.BombType);
+        }
+
+        /// <summary>
+        /// Set hint animation state.
+        /// </summary>
+        public void SetHinted(bool hinted, HintAnimationType type = HintAnimationType.None, Vector2 nudgeDir = default)
+        {
+            bool wasHinted = _isHinted;
+            _isHinted = hinted;
+            _hintType = type;
+            _hintNudgeDir = nudgeDir;
+            if (!hinted && wasHinted)
+            {
+                _hintTime = 0f;
+                transform.localEulerAngles = Vector3.zero;
+                // Clear emission
+                _meshRenderer.GetPropertyBlock(_propBlock);
+                _propBlock.SetColor(EmissionColorProp, Color.black);
+                _meshRenderer.SetPropertyBlock(_propBlock);
+            }
         }
 
         /// <summary>
@@ -348,6 +443,9 @@ namespace Match3.Unity.Views
             TileId = -1;
             _baseScale = Vector3.one;
             _isHighlighted = false;
+            _isHinted = false;
+            _hintType = HintAnimationType.None;
+            _hintTime = 0f;
             _wasAnimated = false;
             _bounceTime = -1f;
             _highlightTime = 0f;
@@ -355,6 +453,8 @@ namespace Match3.Unity.Views
             transform.localScale = Vector3.one;
             transform.localEulerAngles = Vector3.zero;
             _meshRenderer.SetPropertyBlock(null);
+            if (_outlineGo != null)
+                _outlineGo.SetActive(s_outlineEnabled);
         }
 
         public void OnDespawn()

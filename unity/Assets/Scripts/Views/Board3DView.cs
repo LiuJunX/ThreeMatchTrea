@@ -537,6 +537,19 @@ namespace Match3.Unity.Views
         }
 
         /// <summary>
+        /// Try get tile view by ID.
+        /// </summary>
+        public bool TryGetTileView(int tileId, out Tile3DView view)
+        {
+            return _activeTiles.TryGetValue(tileId, out view);
+        }
+
+        /// <summary>
+        /// Get the lighting controller for hint light management.
+        /// </summary>
+        public BoardLightingController GetLightingController() => _lightingController;
+
+        /// <summary>
         /// Remove a tile from active tracking and return its view.
         /// Used by ObjectiveDisplayController for direct-fly (3-connect) scenario.
         /// </summary>

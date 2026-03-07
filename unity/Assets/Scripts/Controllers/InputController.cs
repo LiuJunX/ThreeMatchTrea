@@ -1,3 +1,4 @@
+using System;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Input;
@@ -16,6 +17,8 @@ namespace Match3.Unity.Controllers
         private Camera _mainCamera;
 
         private StandardInputSystem _inputSystem;
+
+        public event Action OnUserInput;
 
         /// <summary>
         /// Initialize the input controller.
@@ -77,11 +80,13 @@ namespace Match3.Unity.Controllers
 
         private void OnTapDetected(Position pos)
         {
+            OnUserInput?.Invoke();
             _bridge.HandleTap(pos);
         }
 
         private void OnSwipeDetected(Position from, Direction direction)
         {
+            OnUserInput?.Invoke();
             var to = _inputSystem.GetSwipeTarget(from, direction);
             if (_bridge.GetTileIdAt(to) >= 0)
             {

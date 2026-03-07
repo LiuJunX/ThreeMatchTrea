@@ -22,6 +22,9 @@ namespace Match3.Unity.Pools
 
         private static RenderTuningSettings _tuning;
 
+        // Outline resources
+        private static Material _outlineMaterial;
+
         // Blob shadow resources
         private static Mesh _blobShadowMesh;
         private static Material _blobShadowMaterial;
@@ -203,6 +206,32 @@ namespace Match3.Unity.Pools
         }
 
         /// <summary>
+        /// Get the shared outline material (Match3/Outline shader, back-face extrusion).
+        /// </summary>
+        public static Material GetOutlineMaterial()
+        {
+            if (_outlineMaterial != null) return _outlineMaterial;
+
+            var shader = Shader.Find("Match3/Outline");
+            if (shader == null)
+            {
+                Debug.LogWarning("[MeshFactory] Match3/Outline shader not found");
+                return null;
+            }
+
+            _outlineMaterial = new Material(shader) { name = "TileOutline" };
+            return _outlineMaterial;
+        }
+
+        /// <summary>
+        /// Get the ceramic base color for a tile type (for outline tinting etc.).
+        /// </summary>
+        public static Color GetTileColor(TileType type)
+        {
+            return GetCeramicColor(type);
+        }
+
+        /// <summary>
         /// Get the shared blob shadow quad mesh.
         /// </summary>
         public static Mesh GetBlobShadowMesh()
@@ -319,6 +348,12 @@ namespace Match3.Unity.Pools
             {
                 Object.Destroy(_fallbackMaterial);
                 _fallbackMaterial = null;
+            }
+
+            if (_outlineMaterial != null)
+            {
+                Object.Destroy(_outlineMaterial);
+                _outlineMaterial = null;
             }
 
             // Note: Do NOT destroy _blobShadowMaterial/_blobShadowTexture/_blobShadowMesh here.
