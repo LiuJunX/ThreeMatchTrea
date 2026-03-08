@@ -1246,10 +1246,6 @@ public sealed class Choreographer : IEventVisitor
             float flightEndTime = flight.LaunchTime + flight.Duration;
             float removeTime = Math.Max(startTime, flightEndTime);
 
-            Console.WriteLine($"[UFO] Impact: tileId={flight.TileId} target={position} " +
-                $"flightEnd={flightEndTime:F3} impactStart={startTime:F3} removeTime={removeTime:F3} " +
-                $"flightOrigin={flight.Origin} flightTarget={flight.Target} flightDur={flight.Duration:F3}");
-
             // Impact effect at target
             _commands.Add(new ShowEffectCommand
             {

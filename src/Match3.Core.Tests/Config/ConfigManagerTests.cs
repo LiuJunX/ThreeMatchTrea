@@ -166,18 +166,6 @@ public class ConfigManagerTests
 
     #endregion
 
-    #region Load(string path) Tests
-
-    [Fact]
-    public void Load_MissingFilePath_ThrowsFileNotFoundException()
-    {
-        var manager = new ConfigManager();
-
-        Assert.Throws<FileNotFoundException>(() => manager.Load("nonexistent_file.bin"));
-    }
-
-    #endregion
-
     #region GetItem Tests
 
     [Fact]

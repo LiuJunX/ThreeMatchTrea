@@ -13,19 +13,6 @@ public class ConfigManager
 
     public bool IsLoaded { get; private set; }
 
-    public void Load(string path)
-    {
-        if (!File.Exists(path))
-        {
-            throw new FileNotFoundException("Config file not found", path);
-        }
-
-        using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read))
-        {
-            Load(fs);
-        }
-    }
-
     public void Load(Stream stream)
     {
         using (var reader = new BinaryReader(stream))

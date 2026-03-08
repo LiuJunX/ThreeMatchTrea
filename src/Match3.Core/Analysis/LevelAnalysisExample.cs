@@ -33,9 +33,10 @@ public static class LevelAnalysisExample
         {
             // Unity: 使用 MainThreadDispatcher 或 UniTask
             // WPF: 使用 Dispatcher.Invoke
-            // 这里直接打印示例
-            Console.WriteLine($"进度: {p.CompletedCount}/{p.TotalCount} " +
-                              $"通过率: {p.WinRate:P1} 死锁率: {p.DeadlockRate:P1}");
+            // 平台相关输出，例如：
+            // Unity: MainThreadDispatcher.Post(() => label.text = $"{p.WinRate:P1}");
+            // Console: Console.WriteLine($"{p.CompletedCount}/{p.TotalCount}");
+            _ = p; // 使用进度数据
         });
 
         try
@@ -51,15 +52,12 @@ public static class LevelAnalysisExample
                 progress,
                 cts.Token);
 
-            Console.WriteLine($"\n=== 分析完成 ===");
-            Console.WriteLine($"通过率: {result.WinRate:P1}");
-            Console.WriteLine($"难度: {result.DifficultyRating}");
-            Console.WriteLine($"平均步数: {result.AverageMovesUsed:F1}");
-            Console.WriteLine($"耗时: {result.ElapsedMs:F0}ms");
+            // 使用分析结果 (result.WinRate, result.DifficultyRating 等)
+            _ = result;
         }
         catch (OperationCanceledException)
         {
-            Console.WriteLine("分析已取消");
+            // 分析已取消
         }
     }
 

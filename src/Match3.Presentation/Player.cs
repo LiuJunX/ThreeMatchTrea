@@ -367,12 +367,6 @@ public sealed class Player
         {
             case RemoveTileCommand remove:
             {
-                var removingTile = _visualState.GetTile(remove.TileId);
-                if (removingTile != null)
-                {
-                    Console.WriteLine($"[UFO] RemoveTile: id={remove.TileId} pos={removingTile.Position} " +
-                        $"time={_currentTime:F3} cmdStart={remove.StartTime:F3}");
-                }
                 _visualState.RemoveTile(remove.TileId);
                 break;
             }
@@ -516,8 +510,6 @@ public sealed class Player
                 var ufoTile = _visualState.GetTile(ufo.TileId);
                 if (ufoTile != null)
                 {
-                    Console.WriteLine($"[UFO] FlightComplete: id={ufo.TileId} target={ufo.Target} " +
-                        $"origin={ufo.Origin} dur={ufo.Duration:F3} time={_currentTime:F3} end={ufo.EndTime:F3}");
                     ufoTile.UfoFlightProgress = 1f;
                     _visualState.SetTilePosition(ufo.TileId, ufo.Target);
                 }
@@ -659,11 +651,6 @@ public sealed class Player
                 float newDuration = visualDistance > 0
                     ? visualDistance / UfoConstants.FlightSpeed
                     : 0.01f;
-
-                Console.WriteLine($"[UFO] Retarget: id={retarget.TileId} t={t:F3} stayFrac={stayFrac:F2} " +
-                    $"smoothPos={currentPos} newTarget={retarget.NewTarget} " +
-                    $"visDist={visualDistance:F3} newDur={newDuration:F3} " +
-                    $"choreoNewDur={retarget.NewDuration:F3}");
 
                 // Create new UfoLaunchCommand for the retarget segment
                 var newCmd = new UfoLaunchCommand
