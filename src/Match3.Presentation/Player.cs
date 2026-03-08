@@ -448,7 +448,11 @@ public sealed class Player
                 var ufoT = _visualState.GetTile(ufo.TileId);
                 if (ufoT != null)
                 {
-                    ufoT.UfoFlightProgress = t;
+                    // For retarget segments (StayFraction==0), remap progress to [0.35, 1.0]
+                    // so the View skips the takeoff phase (spin ramp, orientation tilt, Z depth)
+                    // and stays in cruise mode. Without this, progress resets to 0 and the UFO
+                    // visually "re-launches" from a grounded state.
+                    ufoT.UfoFlightProgress = ufo.StayFraction > 0 ? t : 0.35f + t * 0.65f;
 
                     // XY position: stay at origin during spin-up/launch, then cruise to target
                     float stayFrac = ufo.StayFraction; // 0.35 for initial launch, 0 for retarget segment
@@ -623,12 +627,12 @@ public sealed class Player
         {
             if (_activeCommands[i].Command is UfoLaunchCommand activeUfo && activeUfo.TileId == retarget.TileId)
             {
-                // Compute current visual position at the retarget moment.
-                // Use retarget.StartTime (Choreographer's event time), NOT _currentTime
-                // which is stale (previous tick) and can be < cmd.StartTime when both
-                // launch and retarget are started in the same tick, yielding t=0 → Origin.
+                // Compute current visual position for seamless handoff.
+                // Use Max(_currentTime, retarget.StartTime) so that:
+                //  - Normal case: matches the last rendered position (no 1-frame jump)
+                //  - Same-tick case (launch+retarget in one tick): avoids t<0 → Origin
                 var cmd = activeUfo;
-                float retargetTime = retarget.StartTime;
+                float retargetTime = Math.Max(_currentTime, retarget.StartTime);
                 float t = cmd.Duration > 0
                     ? Math.Clamp((retargetTime - cmd.StartTime) / cmd.Duration, 0f, 1f)
                     : 1f;
@@ -672,11 +676,12 @@ public sealed class Player
                     Duration = newDuration
                 };
 
-                // Start the new command
+                // Start the new command — keep progress in cruise range (0.35+)
+                // so the View doesn't replay the takeoff animation
                 var ufoTile = _visualState.GetTile(retarget.TileId);
                 if (ufoTile != null)
                 {
-                    ufoTile.UfoFlightProgress = 0f;
+                    ufoTile.UfoFlightProgress = 0.35f;
                     ufoTile.UfoFlightDuration = newDuration;
                 }
 

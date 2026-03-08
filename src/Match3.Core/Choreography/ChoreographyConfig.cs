@@ -58,7 +58,7 @@ public sealed class ChoreographyConfig
 
     /// <summary>Delay between consecutive color bomb beam launches (seconds). Beams fire
     /// farthest-first and all arrive simultaneously — this controls the visual rhythm.</summary>
-    public float ColorBombBeamStagger { get; set; } = 0.12f;
+    public float ColorBombBeamStagger { get; set; } = 0.08f;
 
     /// <summary>Minimum flight duration for the closest color bomb beam (seconds).
     /// Prevents near-instant teleportation of close-range beams.</summary>

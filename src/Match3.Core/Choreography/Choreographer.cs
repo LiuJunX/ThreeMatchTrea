@@ -357,17 +357,19 @@ public sealed class Choreographer : IEventVisitor
             Priority = 10
         });
 
+        float lockEnd = endTime + Config.BombDropDelay;
+
         _lockEntries.Add(new CellLockEntry
         {
             Position = evt.GridPosition,
             LockType = CellLockType.Receive,
-            Duration = endTime,
+            Duration = lockEnd,
             IsMerge = false
         });
 
-        if (!_columnDestroyEndTimes.TryGetValue(column, out float existing) || endTime > existing)
+        if (!_columnDestroyEndTimes.TryGetValue(column, out float existing) || lockEnd > existing)
         {
-            _columnDestroyEndTimes[column] = endTime;
+            _columnDestroyEndTimes[column] = lockEnd;
         }
     }
 
@@ -733,8 +735,11 @@ public sealed class Choreographer : IEventVisitor
         var hoppedOrigin = origin + hopOffset;
         float maxHitTime = EmitColorBombBeams(gridOrigin, affectedPositions, beamLaunchTime, hoppedOrigin);
 
-        // Spin covers the entire performance (charge + beam flight)
-        float spinEndTime = Math.Max(maxHitTime, beamLaunchTime + 0.1f);
+        // Spin covers the entire performance (charge + beam flight + hit pause)
+        // Hit pause = 0.5s matches EmitBeamTargetDestroy so bomb disappears
+        // at the same moment targets start dissolving.
+        const float hitPause = 0.5f;
+        float spinEndTime = Math.Max(maxHitTime + hitPause, beamLaunchTime + 0.1f);
         float spinDuration = spinEndTime - startTime;
 
         _commands.Add(new RotateTileCommand
@@ -747,7 +752,16 @@ public sealed class Choreographer : IEventVisitor
             Duration = spinDuration
         });
 
-        // Phase 3: After all beams land — shrink to nothing + remove
+        // Glow/flash persists throughout the entire performance
+        _commands.Add(new ShowEffectCommand
+        {
+            EffectType = "bomb_flash",
+            Position = hoppedOrigin,
+            StartTime = startTime,
+            Duration = spinDuration
+        });
+
+        // Phase 3: After targets start dissolving — shrink to nothing + remove
         float shrinkDuration = Config.ColorBombShrinkDuration;
 
         _commands.Add(new ScaleTileCommand
@@ -796,14 +810,7 @@ public sealed class Choreographer : IEventVisitor
             Duration = 0.6f
         });
 
-        // Add a glow/flash effect during the spin
-        _commands.Add(new ShowEffectCommand
-        {
-            EffectType = "bomb_flash",
-            Position = origin,
-            StartTime = startTime,
-            Duration = 0.6f
-        });
+        // NOTE: bomb_flash moved to EmitColorBombPerformance to span the full performance
 
         if (affectedPositions.Count == 0) return startTime;
 
@@ -1261,14 +1268,13 @@ public sealed class Choreographer : IEventVisitor
                 Priority = 10
             });
 
-            // Lock target cell for impact — short relative duration since
-            // the UFO landing already provides visual feedback
+            // Lock target cell for impact — brief hold so the landing reads before tiles drop in
             int column = evt.ImpactPosition.X;
             _lockEntries.Add(new CellLockEntry
             {
                 Position = evt.ImpactPosition,
                 LockType = CellLockType.Receive,
-                Duration = 0.1f,
+                Duration = 0.15f,
                 IsMerge = false
             });
 

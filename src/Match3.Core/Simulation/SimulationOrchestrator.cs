@@ -68,7 +68,20 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
 
         if (count > 0)
         {
-            _matchHandler.ProcessProjectileImpacts(ref state, affectedPositions, tick, simTime, events);
+            var triggeredBombs = Pools.ObtainList<Position>();
+            try
+            {
+                _matchHandler.ProcessProjectileImpacts(ref state, affectedPositions, tick, simTime, events, triggeredBombs);
+
+                foreach (var pos in triggeredBombs)
+                {
+                    _powerUpHandler.ActivateBomb(ref state, pos, tick, simTime, events, isChainReaction: true);
+                }
+            }
+            finally
+            {
+                Pools.Release(triggeredBombs);
+            }
         }
 
         Pools.Release(affectedPositions);

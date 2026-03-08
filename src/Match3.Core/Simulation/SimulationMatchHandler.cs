@@ -101,7 +101,8 @@ internal sealed class SimulationMatchHandler
         HashSet<Position> affectedPositions,
         int currentTick,
         float elapsedTime,
-        IEventCollector eventCollector)
+        IEventCollector eventCollector,
+        List<Position> triggeredBombs)
     {
         foreach (var pos in affectedPositions)
         {
@@ -109,6 +110,13 @@ internal sealed class SimulationMatchHandler
 
             var tile = state.GetTile(pos.X, pos.Y);
             if (tile.Type == ElementType.None) continue;
+
+            // Bombs are triggered, not destroyed — let ActivateBomb handle them
+            if (tile.Type.IsBomb())
+            {
+                triggeredBombs.Add(pos);
+                continue;
+            }
 
             if (eventCollector.IsEnabled)
             {

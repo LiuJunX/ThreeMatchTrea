@@ -11,6 +11,7 @@ using Match3.Core.Systems.Matching.Generation;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
+using Match3.Core.Systems.Projectiles;
 using Match3.Core.Systems.Spawning;
 using Match3.Random;
 using Xunit;
@@ -69,6 +70,101 @@ public class SimulationOrchestratorChainTests
         // The BombActivatedEvent should have the correct tick/simTime
         var chainEvent = bombEvents.First();
         Assert.Equal(11, chainEvent.Tick);
+    }
+
+    [Fact]
+    public void UpdateProjectiles_UfoHitsBomb_TriggersBombActivation()
+    {
+        var events = new StubEventCollector();
+        var state = CreateFilledState();
+
+        // Place a horizontal rocket at the UFO target
+        var bombPos = new Position(5, 5);
+        state.SetTile(bombPos.X, bombPos.Y, new Tile(200, ElementType.HorizontalRocket, bombPos.X, bombPos.Y));
+
+        var explosionSystem = new ExplosionSystem();
+        var coverSystem = new CoverSystem();
+        var groundSystem = new GroundSystem();
+        var projectileSystem = new ProjectileSystem();
+        var powerUpHandler = new PowerUpHandler(
+            new StubScoreSystem(),
+            new BombComboHandler(),
+            BombEffectRegistry.CreateDefault(),
+            coverSystem,
+            groundSystem,
+            explosionSystem);
+
+        var orchestrator = new SimulationOrchestrator(
+            new StubPhysics(),
+            new StubRefill(),
+            new ClassicMatchFinder(new BombGenerator()),
+            new StandardMatchProcessor(new StubScoreSystem(), coverSystem, groundSystem, BombEffectRegistry.CreateDefault()),
+            powerUpHandler,
+            projectileSystem: projectileSystem,
+            explosionSystem: explosionSystem);
+
+        // Launch UFO targeting the bomb position (same origin = immediate arrival)
+        var ufo = new UfoProjectile(1, bombPos, bombPos);
+        projectileSystem.Launch(ufo, 0, 0f, NullEventCollector.Instance);
+
+        // Run until projectile arrives
+        for (int i = 0; i < 100; i++)
+        {
+            orchestrator.UpdateProjectiles(ref state, 0.1f, i, i * 0.1f, events);
+            if (!projectileSystem.HasActiveProjectiles) break;
+        }
+
+        // The bomb should have been activated, not silently destroyed
+        var bombActivated = events.EmittedEvents.OfType<BombActivatedEvent>().ToList();
+        Assert.True(bombActivated.Count > 0, "UFO hitting a bomb should trigger BombActivatedEvent");
+    }
+
+    [Fact]
+    public void UpdateProjectiles_UfoHitsNormalTile_EmitsDestroyEvent()
+    {
+        var events = new StubEventCollector();
+        var state = CreateFilledState();
+
+        var targetPos = new Position(3, 3);
+
+        var explosionSystem = new ExplosionSystem();
+        var coverSystem = new CoverSystem();
+        var groundSystem = new GroundSystem();
+        var projectileSystem = new ProjectileSystem();
+        var powerUpHandler = new PowerUpHandler(
+            new StubScoreSystem(),
+            new BombComboHandler(),
+            BombEffectRegistry.CreateDefault(),
+            coverSystem,
+            groundSystem,
+            explosionSystem);
+
+        var orchestrator = new SimulationOrchestrator(
+            new StubPhysics(),
+            new StubRefill(),
+            new ClassicMatchFinder(new BombGenerator()),
+            new StandardMatchProcessor(new StubScoreSystem(), coverSystem, groundSystem, BombEffectRegistry.CreateDefault()),
+            powerUpHandler,
+            projectileSystem: projectileSystem,
+            explosionSystem: explosionSystem);
+
+        // Launch UFO targeting a normal tile
+        var ufo = new UfoProjectile(1, targetPos, targetPos);
+        projectileSystem.Launch(ufo, 0, 0f, NullEventCollector.Instance);
+
+        for (int i = 0; i < 100; i++)
+        {
+            orchestrator.UpdateProjectiles(ref state, 0.1f, i, i * 0.1f, events);
+            if (!projectileSystem.HasActiveProjectiles) break;
+        }
+
+        // Normal tile should be destroyed (not activated)
+        var destroyed = events.EmittedEvents.OfType<TileDestroyedEvent>().ToList();
+        Assert.True(destroyed.Count > 0, "UFO hitting a normal tile should emit TileDestroyedEvent");
+        Assert.Equal(DestroyReason.Projectile, destroyed[0].Reason);
+
+        // Tile should be cleared
+        Assert.Equal(ElementType.None, state.GetTile(targetPos.X, targetPos.Y).Type);
     }
 
     #region Helpers
