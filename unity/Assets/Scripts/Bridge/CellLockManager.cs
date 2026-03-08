@@ -13,20 +13,13 @@ namespace Match3.Unity.Bridge
     /// </summary>
     internal sealed class CellLockManager
     {
-        private readonly struct ActiveLock
+        private struct ActiveLock
         {
-            public readonly LockToken Token;
-            public readonly float Duration;
-
-            public ActiveLock(LockToken token, float duration)
-            {
-                Token = token;
-                Duration = duration;
-            }
+            public LockToken Token;
+            public float Remaining;
         }
 
         private readonly List<ActiveLock> _activeLocks = new();
-        private readonly List<float> _lockTimers = new();
         private readonly HashSet<long> _flyPositionKeys = new();
 
         /// <summary>
@@ -66,24 +59,32 @@ namespace Match3.Unity.Bridge
 
                 duration = Mathf.Max(duration, 0.01f);
                 var token = acquireLock(entry.Position, entry.LockType);
-                _activeLocks.Add(new ActiveLock(token, duration));
-                _lockTimers.Add(duration);
+                _activeLocks.Add(new ActiveLock { Token = token, Remaining = duration });
             }
         }
 
         /// <summary>
         /// Tick all active lock timers, release expired ones.
+        /// Uses swap-with-last removal for O(1) per removal instead of O(n).
         /// </summary>
         public void Tick(float deltaTime, Action<LockToken> releaseLock)
         {
-            for (int i = _lockTimers.Count - 1; i >= 0; i--)
+            for (int i = _activeLocks.Count - 1; i >= 0; i--)
             {
-                _lockTimers[i] -= deltaTime;
-                if (_lockTimers[i] <= 0f)
+                var entry = _activeLocks[i];
+                entry.Remaining -= deltaTime;
+                if (entry.Remaining <= 0f)
                 {
-                    releaseLock(_activeLocks[i].Token);
-                    _activeLocks.RemoveAt(i);
-                    _lockTimers.RemoveAt(i);
+                    releaseLock(entry.Token);
+                    // Swap with last element and remove last (O(1))
+                    int last = _activeLocks.Count - 1;
+                    if (i < last)
+                        _activeLocks[i] = _activeLocks[last];
+                    _activeLocks.RemoveAt(last);
+                }
+                else
+                {
+                    _activeLocks[i] = entry;
                 }
             }
         }
@@ -96,7 +97,6 @@ namespace Match3.Unity.Bridge
             for (int i = 0; i < _activeLocks.Count; i++)
                 releaseLock(_activeLocks[i].Token);
             _activeLocks.Clear();
-            _lockTimers.Clear();
         }
 
         private static long PackGridKey(int x, int y) => ((long)x << 32) | (uint)y;

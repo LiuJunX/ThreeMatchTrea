@@ -77,7 +77,8 @@ namespace Match3.Unity.Views
             var origin = _bridge.BoardOrigin;
             var height = _bridge.Height;
 
-            // Cache tile colors from current visible tiles (before they get removed)
+            // Rebuild tile color cache from current visible tiles (clear stale entries)
+            _tileColorCache.Clear();
             CacheTileColors(state);
 
             // Clear pre-allocated collections (no allocation)

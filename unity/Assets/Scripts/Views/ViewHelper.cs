@@ -23,14 +23,14 @@ namespace Match3.Unity.Views
 
         /// <summary>
         /// Set shared materials from a pre-cached array (e.g. MeshFactory.GetTileMaterialArray).
-        /// Compares first element + length to avoid the GC cost of sharedMaterials getter/setter.
+        /// Caller must pass a ref to a cached array field; the comparison avoids the GC cost
+        /// of the sharedMaterials getter (which allocates a new Material[] every call).
         /// </summary>
-        public static void SetMaterials(MeshRenderer renderer, Material[] target)
+        public static void SetMaterials(MeshRenderer renderer, Material[] target, ref Material[] lastSet)
         {
-            var current = renderer.sharedMaterials;
-            if (current.Length == target.Length && current[0] == target[0])
-                return;
+            if (lastSet == target) return;
             renderer.sharedMaterials = target;
+            lastSet = target;
         }
 
         public static void SetBombOverlay(SpriteRenderer overlay, GameObject overlayGo, Sprite target)

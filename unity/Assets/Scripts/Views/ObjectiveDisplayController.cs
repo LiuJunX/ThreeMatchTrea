@@ -586,21 +586,22 @@ namespace Match3.Unity.Views
                 ApplyAlpha(icon.Renderer, CompletedAlpha);
         }
 
+        private static readonly int s_colorProp = Shader.PropertyToID("_BaseColor");
+        private static readonly int s_colorPropFallback = Shader.PropertyToID("_Color");
+        private static readonly MaterialPropertyBlock s_alphaPropBlock = new();
+
         private static void ApplyAlpha(MeshRenderer renderer, float alpha)
         {
             if (renderer == null) return;
-            var propBlock = new MaterialPropertyBlock();
-            renderer.GetPropertyBlock(propBlock);
+            renderer.GetPropertyBlock(s_alphaPropBlock);
             var mat = renderer.sharedMaterial;
-            var colorProp = Shader.PropertyToID("_BaseColor");
-            var colorPropFallback = Shader.PropertyToID("_Color");
-            var color = mat.HasProperty(colorProp)
-                ? mat.GetColor(colorProp)
-                : mat.GetColor(colorPropFallback);
+            var color = mat.HasProperty(s_colorProp)
+                ? mat.GetColor(s_colorProp)
+                : mat.GetColor(s_colorPropFallback);
             color.a = alpha;
-            propBlock.SetColor(colorProp, color);
-            propBlock.SetColor(colorPropFallback, color);
-            renderer.SetPropertyBlock(propBlock);
+            s_alphaPropBlock.SetColor(s_colorProp, color);
+            s_alphaPropBlock.SetColor(s_colorPropFallback, color);
+            renderer.SetPropertyBlock(s_alphaPropBlock);
         }
 
         private static long PackGridKey(int x, int y)

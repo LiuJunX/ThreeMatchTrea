@@ -23,6 +23,7 @@ namespace Match3.Unity.Views
         private Transform _shadowTransform;
 
         private OutlineEffect _outline;
+        private Material[] _lastMaterials;
 
         // Cached shadow state so blob tweaks can refresh instantly
         private bool _hasLastShadowState;
@@ -70,6 +71,10 @@ namespace Match3.Unity.Views
 
         // Blob shadow constants
         private const float BlobShadowZ = 0.08f;
+
+        // Cached sun direction (updated once per frame via UpdateSunDirection)
+        private static Vector2 s_sunDir2D = new Vector2(-0.35f, -0.70f).normalized;
+        private static int s_sunDirFrame = -1;
 
         // Runtime-tweakable blob shadow params (defaults tuned for ceramic look).
         private static float s_blobShadowSize = 0.54f;
@@ -140,7 +145,7 @@ namespace Match3.Unity.Views
                 ? MeshFactory.GetBombMesh(type)
                 : MeshFactory.GetTileMesh(type);
             ViewHelper.SetMesh(_meshFilter, targetMesh);
-            ViewHelper.SetMaterials(_meshRenderer, MeshFactory.GetTileMaterialArray(type));
+            ViewHelper.SetMaterials(_meshRenderer, MeshFactory.GetTileMaterialArray(type), ref _lastMaterials);
 
             if (_outline != null)
                 _outline.OutlineColor = MeshFactory.GetOutlineColor(type);
@@ -360,6 +365,25 @@ namespace Match3.Unity.Views
             _meshRenderer.SetPropertyBlock(_propBlock);
         }
 
+        /// <summary>
+        /// Update cached sun direction. Call once per frame from Board3DView.Render.
+        /// </summary>
+        internal static void UpdateSunDirection()
+        {
+            int frame = Time.frameCount;
+            if (frame == s_sunDirFrame) return;
+            s_sunDirFrame = frame;
+
+            var sun = RenderSettings.sun;
+            if (sun != null)
+            {
+                var d = sun.transform.forward;
+                var v = new Vector2(d.x, d.y);
+                if (v.sqrMagnitude > 0.0001f)
+                    s_sunDir2D = v.normalized;
+            }
+        }
+
         private void UpdateBlobShadow(Vector3 worldPos, float cellSize, Vector3 tileScale, float tileZ)
         {
             if (_shadowTransform == null) return;
@@ -370,16 +394,7 @@ namespace Match3.Unity.Views
             _lastShadowTileScale = tileScale;
             _lastShadowTileZ = tileZ;
 
-            // Directional offset along sun direction
-            Vector2 dir2 = new Vector2(-0.35f, -0.70f).normalized;
-            var sun = RenderSettings.sun;
-            if (sun != null)
-            {
-                var d = sun.transform.forward;
-                var v = new Vector2(d.x, d.y);
-                if (v.sqrMagnitude > 0.0001f)
-                    dir2 = v.normalized;
-            }
+            var dir2 = s_sunDir2D;
 
             // Lift factor: floating tile → softer, larger shadow
             float lift01 = Mathf.Clamp01(Mathf.Abs(tileZ) / Mathf.Max(cellSize * 0.06f, 0.0001f));
@@ -603,6 +618,7 @@ namespace Match3.Unity.Views
             _ufoTiltX = _ufoTiltZ = 0f;
             _ufoTiltVelX = _ufoTiltVelZ = 0f;
             _ufoSmoothVel = Vector3.zero;
+            _lastMaterials = null;
             transform.localScale = Vector3.one;
             transform.localEulerAngles = BaseTiltEuler;
             if (_shadowTransform != null)

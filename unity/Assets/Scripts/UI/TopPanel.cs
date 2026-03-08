@@ -94,6 +94,7 @@ namespace Match3.Unity.UI
         /// </summary>
         public void UpdateMoves(int remaining)
         {
+            if (_currentMoves == remaining) return;
             _currentMoves = remaining;
             _movesText.text = $"Moves: {remaining}";
 
@@ -117,6 +118,7 @@ namespace Match3.Unity.UI
         /// </summary>
         public void UpdateScore(int score)
         {
+            if (_currentScore == score) return;
             _currentScore = score;
             _scoreText.text = $"Score: {score:N0}";
         }

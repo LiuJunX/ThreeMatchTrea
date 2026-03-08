@@ -102,6 +102,7 @@ namespace Match3.Unity.Views
             _propBlock = new MaterialPropertyBlock();
 
             _outlineGo.SetActive(s_enabled);
+            enabled = s_enabled;
         }
 
         /// <summary>
@@ -170,8 +171,11 @@ namespace Match3.Unity.Views
 
         private void RefreshVisibility()
         {
+            bool visible = s_enabled || _forceVisible;
             if (_outlineGo != null)
-                _outlineGo.SetActive(s_enabled || _forceVisible);
+                _outlineGo.SetActive(visible);
+            // Disable LateUpdate when not needed to avoid 64 empty managed callbacks per frame
+            enabled = visible;
         }
 
         /// <summary>

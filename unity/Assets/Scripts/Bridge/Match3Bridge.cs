@@ -44,6 +44,8 @@ namespace Match3.Unity.Bridge
 
         private CellLockManager _lockManager;
         private ObjectiveCollectionProcessor _objectiveCollector;
+        private readonly List<GameEvent> _eventBuffer = new();
+        private readonly ClassicMatchFinder _hintMatchFinder = new(new BombGenerator());
 
         /// <summary>
         /// Cell size in world units.
@@ -255,7 +257,7 @@ namespace Match3.Unity.Bridge
             _choreographer = new Choreographer();
             _player = new Player();
 
-            var matchFinder = new ClassicMatchFinder(new BombGenerator());
+            var matchFinder = _hintMatchFinder;
             var uiRandom = _session.SeedManager.GetRandom(RandomDomain.Main);
             _autoPlaySelector = new WeightedMoveSelector(matchFinder, uiRandom);
 
@@ -327,7 +329,7 @@ namespace Match3.Unity.Bridge
             _player = new Player();
 
             // Create auto-play selector (same as Web version)
-            var matchFinder = new ClassicMatchFinder(new BombGenerator());
+            var matchFinder = _hintMatchFinder;
             var uiRandom = _session.SeedManager.GetRandom(RandomDomain.Main);
             _autoPlaySelector = new WeightedMoveSelector(matchFinder, uiRandom);
 
@@ -365,9 +367,10 @@ namespace Match3.Unity.Bridge
             // Tick the simulation engine
             _session.Engine.Tick(scaledDelta);
 
-            // Drain events and convert to render commands
-            var events = _session.DrainEvents();
-            if (events.Count > 0)
+            // Drain events into reusable buffer (zero allocation)
+            _session.DrainEventsTo(_eventBuffer);
+            var events = (IReadOnlyList<GameEvent>)_eventBuffer;
+            if (_eventBuffer.Count > 0)
             {
                 // Scan for objective collections before choreography
                 // Always call Process() so PendingFlies is fresh for lock duration adjustment
@@ -611,7 +614,7 @@ namespace Match3.Unity.Bridge
             var tileB = state.GetTile(to.X, to.Y);
             if (tileA.Type.IsBomb() && tileB.Type.IsBomb()) return from;
 
-            var matchFinder = new ClassicMatchFinder(new BombGenerator());
+            var matchFinder = _hintMatchFinder;
 
             GridUtility.SwapTilesForCheck(ref state, from, to);
 
@@ -664,7 +667,7 @@ namespace Match3.Unity.Bridge
             if (!_initialized) return _hintMatchPositions;
 
             var state = _session.Engine.State;
-            var matchFinder = new ClassicMatchFinder(new BombGenerator());
+            var matchFinder = _hintMatchFinder;
 
             GridUtility.SwapTilesForCheck(ref state, hintFrom, hintTo);
 

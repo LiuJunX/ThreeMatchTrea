@@ -18,6 +18,14 @@ namespace Match3.Unity.Bridge
             _destroyedBySimTime = new();
         private readonly List<Match3Bridge.FlyCollectionRequest> _pendingFlies = new();
 
+        // Pooled inner collections to avoid per-Process() allocations
+        private readonly List<Dictionary<ElementType, Queue<(int, Position, Position?)>>> _innerDictPool = new();
+        private readonly List<Queue<(int, Position, Position?)>> _innerQueuePool = new();
+
+        // Merge delay working collections (reused)
+        private readonly Dictionary<Position, List<int>> _mergeGroups = new();
+        private readonly List<List<int>> _mergeIndexListPool = new();
+
         /// <summary>
         /// Pending fly requests from the last Process() call.
         /// Used by CellLockManager to adjust lock durations.
@@ -29,21 +37,34 @@ namespace Match3.Unity.Bridge
         /// </summary>
         public void Process(IReadOnlyList<GameEvent> events, GameState state, Action<Match3Bridge.FlyCollectionRequest> onCollected)
         {
+            // Return inner collections to pools before clearing
+            foreach (var kvp in _destroyedBySimTime)
+            {
+                var byType = kvp.Value;
+                foreach (var inner in byType.Values)
+                {
+                    inner.Clear();
+                    _innerQueuePool.Add(inner);
+                }
+                byType.Clear();
+                _innerDictPool.Add(byType);
+            }
             _destroyedBySimTime.Clear();
             _pendingFlies.Clear();
 
-            foreach (var evt in events)
+            for (int i = 0; i < events.Count; i++)
             {
+                var evt = events[i];
                 if (evt is TileDestroyedEvent tde && tde.Reason == DestroyReason.Match)
                 {
                     if (!_destroyedBySimTime.TryGetValue(tde.SimulationTime, out var byType))
                     {
-                        byType = new Dictionary<ElementType, Queue<(int, Position, Position?)>>();
+                        byType = RentInnerDict();
                         _destroyedBySimTime[tde.SimulationTime] = byType;
                     }
                     if (!byType.TryGetValue(tde.Type, out var queue))
                     {
-                        queue = new Queue<(int, Position, Position?)>();
+                        queue = RentInnerQueue();
                         byType[tde.Type] = queue;
                     }
                     queue.Enqueue((tde.TileId, tde.GridPosition, tde.MergeTarget));
@@ -90,8 +111,13 @@ namespace Match3.Unity.Bridge
 
         private void AssignMergeDelays()
         {
-            // Group merge flies by MergeTarget, sort by distance, assign delays
-            var mergeGroups = new Dictionary<Position, List<int>>();
+            // Return index lists to pool
+            foreach (var kvp in _mergeGroups)
+            {
+                kvp.Value.Clear();
+                _mergeIndexListPool.Add(kvp.Value);
+            }
+            _mergeGroups.Clear();
 
             for (int i = 0; i < _pendingFlies.Count; i++)
             {
@@ -99,26 +125,26 @@ namespace Match3.Unity.Bridge
                 if (fly.MergeTarget == null) continue;
 
                 var target = fly.MergeTarget.Value;
-                if (!mergeGroups.TryGetValue(target, out var indices))
+                if (!_mergeGroups.TryGetValue(target, out var indices))
                 {
-                    indices = new List<int>();
-                    mergeGroups[target] = indices;
+                    indices = RentIndexList();
+                    _mergeGroups[target] = indices;
                 }
                 indices.Add(i);
             }
 
             const float stagger = 0.08f;
-            foreach (var kvp in mergeGroups)
+            foreach (var kvp in _mergeGroups)
             {
                 var target = kvp.Key;
                 var indices = kvp.Value;
                 if (indices.Count <= 1) continue;
 
-                // Sort by distance to merge target
+                // Sort by distance to merge target (squared distance avoids Sqrt)
                 indices.Sort((a, b) =>
                 {
-                    var da = GridDistance(_pendingFlies[a].SourceGridPosition, target);
-                    var db = GridDistance(_pendingFlies[b].SourceGridPosition, target);
+                    var da = GridDistanceSq(_pendingFlies[a].SourceGridPosition, target);
+                    var db = GridDistanceSq(_pendingFlies[b].SourceGridPosition, target);
                     return da.CompareTo(db);
                 });
 
@@ -131,11 +157,44 @@ namespace Match3.Unity.Bridge
             }
         }
 
-        private static float GridDistance(Position a, Position b)
+        private static float GridDistanceSq(Position a, Position b)
         {
             float dx = a.X - b.X;
             float dy = a.Y - b.Y;
-            return Mathf.Sqrt(dx * dx + dy * dy);
+            return dx * dx + dy * dy;
+        }
+
+        private Dictionary<ElementType, Queue<(int, Position, Position?)>> RentInnerDict()
+        {
+            if (_innerDictPool.Count > 0)
+            {
+                var last = _innerDictPool[_innerDictPool.Count - 1];
+                _innerDictPool.RemoveAt(_innerDictPool.Count - 1);
+                return last;
+            }
+            return new Dictionary<ElementType, Queue<(int, Position, Position?)>>();
+        }
+
+        private Queue<(int, Position, Position?)> RentInnerQueue()
+        {
+            if (_innerQueuePool.Count > 0)
+            {
+                var last = _innerQueuePool[_innerQueuePool.Count - 1];
+                _innerQueuePool.RemoveAt(_innerQueuePool.Count - 1);
+                return last;
+            }
+            return new Queue<(int, Position, Position?)>();
+        }
+
+        private List<int> RentIndexList()
+        {
+            if (_mergeIndexListPool.Count > 0)
+            {
+                var last = _mergeIndexListPool[_mergeIndexListPool.Count - 1];
+                _mergeIndexListPool.RemoveAt(_mergeIndexListPool.Count - 1);
+                return last;
+            }
+            return new List<int>();
         }
     }
 }

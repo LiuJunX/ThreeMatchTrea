@@ -36,13 +36,23 @@ public sealed class GameSession : IDisposable
     }
 
     /// <summary>
-    /// Drain events from the collector (if buffered).
+    /// Drain events from the collector (if buffered). Allocates a new list each call.
     /// </summary>
     public System.Collections.Generic.IReadOnlyList<GameEvent> DrainEvents()
     {
         return EventCollector is BufferedEventCollector buffered
             ? buffered.DrainEvents()
             : System.Array.Empty<GameEvent>();
+    }
+
+    /// <summary>
+    /// Drain events into a caller-provided list (zero allocation). Clears target first.
+    /// </summary>
+    public void DrainEventsTo(System.Collections.Generic.List<GameEvent> target)
+    {
+        target.Clear();
+        if (EventCollector is BufferedEventCollector buffered)
+            buffered.DrainEventsTo(target);
     }
 
     /// <summary>

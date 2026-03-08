@@ -318,6 +318,9 @@ namespace Match3.Unity.Views
             var origin = _bridge.BoardOrigin;
             var height = _bridge.Height;
 
+            // Cache sun direction once per frame for all blob shadows
+            Tile3DView.UpdateSunDirection();
+
             _activeTileIds.Clear();
             _tilesToRemove.Clear();
 
