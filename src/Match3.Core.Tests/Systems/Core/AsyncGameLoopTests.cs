@@ -9,6 +9,7 @@ using Match3.Core.Systems.Input;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
+using Match3.Core.Systems.Projectiles;
 using Match3.Core.Systems.Scoring;
 using Match3.Core.Systems.Spawning;
 using Match3.Core.View;
@@ -77,6 +78,7 @@ public class AsyncGameLoopTests
         }
         
         public IPowerUpHandler WithExplosionSystem(IExplosionSystem? explosionSystem) => this;
+        public IPowerUpHandler WithProjectileSystem(IProjectileSystem? projectileSystem) => this;
     }
 
     private class StubRandom : IRandom
@@ -337,6 +339,7 @@ public class AsyncGameLoopTests
         public void ProcessSpecialMove(ref GameState state, Position a, Position b, int tick, float simTime, IEventCollector events, out int score) { score = 0; }
 
         public IPowerUpHandler WithExplosionSystem(IExplosionSystem? explosionSystem) => this;
+        public IPowerUpHandler WithProjectileSystem(IProjectileSystem? projectileSystem) => this;
     }
 
     #endregion

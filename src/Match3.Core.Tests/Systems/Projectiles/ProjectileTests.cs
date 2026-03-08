@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+using System.Numerics;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
@@ -33,7 +33,6 @@ public class UfoProjectileTests
         Assert.Equal(origin, ufo.OriginPosition);
         Assert.Equal(target, ufo.TargetGridPosition);
         Assert.True(ufo.IsActive);
-        Assert.Equal(UfoPhase.Takeoff, ufo.Phase);
     }
 
     [Fact]
@@ -49,116 +48,190 @@ public class UfoProjectileTests
     }
 
     [Fact]
-    public void Constructor_SetsDefaultTargetingMode()
+    public void Constructor_AcceptsCustomTimingParameters()
     {
-        var ufo = new UfoProjectile(1, new Position(0, 0), new Position(1, 1));
+        var ufo = new UfoProjectile(1, new Position(0, 0), new Position(1, 1), 0.3f, 4f);
 
-        Assert.Equal(UfoTargetingMode.FixedCell, ufo.TargetingMode);
-    }
-
-    [Fact]
-    public void Constructor_AcceptsCustomTargetingMode()
-    {
-        var ufo = new UfoProjectile(1, new Position(0, 0), new Position(1, 1), UfoTargetingMode.Dynamic);
-
-        Assert.Equal(UfoTargetingMode.Dynamic, ufo.TargetingMode);
+        Assert.True(ufo.IsActive);
+        Assert.Equal(new Position(1, 1), ufo.TargetGridPosition);
     }
 
     #endregion
 
-    #region Takeoff Phase Tests
+    #region Timer-Based Flight Tests
 
     [Fact]
-    public void Update_TakeoffPhase_MovesVertically()
+    public void Update_InterpolatesPositionOverTime()
     {
-        var ufo = new UfoProjectile(1, new Position(2, 3), new Position(5, 6));
+        var origin = new Position(0, 0);
+        var target = new Position(4, 0);
+        var ufo = new UfoProjectile(1, origin, target, overhead: 0f, speed: 2f);
         var state = CreateTestState();
         var events = NullEventCollector.Instance;
 
-        var initialY = ufo.Position.Y;
-
-        ufo.Update(ref state, 0.1f, 1, 0.1f, events);
-
-        // Should move upward (negative Y in screen coords)
-        Assert.True(ufo.Position.Y < initialY);
-    }
-
-    [Fact]
-    public void Update_TakeoffPhase_TransitionsToFlight()
-    {
-        var ufo = new UfoProjectile(1, new Position(2, 3), new Position(5, 6));
-        var state = CreateTestState();
-        var events = NullEventCollector.Instance;
-
-        // Run takeoff phase to completion
-        for (int i = 0; i < 30; i++)
+        // Duration = overhead(0) + distance(4) / speed(2) = 2s
+        // At t=1s, should be ~50% of the way
+        for (int i = 0; i < 60; i++) // 60 ticks at 1/60 = 1 second
         {
-            ufo.Update(ref state, 0.02f, i, i * 0.02f, events);
+            ufo.Update(ref state, 1f / 60f, i, i / 60f, events);
         }
 
-        Assert.Equal(UfoPhase.Flight, ufo.Phase);
+        // Should have moved roughly halfway
+        Assert.True(ufo.Position.X > 1f, $"Expected X > 1, got {ufo.Position.X}");
+        Assert.True(ufo.Position.X < 3.5f, $"Expected X < 3.5, got {ufo.Position.X}");
     }
 
     [Fact]
-    public void Update_TakeoffPhase_ReturnsFalse()
-    {
-        var ufo = new UfoProjectile(1, new Position(2, 3), new Position(5, 6));
-        var state = CreateTestState();
-        var events = NullEventCollector.Instance;
-
-        var result = ufo.Update(ref state, 0.01f, 1, 0.01f, events);
-
-        Assert.False(result); // Not arrived yet
-    }
-
-    #endregion
-
-    #region Flight Phase Tests
-
-    [Fact]
-    public void Update_FlightPhase_MovesTowardsTarget()
+    public void Update_ReturnsTrueOnTimerExpiry()
     {
         var origin = new Position(0, 0);
-        var target = new Position(4, 0); // Same row, 4 units away
+        var target = new Position(1, 0);
+        // Duration = 0.6 + 1/2 = 1.1s
         var ufo = new UfoProjectile(1, origin, target);
         var state = CreateTestState();
         var events = NullEventCollector.Instance;
 
-        // Complete takeoff
-        AdvanceToFlightPhase(ufo, ref state, events);
-
-        var posBeforeFlight = ufo.Position;
-
-        // One flight update
-        ufo.Update(ref state, 0.1f, 100, 1.0f, events);
-
-        // Should move towards target (positive X)
-        Assert.True(ufo.Position.X > posBeforeFlight.X);
-    }
-
-    [Fact]
-    public void Update_FlightPhase_ReturnsTrueOnArrival()
-    {
-        var origin = new Position(0, 0);
-        var target = new Position(1, 0); // Very close target
-        var ufo = new UfoProjectile(1, origin, target);
-        var state = CreateTestState();
-        var events = NullEventCollector.Instance;
-
-        // Complete takeoff
-        AdvanceToFlightPhase(ufo, ref state, events);
-
-        // Fly until arrival
         bool arrived = false;
-        for (int i = 0; i < 100 && !arrived; i++)
+        for (int i = 0; i < 200 && !arrived; i++)
         {
-            arrived = ufo.Update(ref state, 0.1f, 100 + i, 1.0f + i * 0.1f, events);
+            arrived = ufo.Update(ref state, 1f / 60f, i, i / 60f, events);
         }
 
         Assert.True(arrived);
     }
 
+    [Fact]
+    public void Update_ReturnsFalseBeforeTimerExpiry()
+    {
+        var origin = new Position(0, 0);
+        var target = new Position(4, 0);
+        // Duration = 0.6 + 4/2 = 2.6s
+        var ufo = new UfoProjectile(1, origin, target);
+        var state = CreateTestState();
+        var events = NullEventCollector.Instance;
+
+        // Only advance 0.5 seconds
+        var result = ufo.Update(ref state, 0.5f, 1, 0.5f, events);
+
+        Assert.False(result);
+    }
+
     #endregion
+
+    #region Dynamic Retargeting Tests
+
+    [Fact]
+    public void Update_RetargetsWhenTargetIsEmpty()
+    {
+        var origin = new Position(0, 0);
+        var target = new Position(4, 4);
+        var ufo = new UfoProjectile(1, origin, target);
+        var state = CreateTestState();
+        var collector = new BufferedEventCollector();
+
+        // Clear the target tile
+        state.SetTile(4, 4, new Tile(0, ElementType.None, 4, 4));
+
+        // Update should trigger retarget
+        ufo.Update(ref state, 0.1f, 1, 0.1f, collector);
+
+        // Should have retargeted to a different position
+        Assert.NotEqual(target, ufo.TargetGridPosition);
+
+        // Should have emitted retarget event
+        var events = collector.GetEvents();
+        Assert.Contains(events, e => e is ProjectileRetargetedEvent);
+    }
+
+    [Fact]
+    public void TryRetarget_ReturnsFalseWhenNoValidTargets()
+    {
+        var origin = new Position(0, 0);
+        var target = new Position(1, 0);
+        var ufo = new UfoProjectile(1, origin, target);
+        var state = CreateTestState();
+        var events = NullEventCollector.Instance;
+
+        // Clear ALL tiles
+        for (int y = 0; y < 8; y++)
+            for (int x = 0; x < 8; x++)
+                state.SetTile(x, y, new Tile(0, ElementType.None, x, y));
+
+        var result = ufo.TryRetarget(ref state, 0, 0f, events);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void TryRetarget_UpdatesTargetAndRecalculatesDuration()
+    {
+        var origin = new Position(0, 0);
+        var target = new Position(7, 7); // Far away target
+        var ufo = new UfoProjectile(1, origin, target);
+        var state = CreateTestState();
+        var events = NullEventCollector.Instance;
+
+        // Advance a bit
+        ufo.Update(ref state, 0.3f, 1, 0.3f, events);
+
+        var result = ufo.TryRetarget(ref state, 2, 0.3f, events);
+
+        Assert.True(result);
+        // Target should have changed (StubRandom returns min, so position (1,0) skipping origin)
+        Assert.NotEqual(new Position(7, 7), ufo.TargetGridPosition);
+    }
+
+    #endregion
+
+    [Fact]
+    public void Update_DoesNotRetarget_WhenWithinLockInWindow()
+    {
+        var origin = new Position(0, 0);
+        var target = new Position(4, 0);
+        // overhead=0, speed=2 → duration = 4/2 = 2s, lock-in at remaining < 0.3s → after 1.7s
+        var ufo = new UfoProjectile(1, origin, target, 0f, 2f);
+        var state = CreateTestState();
+        var collector = new BufferedEventCollector();
+
+        // Advance to 1.8s (within lock-in window: remaining = 0.2s < 0.3s)
+        ufo.Update(ref state, 1.8f, 1, 1.8f, NullEventCollector.Instance);
+
+        // Clear the target tile
+        state.SetTile(4, 0, new Tile(0, ElementType.None, 4, 0));
+
+        // Update — should NOT retarget because we're in the lock-in window
+        ufo.Update(ref state, 0.01f, 2, 1.81f, collector);
+
+        // Target should remain at original position
+        Assert.Equal(target, ufo.TargetGridPosition);
+
+        // No retarget event should be emitted
+        var events = collector.GetEvents();
+        Assert.DoesNotContain(events, e => e is ProjectileRetargetedEvent);
+    }
+
+    [Fact]
+    public void Update_DoesRetarget_WhenOutsideLockInWindow()
+    {
+        var origin = new Position(0, 0);
+        var target = new Position(4, 0);
+        // overhead=0, speed=2 → duration = 2s, lock-in at remaining < 0.3s → after 1.7s
+        var ufo = new UfoProjectile(1, origin, target, 0f, 2f);
+        var state = CreateTestState();
+        var collector = new BufferedEventCollector();
+
+        // Advance to 0.5s (outside lock-in window: remaining = 1.5s > 0.3s)
+        ufo.Update(ref state, 0.5f, 1, 0.5f, NullEventCollector.Instance);
+
+        // Clear the target tile
+        state.SetTile(4, 0, new Tile(0, ElementType.None, 4, 0));
+
+        // Update — should retarget because we're outside the lock-in window
+        ufo.Update(ref state, 0.01f, 2, 0.51f, collector);
+
+        // Target should have changed
+        Assert.NotEqual(target, ufo.TargetGridPosition);
+    }
 
     #region ApplyEffect Tests
 
@@ -180,31 +253,13 @@ public class UfoProjectileTests
         var ufo = new UfoProjectile(1, new Position(0, 0), new Position(1, 1));
         var state = CreateTestState();
 
-        // Simulate target being cleared
+        // Simulate target being cleared via reflection
         ufo.GetType().GetProperty("TargetGridPosition")!
             .SetValue(ufo, null);
 
         var affected = ufo.ApplyEffect(ref state);
 
         Assert.Empty(affected);
-    }
-
-    #endregion
-
-    #region Event Emission Tests
-
-    [Fact]
-    public void Update_EmitsMovementEvents()
-    {
-        var ufo = new UfoProjectile(1, new Position(2, 3), new Position(5, 6));
-        var state = CreateTestState();
-        var collector = new BufferedEventCollector();
-
-        ufo.Update(ref state, 0.1f, 1, 0.1f, collector);
-
-        Assert.True(collector.Count > 0);
-        var events = collector.GetEvents();
-        Assert.Contains(events, e => e is ProjectileMovedEvent);
     }
 
     #endregion
@@ -239,6 +294,178 @@ public class UfoProjectileTests
 
     #endregion
 
+    #region SourceTileId Tests
+
+    [Fact]
+    public void SourceTileId_CanBeSet()
+    {
+        var ufo = new UfoProjectile(1, new Position(0, 0), new Position(1, 1))
+        {
+            SourceTileId = 42
+        };
+
+        Assert.Equal(42, ufo.SourceTileId);
+    }
+
+    #endregion
+
+    #region Position Continuity Tests
+
+    [Fact]
+    public void TryRetarget_PositionIsContinuous()
+    {
+        var origin = new Position(0, 0);
+        var target = new Position(6, 0);
+        // overhead=0, speed=2 → duration = 6/2 = 3s
+        var ufo = new UfoProjectile(1, origin, target, 0f, 2f);
+        var state = CreateTestState();
+        var events = NullEventCollector.Instance;
+
+        // Advance to 1s → progress = 1/3 ≈ 33%, position ~2.0
+        ufo.Update(ref state, 1.0f, 1, 1.0f, events);
+        var posBeforeRetarget = ufo.Position;
+
+        // Retarget
+        ufo.TryRetarget(ref state, 2, 1.0f, events);
+        var posAfterRetarget = ufo.Position;
+
+        // Position should be continuous (no jump)
+        Assert.Equal(posBeforeRetarget.X, posAfterRetarget.X, 0.01f);
+        Assert.Equal(posBeforeRetarget.Y, posAfterRetarget.Y, 0.01f);
+    }
+
+    [Fact]
+    public void TryRetarget_MultipleRetargets_PositionNeverJumps()
+    {
+        var origin = new Position(0, 0);
+        var target = new Position(7, 7);
+        var ufo = new UfoProjectile(1, origin, target, 0f, 2f);
+        var state = CreateTestState();
+        var events = NullEventCollector.Instance;
+
+        Vector2 lastPos = ufo.Position;
+
+        for (int retargetCount = 0; retargetCount < 5; retargetCount++)
+        {
+            // Advance a bit
+            for (int i = 0; i < 10; i++)
+            {
+                ufo.Update(ref state, 1f / 60f, retargetCount * 10 + i, 0f, events);
+            }
+
+            var posBeforeRetarget = ufo.Position;
+            float distanceMoved = Vector2.Distance(lastPos, posBeforeRetarget);
+            Assert.True(distanceMoved >= 0, "Position should only move forward");
+
+            ufo.TryRetarget(ref state, retargetCount, 0f, events);
+            var posAfterRetarget = ufo.Position;
+
+            // No jump
+            Assert.Equal(posBeforeRetarget.X, posAfterRetarget.X, 0.01f);
+            Assert.Equal(posBeforeRetarget.Y, posAfterRetarget.Y, 0.01f);
+
+            lastPos = posAfterRetarget;
+        }
+    }
+
+    [Fact]
+    public void Update_AfterRetarget_ProgressStartsFromZero()
+    {
+        var origin = new Position(0, 0);
+        var target = new Position(6, 0);
+        var ufo = new UfoProjectile(1, origin, target, 0f, 2f);
+        var state = CreateTestState();
+        var events = NullEventCollector.Instance;
+
+        // Advance to 1s
+        ufo.Update(ref state, 1.0f, 1, 1.0f, events);
+        var posBeforeRetarget = ufo.Position;
+
+        // Retarget
+        ufo.TryRetarget(ref state, 2, 1.0f, events);
+
+        // Small step after retarget — position should move slightly from retarget position
+        ufo.Update(ref state, 0.01f, 3, 1.01f, events);
+
+        // Should be very close to pre-retarget position (not jumped to 65%+)
+        float distFromRetargetPos = Vector2.Distance(posBeforeRetarget, ufo.Position);
+        Assert.True(distFromRetargetPos < 0.5f, $"Position jumped {distFromRetargetPos} after retarget");
+    }
+
+    #endregion
+
+    #region FindBestTarget Edge Cases
+
+    [Fact]
+    public void TryRetarget_SkipsOriginPosition()
+    {
+        var origin = new Position(0, 0);
+        var target = new Position(1, 0);
+        var ufo = new UfoProjectile(1, origin, target);
+        var state = CreateTestState();
+        var events = NullEventCollector.Instance;
+
+        // Clear all tiles except origin
+        for (int y = 0; y < 8; y++)
+            for (int x = 0; x < 8; x++)
+                if (x != 0 || y != 0)
+                    state.SetTile(x, y, new Tile(0, ElementType.None, x, y));
+
+        // Only origin has a tile, but FindBestTarget skips it
+        var result = ufo.TryRetarget(ref state, 0, 0f, events);
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void TryRetarget_OnlyOneTileLeft_TargetsIt()
+    {
+        var origin = new Position(0, 0);
+        var target = new Position(1, 0);
+        var ufo = new UfoProjectile(1, origin, target);
+        var state = CreateTestState();
+        var events = NullEventCollector.Instance;
+
+        // Clear all tiles except origin and one other
+        for (int y = 0; y < 8; y++)
+            for (int x = 0; x < 8; x++)
+                if (!((x == 0 && y == 0) || (x == 3 && y == 3)))
+                    state.SetTile(x, y, new Tile(0, ElementType.None, x, y));
+
+        var result = ufo.TryRetarget(ref state, 0, 0f, events);
+        Assert.True(result);
+        Assert.Equal(new Position(3, 3), ufo.TargetGridPosition);
+    }
+
+    #endregion
+
+    #region Duration Recalculation Tests
+
+    [Fact]
+    public void TryRetarget_RecalculatesDurationBasedOnNewDistance()
+    {
+        var origin = new Position(0, 0);
+        var target = new Position(6, 0);
+        // overhead=0, speed=2 → duration = 6/2 = 3s
+        var ufo = new UfoProjectile(1, origin, target, 0f, 2f);
+        var state = CreateTestState();
+        var events = NullEventCollector.Instance;
+
+        // Advance 0.5s
+        ufo.Update(ref state, 0.5f, 1, 0.5f, events);
+
+        ufo.TryRetarget(ref state, 2, 0.5f, events);
+
+        // After retarget, UFO should eventually arrive
+        bool arrived = false;
+        for (int i = 0; i < 600 && !arrived; i++) // up to 10 seconds at 60fps
+        {
+            arrived = ufo.Update(ref state, 1f / 60f, 100 + i, 0.5f + i / 60f, events);
+        }
+        Assert.True(arrived, "UFO should arrive at new target");
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private GameState CreateTestState()
@@ -255,14 +482,5 @@ public class UfoProjectileTests
         return state;
     }
 
-    private void AdvanceToFlightPhase(UfoProjectile ufo, ref GameState state, IEventCollector events)
-    {
-        while (ufo.Phase == UfoPhase.Takeoff)
-        {
-            ufo.Update(ref state, 0.02f, 0, 0, events);
-        }
-    }
-
     #endregion
 }
-

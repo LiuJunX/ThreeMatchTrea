@@ -269,6 +269,25 @@ public sealed record UfoLaunchCommand : RenderCommand
 
     /// <summary>Grid target position.</summary>
     public Vector2 Target { get; init; }
+
+    /// <summary>Fraction of duration to stay at origin (spin-up phase). 0.35 for initial launch, 0 for retarget.</summary>
+    public float StayFraction { get; init; } = 0.35f;
+}
+
+/// <summary>
+/// Retarget an in-flight UFO to a new destination.
+/// Player replaces the active UfoLaunchCommand with a new segment.
+/// </summary>
+public sealed record UfoRetargetCommand : RenderCommand
+{
+    /// <summary>Tile ID of the UFO bomb.</summary>
+    public int TileId { get; init; }
+
+    /// <summary>New target position.</summary>
+    public Vector2 NewTarget { get; init; }
+
+    /// <summary>Duration for the new flight segment.</summary>
+    public float NewDuration { get; init; }
 }
 
 #endregion

@@ -18,7 +18,14 @@ public class UfoEffect : IBombEffect
         if (origin.Y > 0) affectedTiles.Add(new Position(origin.X, origin.Y - 1)); // 上
         if (origin.Y < state.Height - 1) affectedTiles.Add(new Position(origin.X, origin.Y + 1)); // 下
 
-        // 然后随机击中1个方块
+        // Remote target handled by ProjectileSystem (deferred destruction with dynamic tracking)
+    }
+
+    /// <summary>
+    /// Pick a random remote target for the UFO projectile (outside the cross area).
+    /// </summary>
+    public static Position? PickRemoteTarget(in GameState state, Position origin)
+    {
         var candidates = Pools.ObtainList<Position>();
         try
         {
@@ -44,8 +51,10 @@ public class UfoEffect : IBombEffect
             if (candidates.Count > 0)
             {
                 int idx = state.Random.Next(0, candidates.Count);
-                affectedTiles.Add(candidates[idx]);
+                return candidates[idx];
             }
+
+            return null;
         }
         finally
         {

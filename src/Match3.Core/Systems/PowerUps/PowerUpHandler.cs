@@ -4,6 +4,8 @@ using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Layers;
+using Match3.Core.Systems.PowerUps.Effects;
+using Match3.Core.Systems.Projectiles;
 using Match3.Core.Systems.Scoring;
 using Match3.Core.Utility.Pools;
 
@@ -17,6 +19,7 @@ public class PowerUpHandler : IPowerUpHandler
     private readonly ICoverSystem _coverSystem;
     private readonly IGroundSystem _groundSystem;
     private readonly IExplosionSystem? _explosionSystem;
+    private readonly IProjectileSystem? _projectileSystem;
 
     public PowerUpHandler(IScoreSystem scoreSystem)
         : this(scoreSystem, new BombComboHandler(), BombEffectRegistry.CreateDefault(),
@@ -30,7 +33,8 @@ public class PowerUpHandler : IPowerUpHandler
         BombEffectRegistry effectRegistry,
         ICoverSystem coverSystem,
         IGroundSystem groundSystem,
-        IExplosionSystem? explosionSystem = null)
+        IExplosionSystem? explosionSystem = null,
+        IProjectileSystem? projectileSystem = null)
     {
         _scoreSystem = scoreSystem;
         _comboHandler = comboHandler;
@@ -38,6 +42,7 @@ public class PowerUpHandler : IPowerUpHandler
         _coverSystem = coverSystem;
         _groundSystem = groundSystem;
         _explosionSystem = explosionSystem;
+        _projectileSystem = projectileSystem;
     }
 
     public void ProcessSpecialMove(ref GameState state, Position p1, Position p2, out int points)
@@ -123,6 +128,9 @@ public class PowerUpHandler : IPowerUpHandler
         var t = state.GetTile(p.X, p.Y);
         if (!t.Type.IsBomb()) return;
 
+        bool isUfo = t.Type.IsUfo();
+        int ufoTileId = t.Id;
+
         var affected = Pools.ObtainHashSet<Position>();
         try
         {
@@ -190,11 +198,33 @@ public class PowerUpHandler : IPowerUpHandler
         {
             Pools.Release(affected);
         }
+
+        // UFO: launch projectile for remote target (deferred destruction with dynamic tracking)
+        if (isUfo && _projectileSystem != null)
+        {
+            var remoteTarget = UfoEffect.PickRemoteTarget(in state, p);
+            if (remoteTarget.HasValue)
+            {
+                var projectile = new UfoProjectile(
+                    _projectileSystem.GenerateProjectileId(),
+                    p,
+                    remoteTarget.Value)
+                {
+                    SourceTileId = ufoTileId
+                };
+                _projectileSystem.Launch(projectile, tick, simTime, events);
+            }
+        }
     }
 
     public IPowerUpHandler WithExplosionSystem(IExplosionSystem? explosionSystem)
     {
-        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, explosionSystem);
+        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, explosionSystem, _projectileSystem);
+    }
+
+    public IPowerUpHandler WithProjectileSystem(IProjectileSystem? projectileSystem)
+    {
+        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, projectileSystem);
     }
 
     /// <summary>

@@ -160,14 +160,14 @@ public class ChoreographerTests
     }
 
     [Fact]
-    public void Choreograph_ProjectileLaunched_GeneratesSpawnCommand()
+    public void Choreograph_ProjectileLaunched_NonUfo_GeneratesSpawnCommand()
     {
         var events = new GameEvent[]
         {
             new ProjectileLaunchedEvent
             {
                 ProjectileId = 100,
-                Type = ProjectileType.Ufo,
+                Type = ProjectileType.ColorBombBeam,
                 Origin = new Vector2(3, 4),
                 SimulationTime = 0f
             }
@@ -178,6 +178,31 @@ public class ChoreographerTests
         var spawnCmd = Assert.Single(commands.OfType<SpawnProjectileCommand>());
         Assert.Equal(100, spawnCmd.ProjectileId);
         Assert.Equal(new Vector2(3, 4), spawnCmd.Origin);
+    }
+
+    [Fact]
+    public void Choreograph_UfoProjectileLaunched_GeneratesUfoLaunchCommand()
+    {
+        var events = new GameEvent[]
+        {
+            new ProjectileLaunchedEvent
+            {
+                ProjectileId = 100,
+                Type = ProjectileType.Ufo,
+                Origin = new Vector2(3, 4),
+                TargetPosition = new Position(6, 7),
+                SourceTileId = 42,
+                SimulationTime = 0f
+            }
+        };
+
+        var commands = _choreographer.Choreograph(events);
+
+        var ufoCmd = Assert.Single(commands.OfType<UfoLaunchCommand>());
+        Assert.Equal(42, ufoCmd.TileId);
+        Assert.Equal(new Vector2(3, 4), ufoCmd.Origin);
+        Assert.Equal(new Vector2(6, 7), ufoCmd.Target);
+        Assert.Equal(0.35f, ufoCmd.StayFraction);
     }
 
     [Fact]
@@ -807,7 +832,7 @@ public class ChoreographerTests
     }
 
     [Fact]
-    public void Choreograph_ColorBomb_NearerTargetsHitFirst()
+    public void Choreograph_ColorBomb_AllBeamsArriveSimultaneously()
     {
         var origin = new Position(4, 4);
         var affected = new[]
@@ -831,9 +856,21 @@ public class ChoreographerTests
         var impacts = commands.OfType<ImpactProjectileCommand>().OrderBy(c => c.StartTime).ToList();
 
         Assert.Equal(2, impacts.Count);
-        // Nearer target (5,4) should impact before farther (7,4)
-        Assert.Equal(5f, impacts[0].Position.X, 0.01f);
-        Assert.Equal(7f, impacts[1].Position.X, 0.01f);
+        // All beams arrive at the same time (simultaneous impact)
+        Assert.Equal(impacts[0].StartTime, impacts[1].StartTime, 0.001f);
+
+        // Farther target launches first
+        var spawns = commands.OfType<SpawnProjectileCommand>()
+            .Where(c => c.Type == ProjectileType.ColorBombBeam)
+            .OrderBy(c => c.StartTime).ToList();
+        var moves = commands.OfType<MoveProjectileCommand>()
+            .OrderBy(c => c.StartTime).ToList();
+
+        // First spawn should correspond to farther target (7,4)
+        var firstMove = moves.First(m => m.ProjectileId == spawns[0].ProjectileId);
+        var secondMove = moves.First(m => m.ProjectileId == spawns[1].ProjectileId);
+        Assert.Equal(7f, firstMove.To.X, 0.01f);
+        Assert.Equal(5f, secondMove.To.X, 0.01f);
     }
 
     [Fact]
@@ -1012,5 +1049,253 @@ public class ChoreographerTests
     }
 
     #endregion
-}
 
+    #region UFO Flight Lifecycle Tests
+
+    [Fact]
+    public void Choreograph_UfoLaunchThenRetarget_EmitsRetargetCommand()
+    {
+        // First batch: launch
+        var launchEvents = new GameEvent[]
+        {
+            new ProjectileLaunchedEvent
+            {
+                ProjectileId = 1,
+                Type = ProjectileType.Ufo,
+                Origin = new Vector2(2, 2),
+                TargetPosition = new Position(6, 6),
+                SourceTileId = 10,
+                SimulationTime = 0f
+            }
+        };
+        _choreographer.Choreograph(launchEvents);
+
+        // Second batch: retarget
+        var retargetEvents = new GameEvent[]
+        {
+            new ProjectileRetargetedEvent
+            {
+                ProjectileId = 1,
+                OldTarget = new Position(6, 6),
+                NewTarget = new Position(3, 0),
+                Reason = RetargetReason.OriginalTargetDestroyed,
+                SimulationTime = 0.5f
+            }
+        };
+        var commands = _choreographer.Choreograph(retargetEvents, 0.5f);
+
+        var retargetCmd = Assert.Single(commands.OfType<UfoRetargetCommand>());
+        Assert.Equal(10, retargetCmd.TileId);
+        Assert.Equal(new Vector2(3, 0), retargetCmd.NewTarget);
+        Assert.True(retargetCmd.NewDuration > 0);
+        Assert.Equal(0, retargetCmd.Duration); // Instant command
+    }
+
+    [Fact]
+    public void Choreograph_UfoLaunchThenImpact_EmitsRemoveAndEffect()
+    {
+        // First batch: launch
+        var launchEvents = new GameEvent[]
+        {
+            new ProjectileLaunchedEvent
+            {
+                ProjectileId = 1,
+                Type = ProjectileType.Ufo,
+                Origin = new Vector2(2, 2),
+                TargetPosition = new Position(5, 5),
+                SourceTileId = 10,
+                SimulationTime = 0f
+            }
+        };
+        _choreographer.Choreograph(launchEvents);
+
+        // Second batch: impact
+        var impactEvents = new GameEvent[]
+        {
+            new ProjectileImpactEvent
+            {
+                ProjectileId = 1,
+                ImpactPosition = new Position(5, 5),
+                SimulationTime = 1f
+            }
+        };
+        var commands = _choreographer.Choreograph(impactEvents, 1f);
+
+        // UFO impact should emit RemoveTileCommand (not ImpactProjectileCommand)
+        Assert.Contains(commands, c => c is RemoveTileCommand { TileId: 10 });
+        Assert.Contains(commands, c => c is ShowEffectCommand { EffectType: "ufo_impact" });
+        Assert.DoesNotContain(commands, c => c is ImpactProjectileCommand);
+    }
+
+    [Fact]
+    public void Choreograph_UfoWithoutSourceTileId_SkipsLaunchCommand()
+    {
+        var events = new GameEvent[]
+        {
+            new ProjectileLaunchedEvent
+            {
+                ProjectileId = 1,
+                Type = ProjectileType.Ufo,
+                Origin = new Vector2(2, 2),
+                TargetPosition = new Position(5, 5),
+                SourceTileId = null, // No tile ID
+                SimulationTime = 0f
+            }
+        };
+
+        var commands = _choreographer.Choreograph(events);
+
+        Assert.DoesNotContain(commands, c => c is UfoLaunchCommand);
+    }
+
+    [Fact]
+    public void Choreograph_UfoLaunchDuration_MatchesOverheadPlusFlightTime()
+    {
+        var events = new GameEvent[]
+        {
+            new ProjectileLaunchedEvent
+            {
+                ProjectileId = 1,
+                Type = ProjectileType.Ufo,
+                Origin = new Vector2(0, 0),
+                TargetPosition = new Position(4, 0), // distance = 4
+                SourceTileId = 10,
+                SimulationTime = 0f
+            }
+        };
+
+        var commands = _choreographer.Choreograph(events);
+
+        var ufoCmd = Assert.Single(commands.OfType<UfoLaunchCommand>());
+        float expectedDuration = _choreographer.Config.UfoLaunchOverhead +
+                                  4f / _choreographer.Config.UfoFlightSpeed;
+        Assert.Equal(expectedDuration, ufoCmd.Duration, 0.001f);
+    }
+
+    [Fact]
+    public void Choreograph_UfoRetargetThenImpact_FullLifecycle()
+    {
+        // Batch 1: launch
+        _choreographer.Choreograph(new GameEvent[]
+        {
+            new ProjectileLaunchedEvent
+            {
+                ProjectileId = 1,
+                Type = ProjectileType.Ufo,
+                Origin = new Vector2(0, 0),
+                TargetPosition = new Position(7, 7),
+                SourceTileId = 10,
+                SimulationTime = 0f
+            }
+        });
+
+        // Batch 2: retarget
+        var retargetCommands = _choreographer.Choreograph(new GameEvent[]
+        {
+            new ProjectileRetargetedEvent
+            {
+                ProjectileId = 1,
+                OldTarget = new Position(7, 7),
+                NewTarget = new Position(3, 0),
+                Reason = RetargetReason.OriginalTargetDestroyed,
+                SimulationTime = 0.5f
+            }
+        }, 0.5f);
+
+        Assert.Single(retargetCommands.OfType<UfoRetargetCommand>());
+
+        // Batch 3: impact at new target
+        var impactCommands = _choreographer.Choreograph(new GameEvent[]
+        {
+            new ProjectileImpactEvent
+            {
+                ProjectileId = 1,
+                ImpactPosition = new Position(3, 0),
+                SimulationTime = 1.5f
+            }
+        }, 1.5f);
+
+        Assert.Contains(impactCommands, c => c is RemoveTileCommand { TileId: 10 });
+        Assert.Contains(impactCommands, c => c is ShowEffectCommand { EffectType: "ufo_impact" });
+    }
+
+    [Fact]
+    public void Choreograph_UfoImpact_RemoveNotBeforeFlightEnd()
+    {
+        // Launch with known duration
+        _choreographer.Choreograph(new GameEvent[]
+        {
+            new ProjectileLaunchedEvent
+            {
+                ProjectileId = 1,
+                Type = ProjectileType.Ufo,
+                Origin = new Vector2(0, 0),
+                TargetPosition = new Position(6, 0), // distance = 6
+                SourceTileId = 10,
+                SimulationTime = 0f
+            }
+        }, baseTime: 0f);
+
+        float expectedDuration = _choreographer.Config.UfoLaunchOverhead +
+                                  6f / _choreographer.Config.UfoFlightSpeed;
+        float flightEndTime = expectedDuration; // launch at 0
+
+        // Impact arrives in a later batch whose baseTime is BEFORE flight end
+        // (simulates cross-batch timing desync)
+        float earlyBaseTime = flightEndTime - 0.2f;
+        var commands = _choreographer.Choreograph(new GameEvent[]
+        {
+            new ProjectileImpactEvent
+            {
+                ProjectileId = 1,
+                ImpactPosition = new Position(6, 0),
+                SimulationTime = 1f
+            }
+        }, earlyBaseTime);
+
+        var removeCmd = Assert.Single(commands.OfType<RemoveTileCommand>());
+        // RemoveTileCommand must not fire before UfoLaunchCommand ends
+        Assert.True(removeCmd.StartTime >= flightEndTime,
+            $"RemoveTile at {removeCmd.StartTime} fires before flight end {flightEndTime}");
+    }
+
+    [Fact]
+    public void Choreograph_UfoImpact_CellLockDuration_IsRelative()
+    {
+        // Launch
+        _choreographer.Choreograph(new GameEvent[]
+        {
+            new ProjectileLaunchedEvent
+            {
+                ProjectileId = 1,
+                Type = ProjectileType.Ufo,
+                Origin = new Vector2(0, 0),
+                TargetPosition = new Position(6, 0),
+                SourceTileId = 10,
+                SimulationTime = 0f
+            }
+        }, baseTime: 0f);
+
+        // Impact at a late baseTime (simulates UFO that flew for several seconds)
+        float lateBaseTime = 5.0f;
+        _choreographer.Choreograph(new GameEvent[]
+        {
+            new ProjectileImpactEvent
+            {
+                ProjectileId = 1,
+                ImpactPosition = new Position(6, 0),
+                SimulationTime = 2f
+            }
+        }, lateBaseTime);
+
+        // CellLock duration should be a short relative time, not startTime + 0.1
+        var lockEntries = _choreographer.LockEntries;
+        Assert.NotEmpty(lockEntries);
+
+        var impactLock = lockEntries[lockEntries.Count - 1]; // Last entry is from impact
+        Assert.True(impactLock.Duration < 1f,
+            $"CellLock duration {impactLock.Duration} looks like absolute time, should be relative (~0.1s)");
+    }
+
+    #endregion
+}

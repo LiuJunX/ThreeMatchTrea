@@ -53,6 +53,11 @@ public abstract class Projectile
     public Position OriginPosition { get; protected set; }
 
     /// <summary>
+    /// Source tile ID that spawned this projectile (for linking visual commands).
+    /// </summary>
+    public int? SourceTileId { get; set; }
+
+    /// <summary>
     /// Update projectile physics for one tick.
     /// </summary>
     /// <param name="state">Current game state.</param>

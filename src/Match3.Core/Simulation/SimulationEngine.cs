@@ -586,9 +586,11 @@ public sealed class SimulationEngine : IDisposable
             clonedState.Random = newRandom;
         }
 
-        // Each clone gets its own explosion system and a PowerUpHandler that references it
+        // Each clone gets its own explosion system and projectile system,
+        // and a PowerUpHandler that references both
         var cloneExplosion = new ExplosionSystem(new CoverSystem(_objectiveSystem), new GroundSystem(_objectiveSystem), _objectiveSystem);
-        var clonePowerUp = _powerUpHandler.WithExplosionSystem(cloneExplosion);
+        var cloneProjectile = new ProjectileSystem();
+        var clonePowerUp = _powerUpHandler.WithExplosionSystem(cloneExplosion).WithProjectileSystem(cloneProjectile);
 
         return new SimulationEngine(
             clonedState,
@@ -598,7 +600,7 @@ public sealed class SimulationEngine : IDisposable
             _matchFinder,
             _matchProcessor,
             clonePowerUp,
-            new ProjectileSystem(), // Each clone gets its own projectile system
+            cloneProjectile,
             NullEventCollector.Instance, // Clones always use null collector
             cloneExplosion,
             _deadlockDetector,

@@ -54,7 +54,7 @@ SpawnProjectileCommand, MoveProjectileCommand,
 ImpactProjectileCommand, RemoveProjectileCommand
 
 // UFO 指令
-UfoLaunchCommand
+UfoLaunchCommand, UfoRetargetCommand
 
 // Layer 指令
 DestroyCoverCommand, DestroyGroundCommand

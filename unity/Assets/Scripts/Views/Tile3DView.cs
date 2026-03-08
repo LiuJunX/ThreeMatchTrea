@@ -61,6 +61,10 @@ namespace Match3.Unity.Views
 
         private const float BounceEndTime = 0.15f;
 
+        // Per-tile X tilt (replaces TileContainer3D rotation for clean coordinates)
+        private const float BaseTiltX = -10f;
+        private static readonly Vector3 BaseTiltEuler = new Vector3(BaseTiltX, 0f, 0f);
+
         // Scale multiplier: makes tiles fill more of the cell
         private const float TileScaleMultiplier = 1.05f;
 
@@ -170,7 +174,7 @@ namespace Match3.Unity.Views
             if (_ufoFlying)
             {
                 _ufoFlying = false;
-                transform.localEulerAngles = Vector3.zero;
+                transform.localEulerAngles = BaseTiltEuler;
                 if (_shadowTransform != null)
                     _shadowTransform.gameObject.SetActive(true);
             }
@@ -231,7 +235,7 @@ namespace Match3.Unity.Views
                     var tiltAngle = Mathf.Max(phase, 0f) * 6f;
                     var tiltX = -_hintNudgeDir.y * tiltAngle; // vertical: X axis
                     var tiltY = _hintNudgeDir.x * tiltAngle;  // horizontal: Y axis
-                    transform.localEulerAngles = new Vector3(tiltX, tiltY, 0f);
+                    transform.localEulerAngles = new Vector3(BaseTiltX + tiltX, tiltY, 0f);
                 }
 
                 // Emission pulse for hint
@@ -266,7 +270,7 @@ namespace Match3.Unity.Views
             {
                 pos.z = -0.5f; // Float above other tiles
                 transform.position = pos;
-                transform.localEulerAngles = new Vector3(0f, visual.Rotation, 0f);
+                transform.localEulerAngles = new Vector3(BaseTiltX, visual.Rotation, 0f);
             }
 
             transform.localScale = finalScale;
@@ -311,7 +315,7 @@ namespace Match3.Unity.Views
             if (!hinted && wasHinted)
             {
                 _hintTime = 0f;
-                transform.localEulerAngles = Vector3.zero;
+                transform.localEulerAngles = BaseTiltEuler;
                 // Clear emission
                 _meshRenderer.GetPropertyBlock(_propBlock);
                 _propBlock.SetColor(EmissionColorProp, Color.black);
@@ -350,7 +354,7 @@ namespace Match3.Unity.Views
             {
                 _propBlock.SetColor(EmissionColorProp, Color.black);
                 _highlightTime = 0f;
-                transform.localEulerAngles = Vector3.zero;
+                transform.localEulerAngles = BaseTiltEuler;
                 transform.localScale = _baseScale;
             }
             _meshRenderer.SetPropertyBlock(_propBlock);
@@ -420,8 +424,8 @@ namespace Match3.Unity.Views
         // Gravity angle: 0° = pure down (Y-), 90° = pure into screen (Z+)
         private const float UfoGravityAngle = 70f;
         // Flight arc: Y rise (cells) and scale boost (Z depth)
-        private const float UfoArcY = 0.6f;
-        private const float UfoArcScale = 1.3f;
+        private const float UfoArcY = 1.2f;
+        private const float UfoArcScale = 2.15f;
         // Propeller spin speed (degrees/sec)
         private const float UfoMaxSpinSpeed = 2700f;
 
@@ -485,7 +489,7 @@ namespace Match3.Unity.Views
             float armLength = s * 0.5f;
 
             // --- 4. Propeller anchor position (Y offset + Z depth, blended) ---
-            float flightZ = -(armLength + 0.3f) * takeoffBlend;
+            float flightZ = -(armLength + 0.8f) * takeoffBlend;
             var propellerPos = new Vector3(worldPos.x, worldPos.y + yOffset, flightZ);
 
             // --- 5. Pendulum tilt (bomb swings opposite to movement) ---
@@ -600,7 +604,7 @@ namespace Match3.Unity.Views
             _ufoTiltVelX = _ufoTiltVelZ = 0f;
             _ufoSmoothVel = Vector3.zero;
             transform.localScale = Vector3.one;
-            transform.localEulerAngles = Vector3.zero;
+            transform.localEulerAngles = BaseTiltEuler;
             if (_shadowTransform != null)
                 _shadowTransform.gameObject.SetActive(true);
             _meshRenderer.SetPropertyBlock(null);

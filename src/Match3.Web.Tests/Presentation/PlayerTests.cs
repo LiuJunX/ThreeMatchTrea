@@ -940,4 +940,246 @@ public class PlayerTests
     }
 
     #endregion
+
+    #region UFO Launch & Retarget Tests
+
+    [Fact]
+    public void Tick_UfoLaunch_MovesToTarget()
+    {
+        _player.VisualState.AddTile(1, ElementType.Ufo, new Position(0, 0), Vector2.Zero);
+
+        _player.Load(new RenderCommand[]
+        {
+            new UfoLaunchCommand
+            {
+                TileId = 1,
+                Origin = new Vector2(0, 0),
+                Target = new Vector2(4, 0),
+                StayFraction = 0.35f,
+                StartTime = 0f,
+                Duration = 2f
+            }
+        });
+
+        // At 100% → should be at target
+        _player.Tick(2.1f);
+
+        var tile = _player.VisualState.GetTile(1);
+        Assert.NotNull(tile);
+        Assert.Equal(4f, tile.Position.X, 0.01f);
+        Assert.Equal(0f, tile.Position.Y, 0.01f);
+    }
+
+    [Fact]
+    public void Tick_UfoLaunch_StaysDuringSpinUp()
+    {
+        _player.VisualState.AddTile(1, ElementType.Ufo, new Position(0, 0), Vector2.Zero);
+
+        _player.Load(new RenderCommand[]
+        {
+            new UfoLaunchCommand
+            {
+                TileId = 1,
+                Origin = new Vector2(0, 0),
+                Target = new Vector2(10, 0),
+                StayFraction = 0.35f,
+                StartTime = 0f,
+                Duration = 2f
+            }
+        });
+
+        // At 20% (within StayFraction=0.35) → should still be at origin
+        _player.Tick(0.4f);
+
+        var tile = _player.VisualState.GetTile(1);
+        Assert.NotNull(tile);
+        Assert.Equal(0f, tile.Position.X, 0.1f);
+    }
+
+    [Fact]
+    public void UfoRetarget_PositionIsContinuous()
+    {
+        _player.VisualState.AddTile(1, ElementType.Ufo, new Position(0, 0), Vector2.Zero);
+
+        _player.Load(new RenderCommand[]
+        {
+            new UfoLaunchCommand
+            {
+                TileId = 1,
+                Origin = new Vector2(0, 0),
+                Target = new Vector2(6, 0),
+                StayFraction = 0.35f,
+                StartTime = 0f,
+                Duration = 2f
+            }
+        });
+
+        // Advance to 70% of flight
+        _player.Tick(1.4f);
+        var tile = _player.VisualState.GetTile(1);
+        Assert.NotNull(tile);
+        var posBeforeRetarget = tile.Position;
+
+        // Retarget to new position
+        _player.Load(new RenderCommand[]
+        {
+            new UfoRetargetCommand
+            {
+                TileId = 1,
+                NewTarget = new Vector2(0, 6),
+                NewDuration = 1f, // Ignored by Player — it recomputes from visual distance
+                StartTime = 1.4f,
+                Duration = 0
+            }
+        });
+
+        // Tick a tiny amount to process the retarget
+        _player.Tick(0.001f);
+
+        // Position should be continuous (no jump)
+        var posAfterRetarget = tile.Position;
+        float distance = Vector2.Distance(posBeforeRetarget, posAfterRetarget);
+        Assert.True(distance < 0.1f, $"Position jumped {distance} on retarget");
+    }
+
+    [Fact]
+    public void UfoRetarget_NewSegmentHasZeroStayFraction()
+    {
+        _player.VisualState.AddTile(1, ElementType.Ufo, new Position(0, 0), Vector2.Zero);
+
+        _player.Load(new RenderCommand[]
+        {
+            new UfoLaunchCommand
+            {
+                TileId = 1,
+                Origin = new Vector2(0, 0),
+                Target = new Vector2(4, 0),
+                StayFraction = 0.35f,
+                StartTime = 0f,
+                Duration = 2f
+            }
+        });
+
+        // Advance past spin-up
+        _player.Tick(1.0f);
+
+        // Retarget
+        _player.Append(new RenderCommand[]
+        {
+            new UfoRetargetCommand
+            {
+                TileId = 1,
+                NewTarget = new Vector2(0, 4),
+                NewDuration = 1f,
+                StartTime = 1.0f,
+                Duration = 0
+            }
+        });
+
+        _player.Tick(0.001f);
+
+        // Advance slightly — tile should start moving immediately (no spin-up delay)
+        var tile = _player.VisualState.GetTile(1);
+        Assert.NotNull(tile);
+        var posAfterRetarget = tile.Position;
+
+        _player.Tick(0.5f);
+        var posAfterSomeTime = tile.Position;
+
+        // Should have moved (StayFraction=0 means no delay)
+        float moved = Vector2.Distance(posAfterRetarget, posAfterSomeTime);
+        Assert.True(moved > 0.1f, $"UFO should have moved after retarget, but only moved {moved}");
+    }
+
+    [Fact]
+    public void UfoRetarget_RecomputesDurationFromVisualDistance()
+    {
+        _player.VisualState.AddTile(1, ElementType.Ufo, new Position(0, 0), Vector2.Zero);
+
+        _player.Load(new RenderCommand[]
+        {
+            new UfoLaunchCommand
+            {
+                TileId = 1,
+                Origin = new Vector2(0, 0),
+                Target = new Vector2(6, 0),
+                StayFraction = 0f, // No spin-up for easier calculation
+                StartTime = 0f,
+                Duration = 3f // 6 units / 2 speed = 3s
+            }
+        });
+
+        // Advance to ~50%
+        _player.Tick(1.5f);
+        var tile = _player.VisualState.GetTile(1);
+        Assert.NotNull(tile);
+
+        // Retarget to nearby position — duration should be short
+        _player.Append(new RenderCommand[]
+        {
+            new UfoRetargetCommand
+            {
+                TileId = 1,
+                NewTarget = tile.Position + new Vector2(1, 0), // 1 unit away
+                NewDuration = 999f, // Player should ignore this and compute its own
+                StartTime = 1.5f,
+                Duration = 0
+            }
+        });
+
+        _player.Tick(0.001f);
+
+        // Flight should complete quickly (1 unit / 2 speed = 0.5s)
+        _player.Tick(0.6f); // More than enough time
+        Assert.False(_player.HasActiveAnimations, "UFO flight should have completed");
+    }
+
+    [Fact]
+    public void UfoLaunch_SetsFlightProgressAndDuration()
+    {
+        _player.VisualState.AddTile(1, ElementType.Ufo, new Position(0, 0), Vector2.Zero);
+
+        _player.Load(new RenderCommand[]
+        {
+            new UfoLaunchCommand
+            {
+                TileId = 1,
+                Origin = new Vector2(0, 0),
+                Target = new Vector2(4, 0),
+                StartTime = 0f,
+                Duration = 2f
+            }
+        });
+
+        _player.Tick(1.0f); // 50%
+
+        var tile = _player.VisualState.GetTile(1);
+        Assert.NotNull(tile);
+        Assert.Equal(0.5f, tile.UfoFlightProgress, 0.01f);
+        Assert.Equal(2f, tile.UfoFlightDuration, 0.01f);
+    }
+
+    [Fact]
+    public void UfoRetarget_WithNoActiveUfo_IsIgnored()
+    {
+        // No UFO launched — retarget should be silently ignored
+        _player.VisualState.AddTile(1, ElementType.Ufo, new Position(0, 0), Vector2.Zero);
+
+        _player.Load(new RenderCommand[]
+        {
+            new UfoRetargetCommand
+            {
+                TileId = 1,
+                NewTarget = new Vector2(5, 5),
+                NewDuration = 1f,
+                StartTime = 0f,
+                Duration = 0
+            }
+        });
+
+        // Should not throw
+        _player.Tick(0.1f);
+    }
+
+    #endregion
 }

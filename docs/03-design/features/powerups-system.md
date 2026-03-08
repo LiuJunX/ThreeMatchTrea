@@ -145,20 +145,61 @@ Match3.Core.Systems.PowerUps/
 **触发条件**: 2×2 正方形匹配生成
 
 **效果**:
-1. 原地产生小十字（中心 + 上下左右，共 5 格）
-2. 飞向棋盘随机位置，消除 1 个方块
+1. 原地产生小十字（中心 + 上下左右，共 5 格）— 由 `UfoEffect.Apply()` 计算
+2. 发射 `UfoProjectile` 飞向随机目标，到达后消除 1 个方块
 
 **影响范围**: 5 + 1 = 6 格（边界会裁剪小十字）
 
 ```
 示例 (UFO 在 (4,4)):
 □□□□█□□□
-□□□███□□  ← 小十字
+□□□███□□  ← 小十字（即时）
 □□□□█□□□
 □□□□□□□□
-□□□□□□█□  ← 随机目标
+□□□□□□█□  ← 随机目标（投射物延迟到达）
 □□□□□□□□
 ```
+
+#### UFO 投射物飞行系统
+
+UFO 的远程打击通过 `ProjectileSystem` 实现真正的延迟销毁：
+
+| 组件 | 职责 |
+|------|------|
+| `UfoEffect` | 计算小十字（5 格），提供 `PickRemoteTarget()` 选择远程目标 |
+| `PowerUpHandler` | 激活十字爆炸后，创建 `UfoProjectile` 并通过 `ProjectileSystem.Launch()` 发射 |
+| `UfoProjectile` | 基于计时器的投射物：`Duration = Overhead + Distance / Speed` |
+| `ProjectileSystem` | 每 tick 调用 `Update()`，到达时触发 `ProjectileImpactEvent` |
+
+**共享常量** (`UfoConstants`):
+
+| 常量 | 值 | 含义 |
+|------|---|------|
+| `LaunchOverhead` | 0.6s | 起飞+着陆固定开销 |
+| `FlightSpeed` | 2 格/秒 | 巡航速度 |
+| `LockInTime` | 0.3s | 锁定窗口（见下文） |
+
+#### 动态重定向 (Dynamic Retargeting)
+
+飞行中每 tick 检查目标格子：若目标已为空（被其他爆炸消除或掉落走），自动寻找新的有效目标。
+
+**锁定窗口**: 当剩余飞行时间 < `LockInTime`(0.3s) 时，UFO 锁定当前目标不再重定向。
+这避免了临近着陆时的突兀转向，并给视觉层足够帧数（~18帧@60fps）播放降落动画。
+
+**重定向后位置连续性**: `_phaseStartTime` 字段在重定向时重置，确保进度从 0 重新计算，
+避免从旧时间线计算出错误的 65%+ 进度导致位置跳变。
+
+#### UFO 视觉编排 (Choreography)
+
+| 事件 | RenderCommand | 说明 |
+|------|---------------|------|
+| `BombActivatedEvent` | 原点 CellLock | 锁定起飞格子 |
+| `ProjectileLaunchedEvent` | `UfoLaunchCommand` | 起飞动画（StayFraction=0.35 蓄力阶段） |
+| `ProjectileRetargetedEvent` | `UfoRetargetCommand` | Player 替换飞行段（StayFraction=0） |
+| `ProjectileImpactEvent` | `RemoveTileCommand` + `ShowEffectCommand` | 移除 UFO tile + 撞击特效 |
+
+Player 使用 smoothstep 插值飞行路径，重定向时从实际视觉位置重新计算飞行时长，
+确保速度恒定（`UfoConstants.FlightSpeed`）。
 
 ---
 
@@ -546,3 +587,4 @@ void Apply(in GameState state, Position origin, HashSet<Position> affectedTiles)
 | 1.0 | 2024-01 | 初始实现：5 种单炸弹效果 |
 | 1.1 | 2024-01 | 添加 BombComboHandler：10 种组合效果 |
 | 1.2 | 2024-01 | 彩球规则修正：单独激活消除最多颜色，手动交换消除指定颜色 |
+| 2.0 | 2026-03 | UFO 投射物系统重构：计时器飞行、动态重定向、锁定窗口、UfoConstants 共享常量 |

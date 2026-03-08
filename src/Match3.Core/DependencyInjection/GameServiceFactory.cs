@@ -93,7 +93,7 @@ public sealed class GameServiceFactory : IGameServiceFactory
         var projectileSystem = _projectileFactory();
         var objectiveSystem = _objectiveSystemFactory();
         var explosionSystem = new ExplosionSystem(new CoverSystem(objectiveSystem), new GroundSystem(objectiveSystem), objectiveSystem);
-        var powerUpHandler = _powerUpFactory(scoreSystem).WithExplosionSystem(explosionSystem);
+        var powerUpHandler = _powerUpFactory(scoreSystem).WithExplosionSystem(explosionSystem).WithProjectileSystem(projectileSystem);
 
         // Use provided event collector or create based on config
         var collector = eventCollector ?? _eventCollectorFactory(true);
@@ -176,7 +176,7 @@ public sealed class GameServiceFactory : IGameServiceFactory
         var matchProcessor = _matchProcessorFactory(scoreSystem, bombRegistry);
         var projectileSystem = _projectileFactory();
         var explosionSystem = new ExplosionSystem(new CoverSystem(objectiveSystem), new GroundSystem(objectiveSystem), objectiveSystem);
-        var powerUpHandler = _powerUpFactory(scoreSystem).WithExplosionSystem(explosionSystem);
+        var powerUpHandler = _powerUpFactory(scoreSystem).WithExplosionSystem(explosionSystem).WithProjectileSystem(projectileSystem);
         var physics = _physicsFactory(match3Config, seedManager.GetRandom(RandomDomain.Physics));
         var refill = _refillFactory(spawnModel);
 

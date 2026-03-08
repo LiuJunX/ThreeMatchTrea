@@ -404,7 +404,7 @@ public class ChoreographerPlayerIntegrationTests
             new ProjectileLaunchedEvent
             {
                 ProjectileId = 100,
-                Type = ProjectileType.Ufo,
+                Type = ProjectileType.ColorBombBeam,
                 Origin = new Vector2(3, 4),
                 SimulationTime = 0f
             },

@@ -140,6 +140,14 @@ public class MyProjectile : Projectile
 }
 ```
 
+### UfoProjectile — Dynamic Retargeting
+Timer-based projectile (`Duration = Overhead + Distance / Speed`). Each tick checks
+if the target cell is still occupied; if empty, `TryRetarget()` selects a new random
+target. Lock-in window (`UfoConstants.LockInTime = 0.3s`) prevents retargeting near
+impact. `_phaseStartTime` resets on retarget to ensure position continuity.
+
+`SourceTileId` links the projectile to its visual tile for Choreographer → Player flow.
+
 ## 11. Factory Pattern (Dependency Injection)
 
 ### GameServiceFactory

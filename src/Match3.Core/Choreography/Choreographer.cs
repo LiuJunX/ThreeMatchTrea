@@ -53,13 +53,13 @@ public sealed class Choreographer : IEventVisitor
     // Used to delay TileDestroyedEvent animation until the beam visually reaches the target.
     private readonly Dictionary<Position, float> _beamHitTimes = new();
 
-    // UFO flight tracking — persists across Choreograph calls because
-    // ExplosionSystem emits BombActivatedEvent and TileDestroyedEvents in separate ticks.
-    // Note: _ufoOriginTileId removed — ClearBombAttribute sets the bomb tile to None
-    // before ExplosionSystem processes it, so no TileDestroyedEvent is emitted for the
-    // origin. UfoLaunchCommand is now emitted directly from BombActivatedEvent.
-    private Position? _ufoRemoteTarget;
-    private float _ufoFlightEndTime;
+    // UFO flight tracking — projectile-driven: ProjectileLaunchedEvent.SourceTileId
+    // links to the visual tile, ProjectileRetargetedEvent emits UfoRetargetCommand,
+    // ProjectileImpactEvent emits destroy + remove.
+    // Persists across Choreograph() batches because launch/retarget/impact may span ticks.
+    private readonly Dictionary<int, UfoFlightInfo> _activeUfoFlights = new();
+
+    private record struct UfoFlightInfo(int TileId, float LaunchTime, float Duration, Vector2 Origin, Vector2 Target);
 
     private record struct MoveRecord(float StartTime, float EndTime, int TargetRow, Vector2 From, Vector2 To);
 
@@ -99,9 +99,8 @@ public sealed class Choreographer : IEventVisitor
         foreach (var kvp in _columnMoves)
             kvp.Value.Clear();
 
-        // Note: UFO tracking fields (_ufoRemoteTarget, _ufoFlightEndTime) are NOT
-        // reset here — they must persist across batches because ExplosionSystem
-        // emits BombActivatedEvent and TileDestroyedEvents in separate ticks.
+        // Note: _activeUfoFlights persists across batches because ProjectileSystem
+        // may emit launch/retarget/impact events across multiple ticks.
 
         // Process each event
         foreach (var evt in events)
@@ -222,11 +221,6 @@ public sealed class Choreographer : IEventVisitor
                 _columnDestroyEndTimes[column] = endTime;
             }
         }
-        else if (_ufoRemoteTarget.HasValue && evt.GridPosition == _ufoRemoteTarget.Value)
-        {
-            // UFO remote target: delay destruction until UFO arrives
-            EmitUfoTargetDestroy(evt, position, column);
-        }
         else if (_beamHitTimes.TryGetValue(evt.GridPosition, out float beamHitTime))
         {
             // Color bomb beam target: delay destruction until beam arrives
@@ -239,9 +233,12 @@ public sealed class Choreographer : IEventVisitor
 
             // Wave delay: later waves (higher SimulationTime) get longer locks
             float waveDelay = evt.SimulationTime - _minSimulationTime;
-            float dropDelay = evt.Reason == DestroyReason.BombEffect
-                ? Config.BombDropDelay
-                : Config.DropDelay;
+            float dropDelay = evt.Reason switch
+            {
+                DestroyReason.BombEffect => Config.BombDropDelay,
+                DestroyReason.Projectile => 0.05f, // Fast unlock for UFO/Projectile hits
+                _ => Config.DropDelay
+            };
 
             // Emit cell lock for destroy position (drop delay + wave offset)
             _lockEntries.Add(new CellLockEntry
@@ -301,77 +298,8 @@ public sealed class Choreographer : IEventVisitor
         }
     }
 
-    /// <summary>
-    /// UFO remote target: delay destruction until UFO arrives.
-    /// </summary>
-    private void EmitUfoTargetDestroy(TileDestroyedEvent evt, Vector2 position, int column)
-    {
-        LastBatchHadMatch = true;
-
-        float delayedStart = _ufoFlightEndTime;
-
-        // Hold tile in place until UFO arrives — keeps IsBeingAnimated=true
-        float holdStart = GetStartTime(evt);
-        if (delayedStart > holdStart)
-        {
-            _commands.Add(new MoveTileCommand
-            {
-                TileId = evt.TileId,
-                From = position,
-                To = position,
-                StartTime = holdStart,
-                Duration = delayedStart - holdStart,
-                Easing = EasingType.Linear
-            });
-        }
-
-        // Destroy animation starts when UFO arrives
-        _commands.Add(new DestroyTileCommand
-        {
-            TileId = evt.TileId,
-            Position = position,
-            Reason = evt.Reason,
-            StartTime = delayedStart,
-            Duration = Config.DestroyDuration
-        });
-
-        float endTime = delayedStart + Config.DestroyDuration;
-
-        _commands.Add(new ShowEffectCommand
-        {
-            EffectType = "projectile_hit",
-            Position = position,
-            StartTime = delayedStart,
-            Duration = Config.DestroyDuration
-        });
-
-        _commands.Add(new RemoveTileCommand
-        {
-            TileId = evt.TileId,
-            StartTime = endTime,
-            Duration = 0,
-            Priority = 10
-        });
-
-        // Lock target cell until destroy animation completes — no extra delay needed,
-        // single-point hit has no explosion to settle.
-        _lockEntries.Add(new CellLockEntry
-        {
-            Position = evt.GridPosition,
-            LockType = CellLockType.Receive,
-            Duration = endTime,
-            IsMerge = false
-        });
-
-        // Column spawn gated to UFO arrival — new tiles spawn from the top and
-        // take time to fall, so they won't collide with the destroy animation.
-        if (!_columnDestroyEndTimes.TryGetValue(column, out float existing) || delayedStart > existing)
-        {
-            _columnDestroyEndTimes[column] = delayedStart;
-        }
-
-        _ufoRemoteTarget = null;
-    }
+    // EmitUfoTargetDestroy removed — UFO target destruction is now handled by
+    // ProjectileImpactEvent via the ProjectileSystem.
 
     /// <summary>
     /// Color bomb beam target: delay destruction until beam arrives.
@@ -771,16 +699,17 @@ public sealed class Choreographer : IEventVisitor
         IReadOnlyCollection<Position> affectedPositions, float startTime, Vector2 origin)
     {
         float chargeDuration = Config.ColorBombChargeDuration;
+        float chargeScale = Config.ColorBombChargeScale;
         float beamLaunchTime = startTime + chargeDuration;
 
         // Phase 1: Charge-up — scale pulse + hop up + accelerating spin
-        var hopOffset = new Vector2(0, -0.3f);
+        var hopOffset = new Vector2(0, Config.ColorBombHopOffset);
 
         _commands.Add(new ScaleTileCommand
         {
             TileId = tileId,
             FromScale = Vector2.One,
-            ToScale = new Vector2(1.2f, 1.2f),
+            ToScale = new Vector2(chargeScale, chargeScale),
             Easing = EasingType.OutBack,
             StartTime = startTime,
             Duration = chargeDuration
@@ -808,19 +737,19 @@ public sealed class Choreographer : IEventVisitor
         {
             TileId = tileId,
             FromAngle = 0f,
-            ToAngle = 720f * (spinDuration / 0.5f), // ~720° per 0.5s, scales with duration
+            ToAngle = Config.ColorBombSpinRate * spinDuration,
             Easing = EasingType.InQuadratic,
             StartTime = startTime,
             Duration = spinDuration
         });
 
         // Phase 3: After all beams land — shrink to nothing + remove
-        float shrinkDuration = 0.15f;
+        float shrinkDuration = Config.ColorBombShrinkDuration;
 
         _commands.Add(new ScaleTileCommand
         {
             TileId = tileId,
-            FromScale = new Vector2(1.2f, 1.2f),
+            FromScale = new Vector2(chargeScale, chargeScale),
             ToScale = Vector2.Zero,
             Easing = EasingType.InQuadratic,
             StartTime = spinEndTime,
@@ -847,9 +776,9 @@ public sealed class Choreographer : IEventVisitor
 
     /// <summary>
     /// Emit rainbow wave at origin + flying beam projectiles + sparkle hits for Color bomb.
-    /// Beams are staggered by Chebyshev distance ring with rainbow colors cycling.
-    /// Shared by both BombActivatedEvent (tap) and BombComboEvent (swap) paths.
-    /// Returns the latest beam hit time (for sequencing follow-up animations).
+    /// Beams fire farthest-first with staggered launches, speeds adjusted so ALL beams
+    /// arrive simultaneously. Same-distance targets are also staggered via angle tiebreak.
+    /// Returns the arrival time (for sequencing follow-up animations).
     /// </summary>
     private float EmitColorBombBeams(Position gridOrigin, IReadOnlyCollection<Position> affectedPositions,
         float startTime, Vector2 origin)
@@ -863,185 +792,139 @@ public sealed class Choreographer : IEventVisitor
             Duration = 0.6f
         });
 
-        // Pre-compute max Chebyshev distance
-        int maxDist = 0;
+        // Add a glow/flash effect during the spin
+        _commands.Add(new ShowEffectCommand
+        {
+            EffectType = "bomb_flash",
+            Position = origin,
+            StartTime = startTime,
+            Duration = 0.6f
+        });
+
+        if (affectedPositions.Count == 0) return startTime;
+
+        // 1. Build target list with euclidean distance and angle for sorting
+        //    Skip origin position — no beam needed for self
+        var targets = new List<(Position pos, Vector2 target, float dist, float angle)>();
         foreach (var pos in affectedPositions)
         {
-            int dist = Math.Max(
-                Math.Abs(pos.X - gridOrigin.X),
-                Math.Abs(pos.Y - gridOrigin.Y));
-            if (dist > maxDist) maxDist = dist;
+            if (pos.X == gridOrigin.X && pos.Y == gridOrigin.Y) continue;
+            var targetPos = new Vector2(pos.X, pos.Y);
+            float dist = Vector2.Distance(origin, targetPos);
+            float angle = MathF.Atan2(pos.Y - gridOrigin.Y, pos.X - gridOrigin.X);
+            targets.Add((pos, targetPos, dist, angle));
         }
 
-        if (maxDist == 0) return startTime;
+        if (targets.Count == 0) return startTime;
 
-        float maxHitTime = startTime;
+        // 2. Sort: farthest first; same distance → by angle (deterministic spread)
+        targets.Sort((a, b) =>
+        {
+            int cmp = b.dist.CompareTo(a.dist);
+            return cmp != 0 ? cmp : a.angle.CompareTo(b.angle);
+        });
+
+        // 3. Compute launch times: farthest fires first, each subsequent beam staggered
+        float stagger = Config.ColorBombBeamStagger;
+        float firstLaunch = startTime + 0.05f;
+        float lastLaunch = firstLaunch + (targets.Count - 1) * stagger;
+        float maxDist = targets[0].dist;
+
+        // 4. Arrival time: all beams land at this moment
+        //    Must satisfy both the farthest beam's flight (at base speed)
+        //    and the closest beam's minimum flight duration.
+        float arrivalTime = Math.Max(
+            firstLaunch + maxDist / Config.ColorBombBeamSpeed,
+            lastLaunch + Config.ColorBombMinFlightDuration);
+
         byte colorIndex = 0;
 
-        // Emit beams in waves by Chebyshev distance ring
-        for (int ring = 1; ring <= maxDist; ring++)
+        for (int i = 0; i < targets.Count; i++)
         {
-            // Each ring launches after a staggered delay
-            float ringLaunchTime = startTime + 0.05f + (ring - 1) * Config.ColorBombWaveInterval;
+            var (pos, targetPos, dist, _) = targets[i];
+            float launchTime = firstLaunch + i * stagger;
+            float flightDuration = arrivalTime - launchTime;
 
-            foreach (var pos in affectedPositions)
+            // Record hit time so TileDestroyedEvent delays destruction until beam arrives
+            _beamHitTimes[pos] = arrivalTime;
+
+            // Beam projectile: spawn → fly → impact → remove
+            int beamId = _nextBeamId--;
+            byte beamColor = colorIndex;
+            colorIndex = (byte)((colorIndex + 1) % 6);
+
+            _commands.Add(new SpawnProjectileCommand
             {
-                int dist = Math.Max(
-                    Math.Abs(pos.X - gridOrigin.X),
-                    Math.Abs(pos.Y - gridOrigin.Y));
-
-                if (dist != ring) continue;
-
-                var targetPos = new Vector2(pos.X, pos.Y);
-
-                // Flight duration based on Euclidean distance and beam speed
-                float euclidean = Vector2.Distance(origin, targetPos);
-                float flightDuration = euclidean / Config.ColorBombBeamSpeed;
-                float hitTime = ringLaunchTime + flightDuration;
-
-                if (hitTime > maxHitTime) maxHitTime = hitTime;
-
-                // Record hit time so TileDestroyedEvent delays destruction until beam arrives
-                _beamHitTimes[pos] = hitTime;
-
-                // Beam projectile: spawn → fly → impact → remove
-                int beamId = _nextBeamId--;
-                byte beamColor = colorIndex;
-                colorIndex = (byte)((colorIndex + 1) % 6);
-
-                _commands.Add(new SpawnProjectileCommand
-                {
-                    ProjectileId = beamId,
-                    Origin = origin,
-                    ArcHeight = 0f,
-                    Type = ProjectileType.ColorBombBeam,
-                    ColorIndex = beamColor,
-                    StartTime = ringLaunchTime,
-                    Duration = 0
-                });
-
-                _commands.Add(new MoveProjectileCommand
-                {
-                    ProjectileId = beamId,
-                    From = origin,
-                    To = targetPos,
-                    StartTime = ringLaunchTime,
-                    Duration = flightDuration
-                });
-
-                _commands.Add(new ImpactProjectileCommand
-                {
-                    ProjectileId = beamId,
-                    Position = targetPos,
-                    EffectType = "color_bomb_hit",
-                    StartTime = hitTime,
-                    Duration = 0.15f
-                });
-
-                _commands.Add(new RemoveProjectileCommand
-                {
-                    ProjectileId = beamId,
-                    StartTime = hitTime + 0.15f,
-                    Duration = 0
-                });
-
-                _commands.Add(new ShowEffectCommand
-                {
-                    EffectType = "color_bomb_hit",
-                    Position = targetPos,
-                    StartTime = hitTime,
-                    Duration = 0.3f
-                });
-            }
-        }
-
-        return maxHitTime;
-    }
-
-    /// <summary>
-    /// Emit UFO-specific effects: the origin tile flies to a remote target.
-    /// UfoLaunchCommand is emitted here (not from TileDestroyedEvent) because
-    /// ClearBombAttribute sets the bomb tile to ElementType.None before
-    /// ExplosionSystem processes it — no TileDestroyedEvent is emitted for the origin.
-    /// Cross tiles get standard destroy; the remote target is delayed until UFO arrives.
-    /// </summary>
-    private void EmitUfoEffects(BombActivatedEvent evt, float startTime, Vector2 origin)
-    {
-        // Identify remote target (non-cross position in affected set)
-        Position? remoteTarget = null;
-        foreach (var pos in evt.AffectedPositions)
-        {
-            int dx = Math.Abs(pos.X - evt.Position.X);
-            int dy = Math.Abs(pos.Y - evt.Position.Y);
-            if (dx + dy > 1)
-            {
-                remoteTarget = pos;
-                break;
-            }
-        }
-
-        if (remoteTarget.HasValue)
-        {
-            _ufoRemoteTarget = remoteTarget;
-
-            var targetPos = new Vector2(remoteTarget.Value.X, remoteTarget.Value.Y);
-
-            // Total duration = fixed overhead + distance-based flight
-            float distance = Vector2.Distance(origin, targetPos);
-            float flightTime = distance > 0 ? distance / Config.UfoFlightSpeed : 0.01f;
-            float totalDuration = Config.UfoLaunchOverhead + flightTime;
-
-            _commands.Add(new UfoLaunchCommand
-            {
-                TileId = evt.TileId,
+                ProjectileId = beamId,
                 Origin = origin,
-                Target = targetPos,
-                StartTime = startTime,
-                Duration = totalDuration
+                ArcHeight = 0f,
+                Type = ProjectileType.ColorBombBeam,
+                ColorIndex = beamColor,
+                StartTime = launchTime,
+                Duration = 0
             });
 
-            float arrivalTime = startTime + totalDuration;
-            _ufoFlightEndTime = arrivalTime;
+            _commands.Add(new MoveProjectileCommand
+            {
+                ProjectileId = beamId,
+                From = origin,
+                To = targetPos,
+                StartTime = launchTime,
+                Duration = flightDuration
+            });
 
-            // Impact effect at target
+            _commands.Add(new ImpactProjectileCommand
+            {
+                ProjectileId = beamId,
+                Position = targetPos,
+                EffectType = "color_bomb_hit",
+                StartTime = arrivalTime,
+                Duration = 0.15f
+            });
+
+            _commands.Add(new RemoveProjectileCommand
+            {
+                ProjectileId = beamId,
+                StartTime = arrivalTime + 0.15f,
+                Duration = 0
+            });
+
             _commands.Add(new ShowEffectCommand
             {
-                EffectType = "ufo_impact",
+                EffectType = "color_bomb_hit",
                 Position = targetPos,
                 StartTime = arrivalTime,
                 Duration = 0.3f
             });
-
-            // Remove UFO tile on arrival
-            _commands.Add(new RemoveTileCommand
-            {
-                TileId = evt.TileId,
-                StartTime = arrivalTime,
-                Duration = 0,
-                Priority = 10
-            });
-
-            // Origin cell is free shortly after launch
-            int column = evt.Position.X;
-            float launchClearTime = Math.Min(0.45f, totalDuration * 0.5f);
-            _lockEntries.Add(new CellLockEntry
-            {
-                Position = evt.Position,
-                LockType = CellLockType.Receive,
-                Duration = launchClearTime + Config.BombDropDelay,
-                IsMerge = false
-            });
-
-            float endTime = startTime + launchClearTime;
-            if (!_columnDestroyEndTimes.TryGetValue(column, out float existing) || endTime > existing)
-            {
-                _columnDestroyEndTimes[column] = endTime;
-            }
         }
 
-        // Small shockwave at origin for cross destruction - REMOVED to prevent screen shake (requested by user)
-        // The neighbor tiles will still explode, providing visual feedback.
+        return arrivalTime;
+    }
 
+    /// <summary>
+    /// Emit UFO-specific effects: origin cell lock for launch clearing.
+    /// UfoLaunchCommand is emitted from Visit(ProjectileLaunchedEvent) using SourceTileId.
+    /// Cross tiles get standard destroy; remote target is destroyed on projectile impact.
+    /// </summary>
+    private void EmitUfoEffects(BombActivatedEvent evt, float startTime, Vector2 origin)
+    {
+
+        // Origin cell is free shortly after launch
+        int column = evt.Position.X;
+        float launchClearTime = 0.45f;
+        _lockEntries.Add(new CellLockEntry
+        {
+            Position = evt.Position,
+            LockType = CellLockType.Receive,
+            Duration = launchClearTime + Config.BombDropDelay,
+            IsMerge = false
+        });
+
+        float endTime = startTime + launchClearTime;
+        if (!_columnDestroyEndTimes.TryGetValue(column, out float existing) || endTime > existing)
+        {
+            _columnDestroyEndTimes[column] = endTime;
+        }
     }
 
     /// <inheritdoc />
@@ -1205,6 +1088,38 @@ public sealed class Choreographer : IEventVisitor
     {
         float startTime = GetStartTime(evt);
 
+        // UFO projectile: emit UfoLaunchCommand instead of SpawnProjectileCommand
+        if (evt.Type == ProjectileType.Ufo)
+        {
+            int tileId = evt.SourceTileId ?? 0;
+
+            if (tileId == 0) return; // No tile to animate
+
+            var targetPos = evt.TargetPosition.HasValue
+                ? new Vector2(evt.TargetPosition.Value.X, evt.TargetPosition.Value.Y)
+                : evt.Origin;
+
+            float distance = Vector2.Distance(evt.Origin, targetPos);
+            float flightTime = distance > 0 ? distance / Config.UfoFlightSpeed : 0.01f;
+            float totalDuration = Config.UfoLaunchOverhead + flightTime;
+
+            _commands.Add(new UfoLaunchCommand
+            {
+                TileId = tileId,
+                Origin = evt.Origin,
+                Target = targetPos,
+                StayFraction = 0.35f,
+                StartTime = startTime,
+                Duration = totalDuration
+            });
+
+            // Track active flight for retarget/impact handling
+            _activeUfoFlights[evt.ProjectileId] = new UfoFlightInfo(
+                tileId, startTime, totalDuration, evt.Origin, targetPos);
+
+            return;
+        }
+
         var spawnCommand = new SpawnProjectileCommand
         {
             ProjectileId = evt.ProjectileId,
@@ -1241,8 +1156,33 @@ public sealed class Choreographer : IEventVisitor
     /// <inheritdoc />
     public void Visit(ProjectileRetargetedEvent evt)
     {
-        // Retarget events don't generate render commands
-        // Could add visual indicator if needed
+        if (!_activeUfoFlights.TryGetValue(evt.ProjectileId, out var flight))
+            return;
+
+        float startTime = GetStartTime(evt);
+        var newTargetVec = new Vector2(evt.NewTarget.X, evt.NewTarget.Y);
+
+        // Estimate current position based on elapsed progress
+        float elapsed = startTime - flight.LaunchTime;
+        float progress = flight.Duration > 0 ? Math.Clamp(elapsed / flight.Duration, 0f, 1f) : 0f;
+        var currentPos = Vector2.Lerp(flight.Origin, flight.Target, progress);
+
+        // New flight segment duration based on distance to new target
+        float newDistance = Vector2.Distance(currentPos, newTargetVec);
+        float newDuration = newDistance > 0 ? newDistance / Config.UfoFlightSpeed : 0.01f;
+
+        _commands.Add(new UfoRetargetCommand
+        {
+            TileId = flight.TileId,
+            NewTarget = newTargetVec,
+            NewDuration = newDuration,
+            StartTime = startTime,
+            Duration = 0 // Instant command
+        });
+
+        // Update tracked flight info
+        _activeUfoFlights[evt.ProjectileId] = new UfoFlightInfo(
+            flight.TileId, startTime, newDuration, currentPos, newTargetVec);
     }
 
     /// <inheritdoc />
@@ -1251,6 +1191,55 @@ public sealed class Choreographer : IEventVisitor
         float startTime = GetStartTime(evt);
         var position = new Vector2(evt.ImpactPosition.X, evt.ImpactPosition.Y);
 
+        // UFO impact: remove UFO tile, destroy target, lock cell
+        if (_activeUfoFlights.TryGetValue(evt.ProjectileId, out var flight))
+        {
+            _activeUfoFlights.Remove(evt.ProjectileId);
+
+            // Ensure removal doesn't fire before the visual flight animation completes.
+            // Impact event may arrive in a different batch whose baseTime doesn't
+            // perfectly align with the UfoLaunchCommand's EndTime.
+            float flightEndTime = flight.LaunchTime + flight.Duration;
+            float removeTime = Math.Max(startTime, flightEndTime);
+
+            // Impact effect at target
+            _commands.Add(new ShowEffectCommand
+            {
+                EffectType = "ufo_impact",
+                Position = position,
+                StartTime = removeTime,
+                Duration = 0.3f
+            });
+
+            // Remove UFO tile on arrival
+            _commands.Add(new RemoveTileCommand
+            {
+                TileId = flight.TileId,
+                StartTime = removeTime,
+                Duration = 0,
+                Priority = 10
+            });
+
+            // Lock target cell for impact — short relative duration since
+            // the UFO landing already provides visual feedback
+            int column = evt.ImpactPosition.X;
+            _lockEntries.Add(new CellLockEntry
+            {
+                Position = evt.ImpactPosition,
+                LockType = CellLockType.Receive,
+                Duration = 0.1f,
+                IsMerge = false
+            });
+
+            if (!_columnDestroyEndTimes.TryGetValue(column, out float existing) || startTime > existing)
+            {
+                _columnDestroyEndTimes[column] = startTime;
+            }
+
+            return;
+        }
+
+        // Non-UFO projectiles: standard impact handling
         var impactCommand = new ImpactProjectileCommand
         {
             ProjectileId = evt.ProjectileId,

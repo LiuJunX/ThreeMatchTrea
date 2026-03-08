@@ -10,62 +10,43 @@ using Match3.Core.Utility.Pools;
 namespace Match3.Core.Systems.Projectiles;
 
 /// <summary>
-/// UFO projectile that flies to a target position.
-/// Has three phases: Takeoff, Flight, and Impact.
+/// Timer-based UFO projectile that flies to a target position.
+/// Duration = overhead + distance / speed (matching ChoreographyConfig).
+/// Checks target validity each tick and retargets if target is empty,
+/// unless within the lock-in window before impact.
 /// </summary>
 public sealed class UfoProjectile : Projectile
 {
-    /// <summary>
-    /// Takeoff duration in seconds.
-    /// </summary>
-    public const float TakeoffDuration = 0.3f;
+    private readonly float _speed;
+    private float _totalDuration;
+    private float _elapsedTime;
+    private float _phaseStartTime; // Reset on retarget to fix progress calculation
+    private Vector2 _startPos;
 
     /// <summary>
-    /// Flight speed in units per second.
-    /// </summary>
-    public const float FlightSpeed = 12f;
-
-    /// <summary>
-    /// Arc height during takeoff.
-    /// </summary>
-    public const float ArcHeight = 1.5f;
-
-    /// <summary>
-    /// Arrival threshold distance.
-    /// </summary>
-    public const float ArrivalThreshold = 0.2f;
-
-    private UfoPhase _phase = UfoPhase.Takeoff;
-    private float _phaseTime;
-    private Vector2 _takeoffStartPos;
-
-    /// <summary>
-    /// Current phase of the UFO flight.
-    /// </summary>
-    public UfoPhase Phase => _phase;
-
-    /// <summary>
-    /// Targeting mode for this UFO.
-    /// </summary>
-    public UfoTargetingMode TargetingMode { get; }
-
-    /// <summary>
-    /// Creates a new UFO projectile.
+    /// Creates a new timer-based UFO projectile.
     /// </summary>
     public UfoProjectile(
         int id,
         Position origin,
         Position target,
-        UfoTargetingMode targetingMode = UfoTargetingMode.FixedCell)
+        float overhead = UfoConstants.LaunchOverhead,
+        float speed = UfoConstants.FlightSpeed)
     {
         Id = id;
         OriginPosition = origin;
         TargetGridPosition = target;
         Position = new Vector2(origin.X, origin.Y);
-        _takeoffStartPos = Position;
+        _startPos = Position;
         Velocity = Vector2.Zero;
         Type = ProjectileType.Ufo;
-        TargetingMode = targetingMode;
+
+        _speed = speed;
+        _phaseStartTime = 0f;
+
+        var targetVec = new Vector2(target.X, target.Y);
+        float distance = Vector2.Distance(_startPos, targetVec);
+        _totalDuration = overhead + (distance > 0 ? distance / _speed : 0.01f);
     }
 
     /// <inheritdoc />
@@ -78,163 +59,46 @@ public sealed class UfoProjectile : Projectile
     {
         if (!IsActive) return false;
 
-        _phaseTime += deltaTime;
+        _elapsedTime += deltaTime;
 
-        return _phase switch
+        // Check target validity — retarget if target cell is empty,
+        // but only if we're outside the lock-in window
+        float remainingTime = _totalDuration - _elapsedTime;
+        if (remainingTime > UfoConstants.LockInTime && TargetGridPosition.HasValue)
         {
-            UfoPhase.Takeoff => UpdateTakeoff(deltaTime, tick, simTime, events),
-            UfoPhase.Flight => UpdateFlight(ref state, deltaTime, tick, simTime, events),
-            _ => true
-        };
-    }
-
-    private bool UpdateTakeoff(float deltaTime, int tick, float simTime, IEventCollector events)
-    {
-        // Vertical rise during takeoff
-        float t = Math.Min(_phaseTime / TakeoffDuration, 1f);
-
-        // Ease out curve for smooth deceleration
-        float easedT = 1f - (1f - t) * (1f - t);
-        float height = easedT * ArcHeight;
-
-        var prevPos = Position;
-        Position = new Vector2(_takeoffStartPos.X, _takeoffStartPos.Y - height);
-        Velocity = new Vector2(0, -ArcHeight / TakeoffDuration);
-
-        // Emit movement event
-        if (events.IsEnabled)
-        {
-            events.Emit(new ProjectileMovedEvent
+            var tp = TargetGridPosition.Value;
+            if (tp.X >= 0 && tp.X < state.Width && tp.Y >= 0 && tp.Y < state.Height)
             {
-                Tick = tick,
-                SimulationTime = simTime,
-                ProjectileId = Id,
-                FromPosition = prevPos,
-                ToPosition = Position,
-                Velocity = Velocity
-            });
-        }
-
-        // Transition to flight phase
-        if (t >= 1f)
-        {
-            _phase = UfoPhase.Flight;
-            _phaseTime = 0f;
-        }
-
-        return false; // Not arrived yet
-    }
-
-    private bool UpdateFlight(
-        ref GameState state,
-        float deltaTime,
-        int tick,
-        float simTime,
-        IEventCollector events)
-    {
-        if (!TargetGridPosition.HasValue)
-        {
-            // No target, fizzle out
-            Deactivate();
-            return true;
-        }
-
-        // Dynamic targeting: re-evaluate target each tick
-        if (TargetingMode == UfoTargetingMode.Dynamic)
-        {
-            var newTarget = FindBestTarget(ref state);
-            if (newTarget.HasValue && newTarget.Value != TargetGridPosition.Value)
-            {
-                var oldTarget = TargetGridPosition.Value;
-                TargetGridPosition = newTarget;
-
-                if (events.IsEnabled)
+                var tile = state.GetTile(tp.X, tp.Y);
+                if (tile.Type == ElementType.None)
                 {
-                    events.Emit(new ProjectileRetargetedEvent
-                    {
-                        Tick = tick,
-                        SimulationTime = simTime,
-                        ProjectileId = Id,
-                        OldTarget = oldTarget,
-                        NewTarget = newTarget.Value,
-                        Reason = RetargetReason.BetterTargetFound
-                    });
+                    TryRetarget(ref state, tick, simTime, events);
                 }
             }
         }
 
-        // Check if target cell is still valid (not empty)
-        if (TargetingMode == UfoTargetingMode.FixedCell)
+        // Timer-based arrival
+        if (_elapsedTime >= _totalDuration)
         {
-            var targetX = TargetGridPosition.Value.X;
-            var targetY = TargetGridPosition.Value.Y;
-
-            // Bounds check before accessing tile
-            if (targetX < 0 || targetX >= state.Width || targetY < 0 || targetY >= state.Height)
+            if (TargetGridPosition.HasValue)
             {
-                // Target is out of bounds, try to retarget
-                if (!TryRetarget(ref state, tick, simTime, events))
-                {
-                    // Can't retarget, deactivate
-                    Deactivate();
-                    return true;
-                }
+                Position = new Vector2(TargetGridPosition.Value.X, TargetGridPosition.Value.Y);
             }
-            else
-            {
-                var targetTile = state.GetTile(targetX, targetY);
-                if (targetTile.Type == ElementType.None)
-                {
-                    // Target was destroyed, try to retarget
-                    if (!TryRetarget(ref state, tick, simTime, events))
-                    {
-                        // Can't retarget, continue to original position anyway
-                    }
-                }
-            }
-        }
-
-        // Calculate movement
-        var targetPos = new Vector2(TargetGridPosition.Value.X, TargetGridPosition.Value.Y);
-        var direction = targetPos - Position;
-        var distance = direction.Length();
-
-        if (distance > 0.001f)
-        {
-            direction = Vector2.Normalize(direction);
-        }
-
-        var prevPos = Position;
-        var moveDistance = FlightSpeed * deltaTime;
-
-        if (moveDistance >= distance)
-        {
-            // Arrived at target
-            Position = targetPos;
             Velocity = Vector2.Zero;
-        }
-        else
-        {
-            Position += direction * moveDistance;
-            Velocity = direction * FlightSpeed;
+            return true; // Arrived
         }
 
-        // Emit movement event
-        if (events.IsEnabled)
+        // Interpolate position relative to phase start (avoids position jump on retarget)
+        if (TargetGridPosition.HasValue)
         {
-            events.Emit(new ProjectileMovedEvent
-            {
-                Tick = tick,
-                SimulationTime = simTime,
-                ProjectileId = Id,
-                FromPosition = prevPos,
-                ToPosition = Position,
-                Velocity = Velocity
-            });
+            float phaseDuration = _totalDuration - _phaseStartTime;
+            float phaseElapsed = _elapsedTime - _phaseStartTime;
+            float progress = phaseDuration > 0 ? Math.Clamp(phaseElapsed / phaseDuration, 0f, 1f) : 0f;
+            var targetVec = new Vector2(TargetGridPosition.Value.X, TargetGridPosition.Value.Y);
+            Position = Vector2.Lerp(_startPos, targetVec, progress);
         }
 
-        // Check arrival
-        return HasReachedTarget(ArrivalThreshold);
+        return false;
     }
 
     /// <inheritdoc />
@@ -252,6 +116,24 @@ public sealed class UfoProjectile : Projectile
 
         var oldTarget = TargetGridPosition ?? new Position(-1, -1);
         TargetGridPosition = newTarget;
+
+        // Estimate current position based on phase-relative progress
+        float phaseDuration = _totalDuration - _phaseStartTime;
+        float phaseElapsed = _elapsedTime - _phaseStartTime;
+        float progress = phaseDuration > 0 ? Math.Clamp(phaseElapsed / phaseDuration, 0f, 1f) : 0f;
+        var oldTargetVec = new Vector2(oldTarget.X, oldTarget.Y);
+        var currentPos = Vector2.Lerp(_startPos, oldTargetVec, progress);
+
+        // Reset phase: start from current position toward new target
+        _startPos = currentPos;
+        _phaseStartTime = _elapsedTime;
+        Position = currentPos;
+
+        // Recalculate total duration: current time + remaining flight
+        var newTargetVec = new Vector2(newTarget.Value.X, newTarget.Value.Y);
+        float newDistance = Vector2.Distance(currentPos, newTargetVec);
+        float remainingTime = newDistance > 0 ? newDistance / _speed : 0.01f;
+        _totalDuration = _elapsedTime + remainingTime;
 
         if (events.IsEnabled)
         {
@@ -288,7 +170,6 @@ public sealed class UfoProjectile : Projectile
 
         try
         {
-            // Find all non-empty tiles not at origin
             for (int y = 0; y < state.Height; y++)
             {
                 for (int x = 0; x < state.Width; x++)
@@ -307,7 +188,6 @@ public sealed class UfoProjectile : Projectile
             if (candidates.Count == 0)
                 return null;
 
-            // Select random target
             int idx = state.Random.Next(0, candidates.Count);
             return candidates[idx];
         }
@@ -316,34 +196,4 @@ public sealed class UfoProjectile : Projectile
             Pools.Release(candidates);
         }
     }
-}
-
-/// <summary>
-/// Phase of UFO flight.
-/// </summary>
-public enum UfoPhase
-{
-    /// <summary>Initial takeoff (vertical rise).</summary>
-    Takeoff,
-
-    /// <summary>Flying towards target.</summary>
-    Flight,
-
-    /// <summary>Impact/explosion.</summary>
-    Impact
-}
-
-/// <summary>
-/// Targeting mode for UFO projectiles.
-/// </summary>
-public enum UfoTargetingMode
-{
-    /// <summary>Target a fixed grid cell. If cell becomes empty, may retarget.</summary>
-    FixedCell,
-
-    /// <summary>Dynamically re-evaluate best target each tick.</summary>
-    Dynamic,
-
-    /// <summary>Track a specific tile by ID.</summary>
-    TrackTile
 }

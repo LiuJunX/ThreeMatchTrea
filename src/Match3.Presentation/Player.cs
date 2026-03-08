@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Match3.Core;
 using Match3.Core.Choreography;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
@@ -334,6 +335,10 @@ public sealed class Player
                     ufoTile.UfoFlightDuration = ufo.Duration;
                 }
                 break;
+
+            case UfoRetargetCommand retarget:
+                HandleUfoRetarget(retarget);
+                break;
         }
 
         // Mark tiles as being animated for position-affecting commands
@@ -438,7 +443,7 @@ public sealed class Player
                     ufoT.UfoFlightProgress = t;
 
                     // XY position: stay at origin during spin-up/launch, then cruise to target
-                    const float stayFrac = 0.35f; // first 35% of duration: origin
+                    float stayFrac = ufo.StayFraction; // 0.35 for initial launch, 0 for retarget segment
                     const float arriveFrac = 0.97f; // arrive by 97%
                     float moveT;
                     if (t <= stayFrac)
@@ -590,6 +595,77 @@ public sealed class Player
                         uTile.ReleaseAnimationRef();
                 }
                 break;
+
+            case UfoRetargetCommand retargetCmd:
+                // UfoRetargetCommand is instant — HandleUfoRetarget manages animation refs
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Handle UFO retarget: find the active UfoLaunchCommand, compute current position,
+    /// and replace it with a new segment targeting the new destination.
+    /// </summary>
+    private void HandleUfoRetarget(UfoRetargetCommand retarget)
+    {
+        // Find and remove the active UfoLaunchCommand for this tile
+        for (int i = _activeCommands.Count - 1; i >= 0; i--)
+        {
+            if (_activeCommands[i].Command is UfoLaunchCommand activeUfo && activeUfo.TileId == retarget.TileId)
+            {
+                // Compute current visual position
+                var cmd = activeUfo;
+                float t = cmd.Duration > 0
+                    ? Math.Clamp((_currentTime - cmd.StartTime) / cmd.Duration, 0f, 1f)
+                    : 1f;
+
+                float stayFrac = cmd.StayFraction;
+                const float arriveFrac = 0.97f;
+                float moveT;
+                if (t <= stayFrac)
+                    moveT = 0f;
+                else if (t >= arriveFrac)
+                    moveT = 1f;
+                else
+                    moveT = (t - stayFrac) / (arriveFrac - stayFrac);
+
+                float eased = moveT * moveT * (3f - 2f * moveT);
+                var currentPos = Vector2.Lerp(cmd.Origin, cmd.Target, eased);
+
+                // Release animation ref for old command
+                MarkTilesAnimating(activeUfo, false);
+                _activeCommands.RemoveAt(i);
+
+                // Compute duration from actual visual distance (not Choreographer's
+                // linear estimate, which doesn't account for smoothstep easing)
+                float visualDistance = Vector2.Distance(currentPos, retarget.NewTarget);
+                float newDuration = visualDistance > 0
+                    ? visualDistance / UfoConstants.FlightSpeed
+                    : 0.01f;
+
+                // Create new UfoLaunchCommand for the retarget segment
+                var newCmd = new UfoLaunchCommand
+                {
+                    TileId = retarget.TileId,
+                    Origin = currentPos,
+                    Target = retarget.NewTarget,
+                    StayFraction = 0f, // No spin-up for retarget
+                    StartTime = _currentTime,
+                    Duration = newDuration
+                };
+
+                // Start the new command
+                var ufoTile = _visualState.GetTile(retarget.TileId);
+                if (ufoTile != null)
+                {
+                    ufoTile.UfoFlightProgress = 0f;
+                    ufoTile.UfoFlightDuration = newDuration;
+                }
+
+                MarkTilesAnimating(newCmd, true);
+                _activeCommands.Add(new ActiveCommand(newCmd, _currentTime));
+                break;
+            }
         }
     }
 

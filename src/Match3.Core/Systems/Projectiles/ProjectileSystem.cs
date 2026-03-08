@@ -35,7 +35,8 @@ public sealed class ProjectileSystem : IProjectileSystem
                 ProjectileId = projectile.Id,
                 Type = projectile.Type,
                 Origin = new System.Numerics.Vector2(projectile.OriginPosition.X, projectile.OriginPosition.Y),
-                TargetPosition = projectile.TargetGridPosition
+                TargetPosition = projectile.TargetGridPosition,
+                SourceTileId = projectile.SourceTileId
             });
         }
     }

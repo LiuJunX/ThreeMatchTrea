@@ -26,6 +26,9 @@ public sealed record ProjectileLaunchedEvent : GameEvent
     /// <summary>Target tile ID (if tracking a specific tile).</summary>
     public int? TargetTileId { get; init; }
 
+    /// <summary>Source tile ID that spawned this projectile (for visual linking).</summary>
+    public int? SourceTileId { get; init; }
+
     /// <inheritdoc />
     public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }
