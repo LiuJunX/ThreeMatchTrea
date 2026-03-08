@@ -4,6 +4,15 @@ using UnityEngine;
 namespace Match3.Unity.Views
 {
     /// <summary>
+    /// Interface for any object that contributes to the scene's dynamic brightness,
+    /// causing the main lights to dim.
+    /// </summary>
+    public interface IDynamicBrightnessSource
+    {
+        float CurrentIntensity { get; }
+    }
+
+    /// <summary>
     /// Manages all board lights (key/fill/rim/selection) and automatically
     /// dampens base light intensities when dynamic lights (selection, bombs, etc.) are active.
     /// </summary>
@@ -37,6 +46,7 @@ namespace Match3.Unity.Views
 
         private bool _baseInitialized;
         private readonly List<Light> _dynamicLights = new();
+        private readonly List<IDynamicBrightnessSource> _virtualSources = new();
 
         public Light SelectionLight => _selectionLight;
         public Light HintLight => _hintLight;
@@ -83,6 +93,17 @@ namespace Match3.Unity.Views
             _dynamicLights.Remove(light);
         }
 
+        public void RegisterVirtualSource(IDynamicBrightnessSource source)
+        {
+            if (source != null && !_virtualSources.Contains(source))
+                _virtualSources.Add(source);
+        }
+
+        public void UnregisterVirtualSource(IDynamicBrightnessSource source)
+        {
+            _virtualSources.Remove(source);
+        }
+
         private void Update()
         {
             float totalDynamic = 0f;
@@ -96,6 +117,17 @@ namespace Match3.Unity.Views
                 }
                 if (light.enabled)
                     totalDynamic += light.intensity;
+            }
+
+            for (int i = _virtualSources.Count - 1; i >= 0; i--)
+            {
+                var source = _virtualSources[i];
+                if (source == null)
+                {
+                    _virtualSources.RemoveAt(i);
+                    continue;
+                }
+                totalDynamic += source.CurrentIntensity;
             }
 
             // damping = minFloor + (1 - minFloor) / (1 + totalDynamic * sensitivity)

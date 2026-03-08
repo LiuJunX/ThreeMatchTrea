@@ -85,7 +85,9 @@ namespace Match3.Unity.Views
 
                 _tileContainer = new GameObject("TileContainer3D").transform;
                 _tileContainer.SetParent(transform, false);
-                _tileContainer.localRotation = Quaternion.Euler(-10f, 0f, 0f);
+                // Per-tile tilt is applied individually in Tile3DView (BaseTiltX),
+                // so the container stays axis-aligned for clean coordinates.
+
 
                 _projectileContainer = new GameObject("ProjectileContainer3D").transform;
                 _projectileContainer.SetParent(transform, false);
