@@ -13,6 +13,7 @@ using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
 using Match3.Core.Systems.Projectiles;
 using Match3.Core.Systems.Spawning;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
 
@@ -182,21 +183,6 @@ public class SimulationOrchestratorChainTests
             }
         }
         return state;
-    }
-
-    private class StubRandom : IRandom
-    {
-        public float NextFloat() => 0f;
-        public int Next(int max) => 0;
-        public int Next(int min, int max) => min;
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-    }
-
-    private class StubScoreSystem : IScoreSystem
-    {
-        public int CalculateMatchScore(Match3.Core.Models.Gameplay.MatchGroup match) => 0;
-        public int CalculateSpecialMoveScore(ElementType t1, ElementType t2) => 0;
     }
 
     private class StubEventCollector : IEventCollector

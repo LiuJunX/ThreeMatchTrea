@@ -2,7 +2,7 @@
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Physics;
-using Match3.Random;
+using Match3.Core.Tests.TestFixtures;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -24,15 +24,6 @@ public class SingleGapFallingTests
         _output = output;
     }
 
-    private class StubRandom : IRandom
-    {
-        public float NextFloat() => 0f;
-        public int Next(int max) => 0;
-        public int Next(int min, int max) => min;
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-    }
-
     /// <summary>
     /// Scenario: 1-cell gap
     /// D (row 0)
@@ -46,7 +37,7 @@ public class SingleGapFallingTests
     public void SingleGap_TopTileShouldStartAtHalfCell_NotFullCell()
     {
         // Arrange: 1 column, 3 rows
-        var state = new GameState(1, 3, 6, new StubRandom());
+        var state = new GameState(1, 3, 6, new StubRandom(0));
 
         state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));   // D (top)
         state.SetTile(0, 1, new Tile(2, ElementType.Item3, 0, 1));  // A (middle)
@@ -59,7 +50,7 @@ public class SingleGapFallingTests
             MaxFallSpeed = 5.0f,
             InitialFallSpeed = 2.0f
         };
-        var physics = new RealtimeGravitySystem(config, new StubRandom());
+        var physics = new RealtimeGravitySystem(config, new StubRandom(0));
 
         const float dt = 0.02f; // 50Hz
 
@@ -130,7 +121,7 @@ public class SingleGapFallingTests
     public void DoubleGap_TopTileStartsAtHalfCell()
     {
         // Arrange: 1 column, 4 rows
-        var state = new GameState(1, 4, 6, new StubRandom());
+        var state = new GameState(1, 4, 6, new StubRandom(0));
 
         state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));   // D (top)
         state.SetTile(0, 1, new Tile(2, ElementType.Item3, 0, 1));  // A (middle)
@@ -143,7 +134,7 @@ public class SingleGapFallingTests
             MaxFallSpeed = 5.0f,
             InitialFallSpeed = 2.0f
         };
-        var physics = new RealtimeGravitySystem(config, new StubRandom());
+        var physics = new RealtimeGravitySystem(config, new StubRandom(0));
 
         const float dt = 0.02f;
 
@@ -227,7 +218,7 @@ public class SingleGapFallingTests
     public void UserScenario_3x3_SingleRowEliminated()
     {
         // Arrange: 3 columns, 3 rows
-        var state = new GameState(3, 3, 6, new StubRandom());
+        var state = new GameState(3, 3, 6, new StubRandom(0));
 
         // Row 0: D E F
         state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));    // D
@@ -250,7 +241,7 @@ public class SingleGapFallingTests
             MaxFallSpeed = 5.0f,
             InitialFallSpeed = 2.0f
         };
-        var physics = new RealtimeGravitySystem(config, new StubRandom());
+        var physics = new RealtimeGravitySystem(config, new StubRandom(0));
 
         const float dt = 0.02f;
 
@@ -308,7 +299,7 @@ public class SingleGapFallingTests
     private float MeasureStartThreshold(int gapSize)
     {
         int height = 2 + gapSize; // D, A, + empty cells
-        var state = new GameState(1, height, 6, new StubRandom());
+        var state = new GameState(1, height, 6, new StubRandom(0));
 
         state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));   // D
         state.SetTile(0, 1, new Tile(2, ElementType.Item3, 0, 1));  // A
@@ -324,7 +315,7 @@ public class SingleGapFallingTests
             MaxFallSpeed = 5.0f,
             InitialFallSpeed = 2.0f
         };
-        var physics = new RealtimeGravitySystem(config, new StubRandom());
+        var physics = new RealtimeGravitySystem(config, new StubRandom(0));
 
         const float dt = 0.02f;
 

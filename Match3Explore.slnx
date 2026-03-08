@@ -7,7 +7,5 @@
     <Project Path="src/Match3.Random.Tests/Match3.Random.Tests.csproj" />
     <Project Path="src/Match3.Random/Match3.Random.csproj" />
     <Project Path="src/Match3.Core.Tests/Match3.Core.Tests.csproj" />
-    <Project Path="src/Match3.Web.Tests/Match3.Web.Tests.csproj" />
-    <Project Path="src/Match3.Web/Match3.Web.csproj" />
   </Folder>
 </Solution>

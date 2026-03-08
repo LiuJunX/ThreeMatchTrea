@@ -65,8 +65,8 @@ To ensure long-term maintainability and AI-collaboration efficiency, all new fea
 ## 7. Architecture Red Lines
 
 ### Layer Dependencies
-*   **No UI in Core**: `Match3.Core` must NEVER reference `Match3.Web` or `UnityEngine`.
-*   **Inner/Outer Rule**: Inner layers (Core/Editor) MUST NOT depend on outer layers (Web/Unity/UI/IO).
+*   **No UI in Core**: `Match3.Core` must NEVER reference `UnityEngine` or any UI framework.
+*   **Inner/Outer Rule**: Inner layers (Core/Editor) MUST NOT depend on outer layers (Unity/UI/IO).
 *   **Editor Restrictions**: `Match3.Editor` MUST NOT reference `System.IO`, `System.Console`, `Microsoft.AspNetCore`.
 
 ### State Management

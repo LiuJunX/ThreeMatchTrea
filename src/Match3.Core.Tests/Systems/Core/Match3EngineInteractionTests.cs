@@ -10,6 +10,7 @@ using Match3.Core.Systems.Input;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Selection;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Core.View;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
@@ -105,22 +106,6 @@ public class Match3EngineInteractionTests
         public void ShowMatches(IReadOnlyCollection<Position> matched) { }
         public void ShowGravity(IEnumerable<TileMove> moves) { }
         public void ShowRefill(IEnumerable<TileMove> moves) { }
-    }
-
-    private class StubLogger : IGameLogger
-    {
-        public void LogInfo(string message) { }
-        public void LogWarning(string message) { }
-        public void LogError(string message, Exception? ex = null) { }
-        public void LogInfo<T>(string message, T args) { }
-        public void LogInfo<T1, T2>(string message, T1 arg1, T2 arg2) { }
-        public void LogInfo<T1, T2, T3>(string message, T1 arg1, T2 arg2, T3 arg3) { }
-        public void LogWarning<T>(string message, T args) { }
-    }
-
-    private class StubRandom : IRandom
-    {
-        public int Next(int min, int max) => min;
     }
 
     private class StubMatchFinder : IMatchFinder

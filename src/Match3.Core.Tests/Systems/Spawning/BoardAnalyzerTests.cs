@@ -1,6 +1,7 @@
 ﻿using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Spawning;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
 
@@ -12,11 +13,6 @@ namespace Match3.Core.Tests.Systems.Spawning;
 /// </summary>
 public class BoardAnalyzerTests
 {
-    private class StubRandom : IRandom
-    {
-        public int Next(int min, int max) => min;
-    }
-
     private GameState CreateState(int width = 8, int height = 8)
     {
         var state = new GameState(width, height, 6, new StubRandom());

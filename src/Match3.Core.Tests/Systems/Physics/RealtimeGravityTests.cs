@@ -3,6 +3,7 @@ using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Physics;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
 
@@ -10,20 +11,12 @@ namespace Match3.Core.Tests.Systems.Physics;
 
 public class RealtimeGravityTests
 {
-    private class StubRandom : IRandom
-    {
-        public float NextFloat() => 0f;
-        public int Next(int max) => 0;
-        public int Next(int min, int max) => min;
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-    }
 
     [Fact]
     public void Update_ShouldMoveFloatingTileDown()
     {
         // Arrange
-        var state = new GameState(1, 10, 5, new StubRandom());
+        var state = new GameState(1, 10, 5, new StubRandom(0));
         // Clear board
         for(int y=0; y<10; y++) state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
@@ -31,7 +24,7 @@ public class RealtimeGravityTests
         var tile = new Tile(100, ElementType.Item1, 0, 0);
         state.SetTile(0, 0, tile);
 
-        var physics = new RealtimeGravitySystem(new Match3Config { GravitySpeed = 35.0f }, new StubRandom());
+        var physics = new RealtimeGravitySystem(new Match3Config { GravitySpeed = 35.0f }, new StubRandom(0));
 
         // Act
         // Simulate 0.05s (Reduced dt to prevent logical swap at high speed)
@@ -59,13 +52,13 @@ public class RealtimeGravityTests
     public void Update_ShouldStopAtFloor()
     {
         // Arrange
-        var state = new GameState(1, 2, 5, new StubRandom());
+        var state = new GameState(1, 2, 5, new StubRandom(0));
         // (0,0) = Red, (0,1) = None
         // Tile at (0,0) will fall to (0,1)
         state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
         state.SetTile(0, 1, new Tile(2, ElementType.None, 0, 1));
         
-        var physics = new RealtimeGravitySystem(new Match3Config { GravitySpeed = 35.0f }, new StubRandom());
+        var physics = new RealtimeGravitySystem(new Match3Config { GravitySpeed = 35.0f }, new StubRandom(0));
         
         // Act
         // Simulate enough time to fall 1 unit.
@@ -99,7 +92,7 @@ public class RealtimeGravityTests
         // (1,1) = Suspended/Obstacle
         // (0,1) = None (Target)
         // (2,1) = Obstacle
-        var state = new GameState(3, 3, 5, new StubRandom());
+        var state = new GameState(3, 3, 5, new StubRandom(0));
         
         // Setup Suspended Tile at (1,1) to force slide
         var obstacle = new Tile(9, ElementType.Item2, 1, 1);
@@ -118,7 +111,7 @@ public class RealtimeGravityTests
         // Block (0,2) so it stops at (0,1)
         state.SetTile(0, 2, new Tile(10, ElementType.Item2, 0, 2));
 
-        var physics = new RealtimeGravitySystem(new Match3Config { GravitySpeed = 35.0f }, new StubRandom());
+        var physics = new RealtimeGravitySystem(new Match3Config { GravitySpeed = 35.0f }, new StubRandom(0));
 
         // Act
         float dt = 0.016f;
@@ -140,13 +133,13 @@ public class RealtimeGravityTests
     public void Update_ShouldFallSmoothlyFromCellToCell()
     {
         // Arrange
-        var state = new GameState(1, 2, 5, new StubRandom());
+        var state = new GameState(1, 2, 5, new StubRandom(0));
         // (0,0) = Red, (0,1) = None
         state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
         state.SetTile(0, 1, new Tile(2, ElementType.None, 0, 1));
 
         var config = new Match3Config { GravitySpeed = 35.0f, MaxFallSpeed = 20.0f };
-        var physics = new RealtimeGravitySystem(config, new StubRandom());
+        var physics = new RealtimeGravitySystem(config, new StubRandom(0));
         
         float dt = 0.016f;
         float previousY = 0f;
@@ -214,8 +207,8 @@ public class RealtimeGravityTests
         var physics2 = new RealtimeGravitySystem(config, random2);
 
         // Create identical initial states with multiple tiles needing to fall
-        var state1 = CreateMultiColumnState(new StubRandom());
-        var state2 = CreateMultiColumnState(new StubRandom());
+        var state1 = CreateMultiColumnState(new StubRandom(0));
+        var state2 = CreateMultiColumnState(new StubRandom(0));
 
         // Act - Run both systems for multiple frames
         const float dt = 0.016f;
@@ -268,7 +261,7 @@ public class RealtimeGravityTests
     public void Update_CageCover_TileDoesNotFall()
     {
         // Arrange: Cage（静态 Cover）阻止棋子参与重力
-        var state = new GameState(1, 3, 5, new StubRandom());
+        var state = new GameState(1, 3, 5, new StubRandom(0));
         for (int y = 0; y < 3; y++)
             state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
@@ -276,7 +269,7 @@ public class RealtimeGravityTests
         state.SetCover(new Position(0, 0), new Cover(CoverType.Cage, 1));
 
         var physics = new RealtimeGravitySystem(
-            new Match3Config { GravitySpeed = 35.0f }, new StubRandom());
+            new Match3Config { GravitySpeed = 35.0f }, new StubRandom(0));
 
         // Act
         for (int i = 0; i < 30; i++)
@@ -292,7 +285,7 @@ public class RealtimeGravityTests
     public void Update_ChainCover_TileDoesNotFall()
     {
         // Arrange: Chain（静态 Cover）也阻止移动
-        var state = new GameState(1, 3, 5, new StubRandom());
+        var state = new GameState(1, 3, 5, new StubRandom(0));
         for (int y = 0; y < 3; y++)
             state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
@@ -300,7 +293,7 @@ public class RealtimeGravityTests
         state.SetCover(new Position(0, 0), new Cover(CoverType.Chain, 1));
 
         var physics = new RealtimeGravitySystem(
-            new Match3Config { GravitySpeed = 35.0f }, new StubRandom());
+            new Match3Config { GravitySpeed = 35.0f }, new StubRandom(0));
 
         // Act
         for (int i = 0; i < 30; i++)
@@ -316,7 +309,7 @@ public class RealtimeGravityTests
     public void Update_BubbleCover_TileFalls()
     {
         // Arrange: Bubble（动态 Cover）不阻止下落
-        var state = new GameState(1, 3, 5, new StubRandom());
+        var state = new GameState(1, 3, 5, new StubRandom(0));
         for (int y = 0; y < 3; y++)
             state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
@@ -324,7 +317,7 @@ public class RealtimeGravityTests
         state.SetCover(new Position(0, 0), new Cover(CoverType.Bubble, 1, true));
 
         var physics = new RealtimeGravitySystem(
-            new Match3Config { GravitySpeed = 35.0f }, new StubRandom());
+            new Match3Config { GravitySpeed = 35.0f }, new StubRandom(0));
 
         // Act
         for (int i = 0; i < 30; i++)
@@ -340,7 +333,7 @@ public class RealtimeGravityTests
     public void Update_CoverRemoved_TileStartsFalling()
     {
         // Arrange: Cage initially blocks, then removed → tile should fall
-        var state = new GameState(1, 3, 5, new StubRandom());
+        var state = new GameState(1, 3, 5, new StubRandom(0));
         for (int y = 0; y < 3; y++)
             state.SetTile(0, y, new Tile(y, ElementType.None, 0, y));
 
@@ -348,7 +341,7 @@ public class RealtimeGravityTests
         state.SetCover(new Position(0, 0), new Cover(CoverType.Cage, 1));
 
         var physics = new RealtimeGravitySystem(
-            new Match3Config { GravitySpeed = 35.0f }, new StubRandom());
+            new Match3Config { GravitySpeed = 35.0f }, new StubRandom(0));
 
         // Phase 1: with cover — tile shouldn't move
         for (int i = 0; i < 10; i++)

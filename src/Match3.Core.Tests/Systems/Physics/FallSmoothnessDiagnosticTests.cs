@@ -5,7 +5,7 @@ using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Physics;
-using Match3.Random;
+using Match3.Core.Tests.TestFixtures;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -17,15 +17,6 @@ namespace Match3.Core.Tests.Systems.Physics;
 public class FallSmoothnessDiagnosticTests
 {
     private readonly ITestOutputHelper _output;
-
-    private class StubRandom : IRandom
-    {
-        public float NextFloat() => 0f;
-        public int Next(int max) => 0;
-        public int Next(int min, int max) => min;
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-    }
 
     public FallSmoothnessDiagnosticTests(ITestOutputHelper output)
     {
@@ -40,7 +31,7 @@ public class FallSmoothnessDiagnosticTests
     public void Diagnostic_SingleTileFall_TrackPositionAndVelocity()
     {
         // Arrange: 1列6行的棋盘，顶部有一个方块，下面全空
-        var state = new GameState(1, 6, 5, new StubRandom());
+        var state = new GameState(1, 6, 5, new StubRandom(0));
 
         // 清空棋盘
         for (int y = 0; y < 6; y++)
@@ -59,7 +50,7 @@ public class FallSmoothnessDiagnosticTests
             GravitySpeed = 20.0f,
             MaxFallSpeed = 25.0f
         };
-        var physics = new RealtimeGravitySystem(config, new StubRandom());
+        var physics = new RealtimeGravitySystem(config, new StubRandom(0));
 
         float dt = 1.0f / 60.0f; // 60fps
 
@@ -209,7 +200,7 @@ public class FallSmoothnessDiagnosticTests
     [Fact]
     public void Diagnostic_CheckIntegrationOrder()
     {
-        var state = new GameState(1, 10, 5, new StubRandom());
+        var state = new GameState(1, 10, 5, new StubRandom(0));
 
         // 清空棋盘
         for (int y = 0; y < 10; y++)
@@ -226,7 +217,7 @@ public class FallSmoothnessDiagnosticTests
             GravitySpeed = 20.0f,
             MaxFallSpeed = 25.0f
         };
-        var physics = new RealtimeGravitySystem(config, new StubRandom());
+        var physics = new RealtimeGravitySystem(config, new StubRandom(0));
 
         float dt = 1.0f / 60.0f;
 
@@ -264,7 +255,7 @@ public class FallSmoothnessDiagnosticTests
     [Fact]
     public void Diagnostic_PositionDeltaSmoothness()
     {
-        var state = new GameState(1, 10, 5, new StubRandom());
+        var state = new GameState(1, 10, 5, new StubRandom(0));
 
         for (int y = 0; y < 10; y++)
         {
@@ -279,7 +270,7 @@ public class FallSmoothnessDiagnosticTests
             GravitySpeed = 20.0f,
             MaxFallSpeed = 25.0f
         };
-        var physics = new RealtimeGravitySystem(config, new StubRandom());
+        var physics = new RealtimeGravitySystem(config, new StubRandom(0));
 
         float dt = 1.0f / 60.0f;
 

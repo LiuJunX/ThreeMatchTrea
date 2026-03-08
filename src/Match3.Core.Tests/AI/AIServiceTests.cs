@@ -10,6 +10,7 @@ using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
 using Match3.Core.Systems.Spawning;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
 
@@ -17,33 +18,12 @@ namespace Match3.Core.Tests.AI;
 
 public class AIServiceTests
 {
-    private class StubRandom : IRandom
-    {
-        private int _counter = 0;
-        public float NextFloat() => 0f;
-        public int Next(int max) => _counter++ % Math.Max(1, max);
-        public int Next(int min, int max) => min + (_counter++ % Math.Max(1, max - min));
-        public void SetState(ulong state) { _counter = (int)state; }
-        public ulong GetState() => (ulong)_counter;
-    }
-
-    private class StubScoreSystem : IScoreSystem
-    {
-        public int CalculateMatchScore(MatchGroup match) => 10;
-        public int CalculateSpecialMoveScore(ElementType t1, ElementType t2) => 100;
-    }
-
-    private class StubSpawnModel : ISpawnModel
-    {
-        public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context) => ElementType.Item3;
-    }
-
     private AIService CreateAIService()
     {
         var random = new StubRandom();
         var config = new Match3Config();
         var physics = new RealtimeGravitySystem(config, random);
-        var spawnModel = new StubSpawnModel();
+        var spawnModel = new StubSpawnModel(ElementType.Item3);
         var refill = new RealtimeRefillSystem(spawnModel);
         var bombGenerator = new BombGenerator();
         var matchFinder = new ClassicMatchFinder(bombGenerator);

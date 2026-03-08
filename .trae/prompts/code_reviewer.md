@@ -27,7 +27,7 @@ These documents contain the authoritative rules for this project. Apply them str
 
 ### Step 2: Audit Code
 - Scan line-by-line against the source documents above.
-- Check for architecture red lines (Core -> Web/Unity is FORBIDDEN).
+- Check for architecture red lines (Core -> Unity/UI is FORBIDDEN).
 
 ### Step 3: Report
 - **Verdict**: Start with "APPROVE" or "REQUEST CHANGES".

@@ -11,6 +11,7 @@ using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
 using Match3.Core.Systems.Spawning;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
 
@@ -18,32 +19,12 @@ namespace Match3.Core.Tests.Simulation;
 
 public class SimulationPauseTests
 {
-    private class StubRandom : IRandom
-    {
-        public float NextFloat() => 0f;
-        public int Next(int max) => 0;
-        public int Next(int min, int max) => min;
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-    }
-
-    private class StubScoreSystem : IScoreSystem
-    {
-        public int CalculateMatchScore(MatchGroup match) => 10;
-        public int CalculateSpecialMoveScore(ElementType t1, ElementType t2) => 100;
-    }
-
-    private class StubSpawnModel : ISpawnModel
-    {
-        public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context) => ElementType.Item3;
-    }
-
     private SimulationEngine CreateEngine(GameState state)
     {
         var random = new StubRandom();
         var config = new Match3Config();
         var physics = new RealtimeGravitySystem(config, random);
-        var refill = new RealtimeRefillSystem(new StubSpawnModel());
+        var refill = new RealtimeRefillSystem(new StubSpawnModel(ElementType.Item3));
         var bombGenerator = new BombGenerator();
         var matchFinder = new ClassicMatchFinder(bombGenerator);
         var scoreSystem = new StubScoreSystem();

@@ -2,6 +2,7 @@
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
 
@@ -17,23 +18,6 @@ namespace Match3.Core.Tests.Systems.PowerUps;
 /// </summary>
 public class PowerUpHandlerTests
 {
-    private class StubRandom : IRandom
-    {
-        private int _counter = 0;
-
-        public float NextFloat() => 0f;
-        public int Next(int max) => _counter++ % max;
-        public int Next(int min, int max) => min + (_counter++ % (max - min));
-        public void SetState(ulong state) { _counter = (int)state; }
-        public ulong GetState() => (ulong)_counter;
-    }
-
-    private class StubScoreSystem : IScoreSystem
-    {
-        public int CalculateMatchScore(Match3.Core.Models.Gameplay.MatchGroup match) => 10;
-        public int CalculateSpecialMoveScore(ElementType t1, ElementType t2) => 100;
-    }
-
     private PowerUpHandler CreateHandler()
     {
         return new PowerUpHandler(new StubScoreSystem());

@@ -2,7 +2,7 @@
 # Cross-platform development commands
 # Usage: make <target>
 
-.PHONY: all build test run clean coverage help restore watch unity sync-unity
+.PHONY: all build test test-all clean coverage help restore unity sync-unity
 
 # Default target
 all: build test
@@ -27,16 +27,20 @@ build-release: restore
 #  Test Commands
 # ============================================
 
-## Run all tests
-test:
-	dotnet test
+## Run tests (excludes Performance and Slow)
+test: build
+	dotnet test --no-build --filter "Category!=Performance&Category!=Slow"
+
+## Run all tests (including performance and slow)
+test-all: build
+	dotnet test --no-build
 
 ## Run tests with verbose output
-test-verbose:
-	dotnet test --logger "console;verbosity=detailed"
+test-verbose: build
+	dotnet test --no-build --logger "console;verbosity=detailed" --filter "Category!=Performance&Category!=Slow"
 
 ## Run tests and generate coverage report
-coverage:
+coverage: build
 ifeq ($(OS),Windows_NT)
 	@call run-coverage.bat
 else
@@ -44,27 +48,8 @@ else
 endif
 
 ## Run tests with coverage (quick, no HTML report)
-coverage-quick:
+coverage-quick: build
 	dotnet test --collect:"XPlat Code Coverage" --results-directory:coverage-report
-
-# ============================================
-#  Run Commands
-# ============================================
-
-## Run the web project with hot reload
-run:
-ifeq ($(OS),Windows_NT)
-	@call run-web.bat
-else
-	@chmod +x run-web.sh && ./run-web.sh
-endif
-
-## Run web project in watch mode (alias)
-watch: run
-
-## Run web project without hot reload
-run-no-watch:
-	dotnet run --project src/Match3.Web/Match3.Web.csproj
 
 # ============================================
 #  Clean Commands
@@ -139,15 +124,11 @@ help:
 	@echo   make restore        - Restore NuGet packages
 	@echo.
 	@echo TEST:
-	@echo   make test           - Run all tests
+	@echo   make test           - Run tests (skip Performance/Slow)
+	@echo   make test-all       - Run all tests including perf/slow
 	@echo   make test-verbose   - Run tests with detailed output
 	@echo   make coverage       - Run tests and generate HTML coverage report
 	@echo   make coverage-quick - Run tests with coverage (no HTML)
-	@echo.
-	@echo RUN:
-	@echo   make run            - Start web project with hot reload
-	@echo   make watch          - Alias for 'make run'
-	@echo   make run-no-watch   - Run without hot reload
 	@echo.
 	@echo CLEAN:
 	@echo   make clean          - Clean build artifacts

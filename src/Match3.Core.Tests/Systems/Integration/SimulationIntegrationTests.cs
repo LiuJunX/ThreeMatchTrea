@@ -13,6 +13,7 @@ using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Projectiles;
 using Match3.Core.Systems.Scoring;
 using Match3.Core.Systems.Spawning;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
 using Xunit.Abstractions;
@@ -26,33 +27,6 @@ public class SimulationIntegrationTests
     public SimulationIntegrationTests(ITestOutputHelper output)
     {
         _output = output;
-    }
-
-    private class StubRandom : IRandom
-    {
-        private int _counter = 0;
-        public float NextFloat() => 0f;
-        public int Next(int max) => _counter++ % Math.Max(1, max);
-        public int Next(int min, int max) => min + (_counter++ % Math.Max(1, max - min));
-        public void SetState(ulong state) { _counter = (int)state; }
-        public ulong GetState() => (ulong)_counter;
-    }
-
-    private class StubScoreSystem : IScoreSystem
-    {
-        public int CalculateMatchScore(MatchGroup match) => 10;
-        public int CalculateSpecialMoveScore(ElementType t1, ElementType t2) => 100;
-    }
-
-    private class StubSpawnModel : ISpawnModel
-    {
-        private int _counter = 0;
-        private static readonly ElementType[] _types = { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4, ElementType.Item5 };
-
-        public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context)
-        {
-            return _types[(_counter++ + spawnX) % _types.Length];
-        }
     }
 
     #region Simulation + Projectile Integration

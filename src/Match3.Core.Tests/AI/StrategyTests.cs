@@ -2,6 +2,7 @@ using Match3.Core.AI;
 using Match3.Core.AI.Strategies;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
 
@@ -806,11 +807,3 @@ public class SyntheticPlayerStrategyTests
     }
 }
 
-/// <summary>
-/// Shared stub random for strategy tests - implements only the IRandom interface.
-/// </summary>
-internal class StubRandom : IRandom
-{
-    private int _counter = 0;
-    public int Next(int min, int max) => min + (_counter++ % Math.Max(1, max - min));
-}

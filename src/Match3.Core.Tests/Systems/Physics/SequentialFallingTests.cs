@@ -2,7 +2,7 @@
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Physics;
-using Match3.Random;
+using Match3.Core.Tests.TestFixtures;
 using Xunit;
 
 namespace Match3.Core.Tests.Systems.Physics;
@@ -13,14 +13,6 @@ namespace Match3.Core.Tests.Systems.Physics;
 /// </summary>
 public class SequentialFallingTests
 {
-    private class StubRandom : IRandom
-    {
-        public float NextFloat() => 0f;
-        public int Next(int max) => 0;
-        public int Next(int min, int max) => min;
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-    }
 
     /// <summary>
     /// Scenario: A-B-C vertical stack, C is eliminated.
@@ -34,7 +26,7 @@ public class SequentialFallingTests
         // y=1: B (Blue)
         // y=2: Empty (C was eliminated)
         // y=3: Floor (Green, static)
-        var state = new GameState(1, 4, 6, new StubRandom());
+        var state = new GameState(1, 4, 6, new StubRandom(0));
 
         state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));   // A
         state.SetTile(0, 1, new Tile(2, ElementType.Item3, 0, 1));  // B
@@ -42,7 +34,7 @@ public class SequentialFallingTests
         state.SetTile(0, 3, new Tile(3, ElementType.Item2, 0, 3)); // Floor
 
         var config = new Match3Config { GravitySpeed = 35.0f, MaxFallSpeed = 20.0f };
-        var physics = new RealtimeGravitySystem(config, new StubRandom());
+        var physics = new RealtimeGravitySystem(config, new StubRandom(0));
 
         // Act & Assert: Run physics frame by frame
         const float dt = 0.016f;
@@ -111,14 +103,14 @@ public class SequentialFallingTests
     public void SequentialFall_TopTileStaysStationaryWhileMiddleTileInTransit()
     {
         // Arrange
-        var state = new GameState(1, 3, 6, new StubRandom());
+        var state = new GameState(1, 3, 6, new StubRandom(0));
 
         state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));   // A at top
         state.SetTile(0, 1, new Tile(2, ElementType.Item3, 0, 1));  // B in middle
         state.SetTile(0, 2, new Tile(0, ElementType.None, 0, 2));  // Empty at bottom
 
         var config = new Match3Config { GravitySpeed = 10.0f, MaxFallSpeed = 5.0f }; // Slow fall
-        var physics = new RealtimeGravitySystem(config, new StubRandom());
+        var physics = new RealtimeGravitySystem(config, new StubRandom(0));
 
         // Act: Run a few frames (not enough for B to cross midpoint)
         const float dt = 0.016f;
@@ -152,14 +144,14 @@ public class SequentialFallingTests
         // y=0: A (Red)
         // y=1: B (Blue)
         // y=2: Empty
-        var state = new GameState(1, 3, 6, new StubRandom());
+        var state = new GameState(1, 3, 6, new StubRandom(0));
 
         state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
         state.SetTile(0, 1, new Tile(2, ElementType.Item3, 0, 1));
         state.SetTile(0, 2, new Tile(0, ElementType.None, 0, 2));
 
         var config = new Match3Config { GravitySpeed = 35.0f, MaxFallSpeed = 20.0f };
-        var physics = new RealtimeGravitySystem(config, new StubRandom());
+        var physics = new RealtimeGravitySystem(config, new StubRandom(0));
 
         // Act: Run until stable
         const float dt = 0.016f;
@@ -193,7 +185,7 @@ public class SequentialFallingTests
     {
         // Arrange: 1 column, 5 rows
         // y=0: A, y=1: B, y=2: C, y=3: Empty (D eliminated), y=4: Floor
-        var state = new GameState(1, 5, 6, new StubRandom());
+        var state = new GameState(1, 5, 6, new StubRandom(0));
 
         state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));    // A
         state.SetTile(0, 1, new Tile(2, ElementType.Item3, 0, 1));   // B
@@ -202,7 +194,7 @@ public class SequentialFallingTests
         state.SetTile(0, 4, new Tile(4, ElementType.Item4, 0, 4)); // Floor
 
         var config = new Match3Config { GravitySpeed = 35.0f, MaxFallSpeed = 20.0f };
-        var physics = new RealtimeGravitySystem(config, new StubRandom());
+        var physics = new RealtimeGravitySystem(config, new StubRandom(0));
 
         // Act: Run until stable
         const float dt = 0.016f;

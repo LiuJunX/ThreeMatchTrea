@@ -21,12 +21,11 @@ These documents contain the authoritative rules for this project.
 
 ## Project Structure
 - **Core**: `Match3.Core` (Pure logic, No UI/Unity/IO dependencies)
-- **Web**: `Match3.Web` (Blazor UI/Input)
+- **Presentation**: `Match3.Presentation` (Animation & visual state)
 - **Editor**: `Match3.Editor` (Cross-platform tools)
 - **Tests**: `Match3.Core.Tests` (xUnit verification)
 
 **Architecture Red Lines** (see `docs/01-architecture/core-patterns.md` §7):
-- Core -> Web: FORBIDDEN
 - Core -> Unity: FORBIDDEN
 - Editor -> Unity: FORBIDDEN
 

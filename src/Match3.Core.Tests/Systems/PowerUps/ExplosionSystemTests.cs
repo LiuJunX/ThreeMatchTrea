@@ -6,6 +6,7 @@ using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.PowerUps;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Core.Utility.Pools;
 using Xunit;
 
@@ -83,7 +84,7 @@ public class ExplosionSystemTests : IDisposable
         // Assert 1: Center destroyed
         var centerTile = state.GetTile(origin.X, origin.Y);
         Assert.Equal(ElementType.None, centerTile.Type);
-        Assert.Contains(_eventCollector.EmittedEvents, e => e is TileDestroyedEvent tde && tde.GridPosition.Equals(origin));
+        Assert.Contains(_eventCollector.Events, e => e is TileDestroyedEvent tde && tde.GridPosition.Equals(origin));
 
         // Act 2: Second Update (Wave 1)
         _sut.Update(ref state, deltaTime, tick + 1, simTime + 0.1f, _eventCollector, triggeredBombs);
@@ -178,30 +179,5 @@ public class ExplosionSystemTests : IDisposable
         return state;
     }
 
-    private class StubRandom : Match3.Random.IRandom
-    {
-        public float NextFloat() => 0f;
-        public int Next(int max) => 0;
-        public int Next(int min, int max) => min;
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-    }
-
-    private class StubEventCollector : IEventCollector
-    {
-        public List<GameEvent> EmittedEvents { get; } = new();
-
-        public bool IsEnabled => true;
-
-        public void Emit(GameEvent evt)
-        {
-            EmittedEvents.Add(evt);
-        }
-
-        public void EmitBatch(IEnumerable<GameEvent> events)
-        {
-            EmittedEvents.AddRange(events);
-        }
-    }
 }
 

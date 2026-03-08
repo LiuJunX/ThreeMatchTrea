@@ -7,6 +7,7 @@ using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
 
@@ -47,7 +48,7 @@ public class PowerUpHandlerExplosionTests
 
         handler.ActivateBomb(ref state, new Position(3, 3), 5, 2.5f, _events);
 
-        var bombEvent = _events.EmittedEvents.OfType<BombActivatedEvent>().SingleOrDefault();
+        var bombEvent = _events.Events.OfType<BombActivatedEvent>().SingleOrDefault();
         Assert.NotNull(bombEvent);
         Assert.Equal(ElementType.HorizontalRocket, bombEvent.BombType);
         Assert.Equal(new Position(3, 3), bombEvent.Position);
@@ -102,7 +103,7 @@ public class PowerUpHandlerExplosionTests
         handler.ActivateBomb(ref state, new Position(3, 3), 1, 1f, _events);
 
         Assert.Empty(explosion.CreatedExplosions);
-        Assert.Empty(_events.EmittedEvents);
+        Assert.Empty(_events.Events);
     }
 
     [Fact]
@@ -124,7 +125,7 @@ public class PowerUpHandlerExplosionTests
         // Note: nearby tiles may be suspended by ExplosionSystem.CreateTargetedExplosion
         Assert.Equal(ElementType.None, state.GetTile(4, 4).Type);
         // No TileDestroyedEvent should be emitted (that's ExplosionSystem's job)
-        Assert.DoesNotContain(_events.EmittedEvents, e => e is TileDestroyedEvent);
+        Assert.DoesNotContain(_events.Events, e => e is TileDestroyedEvent);
     }
 
     #region Helpers
@@ -153,29 +154,6 @@ public class PowerUpHandlerExplosionTests
             }
         }
         return state;
-    }
-
-    private class StubRandom : IRandom
-    {
-        public float NextFloat() => 0f;
-        public int Next(int max) => 0;
-        public int Next(int min, int max) => min;
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-    }
-
-    private class StubScoreSystem : IScoreSystem
-    {
-        public int CalculateMatchScore(Match3.Core.Models.Gameplay.MatchGroup match) => 10;
-        public int CalculateSpecialMoveScore(ElementType t1, ElementType t2) => 100;
-    }
-
-    private class StubEventCollector : IEventCollector
-    {
-        public List<GameEvent> EmittedEvents { get; } = new();
-        public bool IsEnabled => true;
-        public void Emit(GameEvent evt) => EmittedEvents.Add(evt);
-        public void EmitBatch(IEnumerable<GameEvent> events) => EmittedEvents.AddRange(events);
     }
 
     /// <summary>

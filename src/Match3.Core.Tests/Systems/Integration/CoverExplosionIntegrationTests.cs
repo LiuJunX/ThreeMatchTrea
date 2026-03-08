@@ -11,6 +11,7 @@ using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Core.Tests.TestHelpers;
 using Match3.Random;
 using Xunit;
@@ -30,23 +31,6 @@ namespace Match3.Core.Tests.Systems.Integration;
 public class CoverExplosionIntegrationTests
 {
     private readonly ITestOutputHelper _output;
-
-    private class StubRandom : IRandom
-    {
-        private int _counter = 0;
-
-        public float NextFloat() => 0f;
-        public int Next(int max) => _counter++ % max;
-        public int Next(int min, int max) => min + (_counter++ % (max - min));
-        public void SetState(ulong state) { _counter = (int)state; }
-        public ulong GetState() => (ulong)_counter;
-    }
-
-    private class StubScoreSystem : IScoreSystem
-    {
-        public int CalculateMatchScore(MatchGroup match) => match.Positions.Count * 10;
-        public int CalculateSpecialMoveScore(ElementType t1, ElementType t2) => 100;
-    }
 
     public CoverExplosionIntegrationTests(ITestOutputHelper output)
     {

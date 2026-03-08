@@ -3,21 +3,13 @@ using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.Spawning;
-using Match3.Random;
+using Match3.Core.Tests.TestFixtures;
 using Xunit;
 
 namespace Match3.Core.Tests.Systems.Physics;
 
 public class RealtimeRefillSystemTests
 {
-    private class StubRandom : IRandom
-    {
-        public float NextFloat() => 0f;
-        public int Next(int max) => 0;
-        public int Next(int min, int max) => min;
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-    }
 
     private class FixedSpawnModel : ISpawnModel
     {
@@ -54,7 +46,7 @@ public class RealtimeRefillSystemTests
     public void Update_ShouldSpawnTileWhenTopIsEmpty()
     {
         // Arrange
-        var state = new GameState(3, 3, 5, new StubRandom());
+        var state = new GameState(3, 3, 5, new StubRandom(0));
         ClearBoard(ref state);
 
         var spawnModel = new FixedSpawnModel { TypeToSpawn = ElementType.Item1 };
@@ -76,7 +68,7 @@ public class RealtimeRefillSystemTests
     public void Update_ShouldNotSpawnWhenTopIsOccupied()
     {
         // Arrange
-        var state = new GameState(3, 3, 5, new StubRandom());
+        var state = new GameState(3, 3, 5, new StubRandom(0));
         ClearBoard(ref state);
 
         // Place existing tiles at top row
@@ -102,7 +94,7 @@ public class RealtimeRefillSystemTests
     public void Update_ShouldSpawnOnlyInEmptyColumns()
     {
         // Arrange
-        var state = new GameState(3, 3, 5, new StubRandom());
+        var state = new GameState(3, 3, 5, new StubRandom(0));
         ClearBoard(ref state);
 
         // Occupy column 1 only
@@ -128,7 +120,7 @@ public class RealtimeRefillSystemTests
     public void Update_SpawnedTile_ShouldHaveCorrectInitialPosition()
     {
         // Arrange
-        var state = new GameState(3, 3, 5, new StubRandom());
+        var state = new GameState(3, 3, 5, new StubRandom(0));
         ClearBoard(ref state);
 
         var spawnModel = new FixedSpawnModel { TypeToSpawn = ElementType.Item3 };
@@ -150,7 +142,7 @@ public class RealtimeRefillSystemTests
     public void Update_SpawnedTile_ShouldHaveDownwardVelocity()
     {
         // Arrange
-        var state = new GameState(3, 3, 5, new StubRandom());
+        var state = new GameState(3, 3, 5, new StubRandom(0));
         ClearBoard(ref state);
 
         var spawnModel = new FixedSpawnModel { TypeToSpawn = ElementType.Item3 };
@@ -171,7 +163,7 @@ public class RealtimeRefillSystemTests
     public void Update_SpawnedTile_ShouldSpawnAtFixedPosition()
     {
         // Arrange
-        var state = new GameState(1, 3, 5, new StubRandom());
+        var state = new GameState(1, 3, 5, new StubRandom(0));
         ClearBoard(ref state);
 
         // Place a falling tile at (0, 1) with position partially through the cell
@@ -204,7 +196,7 @@ public class RealtimeRefillSystemTests
     public void Update_ShouldAssignUniqueIds()
     {
         // Arrange
-        var state = new GameState(3, 3, 5, new StubRandom());
+        var state = new GameState(3, 3, 5, new StubRandom(0));
         ClearBoard(ref state);
         state.NextTileId = 100;
 
@@ -230,7 +222,7 @@ public class RealtimeRefillSystemTests
     public void Update_MultipleUpdates_ShouldContinueUniqueIds()
     {
         // Arrange
-        var state = new GameState(1, 2, 5, new StubRandom());
+        var state = new GameState(1, 2, 5, new StubRandom(0));
         ClearBoard(ref state);
         state.NextTileId = 1;
 
@@ -262,7 +254,7 @@ public class RealtimeRefillSystemTests
         SpawnContext? capturedContext = null;
         var capturingModel = new CapturingSpawnModel(ctx => capturedContext = ctx);
 
-        var state = new GameState(1, 3, 5, new StubRandom())
+        var state = new GameState(1, 3, 5, new StubRandom(0))
         {
             TargetDifficulty = 0.7f,
             MoveLimit = 20,
@@ -288,7 +280,7 @@ public class RealtimeRefillSystemTests
         SpawnContext? capturedContext = null;
         var capturingModel = new CapturingSpawnModel(ctx => capturedContext = ctx);
 
-        var state = new GameState(1, 3, 5, new StubRandom())
+        var state = new GameState(1, 3, 5, new StubRandom(0))
         {
             MoveLimit = 10,
             MoveCount = 15 // Exceeded limit
@@ -332,7 +324,7 @@ public class RealtimeRefillSystemTests
         //     X        ← row 0: only column 1 has a cell
         //   X X X      ← row 1
         //   X X X      ← row 2
-        var state = new GameState(3, 3, 5, new StubRandom());
+        var state = new GameState(3, 3, 5, new StubRandom(0));
         ClearBoard(ref state);
 
         // Mark column 0 and 2, row 0 as holes
@@ -365,7 +357,7 @@ public class RealtimeRefillSystemTests
     public void Update_AllHolesColumn_ShouldSkip()
     {
         // Arrange: column 0 is entirely holes
-        var state = new GameState(2, 3, 5, new StubRandom());
+        var state = new GameState(2, 3, 5, new StubRandom(0));
         ClearBoard(ref state);
 
         for (int y = 0; y < 3; y++)
@@ -393,7 +385,7 @@ public class RealtimeRefillSystemTests
     public void Update_EmptyBoard_ShouldFillTopRow()
     {
         // Arrange
-        var state = new GameState(5, 5, 5, new StubRandom());
+        var state = new GameState(5, 5, 5, new StubRandom(0));
         ClearBoard(ref state);
 
         var types = new[] { ElementType.Item1, ElementType.Item2, ElementType.Item3, ElementType.Item4, ElementType.Item5 };
@@ -414,7 +406,7 @@ public class RealtimeRefillSystemTests
     public void Update_SingleColumnBoard_ShouldWork()
     {
         // Arrange
-        var state = new GameState(1, 5, 5, new StubRandom());
+        var state = new GameState(1, 5, 5, new StubRandom(0));
         ClearBoard(ref state);
 
         var spawnModel = new FixedSpawnModel { TypeToSpawn = ElementType.Item1 };
@@ -431,7 +423,7 @@ public class RealtimeRefillSystemTests
     public void Update_WideBoard_ShouldFillAllColumns()
     {
         // Arrange
-        var state = new GameState(10, 3, 5, new StubRandom());
+        var state = new GameState(10, 3, 5, new StubRandom(0));
         ClearBoard(ref state);
 
         var spawnModel = new FixedSpawnModel { TypeToSpawn = ElementType.Item3 };

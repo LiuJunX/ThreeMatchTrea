@@ -6,7 +6,6 @@ description: |
   触发词：运行测试、跑测试、测试一下、test
   范围词：
   - 核心/core → Core + Random + Pool 测试
-  - web → Web 测试
   - unity → Unity Editor 测试
   - 全量/所有/全部 → 所有测试
 
@@ -22,7 +21,6 @@ allowed-tools: Read, Bash(dotnet test:*), Bash(echo:*), Write
 |--------|------|------|
 | 核心/core | Core | Match3.Core.Tests, Match3.Random.Tests, Match3.Core.PoolTests |
 | 表现层/presentation | Presentation | Match3.Presentation.Tests |
-| web | Web | Match3.Web.Tests |
 | editor/编辑器 | Editor | Match3.Editor.Tests |
 | unity | Unity | Unity Editor Tests (触发器模式) |
 | 全量/所有/all | 全部 | 以上所有 |
@@ -41,9 +39,6 @@ dotnet test src/Match3.Core.Tests src/Match3.Random.Tests src/Match3.Core.PoolTe
 
 # Presentation 测试
 dotnet test src/Match3.Presentation.Tests --nologo --verbosity minimal
-
-# Web 测试
-dotnet test src/Match3.Web.Tests --nologo --verbosity minimal
 
 # Editor 测试
 dotnet test src/Match3.Editor.Tests --nologo --verbosity minimal

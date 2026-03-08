@@ -1,13 +1,12 @@
 # Match3Explore
 
-AI-Assisted Match-3 Game Engine (C# Core / Multi-Platform UI)
+AI-Assisted Match-3 Game Engine (C# Core / Unity)
 
 ## Key Features
 
 - **Event-Sourced Simulation**: Tick-based engine with deterministic replay support
 - **AI Difficulty Analysis**: Win rate, deadlock detection, and multi-tier player simulation
 - **Deep Analysis**: 7 advanced metrics including flow curve, skill sensitivity, and P95 clear attempts
-- **AI Level Editor**: Natural language level creation and modification via LLM integration
 - **Slot-Based Grid**: 5-layer architecture (Topology, Ground, Unit, Cover, Aux)
 - **Cross-Platform Core**: Pure C# logic with zero UI dependencies
 
@@ -22,21 +21,6 @@ AI-Assisted Match-3 Game Engine (C# Core / Multi-Platform UI)
 dotnet test
 ```
 
-### Hot Reload Development
-
-**Windows:**
-```cmd
-.\run-web.bat
-```
-
-**Mac/Linux:**
-```bash
-chmod +x run-web.sh   # first time only
-./run-web.sh
-```
-
-Visit http://localhost:5015
-
 ## Project Structure
 
 ```
@@ -45,7 +29,6 @@ src/
 ├── Match3.Presentation   # Animation & visual state management
 ├── Match3.Random         # Unified RNG (SeedManager, RandomDomain)
 ├── Match3.Editor         # Cross-platform level editor logic
-├── Match3.Web            # Blazor WebAssembly UI
 ├── Match3.ConfigTool     # Configuration generator
 └── Match3.*.Tests        # Test projects
 
@@ -91,12 +74,10 @@ All documentation lives in `/docs` (Docs-as-Code).
 | Document | Description |
 |----------|-------------|
 | [Coding Standards](docs/02-guides/coding-standards.md) | Naming conventions, style guide |
-| [LLM Configuration](docs/02-guides/llm-configuration.md) | AI chat service setup |
 
 ### Features
 | Document | Description |
 |----------|-------------|
-| [AI Level Editor](docs/03-design/features/ai-level-editor.md) | Natural language level editing |
 | [Replay System](docs/03-design/features/replay-system.md) | Deterministic game recording |
 | [Matching System](docs/03-design/features/matching-system.md) | Match detection and bomb generation |
 

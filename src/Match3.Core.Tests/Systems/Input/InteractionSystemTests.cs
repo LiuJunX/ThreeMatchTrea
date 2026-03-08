@@ -3,6 +3,7 @@ using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Input;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Core.Utility;
 using Match3.Random;
 using Xunit;
@@ -19,26 +20,6 @@ namespace Match3.Core.Tests.Systems.Input;
 /// </summary>
 public class InteractionSystemTests
 {
-    private class StubRandom : IRandom
-    {
-        public float NextFloat() => 0f;
-        public int Next(int max) => 0;
-        public int Next(int min, int max) => min;
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-    }
-
-    private class StubLogger : IGameLogger
-    {
-        public void LogInfo(string message) { }
-        public void LogWarning(string message) { }
-        public void LogError(string message, Exception? ex = null) { }
-        public void LogInfo<T>(string message, T args) { }
-        public void LogInfo<T1, T2>(string message, T1 arg1, T2 arg2) { }
-        public void LogInfo<T1, T2, T3>(string message, T1 arg1, T2 arg2, T3 arg3) { }
-        public void LogWarning<T>(string message, T args) { }
-    }
-
     private InteractionSystem CreateInteractionSystem()
     {
         return new InteractionSystem(new StubLogger());

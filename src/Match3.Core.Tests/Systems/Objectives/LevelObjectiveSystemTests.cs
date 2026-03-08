@@ -4,6 +4,7 @@ using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Objectives;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
 
@@ -20,15 +21,6 @@ namespace Match3.Core.Tests.Systems.Objectives;
 /// </summary>
 public class LevelObjectiveSystemTests
 {
-    private class StubRandom : IRandom
-    {
-        public float NextFloat() => 0f;
-        public int Next(int max) => 0;
-        public int Next(int min, int max) => min;
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-    }
-
     private readonly LevelObjectiveSystem _system = new();
 
     private GameState CreateState(int width = 8, int height = 8)

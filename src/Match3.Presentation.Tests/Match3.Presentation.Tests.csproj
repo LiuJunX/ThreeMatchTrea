@@ -19,6 +19,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Match3.Presentation\Match3.Presentation.csproj" />
     <ProjectReference Include="..\Match3.Core\Match3.Core.csproj" />
     <ProjectReference Include="..\Match3.Random\Match3.Random.csproj" />

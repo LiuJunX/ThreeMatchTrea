@@ -18,7 +18,6 @@ alwaysApply: true
   - `AI/` - AI 服务与难度分析
 - `Match3.Presentation` - 表现层（动画、视觉状态、事件解释器）
 - `Match3.Random` - 统一随机入口（IRandom、SeedManager、RandomDomain）
-- `Match3.Web` - Blazor 应用与视图层（IGameView、输入意图）
 - `Match3.Editor` - 跨平台编辑器逻辑（无 UI 框架依赖）
 - `Match3.ConfigTool` - 配置工具
 - `Match3.*.Tests` - 各模块对应的测试项目
@@ -69,7 +68,7 @@ alwaysApply: true
 - **PROHIBITED**: `$"..."` interpolation in hot paths → Use template logging
 - **PROHIBITED**: `Console.WriteLine` → Use `IGameLogger`
 - **PROHIBITED**: `System.Random` → Use `Match3.Random`
-- **PROHIBITED**: `Match3.Core` referencing `Match3.Web`
+- **PROHIBITED**: `Match3.Core` referencing outer layers (Unity/UI/IO)
 - **PROHIBITED**: State in Logic classes → State belongs in Structs
 - **PROHIBITED**: Creating events without checking `IsEnabled` → Always check `events.IsEnabled` first
 - **PROHIBITED**: Presentation logic in Core → Use EventInterpreter in Match3.Presentation

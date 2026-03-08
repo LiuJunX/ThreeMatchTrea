@@ -6,6 +6,7 @@ using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.PowerUps;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
 
@@ -150,21 +151,5 @@ public class ExplosionSystemTargetedTests : IDisposable
         return state;
     }
 
-    private class StubRandom : IRandom
-    {
-        public float NextFloat() => 0f;
-        public int Next(int max) => 0;
-        public int Next(int min, int max) => min;
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-    }
-
-    private class StubEventCollector : IEventCollector
-    {
-        public List<GameEvent> EmittedEvents { get; } = new();
-        public bool IsEnabled => true;
-        public void Emit(GameEvent evt) => EmittedEvents.Add(evt);
-        public void EmitBatch(IEnumerable<GameEvent> events) => EmittedEvents.AddRange(events);
-    }
 }
 

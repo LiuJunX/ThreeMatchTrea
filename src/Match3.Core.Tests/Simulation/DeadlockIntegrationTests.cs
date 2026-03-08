@@ -10,6 +10,7 @@ using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
 using Match3.Core.Systems.Spawning;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
 
@@ -24,45 +25,12 @@ namespace Match3.Core.Tests.Simulation;
 /// </summary>
 public class DeadlockIntegrationTests
 {
-    private class StubRandom : IRandom
-    {
-        private int _callCount = 0;
-
-        public float NextFloat() => 0f;
-
-        public int Next(int max)
-        {
-            _callCount++;
-            return _callCount % max;
-        }
-
-        public int Next(int min, int max)
-        {
-            _callCount++;
-            return min + (_callCount % (max - min));
-        }
-
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-    }
-
-    private class StubScoreSystem : IScoreSystem
-    {
-        public int CalculateMatchScore(Core.Models.Gameplay.MatchGroup match) => 10;
-        public int CalculateSpecialMoveScore(ElementType t1, ElementType t2) => 100;
-    }
-
-    private class StubSpawnModel : ISpawnModel
-    {
-        public ElementType Predict(ref GameState state, int spawnX, in Core.Systems.Spawning.SpawnContext context) => ElementType.Item3;
-    }
-
     private SimulationEngine CreateEngine(GameState state, IEventCollector? eventCollector = null, SimulationConfig? config = null)
     {
         var random = new StubRandom();
         var match3Config = new Match3Config();
         var physics = new RealtimeGravitySystem(match3Config, random);
-        var refill = new RealtimeRefillSystem(new StubSpawnModel());
+        var refill = new RealtimeRefillSystem(new StubSpawnModel(ElementType.Item3));
         var bombGenerator = new BombGenerator();
         var matchFinder = new ClassicMatchFinder(bombGenerator);
         var scoreSystem = new StubScoreSystem();

@@ -8,6 +8,7 @@ using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.Objectives;
 using Match3.Core.Systems.PowerUps;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
 
@@ -19,15 +20,6 @@ namespace Match3.Core.Tests.Systems.PowerUps;
 /// </summary>
 public class ExplosionSystemObjectiveTests
 {
-    private class StubRandom : IRandom
-    {
-        public float NextFloat() => 0f;
-        public int Next(int max) => 0;
-        public int Next(int min, int max) => min;
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-    }
-
     private GameState CreateGameState(int width, int height)
     {
         var state = new GameState(width, height, 6, new StubRandom());

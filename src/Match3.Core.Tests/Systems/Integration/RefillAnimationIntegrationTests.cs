@@ -5,6 +5,7 @@ using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Core;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.Spawning;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Core.Tests.TestHelpers;
 using Match3.Random;
 using Xunit;
@@ -24,17 +25,6 @@ namespace Match3.Core.Tests.Systems.Integration;
 public class RefillAnimationIntegrationTests
 {
     private readonly ITestOutputHelper _output;
-
-    private class StubRandom : IRandom
-    {
-        private int _counter = 0;
-
-        public float NextFloat() => 0f;
-        public int Next(int max) => _counter++ % max;
-        public int Next(int min, int max) => min + (_counter++ % (max - min));
-        public void SetState(ulong state) { _counter = (int)state; }
-        public ulong GetState() => (ulong)_counter;
-    }
 
     /// <summary>
     /// 简单的 SpawnModel，按固定颜色顺序生成方块
