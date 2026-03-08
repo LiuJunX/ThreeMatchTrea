@@ -39,7 +39,7 @@ public sealed class ChoreographyConfig
     public float RocketTrailInterval { get; set; } = 0.015f;
 
     /// <summary>Flight speed for color bomb beam projectiles (grid units per second).</summary>
-    public float ColorBombBeamSpeed { get; set; } = 12f;
+    public float ColorBombBeamSpeed { get; set; } = 24f;
 
     /// <summary>Duration of color bomb charge-up phase (spin + hop before beams launch).</summary>
     public float ColorBombChargeDuration { get; set; } = 0.25f;

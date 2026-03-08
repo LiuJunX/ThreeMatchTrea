@@ -163,6 +163,8 @@ public class PowerUpHandler : IPowerUpHandler
                     bool isRocket = t.Type == ElementType.HorizontalRocket || t.Type == ElementType.VerticalRocket;
                     if (isRocket)
                         _explosionSystem.CreateTargetedExplosion(ref state, p, affected, 0.04f, 0.8f);
+                    else if (t.Type.IsAreaBomb())
+                        _explosionSystem.CreateTargetedExplosion(ref state, p, affected, 0.05f, 0.85f);
                     else
                         _explosionSystem.CreateTargetedExplosion(ref state, p, affected);
                 }

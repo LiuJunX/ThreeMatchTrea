@@ -59,7 +59,7 @@ public sealed class Choreographer : IEventVisitor
     // Persists across Choreograph() batches because launch/retarget/impact may span ticks.
     private readonly Dictionary<int, UfoFlightInfo> _activeUfoFlights = new();
 
-    private record struct UfoFlightInfo(int TileId, float LaunchTime, float Duration, Vector2 Origin, Vector2 Target);
+    private record struct UfoFlightInfo(int TileId, float LaunchTime, float Duration, Vector2 Origin, Vector2 Target, float StayFraction);
 
     private record struct MoveRecord(float StartTime, float EndTime, int TargetRow, Vector2 From, Vector2 To);
 
@@ -308,8 +308,9 @@ public sealed class Choreographer : IEventVisitor
     {
         LastBatchHadMatch = true;
 
-        // Small pause after beam impact before tile starts dissolving
-        const float hitPause = 0.15f;
+        // Pause after beam impact before tile starts dissolving —
+        // gives the player time to read the beam pattern before targets explode.
+        const float hitPause = 0.5f;
         float destroyStart = beamHitTime + hitPause;
 
         // Hold tile in place until destroy starts — keeps IsBeingAnimated=true
@@ -552,14 +553,17 @@ public sealed class Choreographer : IEventVisitor
         float startTime = GetStartTime(evt);
         var origin = new Vector2(evt.Position.X, evt.Position.Y);
 
-        // Common flash at origin
-        _commands.Add(new ShowEffectCommand
+        // Common flash at origin (skip for UFO — it flies away, flash looks wrong)
+        if (evt.BombType != ElementType.Ufo)
         {
-            EffectType = "bomb_flash",
-            Position = origin,
-            StartTime = startTime,
-            Duration = 0.15f
-        });
+            _commands.Add(new ShowEffectCommand
+            {
+                EffectType = "bomb_flash",
+                Position = origin,
+                StartTime = startTime,
+                Duration = 0.15f
+            });
+        }
 
         switch (evt.BombType)
         {
@@ -583,14 +587,14 @@ public sealed class Choreographer : IEventVisitor
                     EffectType = "bomb_shockwave",
                     Position = origin,
                     StartTime = startTime,
-                    Duration = 0.5f
+                    Duration = 0.3f
                 });
                 _commands.Add(new ShowEffectCommand
                 {
                     EffectType = "bomb_explosion",
                     Position = origin,
                     StartTime = startTime,
-                    Duration = 0.4f
+                    Duration = 0.25f
                 });
                 break;
         }
@@ -879,13 +883,13 @@ public sealed class Choreographer : IEventVisitor
                 Position = targetPos,
                 EffectType = "color_bomb_hit",
                 StartTime = arrivalTime,
-                Duration = 0.15f
+                Duration = 0.5f
             });
 
             _commands.Add(new RemoveProjectileCommand
             {
                 ProjectileId = beamId,
-                StartTime = arrivalTime + 0.15f,
+                StartTime = arrivalTime + 0.5f,
                 Duration = 0
             });
 
@@ -894,7 +898,7 @@ public sealed class Choreographer : IEventVisitor
                 EffectType = "color_bomb_hit",
                 Position = targetPos,
                 StartTime = arrivalTime,
-                Duration = 0.3f
+                Duration = 0.5f
             });
         }
 
@@ -1099,7 +1103,18 @@ public sealed class Choreographer : IEventVisitor
                 ? new Vector2(evt.TargetPosition.Value.X, evt.TargetPosition.Value.Y)
                 : evt.Origin;
 
+            // Overshoot along flight direction: the UFO's propeller sits on top and
+            // the bomb body hangs below, so the propeller must fly slightly past the
+            // target for the bomb body to align with the target cell center.
             float distance = Vector2.Distance(evt.Origin, targetPos);
+            if (distance > 0)
+            {
+                var dir = (targetPos - evt.Origin) / distance;
+                targetPos += dir * 0.3f;
+            }
+            // Additional screen-up nudge (grid Y is inverted) to fine-tune
+            // the bomb body's vertical alignment with the target cell.
+            targetPos.Y -= 0.40f;
             float flightTime = distance > 0 ? distance / Config.UfoFlightSpeed : 0.01f;
             float totalDuration = Config.UfoLaunchOverhead + flightTime;
 
@@ -1115,7 +1130,7 @@ public sealed class Choreographer : IEventVisitor
 
             // Track active flight for retarget/impact handling
             _activeUfoFlights[evt.ProjectileId] = new UfoFlightInfo(
-                tileId, startTime, totalDuration, evt.Origin, targetPos);
+                tileId, startTime, totalDuration, evt.Origin, targetPos, 0.35f);
 
             return;
         }
@@ -1162,10 +1177,32 @@ public sealed class Choreographer : IEventVisitor
         float startTime = GetStartTime(evt);
         var newTargetVec = new Vector2(evt.NewTarget.X, evt.NewTarget.Y);
 
-        // Estimate current position based on elapsed progress
+        // Estimate current position using smoothstep + stayFraction to match Player's easing.
+        // Without this, the Choreographer's linear estimate diverges from the Player's actual
+        // visual position, causing flightEndTime to be too early and the tile to be removed
+        // before the Player's animation reaches the target.
         float elapsed = startTime - flight.LaunchTime;
-        float progress = flight.Duration > 0 ? Math.Clamp(elapsed / flight.Duration, 0f, 1f) : 0f;
-        var currentPos = Vector2.Lerp(flight.Origin, flight.Target, progress);
+        float t = flight.Duration > 0 ? Math.Clamp(elapsed / flight.Duration, 0f, 1f) : 0f;
+        float stayFrac = flight.StayFraction;
+        const float arriveFrac = 0.97f;
+        float moveT;
+        if (t <= stayFrac)
+            moveT = 0f;
+        else if (t >= arriveFrac)
+            moveT = 1f;
+        else
+            moveT = (t - stayFrac) / (arriveFrac - stayFrac);
+        float eased = moveT * moveT * (3f - 2f * moveT);
+        var currentPos = Vector2.Lerp(flight.Origin, flight.Target, eased);
+
+        // Overshoot along flight direction (same as initial launch)
+        float retargetDist = Vector2.Distance(currentPos, newTargetVec);
+        if (retargetDist > 0)
+        {
+            var dir = (newTargetVec - currentPos) / retargetDist;
+            newTargetVec += dir * 0.3f;
+        }
+        newTargetVec.Y -= 0.40f;
 
         // New flight segment duration based on distance to new target
         float newDistance = Vector2.Distance(currentPos, newTargetVec);
@@ -1180,9 +1217,9 @@ public sealed class Choreographer : IEventVisitor
             Duration = 0 // Instant command
         });
 
-        // Update tracked flight info
+        // Update tracked flight info (StayFraction=0 for retarget segments)
         _activeUfoFlights[evt.ProjectileId] = new UfoFlightInfo(
-            flight.TileId, startTime, newDuration, currentPos, newTargetVec);
+            flight.TileId, startTime, newDuration, currentPos, newTargetVec, 0f);
     }
 
     /// <inheritdoc />
@@ -1201,6 +1238,10 @@ public sealed class Choreographer : IEventVisitor
             // perfectly align with the UfoLaunchCommand's EndTime.
             float flightEndTime = flight.LaunchTime + flight.Duration;
             float removeTime = Math.Max(startTime, flightEndTime);
+
+            Console.WriteLine($"[UFO] Impact: tileId={flight.TileId} target={position} " +
+                $"flightEnd={flightEndTime:F3} impactStart={startTime:F3} removeTime={removeTime:F3} " +
+                $"flightOrigin={flight.Origin} flightTarget={flight.Target} flightDur={flight.Duration:F3}");
 
             // Impact effect at target
             _commands.Add(new ShowEffectCommand
