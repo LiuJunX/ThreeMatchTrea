@@ -40,17 +40,14 @@ namespace Match3.Unity.Views
             _trail.sortingOrder = 39;
         }
 
-        public void Setup(int id, ProjectileType type)
+        public void Setup(int id, ProjectileType type, byte colorIndex = 0)
         {
             ProjectileId = id;
-            if (_currentType != type)
-            {
-                _currentType = type;
-                if (type == ProjectileType.ColorBombBeam)
-                    ApplyBeamAppearance();
-                else
-                    ApplyUfoAppearance();
-            }
+            _currentType = type;
+            if (type == ProjectileType.ColorBombBeam)
+                ApplyBeamAppearance(colorIndex);
+            else
+                ApplyUfoAppearance();
         }
 
         private void ApplyUfoAppearance()
@@ -67,17 +64,32 @@ namespace Match3.Unity.Views
             _trail.endColor = new Color(0.5f, 1f, 0.5f, 0f);
         }
 
-        private void ApplyBeamAppearance()
+        private void ApplyBeamAppearance(byte colorIndex)
         {
-            _renderer.sprite = SpriteFactory.GetColorSprite(new Color(1f, 1f, 0.6f));
-            _renderer.color = new Color(1f, 1f, 0.6f);
-            transform.localScale = Vector3.one * 0.2f;
+            var color = GetBeamColor(colorIndex);
+            _renderer.sprite = SpriteFactory.GetColorSprite(color);
+            _renderer.color = color;
+            transform.localScale = Vector3.one * 0.3f;
 
-            _trail.startWidth = 0.15f;
-            _trail.endWidth = 0f;
-            _trail.time = 0.15f;
-            _trail.startColor = new Color(1f, 1f, 0.7f, 0.9f);
-            _trail.endColor = new Color(1f, 0.8f, 0.3f, 0f);
+            _trail.startWidth = 0.35f;
+            _trail.endWidth = 0.05f;
+            _trail.time = 0.5f;
+            _trail.startColor = new Color(color.r, color.g, color.b, 1f);
+            _trail.endColor = new Color(color.r, color.g, color.b, 0f);
+        }
+
+        private static Color GetBeamColor(byte index)
+        {
+            return index switch
+            {
+                0 => new Color(1f, 0.3f, 0.3f),    // Red
+                1 => new Color(0.3f, 1f, 0.4f),     // Green
+                2 => new Color(0.3f, 0.5f, 1f),     // Blue
+                3 => new Color(1f, 0.95f, 0.3f),    // Yellow
+                4 => new Color(0.8f, 0.4f, 1f),     // Purple
+                5 => new Color(1f, 0.6f, 0.2f),     // Orange
+                _ => new Color(1f, 1f, 0.6f)
+            };
         }
 
         public void UpdateFromVisual(ProjectileVisual visual, float cellSize, Vector2 origin, int height)
@@ -86,6 +98,13 @@ namespace Match3.Unity.Views
             transform.position = worldPos;
             transform.rotation = Quaternion.Euler(0, 0, visual.Rotation);
             gameObject.SetActive(visual.IsVisible);
+
+            // Re-enable trail emission after first position update (prevents flash)
+            if (!_trail.emitting)
+            {
+                _trail.Clear();
+                _trail.emitting = true;
+            }
         }
 
         #region IPoolable
@@ -93,6 +112,8 @@ namespace Match3.Unity.Views
         public void OnSpawn()
         {
             ProjectileId = -1;
+            // Suppress trail until first UpdateFromVisual sets correct position
+            _trail.emitting = false;
             _trail.Clear();
         }
 
@@ -100,6 +121,7 @@ namespace Match3.Unity.Views
         {
             ProjectileId = -1;
             gameObject.SetActive(false);
+            _trail.emitting = false;
             _trail.Clear();
         }
 

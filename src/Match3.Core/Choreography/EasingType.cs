@@ -21,5 +21,8 @@ public enum EasingType
     OutBounce,
 
     /// <summary>Overshoot past target then settle back (pop-in effect).</summary>
-    OutBack
+    OutBack,
+
+    /// <summary>Quadratic ease-in (accelerates from rest).</summary>
+    InQuadratic
 }

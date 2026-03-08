@@ -123,18 +123,22 @@ Match3.Core.Systems.PowerUps/
 
 #### 彩球视觉编排 (Choreography)
 
-彩球触发时产生三阶段视觉效果，光束从原点飞向每个目标：
+点击触发时产生四阶段表演动画，交换触发时跳过蓄力阶段直接发射光束：
 
 | 阶段 | 效果类型 | 时序 | 视觉表现 |
 |------|----------|------|----------|
-| 1. 彩虹波 | `color_bomb_wave` 粒子 | 触发即刻，持续 0.6s | 35-45 颗粒子，五色渐变，环形外扩 |
-| 2. 飞行光束 | `ColorBombBeam` 投射物 | 触发后 0.05s 发射 | 发光球体 + 彩虹拖尾，从原点飞向目标 |
-| 3. 命中星爆 | `color_bomb_hit` 粒子 | 光束到达时 | 10-14 颗粒子，着色为被消方块颜色 |
+| 1. 蓄力 | `ScaleTileCommand` + `MoveTileCommand` + `RotateTileCommand` | 触发即刻，持续 `ColorBombChargeDuration`(0.25s) | 彩球放大至 1.2x、向上弹跳 0.3 格、加速旋转(InQuadratic)，浮在其他元素之上 |
+| 2. 飞行光束 | `ColorBombBeam` 投射物 | 蓄力结束后按距离环分批发射 | 发光球体 + 彩色拖尾(6色彩虹循环)，从弹跳位置飞向目标，每环间隔 `ColorBombWaveInterval`(0.06s) |
+| 3. 命中星爆 | `color_bomb_hit` 粒子 + `explosion` 特效 | 光束到达后延迟 0.15s | 目标格子被消除，带爆裂视觉反馈 |
+| 4. 消失 | `ScaleTileCommand` + `RemoveTileCommand` | 所有光束到达后 | 彩球缩小至 0 后移除，格子解锁允许掉落 |
 
 **实现方式**：光束复用 Projectile 系统（`SpawnProjectileCommand` → `MoveProjectileCommand` →
 `ImpactProjectileCommand` → `RemoveProjectileCommand`），使用负 ID 避免与 Core 投射物冲突。
-飞行速度由 `ColorBombBeamSpeed`（默认 12 格/秒）控制，距离近的目标先到达。
-距离 0 的原点位置不产生光束/命中效果。
+飞行速度由 `ColorBombBeamSpeed`（默认 12 格/秒）控制。光束按 Chebyshev 距离环分批发射，
+每条光束携带 `ColorIndex`(0-5) 实现六色彩虹循环。`_beamHitTimes` 跨批次保留（因
+`BombActivatedEvent` 和 `TileDestroyedEvent` 分属不同 tick），在 `TilesSwappedEvent`
+（新回合边界）时清空防止泄漏。目标 tile 通过 hold `MoveTileCommand`(from=to) 保持
+`IsBeingAnimated=true`，防止 `SyncFallingTilesFromGameState` 提前回收。
 
 ### 5. UFO (UfoEffect)
 

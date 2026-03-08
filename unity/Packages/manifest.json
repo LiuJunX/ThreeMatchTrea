@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "com.gamelovers.mcp-unity": "https://github.com/CoderGamester/mcp-unity.git",
-    "com.singularitygroup.hotreload": "https://gitlab.hotreload.net/root/hot-reload-releases.git",
+    "com.singularitygroup.hotreload": "git+https://gitlab.hotreload.net/root/hot-reload-releases.git#1.13.17",
     "com.unity.collab-proxy": "2.11.3",
     "com.unity.feature.2d": "2.0.1",
     "com.unity.ide.rider": "3.0.36",

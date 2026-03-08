@@ -28,6 +28,11 @@ public interface IVisualState
     void SetTileVisible(int tileId, bool visible);
 
     /// <summary>
+    /// Set the visual rotation angle of a tile (degrees).
+    /// </summary>
+    void SetTileRotation(int tileId, float rotation);
+
+    /// <summary>
     /// Set the visual position of a projectile.
     /// </summary>
     void SetProjectilePosition(int projectileId, Vector2 position);

@@ -134,6 +134,14 @@ namespace Match3.Unity.Views
                 finalScale *= pulse;
             }
 
+            // Animation-driven rotation (color bomb spin etc.)
+            if (visual.Rotation != 0f)
+            {
+                pos.z = -1f; // Float above other tiles (2D sorting)
+                transform.position = pos;
+                transform.localEulerAngles = new Vector3(0f, 0f, visual.Rotation);
+            }
+
             transform.localScale = finalScale;
 
             // Update alpha
@@ -211,6 +219,7 @@ namespace Match3.Unity.Views
             _bounceTime = -1f;
             _highlightTime = 0f;
             transform.localScale = Vector3.one;
+            transform.localEulerAngles = Vector3.zero;
             _renderer.color = Color.white;
             _bombOverlayGo.SetActive(false);
         }

@@ -167,14 +167,15 @@ public sealed class VisualState : IVisualState
     /// Add a new projectile visual.
     /// </summary>
     public void AddProjectile(int projectileId, Vector2 position,
-        ProjectileType type = ProjectileType.Ufo)
+        ProjectileType type = ProjectileType.Ufo, byte colorIndex = 0)
     {
         _projectiles[projectileId] = new ProjectileVisual
         {
             Id = projectileId,
             Position = position,
             IsVisible = true,
-            Type = type
+            Type = type,
+            ColorIndex = colorIndex
         };
     }
 
@@ -219,6 +220,15 @@ public sealed class VisualState : IVisualState
         if (_tiles.TryGetValue(tileId, out var tile))
         {
             tile.IsVisible = visible;
+        }
+    }
+
+    /// <inheritdoc />
+    public void SetTileRotation(int tileId, float rotation)
+    {
+        if (_tiles.TryGetValue(tileId, out var tile))
+        {
+            tile.Rotation = rotation;
         }
     }
 
@@ -309,6 +319,9 @@ public sealed class TileVisual
     /// <summary>Current alpha (for fade animations).</summary>
     public float Alpha { get; set; } = 1f;
 
+    /// <summary>Current rotation angle in degrees (for spin animations).</summary>
+    public float Rotation { get; set; }
+
     /// <summary>Whether the tile is visible.</summary>
     public bool IsVisible { get; set; } = true;
 
@@ -376,6 +389,9 @@ public sealed class ProjectileVisual
 
     /// <summary>Projectile type (determines visual appearance).</summary>
     public ProjectileType Type { get; init; }
+
+    /// <summary>Color index for multi-color projectiles (0-5 maps to Item1-Item6).</summary>
+    public byte ColorIndex { get; init; }
 }
 
 /// <summary>

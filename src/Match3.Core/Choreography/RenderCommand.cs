@@ -121,6 +121,24 @@ public sealed record ScaleTileCommand : RenderCommand
 }
 
 /// <summary>
+/// Rotate a tile from one angle to another (degrees).
+/// </summary>
+public sealed record RotateTileCommand : RenderCommand
+{
+    /// <summary>Unique identifier of the tile.</summary>
+    public int TileId { get; init; }
+
+    /// <summary>Starting angle in degrees.</summary>
+    public float FromAngle { get; init; }
+
+    /// <summary>Target angle in degrees.</summary>
+    public float ToAngle { get; init; }
+
+    /// <summary>Easing function for interpolation.</summary>
+    public EasingType Easing { get; init; } = EasingType.Linear;
+}
+
+/// <summary>
 /// Remove a tile from visual state (after destruction animation completes).
 /// </summary>
 public sealed record RemoveTileCommand : RenderCommand
@@ -189,6 +207,9 @@ public sealed record SpawnProjectileCommand : RenderCommand
 
     /// <summary>Type of projectile.</summary>
     public ProjectileType Type { get; init; }
+
+    /// <summary>Color index for multi-color projectiles (0-5 maps to Item1-Item6).</summary>
+    public byte ColorIndex { get; init; }
 }
 
 /// <summary>

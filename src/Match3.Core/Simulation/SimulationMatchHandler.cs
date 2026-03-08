@@ -119,7 +119,8 @@ internal sealed class SimulationMatchHandler
                     TileId = tile.Id,
                     GridPosition = pos,
                     Type = tile.Type,
-                    Reason = DestroyReason.Projectile
+                    Reason = DestroyReason.Projectile,
+                    IsGoal = _objectiveSystem != null && _objectiveSystem.IsTarget(state, ObjectiveTargetLayer.Tile, (int)tile.Type)
                 });
             }
 
@@ -192,7 +193,8 @@ internal sealed class SimulationMatchHandler
                         GridPosition = pos,
                         Type = tile.Type,
                         Reason = DestroyReason.Match,
-                        MergeTarget = group.SpawnBombType != ElementType.None ? group.BombOrigin : null
+                        MergeTarget = group.SpawnBombType != ElementType.None ? group.BombOrigin : null,
+                        IsGoal = _objectiveSystem != null && _objectiveSystem.IsTarget(state, ObjectiveTargetLayer.Tile, (int)tile.Type)
                     });
                 }
 

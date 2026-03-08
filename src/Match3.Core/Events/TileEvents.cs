@@ -49,6 +49,12 @@ public sealed record TileDestroyedEvent : GameEvent
     /// </summary>
     public Position? MergeTarget { get; init; }
 
+    /// <summary>
+    /// Whether this tile contributes to a level objective.
+    /// Used to suppress standard elimination effects in favor of collection animations.
+    /// </summary>
+    public bool IsGoal { get; init; }
+
     /// <inheritdoc />
     public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }

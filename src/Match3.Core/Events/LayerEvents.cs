@@ -14,6 +14,9 @@ public sealed record CoverDestroyedEvent : GameEvent
     /// <summary>Type of the destroyed cover.</summary>
     public CoverType Type { get; init; }
 
+    /// <summary>Whether this cover was a level objective.</summary>
+    public bool IsGoal { get; init; }
+
     /// <inheritdoc />
     public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }
@@ -28,6 +31,9 @@ public sealed record GroundDestroyedEvent : GameEvent
 
     /// <summary>Type of the destroyed ground.</summary>
     public GroundType Type { get; init; }
+
+    /// <summary>Whether this ground was a level objective.</summary>
+    public bool IsGoal { get; init; }
 
     /// <inheritdoc />
     public override void Accept(IEventVisitor visitor) => visitor.Visit(this);

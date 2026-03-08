@@ -413,25 +413,23 @@ namespace Match3.Unity.Views
 
         #region UFO Flight
 
-        // Royal Match style: steep liftoff → high Y-arc → dive onto target
-        // Model tilted -90° X so propeller faces camera (Z-) during flight
+        // Propeller-carries-bomb physics: propeller faces camera, bomb hangs behind
+        // Pendulum pivot at propeller — bomb swings with inertia on direction changes
         // Player.cs drives XY: origin 0-35%, smoothstep to target 35-90%, at target 90-100%
-        // View adds Y offset (arc), Z offset (depth pop), scale, spin, tilt
 
-        // Arc peak height in cell units
-        private const float UfoArcHeight = 2.5f;
-        // Z offset towards camera during flight (depth pop)
-        private const float UfoFlightZ = -0.25f;
-        // Peak scale during flight arc
-        private const float UfoPeakScale = 1.2f;
-        // Full spin speed (degrees/sec) — continuous propeller
-        private const float UfoMaxSpinSpeed = 900f;
+        // Gravity angle: 0° = pure down (Y-), 90° = pure into screen (Z+)
+        private const float UfoGravityAngle = 70f;
+        // Flight arc: Y rise (cells) and scale boost (Z depth)
+        private const float UfoArcY = 0.6f;
+        private const float UfoArcScale = 1.3f;
+        // Propeller spin speed (degrees/sec)
+        private const float UfoMaxSpinSpeed = 2700f;
 
-        // Tilt spring constants — lean into movement direction
-        private const float UfoTiltSpring = 12f;
-        private const float UfoTiltDamp = 14f;
-        private const float UfoTiltScale = 4f;
-        private const float UfoMaxTilt = 25f;
+        // Pendulum spring: soft + underdamped = heavy swinging bomb with visible drag
+        private const float UfoTiltSpring = 5f;
+        private const float UfoTiltDamp = 4f;
+        private const float UfoTiltScale = 12f;
+        private const float UfoMaxTilt = 50f;
 
         private void ApplyUfoFlight(TileVisual visual, Vector3 worldPos, float cellSize)
         {
@@ -449,69 +447,82 @@ namespace Match3.Unity.Views
                 _ufoPrevWorldPos = worldPos;
                 if (_shadowTransform != null)
                     _shadowTransform.gameObject.SetActive(false);
+                // Clear lingering alpha/emission from normal rendering
+                _meshRenderer.SetPropertyBlock(null);
             }
 
-            // --- 1. Continuous propeller spin (accelerate in first 20%, then full speed) ---
+            // --- 1. Continuous propeller spin ---
             float spinRamp = Mathf.Clamp01(progress / 0.20f);
             _ufoSpinAngle += UfoMaxSpinSpeed * spinRamp * spinRamp * dt;
 
-            // --- 2. Y-axis arc offset ---
-            // sin(π * p / 0.90): steep rise at origin, peak at p≈0.45, zero at p=0.90
-            const float arriveFrac = 0.90f;
-            float yOffset, zOffset, scaleMul;
+            // --- 2. Smooth flight arc (continuous, no flat cruise, no pauses) ---
+            const float arriveFrac = 0.97f;
+            float yOffset, scaleMul, takeoffBlend;
+
+            // Orientation blend: fast transition in first 15% of progress
+            takeoffBlend = Mathf.Clamp01(progress / 0.15f);
+            takeoffBlend = takeoffBlend * takeoffBlend * (3f - 2f * takeoffBlend);
 
             if (progress < arriveFrac)
             {
-                float arcT = progress / arriveFrac;
-                float arc = Mathf.Sin(arcT * Mathf.PI);
-                yOffset = UfoArcHeight * cellSize * arc;
-                zOffset = UfoFlightZ * Mathf.Clamp01(arc * 3f);
-                scaleMul = 1f + (UfoPeakScale - 1f) * arc;
+                // Single sine arc: peak at midpoint, zero at both ends
+                // Y=0 exactly when XY reaches target — no hover-above-then-dive
+                float arc = Mathf.Sin(progress / arriveFrac * Mathf.PI);
+                yOffset = UfoArcY * cellSize * arc;
+                scaleMul = 1f + (UfoArcScale - 1f) * arc;
             }
             else
             {
-                // Impact phase (0.90-1.00): at target, shrink to 0
-                float impactT = (progress - arriveFrac) / (1f - arriveFrac);
-                float eased = impactT * impactT;
+                // Impact: hold briefly, then shrink to 0.5 (effect covers disappearance)
                 yOffset = 0f;
-                zOffset = 0f;
-                scaleMul = 1f - eased;
+                float shrinkT = Mathf.Clamp01((progress - 0.98f) / 0.02f);
+                scaleMul = Mathf.Lerp(1f, 0.5f, shrinkT * shrinkT);
             }
 
-            // --- 3. Position ---
-            var pos = new Vector3(worldPos.x, worldPos.y + yOffset, zOffset);
-
-            // --- 4. Scale ---
+            // --- 3. Scale + arm length ---
             float s = cellSize * TileScaleMultiplier * scaleMul;
             transform.localScale = new Vector3(s, s, s);
+            float armLength = s * 0.5f;
 
-            // --- 5. Tilt (spring-damped, lean into movement direction) ---
+            // --- 4. Propeller anchor position (Y offset + Z depth, blended) ---
+            float flightZ = -(armLength + 0.3f) * takeoffBlend;
+            var propellerPos = new Vector3(worldPos.x, worldPos.y + yOffset, flightZ);
+
+            // --- 5. Pendulum tilt (bomb swings opposite to movement) ---
             if (dt > 0.0001f)
             {
-                Vector3 rawVel = (pos - _ufoPrevWorldPos) / dt;
-                _ufoPrevWorldPos = pos;
+                Vector3 rawVel = (propellerPos - _ufoPrevWorldPos) / dt;
+                _ufoPrevWorldPos = propellerPos;
 
                 const float smoothFactor = 0.15f;
                 _ufoSmoothVel = Vector3.Lerp(_ufoSmoothVel, rawVel, smoothFactor);
 
-                float targetTiltX = Mathf.Clamp(-_ufoSmoothVel.y * UfoTiltScale, -UfoMaxTilt, UfoMaxTilt);
-                float targetTiltZ = Mathf.Clamp(_ufoSmoothVel.x * UfoTiltScale, -UfoMaxTilt, UfoMaxTilt);
+                // Pendulum: bomb trails behind propeller movement
+                // Fade out near arrival so bomb lands precisely on target
+                float pendulumFade = Mathf.Clamp01((arriveFrac - progress) * 5f); // fade over last 20%
+                float targetX = Mathf.Clamp(_ufoSmoothVel.y * UfoTiltScale, -UfoMaxTilt, UfoMaxTilt) * pendulumFade;
+                float targetY = Mathf.Clamp(-_ufoSmoothVel.x * UfoTiltScale, -UfoMaxTilt, UfoMaxTilt) * pendulumFade;
 
-                _ufoTiltVelX += ((targetTiltX - _ufoTiltX) * UfoTiltSpring - _ufoTiltVelX * UfoTiltDamp) * dt;
-                _ufoTiltVelZ += ((targetTiltZ - _ufoTiltZ) * UfoTiltSpring - _ufoTiltVelZ * UfoTiltDamp) * dt;
+                _ufoTiltVelX += ((targetX - _ufoTiltX) * UfoTiltSpring - _ufoTiltVelX * UfoTiltDamp) * dt;
+                _ufoTiltVelZ += ((targetY - _ufoTiltZ) * UfoTiltSpring - _ufoTiltVelZ * UfoTiltDamp) * dt;
                 _ufoTiltX += _ufoTiltVelX * dt;
                 _ufoTiltZ += _ufoTiltVelZ * dt;
             }
 
-            // --- 6. Apply transform ---
-            // Base: -90° X so propeller faces camera (Z-)
-            // Spin: propeller rotates around its original Y axis
-            // Tilt: movement-reactive lean on top
+            // --- 6. Rotation: spin → face tilt (blended) → pendulum swing ---
             var spin = Quaternion.Euler(0f, _ufoSpinAngle, 0f);
-            var faceCamera = Quaternion.Euler(-90f, 0f, 0f);
-            var tilt = Quaternion.Euler(_ufoTiltX, 0f, _ufoTiltZ);
-            transform.rotation = tilt * faceCamera * spin;
-            transform.position = pos;
+            // Smoothly tilt from 0° (upright on board) to -GravityAngle (flight orientation)
+            var faceCamera = Quaternion.Euler(-UfoGravityAngle * takeoffBlend, 0f, 0f);
+            var pendulum = Quaternion.Euler(_ufoTiltX, _ufoTiltZ, 0f);
+            var fullRotation = pendulum * faceCamera * spin;
+            transform.rotation = fullRotation;
+
+            // --- 7. Pivot at propeller (blended from center to propeller tip) ---
+            // At takeoffBlend=0: arm=0 → pivot at center (matches normal rendering)
+            // At takeoffBlend=1: arm=full → pivot at propeller tip
+            float effectiveArm = armLength * takeoffBlend;
+            var propellerLocal = new Vector3(0f, effectiveArm, 0f);
+            transform.position = propellerPos - fullRotation * propellerLocal;
 
             // Visibility
             gameObject.SetActive(visual.IsVisible);

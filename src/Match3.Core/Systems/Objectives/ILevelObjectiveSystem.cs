@@ -45,4 +45,13 @@ public interface ILevelObjectiveSystem
     /// Should be called after board stabilizes.
     /// </summary>
     void UpdateLevelStatus(ref GameState state, int tick, float simTime, IEventCollector events);
+
+    /// <summary>
+    /// Checks if a specific element type is a current active objective target.
+    /// </summary>
+    /// <param name="state">Current game state.</param>
+    /// <param name="layer">The layer of the element (Tile, Cover, Ground).</param>
+    /// <param name="typeValue">The integer value of the element type.</param>
+    /// <returns>True if this element is an active, uncompleted objective.</returns>
+    bool IsTarget(in GameState state, ObjectiveTargetLayer layer, int typeValue);
 }

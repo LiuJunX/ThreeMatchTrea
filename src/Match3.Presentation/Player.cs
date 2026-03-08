@@ -296,7 +296,7 @@ public sealed class Player
                 break;
 
             case SpawnProjectileCommand spawnProj:
-                _visualState.AddProjectile(spawnProj.ProjectileId, spawnProj.Origin, spawnProj.Type);
+                _visualState.AddProjectile(spawnProj.ProjectileId, spawnProj.Origin, spawnProj.Type, spawnProj.ColorIndex);
                 break;
 
             case ShowEffectCommand effect:
@@ -320,6 +320,10 @@ public sealed class Player
 
             case ScaleTileCommand scaleCmd:
                 _visualState.SetTileScale(scaleCmd.TileId, scaleCmd.FromScale);
+                break;
+
+            case RotateTileCommand rotateCmd:
+                _visualState.SetTileRotation(rotateCmd.TileId, rotateCmd.FromAngle);
                 break;
 
             case UfoLaunchCommand ufo:
@@ -408,6 +412,12 @@ public sealed class Player
                 _visualState.SetTileScale(scaleCmd.TileId, scaleVal);
                 break;
 
+            case RotateTileCommand rotateCmd:
+                float rotEased = ApplyEasing(t, rotateCmd.Easing);
+                float angle = rotateCmd.FromAngle + (rotateCmd.ToAngle - rotateCmd.FromAngle) * rotEased;
+                _visualState.SetTileRotation(rotateCmd.TileId, angle);
+                break;
+
             case SpawnProjectileCommand spawnProj:
                 // Takeoff animation - arc upward
                 float arcProgress = (float)Math.Sin(t * Math.PI);
@@ -429,7 +439,7 @@ public sealed class Player
 
                     // XY position: stay at origin during spin-up/launch, then cruise to target
                     const float stayFrac = 0.35f; // first 35% of duration: origin
-                    const float arriveFrac = 0.90f; // arrive by 90%
+                    const float arriveFrac = 0.97f; // arrive by 97%
                     float moveT;
                     if (t <= stayFrac)
                         moveT = 0f;
@@ -475,6 +485,10 @@ public sealed class Player
 
             case ScaleTileCommand scaleCmd:
                 _visualState.SetTileScale(scaleCmd.TileId, scaleCmd.ToScale);
+                break;
+
+            case RotateTileCommand rotateCmd:
+                _visualState.SetTileRotation(rotateCmd.TileId, rotateCmd.ToAngle);
                 break;
 
             case ImpactProjectileCommand impact:
@@ -555,6 +569,17 @@ public sealed class Player
                 }
                 break;
 
+            case RotateTileCommand rotateTile:
+                var rTile = _visualState.GetTile(rotateTile.TileId);
+                if (rTile != null)
+                {
+                    if (isStarting)
+                        rTile.AddAnimationRef();
+                    else
+                        rTile.ReleaseAnimationRef();
+                }
+                break;
+
             case UfoLaunchCommand ufoCmd:
                 var uTile = _visualState.GetTile(ufoCmd.TileId);
                 if (uTile != null)
@@ -584,6 +609,7 @@ public sealed class Player
                 : 1f - (float)Math.Pow(-2f * t + 2f, 3) / 2f,
             EasingType.OutBounce => OutBounce(t),
             EasingType.OutBack => OutBack(t),
+            EasingType.InQuadratic => t * t,
             _ => t
         };
     }

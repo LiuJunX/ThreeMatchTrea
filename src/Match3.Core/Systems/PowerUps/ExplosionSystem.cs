@@ -211,7 +211,8 @@ public class ExplosionSystem : IExplosionSystem
                             TileId = tile.Id,
                             GridPosition = pos,
                             Type = tile.Type,
-                            Reason = DestroyReason.BombEffect
+                            Reason = DestroyReason.BombEffect,
+                            IsGoal = _objectiveSystem != null && _objectiveSystem.IsTarget(in state, ObjectiveTargetLayer.Tile, (int)tile.Type)
                         });
                     }
 

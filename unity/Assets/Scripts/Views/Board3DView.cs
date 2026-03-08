@@ -618,6 +618,15 @@ namespace Match3.Unity.Views
                 if (!tileView.gameObject.activeSelf) continue;
 
                 var worldPos = tileView.transform.position;
+
+                // Tiles elevated above the board (z < 0) are performing special animations
+                // (e.g. color bomb spin) — skip portal clipping so they remain fully visible
+                if (worldPos.z < -0.1f)
+                {
+                    tileView.ResetClipBounds();
+                    continue;
+                }
+
                 var gridPos = CoordinateConverter.WorldToGridFloat(worldPos, cellSize, origin, height);
                 int col = Mathf.RoundToInt(gridPos.X);
 

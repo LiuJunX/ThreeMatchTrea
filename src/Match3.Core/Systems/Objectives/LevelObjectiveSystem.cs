@@ -45,6 +45,23 @@ public class LevelObjectiveSystem : ILevelObjectiveSystem
     }
 
     /// <inheritdoc />
+    public bool IsTarget(in GameState state, ObjectiveTargetLayer layer, int typeValue)
+    {
+        for (int i = 0; i < state.ObjectiveProgress.Length; i++)
+        {
+            ref var progress = ref state.ObjectiveProgress[i];
+            if (progress.IsActive &&
+                !progress.IsCompleted &&
+                progress.TargetLayer == layer &&
+                progress.ElementType == typeValue)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <inheritdoc />
     public void OnTileDestroyed(ref GameState state, ElementType type, int tick, float simTime, IEventCollector events)
     {
         UpdateProgress(ref state, ObjectiveTargetLayer.Tile, (int)type, tick, simTime, events);

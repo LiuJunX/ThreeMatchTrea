@@ -581,7 +581,7 @@ public class ChoreographerTests
     }
 
     [Fact]
-    public void Choreograph_ColorBomb_BeamFliesFromOriginToTarget()
+    public void Choreograph_ColorBomb_BeamFliesFromHoppedOriginToTarget()
     {
         var origin = new Position(2, 2);
         var affected = new[] { new Position(6, 6) };
@@ -603,12 +603,12 @@ public class ChoreographerTests
         var impact = commands.OfType<ImpactProjectileCommand>().Single();
         var remove = commands.OfType<RemoveProjectileCommand>().Single();
 
-        // Spawn at origin
+        // Spawn from hopped position (origin + hop offset)
         Assert.Equal(2f, spawn.Origin.X, 0.01f);
-        Assert.Equal(2f, spawn.Origin.Y, 0.01f);
-        Assert.Equal(0f, spawn.ArcHeight); // No arc for beams
+        Assert.Equal(1.7f, spawn.Origin.Y, 0.01f); // 2 - 0.3 hop
+        Assert.Equal(0f, spawn.ArcHeight);
 
-        // Move from origin to target
+        // Move from hopped origin to target
         Assert.Equal(spawn.ProjectileId, move.ProjectileId);
         Assert.Equal(2f, move.From.X, 0.01f);
         Assert.Equal(6f, move.To.X, 0.01f);
@@ -621,6 +621,159 @@ public class ChoreographerTests
         // Remove after impact
         Assert.Equal(spawn.ProjectileId, remove.ProjectileId);
         Assert.True(remove.StartTime >= impact.StartTime);
+    }
+
+    [Fact]
+    public void Choreograph_ColorBomb_ChargeUpPerformance()
+    {
+        var origin = new Position(3, 3);
+        var affected = new[] { new Position(5, 5) };
+        var events = new GameEvent[]
+        {
+            new BombActivatedEvent
+            {
+                TileId = 42,
+                Position = origin,
+                BombType = ElementType.ColorBomb,
+                AffectedPositions = affected,
+                SimulationTime = 0f
+            }
+        };
+
+        var commands = _choreographer.Choreograph(events);
+
+        // Charge-up: scale pulse 1→1.2
+        var scales = commands.OfType<ScaleTileCommand>().Where(c => c.TileId == 42).ToList();
+        Assert.True(scales.Count >= 2); // charge-up + shrink
+        var chargeScale = scales.First(s => s.ToScale.X > 1f);
+        Assert.Equal(1.2f, chargeScale.ToScale.X, 0.01f);
+
+        // Charge-up: hop (MoveTileCommand with Y offset)
+        var hops = commands.OfType<MoveTileCommand>().Where(c => c.TileId == 42).ToList();
+        Assert.Contains(hops, h => h.To.Y < h.From.Y); // hop upward (negative Y in grid coords)
+
+        // Spin: RotateTileCommand with InQuadratic easing
+        var rotate = commands.OfType<RotateTileCommand>().Single(c => c.TileId == 42);
+        Assert.Equal(0f, rotate.FromAngle);
+        Assert.True(rotate.ToAngle > 360f); // multiple rotations
+        Assert.Equal(EasingType.InQuadratic, rotate.Easing);
+
+        // Shrink to zero after beams land
+        var shrink = scales.First(s => s.ToScale == System.Numerics.Vector2.Zero);
+        Assert.True(shrink.StartTime > chargeScale.StartTime);
+
+        // RemoveTileCommand after shrink
+        var removeTile = commands.OfType<RemoveTileCommand>().Single(c => c.TileId == 42);
+        Assert.True(removeTile.StartTime >= shrink.StartTime + shrink.Duration);
+    }
+
+    [Fact]
+    public void Choreograph_ColorBomb_BeamsStaggeredByRing()
+    {
+        var origin = new Position(4, 4);
+        var affected = new[]
+        {
+            new Position(5, 4), // Chebyshev dist 1
+            new Position(6, 4), // Chebyshev dist 2
+        };
+        var events = new GameEvent[]
+        {
+            new BombActivatedEvent
+            {
+                TileId = 1,
+                Position = origin,
+                BombType = ElementType.ColorBomb,
+                AffectedPositions = affected,
+                SimulationTime = 0f
+            }
+        };
+
+        var commands = _choreographer.Choreograph(events);
+        var spawns = commands.OfType<SpawnProjectileCommand>()
+            .Where(c => c.Type == ProjectileType.ColorBombBeam)
+            .OrderBy(c => c.StartTime).ToList();
+
+        Assert.Equal(2, spawns.Count);
+        // Ring 2 beam launches later than ring 1
+        Assert.True(spawns[1].StartTime > spawns[0].StartTime);
+    }
+
+    [Fact]
+    public void Choreograph_ColorBomb_RainbowColorCycling()
+    {
+        var origin = new Position(4, 4);
+        var affected = new[]
+        {
+            new Position(5, 4),
+            new Position(3, 4),
+            new Position(4, 5),
+        };
+        var events = new GameEvent[]
+        {
+            new BombActivatedEvent
+            {
+                TileId = 1,
+                Position = origin,
+                BombType = ElementType.ColorBomb,
+                AffectedPositions = affected,
+                SimulationTime = 0f
+            }
+        };
+
+        var commands = _choreographer.Choreograph(events);
+        var beams = commands.OfType<SpawnProjectileCommand>()
+            .Where(c => c.Type == ProjectileType.ColorBombBeam).ToList();
+
+        Assert.Equal(3, beams.Count);
+        // Colors cycle through 0, 1, 2
+        var colors = beams.Select(b => b.ColorIndex).ToList();
+        Assert.Contains((byte)0, colors);
+        Assert.Contains((byte)1, colors);
+        Assert.Contains((byte)2, colors);
+    }
+
+    [Fact]
+    public void Choreograph_ColorBomb_BeamHitTimesPersistAcrossBatches()
+    {
+        var origin = new Position(3, 3);
+        var target = new Position(5, 5);
+        var affected = new[] { target };
+
+        // Batch 1: BombActivatedEvent (populates _beamHitTimes)
+        var batch1 = new GameEvent[]
+        {
+            new BombActivatedEvent
+            {
+                TileId = 1,
+                Position = origin,
+                BombType = ElementType.ColorBomb,
+                AffectedPositions = affected,
+                SimulationTime = 0f
+            }
+        };
+        _choreographer.Choreograph(batch1);
+
+        // Batch 2: TileDestroyedEvent (should find beam hit time from batch 1)
+        var batch2 = new GameEvent[]
+        {
+            new TileDestroyedEvent
+            {
+                TileId = 99,
+                GridPosition = target,
+                Reason = DestroyReason.BombEffect,
+                SimulationTime = 0.016f
+            }
+        };
+        var commands2 = _choreographer.Choreograph(batch2, baseTime: 0.016f);
+
+        // Should have a hold MoveTileCommand (from=to) keeping tile alive
+        var holds = commands2.OfType<MoveTileCommand>()
+            .Where(c => c.TileId == 99 && c.From == c.To).ToList();
+        Assert.NotEmpty(holds);
+
+        // Destroy should be delayed (not at batch2's base time)
+        var destroy = commands2.OfType<DestroyTileCommand>().Single();
+        Assert.True(destroy.StartTime > 0.016f);
     }
 
     [Fact]

@@ -177,7 +177,7 @@ namespace Match3.Unity.Views
                 {
                     // Create new projectile view
                     projectileView = _projectilePool.Rent();
-                    projectileView.Setup(projectileId, visual.Type);
+                    projectileView.Setup(projectileId, visual.Type, visual.ColorIndex);
                     _activeProjectiles[projectileId] = projectileView;
                 }
 

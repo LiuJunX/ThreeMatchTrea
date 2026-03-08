@@ -41,11 +41,17 @@ public sealed class ChoreographyConfig
     /// <summary>Flight speed for color bomb beam projectiles (grid units per second).</summary>
     public float ColorBombBeamSpeed { get; set; } = 12f;
 
+    /// <summary>Duration of color bomb charge-up phase (spin + hop before beams launch).</summary>
+    public float ColorBombChargeDuration { get; set; } = 0.25f;
+
+    /// <summary>Delay between each wave (Chebyshev ring) of color bomb beams.</summary>
+    public float ColorBombWaveInterval { get; set; } = 0.06f;
+
     /// <summary>Fixed overhead for UFO launch sequence: spin-up + launch + landing (seconds).</summary>
     public float UfoLaunchOverhead { get; set; } = 0.6f;
 
     /// <summary>UFO flight speed during cruise phase (grid units per second).</summary>
-    public float UfoFlightSpeed { get; set; } = 10f;
+    public float UfoFlightSpeed { get; set; } = 2f;
 
     // --- Double Color Bomb Phases ---
 

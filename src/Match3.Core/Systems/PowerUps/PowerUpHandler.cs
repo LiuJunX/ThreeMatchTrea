@@ -74,6 +74,8 @@ public class PowerUpHandler : IPowerUpHandler
                     {
                         Tick = tick,
                         SimulationTime = simTime,
+                        TileIdA = t1.Id,
+                        TileIdB = t2.Id,
                         BombTypeA = t1.Type,
                         BombTypeB = t2.Type,
                         PositionA = p1,

@@ -44,7 +44,8 @@ public class CoverSystem : ICoverSystem
                     Tick = tick,
                     SimulationTime = simTime,
                     GridPosition = position,
-                    Type = destroyedType
+                    Type = destroyedType,
+                    IsGoal = _objectiveSystem != null && _objectiveSystem.IsTarget(in state, ObjectiveTargetLayer.Cover, (int)destroyedType)
                 });
             }
 

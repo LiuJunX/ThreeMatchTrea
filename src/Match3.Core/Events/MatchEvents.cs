@@ -78,6 +78,12 @@ public sealed record BombActivatedEvent : GameEvent
 /// </summary>
 public sealed record BombComboEvent : GameEvent
 {
+    /// <summary>Tile ID of first bomb.</summary>
+    public int TileIdA { get; init; }
+
+    /// <summary>Tile ID of second bomb.</summary>
+    public int TileIdB { get; init; }
+
     /// <summary>First bomb type in the combo.</summary>
     public ElementType BombTypeA { get; init; }
 

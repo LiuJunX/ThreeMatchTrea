@@ -44,7 +44,8 @@ public class GroundSystem : IGroundSystem
                     Tick = tick,
                     SimulationTime = simTime,
                     GridPosition = position,
-                    Type = destroyedType
+                    Type = destroyedType,
+                    IsGoal = _objectiveSystem != null && _objectiveSystem.IsTarget(in state, ObjectiveTargetLayer.Ground, (int)destroyedType)
                 });
             }
 
