@@ -2,7 +2,10 @@
 
 | 文档状态 | 作者 | 日期 | 对应版本 |
 | :--- | :--- | :--- | :--- |
-| **Draft** | Senior Game Planner | 2026-01-12 | v1.3 |
+| **Archived** | Senior Game Planner | 2026-01-12 | v1.3 |
+
+> **注意**: 本文档已归档。实现细节请参阅 [PowerUps 系统文档](../features/powerups-system.md)。
+> 炸弹类型已从独立的 `BombType` 枚举统一到 `ElementType`（值 10-14）。
 
 ## 1. 概述 (Overview)
 
@@ -35,18 +38,18 @@
 定义单个炸弹的基础威力。
 
 ### 3.1 🚀 火箭 (Rocket)
-*   **对应枚举**: `BombType.Horizontal`, `BombType.Vertical`
+*   **对应枚举**: `ElementType.HorizontalRocket`, `ElementType.VerticalRocket`
 *   **效果**: 清除整行或整列。
 *   **穿透性**: 穿透所有普通障碍物；部分强固障碍物（如保险箱，暂未实现，保留扩展能力即可）可能仅受损而不被穿透（视具体障碍物设计而定）。
 
 ### 3.2 💣 TNT炸弹 (TNT)
-*   **对应枚举**: `BombType.Area` (Legacy: `Square5x5`)
+*   **对应枚举**: `ElementType.Square5x5`
 *   **范围**: **Radius 2 (约 5x5)**。
     *   具体形状：以中心为原点，大小为5X5
 *   **伤害**: 区域内所有目标受到 1 点伤害。
 
 ### 3.3 🛸 螺旋桨 (Propeller / UFO)
-*   **对应枚举**: `BombType.Ufo`
+*   **对应枚举**: `ElementType.Ufo`
 *   **机制**:
     1.  **起飞**: 消除自身周围 **十字** 区域。
     2.  **寻敌**: 自动飞行寻找全场“最有价值”的目标。
@@ -54,7 +57,7 @@
     3.  **打击**: 命中目标后，对目标及其相邻格（十字形）造成 1 点伤害。
 
 ### 3.4 🌈 彩虹球 (Light Ball)
-*   **对应枚举**: `BombType.Color`
+*   **对应枚举**: `ElementType.ColorBomb`
 *   **效果**: 
     *   **点击**: 随机清除场上一种颜色的所有普通棋子。
     *   **交换**: 必须与普通色块交换，清除全场所有该颜色的棋子。

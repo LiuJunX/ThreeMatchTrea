@@ -11,7 +11,7 @@ The game loop generates significant garbage (GC pressure) due to frequent string
 ## Decision Drivers
 
 * **Performance**: Must minimize GC allocations in the hot path (60fps).
-* **Compatibility**: Must work with .NET Standard 2.1 (Core) and .NET 10 (Web).
+* **Compatibility**: Must work with .NET Standard 2.1 (Core).
 * **Usability**: Should offer an API similar to `StringBuilder` or `string.Format`.
 
 ## Considered Options
@@ -41,7 +41,7 @@ Chosen option: **Option 3 (ZString)**.
 *   Developers must learn to use `ZString.Format` instead of `$` interpolation.
 
 ## Implementation Details
-*   Added `ZString` NuGet package to `Match3.Core` and `Match3.Web`.
+*   Added `ZString` NuGet package to `Match3.Core`.
 *   Refactored `IGameLogger` to use generic templates `LogInfo<T>(string template, T arg)` to leverage ZString internally.
 
 ## Validation

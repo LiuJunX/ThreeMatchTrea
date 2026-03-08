@@ -1,55 +1,23 @@
 ﻿using System.Linq;
-using Match3.Core.Config;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
 using Match3.Core.Simulation;
-using Match3.Core.Systems.Matching;
-using Match3.Core.Systems.Matching.Generation;
-using Match3.Core.Systems.Physics;
-using Match3.Core.Systems.PowerUps;
-using Match3.Core.Systems.Scoring;
-using Match3.Core.Systems.Spawning;
 using Match3.Core.Tests.TestFixtures;
-using Match3.Random;
 using Xunit;
 
 namespace Match3.Core.Tests.Simulation;
 
 public class SimulationEngineTests
 {
-    private SimulationEngine CreateEngine(GameState state, IEventCollector? eventCollector = null)
-    {
-        var random = new StubRandom();
-        var config = new Match3Config();
-        var physics = new RealtimeGravitySystem(config, random);
-        var refill = new RealtimeRefillSystem(new StubSpawnModel(ElementType.Item3));
-        var bombGenerator = new BombGenerator();
-        var matchFinder = new ClassicMatchFinder(bombGenerator);
-        var scoreSystem = new StubScoreSystem();
-        var matchProcessor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), BombEffectRegistry.CreateDefault());
-        var powerUpHandler = new PowerUpHandler(scoreSystem);
-
-        return new SimulationEngine(
-            state,
-            SimulationConfig.ForHumanPlay(),
-            physics,
-            refill,
-            matchFinder,
-            matchProcessor,
-            powerUpHandler,
-            null,
-            eventCollector);
-    }
-
     #region Basic Tick Tests
 
     [Fact]
     public void Tick_IncrementsTickCounter()
     {
         var state = CreateStableState();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         Assert.Equal(0, engine.CurrentTick);
 
@@ -62,7 +30,7 @@ public class SimulationEngineTests
     public void Tick_IncrementsElapsedTime()
     {
         var state = CreateStableState();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         Assert.Equal(0f, engine.ElapsedTime);
 
@@ -75,7 +43,7 @@ public class SimulationEngineTests
     public void Tick_ReturnsTickResult()
     {
         var state = CreateStableState();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         var result = engine.Tick();
 
@@ -91,7 +59,7 @@ public class SimulationEngineTests
     public void IsStable_ReturnsTrueForStableBoard()
     {
         var state = CreateStableState();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         Assert.True(engine.IsStable());
     }
@@ -100,7 +68,7 @@ public class SimulationEngineTests
     public void IsStable_ReturnsFalseWithFallingTiles()
     {
         var state = CreateStateWithFallingTile();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         Assert.False(engine.IsStable());
     }
@@ -113,7 +81,7 @@ public class SimulationEngineTests
     public void ApplyMove_SwapsTiles()
     {
         var state = CreateStableState();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         var tileABefore = engine.State.GetTile(0, 0).Type;
         var tileBBefore = engine.State.GetTile(1, 0).Type;
@@ -131,7 +99,7 @@ public class SimulationEngineTests
     public void ApplyMove_ReturnsFalseForInvalidPosition()
     {
         var state = CreateStableState();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         var result = engine.ApplyMove(new Position(-1, 0), new Position(0, 0));
 
@@ -143,7 +111,7 @@ public class SimulationEngineTests
     {
         var state = CreateStableState();
         var collector = new BufferedEventCollector();
-        var engine = CreateEngine(state, collector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
         engine.ApplyMove(new Position(0, 0), new Position(1, 0));
 
@@ -159,7 +127,7 @@ public class SimulationEngineTests
     public void RunUntilStable_ReachesStability()
     {
         var state = CreateStableState();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         var result = engine.RunUntilStable();
 
@@ -171,7 +139,7 @@ public class SimulationEngineTests
     {
         var state = CreateStableState();
         var collector = new BufferedEventCollector();
-        var engine = CreateEngine(state, collector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
         // Initially events are enabled
         Assert.True(engine.EventCollector.IsEnabled);
@@ -186,7 +154,7 @@ public class SimulationEngineTests
     public void RunUntilStable_ReturnsSimulationResult()
     {
         var state = CreateStableState();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         var result = engine.RunUntilStable();
 
@@ -202,7 +170,7 @@ public class SimulationEngineTests
     public void Clone_CreatesIndependentEngine()
     {
         var state = CreateStableState();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         var cloned = engine.Clone();
 
@@ -218,7 +186,7 @@ public class SimulationEngineTests
     {
         var state = CreateStableState();
         var collector = new BufferedEventCollector();
-        var engine = CreateEngine(state, collector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
         var cloned = engine.Clone();
 
@@ -229,7 +197,7 @@ public class SimulationEngineTests
     public void Clone_CanUseCustomRandom()
     {
         var state = CreateStableState();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
         var customRandom = new StubRandom();
 
         var cloned = engine.Clone(customRandom);
@@ -246,7 +214,7 @@ public class SimulationEngineTests
     public void SetEventCollector_ChangesCollector()
     {
         var state = CreateStableState();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         var newCollector = new BufferedEventCollector();
         engine.SetEventCollector(newCollector);
@@ -259,7 +227,7 @@ public class SimulationEngineTests
     {
         var state = CreateStableState();
         var collector = new BufferedEventCollector();
-        var engine = CreateEngine(state, collector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
         engine.SetEventCollector(null!);
 
@@ -275,7 +243,7 @@ public class SimulationEngineTests
     {
         // Arrange: Create a board where swapping (0,0) and (1,0) creates no match
         var state = CreateNoMatchSwapState();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         // Act: Apply invalid swap
         engine.ApplyMove(new Position(0, 0), new Position(1, 0));
@@ -289,7 +257,7 @@ public class SimulationEngineTests
     {
         // Arrange
         var state = CreateNoMatchSwapState();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         var originalTileA = state.GetTile(0, 0).Type;
         var originalTileB = state.GetTile(1, 0).Type;
@@ -320,7 +288,7 @@ public class SimulationEngineTests
         // Arrange
         var state = CreateNoMatchSwapState();
         var collector = new BufferedEventCollector();
-        var engine = CreateEngine(state, collector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
         // Act: Apply invalid swap
         engine.ApplyMove(new Position(0, 0), new Position(1, 0));
@@ -347,7 +315,7 @@ public class SimulationEngineTests
         // Arrange: Create a board where swapping creates a match
         var state = CreateMatchOnSwapState();
         var collector = new BufferedEventCollector();
-        var engine = CreateEngine(state, collector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
         var originalTileA = state.GetTile(1, 0).Type; // Will become part of match
 
@@ -403,7 +371,7 @@ public class SimulationEngineTests
         }
 
         var collector = new BufferedEventCollector();
-        var engine = CreateEngine(state, collector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
         // Act: Swap R(0,0) with G(1,0)
         // After swap: G(0,0) R(1,0) R(2,0) R(3,0) R(4,0) → Line-4 at 1,2,3,4
@@ -499,7 +467,7 @@ public class SimulationEngineTests
         }
 
         var collector = new BufferedEventCollector();
-        var engine = CreateEngine(state, collector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
         // Verify initial state
         Assert.Equal(ElementType.Item1, engine.State.GetTile(0, 1).Type); // A to swap
@@ -568,7 +536,7 @@ public class SimulationEngineTests
         }
 
         var collector = new BufferedEventCollector();
-        var engine = CreateEngine(state, collector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
         // Act: Swap B(1,1) with A(2,1)
         // After swap: A(1,1) B(2,1) → forms 2x2 square at (0,0), (1,0), (0,1), (1,1)
@@ -647,7 +615,7 @@ public class SimulationEngineTests
         var bombTile = new Tile(state.GetTile(0, 0).Id, ElementType.HorizontalRocket, 0, 0);
         state.SetTile(0, 0, bombTile);
 
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         // 记录交换前的类型
         var bombType = engine.State.GetTile(0, 0).Type;
@@ -690,7 +658,7 @@ public class SimulationEngineTests
         state.SetTile(1, 0, vBomb);
 
         var collector = new BufferedEventCollector();
-        var engine = CreateEngine(state, collector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
         // Act: 交换两个炸弹
         engine.ApplyMove(new Position(0, 0), new Position(1, 0));
@@ -757,7 +725,7 @@ public class SimulationEngineTests
         }
 
         var collector = new BufferedEventCollector();
-        var engine = CreateEngine(state, collector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
         // Act: 交换彩球和蓝色方块
         engine.ApplyMove(new Position(0, 0), new Position(1, 0));
@@ -796,7 +764,7 @@ public class SimulationEngineTests
         state.SetTile(0, 0, bombTile);
 
         var collector = new BufferedEventCollector();
-        var engine = CreateEngine(state, collector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
         // Act: 交换炸弹和普通元素
         engine.ApplyMove(new Position(0, 0), new Position(1, 0));
@@ -824,7 +792,7 @@ public class SimulationEngineTests
     public void HandleTap_NoSelection_SelectsTile()
     {
         var state = CreateStableState();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         Assert.Equal(Position.Invalid, engine.State.SelectedPosition);
 
@@ -837,7 +805,7 @@ public class SimulationEngineTests
     public void HandleTap_SameTileTwice_DeselectsTile()
     {
         var state = CreateStableState();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         engine.HandleTap(new Position(2, 2));
         Assert.Equal(new Position(2, 2), engine.State.SelectedPosition);
@@ -851,7 +819,7 @@ public class SimulationEngineTests
     {
         var state = CreateStableState();
         var collector = new BufferedEventCollector();
-        var engine = CreateEngine(state, collector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
         // Select tile at (2, 2)
         engine.HandleTap(new Position(2, 2));
@@ -878,7 +846,7 @@ public class SimulationEngineTests
     public void HandleTap_NonAdjacentTile_ChangesSelection()
     {
         var state = CreateStableState();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         // Select tile at (2, 2)
         engine.HandleTap(new Position(2, 2));
@@ -896,7 +864,7 @@ public class SimulationEngineTests
     {
         var state = CreateStableState();
         var collector = new BufferedEventCollector();
-        var engine = CreateEngine(state, collector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
         // First select a tile
         engine.HandleTap(new Position(1, 1));
@@ -918,7 +886,7 @@ public class SimulationEngineTests
         state.SelectedPosition = new Position(1, 1);
 
         collector = new BufferedEventCollector();
-        engine = CreateEngine(state, collector);
+        engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
         // Verify selection is set
         Assert.Equal(new Position(1, 1), engine.State.SelectedPosition);
@@ -955,7 +923,7 @@ public class SimulationEngineTests
         {
             state = CreateStableState();
             var collector = new BufferedEventCollector();
-            var engine = CreateEngine(state, collector);
+            var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
             // Select center
             engine.HandleTap(center);
@@ -976,7 +944,7 @@ public class SimulationEngineTests
     {
         var state = CreateStableState();
         var collector = new BufferedEventCollector();
-        var engine = CreateEngine(state, collector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
         // Select center at (2, 2)
         engine.HandleTap(new Position(2, 2));
@@ -1006,7 +974,7 @@ public class SimulationEngineTests
         // Arrange: 在 (0,0) 放置 Cover
         var state = CreateStableState();
         state.SetCover(0, 0, new Cover(coverType, health: 1));
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         // Act: 尝试交换被 Cover 覆盖的方块
         var result = engine.ApplyMove(new Position(0, 0), new Position(1, 0));
@@ -1024,7 +992,7 @@ public class SimulationEngineTests
         // Arrange: 在目标位置 (1,0) 放置 Cover
         var state = CreateStableState();
         state.SetCover(1, 0, new Cover(coverType, health: 1));
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         // Act: 尝试交换到被 Cover 覆盖的位置
         var result = engine.ApplyMove(new Position(0, 0), new Position(1, 0));
@@ -1042,7 +1010,7 @@ public class SimulationEngineTests
         // Arrange: 在 (2,2) 放置 Cover
         var state = CreateStableState();
         state.SetCover(2, 2, new Cover(coverType, health: 1));
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         Assert.Equal(Position.Invalid, engine.State.SelectedPosition);
 
@@ -1062,7 +1030,7 @@ public class SimulationEngineTests
         // Arrange: 先选中 (1,1)，然后在 (3,3) 放置 Cover
         var state = CreateStableState();
         state.SetCover(3, 3, new Cover(coverType, health: 1));
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         // 选中一个正常的方块
         engine.HandleTap(new Position(1, 1));
@@ -1083,7 +1051,7 @@ public class SimulationEngineTests
     public void AcquireLock_LocksCellInEngineState()
     {
         var state = CreateStableState();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         engine.AcquireLock(new Position(2, 2), CellLockType.Receive);
 
@@ -1094,7 +1062,7 @@ public class SimulationEngineTests
     public void ReleaseLock_UnlocksCellInEngineState()
     {
         var state = CreateStableState();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         var token = engine.AcquireLock(new Position(2, 2), CellLockType.Receive);
         engine.ReleaseLock(token);
@@ -1108,7 +1076,7 @@ public class SimulationEngineTests
         // Critical: verifies that the shared CellLocks array reference
         // is not broken by `State = state;` inside Tick().
         var state = CreateStableState();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         engine.AcquireLock(new Position(1, 1), CellLockType.Receive);
 
@@ -1124,7 +1092,7 @@ public class SimulationEngineTests
     public void AcquireLock_MultipleTypes_IndependentRelease()
     {
         var state = CreateStableState();
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         var tokenA = engine.AcquireLock(new Position(0, 0), CellLockType.Receive);
         var tokenB = engine.AcquireLock(new Position(0, 0), CellLockType.Swap);
@@ -1142,7 +1110,7 @@ public class SimulationEngineTests
         // Integration: lock top row → tick → refill should not spawn there
         var state = new GameState(3, 3, 4, new StubRandom());
         // Leave all cells empty — normally refill would fill row 0
-        var engine = CreateEngine(state);
+        var engine = TestEngineFactory.CreateEngine(state);
 
         // Lock column 1, row 0 — refill should skip it
         engine.AcquireLock(new Position(1, 0), CellLockType.Receive);

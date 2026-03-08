@@ -138,13 +138,14 @@ controller.Seek(0.5f);  // 跳到50%位置
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | Width, Height | int | 棋盘尺寸 |
-| TileTypes[] | TileType[] | 方块类型 |
-| BombTypes[] | BombType[] | 炸弹类型 |
+| TileTypesCount | int | 颜色种类数 |
+| TileTypes[] | ElementType[] | 方块类型（颜色和炸弹统一为 ElementType） |
 | CoverLayers[] | Cover[] | 覆盖层 |
 | GroundLayers[] | Ground[] | 地面层 |
-| NextTileId | long | 下一个方块ID |
-| Score | long | 当前分数 |
-| MoveCount | long | 移动次数 |
+| Cells[] | CellKind[] | 格子种类（Slot/Void/Spawner/Sink） |
+| NextTileId | int | 下一个方块ID |
+| Score | int | 当前分数 |
+| MoveCount | int | 移动次数 |
 
 ---
 

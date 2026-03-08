@@ -2,7 +2,7 @@
 # Cross-platform development commands
 # Usage: make <target>
 
-.PHONY: all build test test-all clean coverage help restore unity sync-unity
+.PHONY: all build build-release test test-all test-verbose clean clean-coverage clean-all coverage coverage-quick help restore unity sync-unity format format-check outdated update-packages
 
 # Default target
 all: build test
@@ -49,7 +49,7 @@ endif
 
 ## Run tests with coverage (quick, no HTML report)
 coverage-quick: build
-	dotnet test --collect:"XPlat Code Coverage" --results-directory:coverage-report
+	dotnet test --no-build --collect:"XPlat Code Coverage" --results-directory:coverage-report
 
 # ============================================
 #  Clean Commands

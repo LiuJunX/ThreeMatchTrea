@@ -1,8 +1,6 @@
 ﻿using System.Diagnostics;
 using Match3.Core.AI;
 using Match3.Core.Config;
-using Match3.Core.Models.Enums;
-using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Matching.Generation;
@@ -45,7 +43,7 @@ public class AIPerformanceTests
         const double maxAverageMs = 3.0;
 
         var service = CreateAIService();
-        var state = CreateTestState(8, 8);
+        var state = TestEngineFactory.CreateTestState();
         var moves = service.GetValidMoves(in state);
 
         Assert.NotEmpty(moves);
@@ -85,7 +83,7 @@ public class AIPerformanceTests
         const double maxAverageMs = 150.0;
 
         var service = CreateAIService();
-        var state = CreateTestState(8, 8);
+        var state = TestEngineFactory.CreateTestState();
 
         // Warmup
         for (int i = 0; i < 3; i++)
@@ -122,7 +120,7 @@ public class AIPerformanceTests
         const double maxAverageMs = 300.0;
 
         var service = CreateAIService();
-        var state = CreateTestState(8, 8);
+        var state = TestEngineFactory.CreateTestState();
 
         // Warmup
         for (int i = 0; i < 2; i++)
@@ -163,7 +161,7 @@ public class AIPerformanceTests
         // Warmup
         for (int i = 0; i < 5; i++)
         {
-            var warmupState = CreateTestState(8, 8);
+            var warmupState = TestEngineFactory.CreateTestState();
             service.GetValidMoves(in warmupState);
         }
 
@@ -171,7 +169,7 @@ public class AIPerformanceTests
 
         for (int i = 0; i < boardCount; i++)
         {
-            var state = CreateTestState(8, 8, seed: (ulong)i);
+            var state = TestEngineFactory.CreateTestState(seed: (ulong)i);
             var moves = service.GetValidMoves(in state);
             _ = service.EvaluateState(in state);
         }
@@ -201,7 +199,7 @@ public class AIPerformanceTests
         const double maxAverageMicroseconds = 300;
 
         var service = CreateAIService();
-        var state = CreateTestState(8, 8);
+        var state = TestEngineFactory.CreateTestState();
 
         // Warmup
         for (int i = 0; i < 100; i++)
@@ -238,7 +236,7 @@ public class AIPerformanceTests
         const double maxAverageMicroseconds = 1500;
 
         var service = CreateAIService();
-        var state = CreateTestState(8, 8);
+        var state = TestEngineFactory.CreateTestState();
 
         // Warmup
         for (int i = 0; i < 50; i++)
@@ -286,28 +284,6 @@ public class AIPerformanceTests
             matchProcessor,
             powerUpHandler,
             () => new StubRandom());
-    }
-
-    private GameState CreateTestState(int width, int height, ulong seed = 12345)
-    {
-        var random = new StubRandom();
-        random.SetState(seed);
-
-        var state = new GameState(width, height, 5, random);
-        var types = new[] { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4, ElementType.Item5 };
-
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                int idx = y * width + x;
-                // Use seed to vary the pattern
-                int typeIdx = (int)(((ulong)x + (ulong)y + seed) % (ulong)types.Length);
-                state.SetTile(x, y, new Tile(idx + 1, types[typeIdx], x, y));
-            }
-        }
-
-        return state;
     }
 
     #endregion

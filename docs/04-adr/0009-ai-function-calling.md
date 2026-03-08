@@ -1,6 +1,6 @@
 # ADR-0009: AI 编辑器采用 Function Calling
 
-* **Status**: Accepted
+* **Status**: Archived (Web 项目已移除)
 * **Deciders**: AI Assistant, Development Team
 * **Date**: 2026-01-21
 
@@ -48,13 +48,9 @@ Chosen option: **"采用 Function Calling"**，因为：
 
 ## Validation
 
-* **单元测试**: `WebLevelAIChatServiceTests` 覆盖工具调用解析和参数转换
-* **测试用例**:
-  - 单工具调用正确解析
-  - 多工具调用按顺序执行
-  - snake_case → camelCase 转换
-  - 分析工具识别和执行
-  - place_bomb 中心坐标处理 (-1 → center)
+* **单元测试**: 覆盖工具调用解析和参数转换
+
+> **注意**: 实现代码已随 `Match3.Web` 项目移除。本 ADR 保留作为架构决策记录。
 
 ## Pros and Cons of the Options
 
@@ -62,70 +58,25 @@ Chosen option: **"采用 Function Calling"**，因为：
 
 * Good, because 无需修改现有架构
 * Good, because 所有 LLM 都支持
-* Bad, because LLM 输出格式不稳定，常见问题：
-  - JSON 前后有多余文本
-  - 缺少必需字段
-  - 类型错误（字符串 vs 数字）
+* Bad, because LLM 输出格式不稳定
 * Bad, because 提示词需要大量篇幅描述格式要求
-* Bad, because 难以扩展复杂场景（如分析后再编辑）
+* Bad, because 难以扩展复杂场景
 
 ### Option 2: 采用 Function Calling ✓
 
 * Good, because 原生类型约束，参数验证由 LLM 完成
 * Good, because 支持多轮工具调用，适合复合任务
 * Good, because 行业标准，主流提供商均支持
-* Good, because 工具定义可复用，易于扩展
 * Bad, because 需要 LLM 支持 tools 参数
 * Bad, because 流式输出处理较复杂
 
 ### Option 3: 采用结构化输出 (JSON Schema)
 
 * Good, because 保证输出符合指定 schema
-* Good, because OpenAI 支持 response_format: { type: "json_schema" }
 * Bad, because 不是所有 LLM 都支持
-* Bad, because 仍然是被动解析，不如主动工具调用直观
 * Bad, because 不支持多轮交互和工具执行结果反馈
-
-## Implementation Details
-
-### 文件结构
-
-```
-src/Match3.Web/Services/AI/
-├── FunctionCallingModels.cs    # 工具定义数据模型
-├── ToolRegistry.cs             # 18 个工具定义
-├── ILLMClient.cs               # 扩展 SendWithToolsAsync
-├── OpenAICompatibleClient.cs   # 实现工具调用 API
-└── WebLevelAIChatService.cs    # 工具调用循环
-```
-
-### 工具分类
-
-| 类别 | 数量 | 说明 |
-|------|------|------|
-| 编辑工具 | 15 | 转换为 LevelIntent，由 IntentExecutor 执行 |
-| 分析工具 | 3 | 直接执行，返回结果文本给 LLM |
-
-### 调用流程
-
-```
-SendMessageAsync()
-    │
-    └─► while (round < MaxToolCallRounds)
-            │
-            ├─► SendWithToolsAsync(messages, tools)
-            │
-            ├─► if (!HasToolCalls) → return final response
-            │
-            ├─► foreach toolCall:
-            │       if 分析工具 → 执行分析，收集结果
-            │       if 编辑工具 → 转换为 LevelIntent
-            │
-            └─► messages += assistant + tool_results
-```
 
 ## References
 
 * [OpenAI Function Calling](https://platform.openai.com/docs/guides/function-calling)
 * [DeepSeek API - Function Calling](https://platform.deepseek.com/api-docs/function-calling)
-* 相关文档: `docs/03-design/features/ai-level-editor.md`

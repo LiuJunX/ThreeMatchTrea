@@ -268,5 +268,3 @@ data/levels/
 | `Match3.Core/Analysis/DeepAnalysisService.cs` | Deep 分析核心服务 |
 | `Match3.Core/Analysis/DeepAnalysisResult.cs` | Deep 分析结果类型 |
 | `Match3.Core/Analysis/LevelAnalysisSnapshot.cs` | 持久化快照结构 |
-| `Match3.Web/.../EditorCanvas.razor` | UI 展示面板 |
-| `Match3.Web/.../FlowCurveSvg.razor` | 心流曲线 SVG 组件 |

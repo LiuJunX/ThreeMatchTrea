@@ -34,8 +34,8 @@ All logic implementation must adhere to these patterns to ensure performance and
 *   **Constraint**: Avoid `string` allocations in `Update()`, `ProcessMatches()`, or `ApplyGravity()`.
 
 ## 4. Randomness
-*   **Interface**: `IRandomService` (from Match3.Random)
-*   **Usage**: All RNG must go through this service to ensure determinism for replays/testing.
+*   **Interface**: `IRandom` (from Match3.Random)
+*   **Usage**: All RNG must go through this interface to ensure determinism for replays/testing.
 *   **Forbidden**: `System.Random`.
 *   **Rule**: **MUST** use `Match3.Core.Interfaces.IRandom`. NEVER use `System.Random` or `Guid` directly.
 
@@ -50,16 +50,16 @@ To ensure long-term maintainability and AI-collaboration efficiency, all new fea
 
 ### The Rule of "Systems"
 *   **Definition**: A "System" is a stateless logic class that implements a specific `Interface` (e.g., `ScoreSystem : IScoreSystem`).
-*   **Responsibility**: Encapsulate a single domain domain (Input, Scoring, Physics, AI).
+*   **Responsibility**: Encapsulate a single domain (Input, Scoring, Physics, AI).
 *   **Integration**:
-    *   `Match3Controller` MUST NOT contain business logic. It only coordinates Systems.
+    *   `Match3Engine` MUST NOT contain business logic. It only coordinates Systems.
     *   All Systems must be injected via constructor (Dependency Injection).
     *   Systems must communicate via method calls or event bus, never by sharing mutable state objects (except `ref GameState`).
 
 ### Implementation Checklist
 1.  **Define Interface**: Create `I{Feature}System` in `Match3.Core/Systems/{Domain}/`.
 2.  **Implement System**: Create `{Feature}System` in same directory as interface.
-3.  **Register**: Inject via constructor to `Match3Engine` or relevant coordinator.
+3.  **Register**: Inject via constructor into `Match3Engine` or relevant coordinator.
 4.  **Test**: Create specific unit tests for the System in isolation.
 
 ## 7. Architecture Red Lines
@@ -273,12 +273,12 @@ See: `docs/03-design/features/replay-system.md`
 ### Pipeline
 
 ```
-GameState.Tile.Type
+GameState.Tile.Type (ElementType)
   → GameEvent (TileSpawnedEvent / BoardShuffledEvent / ...)
     → Choreographer (IEventVisitor)
       → RenderCommand (SpawnTileCommand / UpdateTileTypeCommand / ...)
         → Player.Append() → Player.Tick()
-          → VisualState.TileVisual { TileType, BombType, Position, Scale, Alpha }
+          → VisualState.TileVisual { TileType (ElementType), Position, Scale, Alpha }
             → BoardView.Render() / Board3DView.Render()
               → TileView.UpdateFromVisual() / Tile3DView.UpdateFromVisual()
 ```
@@ -287,7 +287,7 @@ GameState.Tile.Type
 
 **View must be a stateless projection of VisualState (Immediate Mode Appearance).**
 
-View does NOT cache upstream data (TileType, BombType, etc.). Each frame,
+View does NOT cache upstream data (ElementType, etc.). Each frame,
 `UpdateFromVisual()` compares the renderer's actual state against the target:
 
 ```csharp
@@ -304,7 +304,7 @@ This eliminates desync bugs structurally — there is no cached copy that can go
 |----------|-------|---------------|-------|
 | New tile spawned | `TileSpawnedEvent` | `SpawnTileCommand` | Player creates new TileVisual |
 | Board shuffle (deadlock) | `BoardShuffledEvent` | `UpdateTileTypeCommand` | Player replaces TileVisual (TileType is `init`-only) |
-| Bomb created from match | `BombCreatedEvent` | `SpawnTileCommand` | New tile with BombType at match position |
+| Bomb created from match | `BombCreatedEvent` | `SpawnTileCommand` | New tile with bomb ElementType at match position |
 
 ### Common Pitfall
 

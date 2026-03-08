@@ -40,6 +40,6 @@ Cage（笼子）是 Cover 层级障碍物，位于 Tile 上方。笼子完全封
 
 ## 相关文档
 
-- [Ground/Cover 层级设计](../04-adr/adr-007-ground-cover-layer.md)
+- [Ground/Cover 层级设计](../04-adr/0007-ground-cover-layer.md)
 - [Chain 锁链](./cover-chain.md)
 - [Bubble 气泡](./cover-bubble.md)

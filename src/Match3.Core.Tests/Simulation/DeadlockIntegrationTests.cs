@@ -1,17 +1,11 @@
 using System.Linq;
-using Match3.Core.Config;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Simulation;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Matching.Generation;
-using Match3.Core.Systems.Physics;
-using Match3.Core.Systems.PowerUps;
-using Match3.Core.Systems.Scoring;
-using Match3.Core.Systems.Spawning;
 using Match3.Core.Tests.TestFixtures;
-using Match3.Random;
 using Xunit;
 
 namespace Match3.Core.Tests.Simulation;
@@ -25,45 +19,6 @@ namespace Match3.Core.Tests.Simulation;
 /// </summary>
 public class DeadlockIntegrationTests
 {
-    private SimulationEngine CreateEngine(GameState state, IEventCollector? eventCollector = null, SimulationConfig? config = null)
-    {
-        var random = new StubRandom();
-        var match3Config = new Match3Config();
-        var physics = new RealtimeGravitySystem(match3Config, random);
-        var refill = new RealtimeRefillSystem(new StubSpawnModel(ElementType.Item3));
-        var bombGenerator = new BombGenerator();
-        var matchFinder = new ClassicMatchFinder(bombGenerator);
-        var scoreSystem = new StubScoreSystem();
-        var matchProcessor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), BombEffectRegistry.CreateDefault());
-        var powerUpHandler = new PowerUpHandler(scoreSystem);
-
-        // 创建死锁检测和洗牌系统
-        var deadlockDetector = new DeadlockDetectionSystem(matchFinder);
-        var shuffleSystem = new BoardShuffleSystem(matchFinder);
-
-        // 确保配置启用死锁检测和事件
-        var finalConfig = config ?? new SimulationConfig
-        {
-            EnableDeadlockDetection = true,
-            EmitEvents = true,
-            ShuffleMaxAttempts = 10
-        };
-
-        return new SimulationEngine(
-            state,
-            finalConfig,
-            physics,
-            refill,
-            matchFinder,
-            matchProcessor,
-            powerUpHandler,
-            null,
-            eventCollector,
-            null,
-            deadlockDetector,
-            shuffleSystem);
-    }
-
     private GameState CreateDeadlockBoard()
     {
         var random = new StubRandom();
@@ -99,7 +54,7 @@ public class DeadlockIntegrationTests
         // 验证棋盘确实是死锁
         Assert.False(deadlockDetector.HasValidMoves(in state), "测试棋盘应该是死锁");
 
-        var engine = CreateEngine(state, eventCollector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: eventCollector);
 
         // 验证初始状态是稳定的
         Assert.True(engine.IsStable(), "初始死锁棋盘应该是稳定的");
@@ -143,7 +98,7 @@ public class DeadlockIntegrationTests
         // Arrange
         var state = CreateDeadlockBoard();
         var eventCollector = new BufferedEventCollector();
-        var engine = CreateEngine(state, eventCollector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: eventCollector);
 
         // Act - 执行单个 Tick，可能还在处理动画
         engine.Tick();
@@ -164,7 +119,7 @@ public class DeadlockIntegrationTests
         {
             EnableDeadlockDetection = false // 禁用死锁检测
         };
-        var engine = CreateEngine(state, eventCollector, config);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: eventCollector, simulationConfig: config);
 
         // Act
         var result = engine.RunUntilStable();
@@ -192,7 +147,7 @@ public class DeadlockIntegrationTests
         var bombTile = new Tile(state.GetTile(0, 0).Id, ElementType.HorizontalRocket, 0, 0);
         state.SetTile(0, 0, bombTile);
 
-        var engine = CreateEngine(state, eventCollector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: eventCollector);
 
         // Act
         engine.RunUntilStable();
@@ -212,7 +167,7 @@ public class DeadlockIntegrationTests
         {
             ShuffleMaxAttempts = 3 // 限制最大尝试次数
         };
-        var engine = CreateEngine(state, eventCollector, config);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: eventCollector, simulationConfig: config);
 
         // Act
         engine.RunUntilStable();
@@ -249,7 +204,7 @@ public class DeadlockIntegrationTests
         }
 
         var eventCollector = new BufferedEventCollector();
-        var engine = CreateEngine(state, eventCollector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: eventCollector);
 
         // Act
         engine.RunUntilStable();

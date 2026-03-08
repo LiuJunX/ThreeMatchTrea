@@ -21,16 +21,17 @@ Match3.Core.Systems.PowerUps/
     └── UfoEffect.cs
 ```
 
-## 炸弹类型 (BombType)
+## 炸弹类型 (ElementType bombs)
 
-| 枚举值 | 名称 | 描述 |
-|--------|------|------|
-| `None` | 无 | 普通方块，不是炸弹 |
-| `Horizontal` | 横向火箭 | 消除整行 |
-| `Vertical` | 纵向火箭 | 消除整列 |
-| `Square5x5` | 方块炸弹 | 消除 5×5 区域 |
-| `Color` | 彩球 | 消除出现最多的颜色 |
-| `Ufo` | UFO | 小十字 + 随机消除 1 个方块 |
+炸弹是 `ElementType` 的一部分（值 10-14），通过 `ElementType.IsBomb()` 扩展方法判断。
+
+| ElementType 值 | 名称 | 描述 |
+|----------------|------|------|
+| `HorizontalRocket` (10) | 横向火箭 | 消除整行 |
+| `VerticalRocket` (11) | 纵向火箭 | 消除整列 |
+| `ColorBomb` (12) | 彩球 | 消除出现最多的颜色 |
+| `Ufo` (13) | UFO | 小十字 + 随机消除 1 个方块 |
+| `Square5x5` (14) | 方块炸弹 | 消除 5×5 区域 |
 
 ---
 
@@ -375,9 +376,9 @@ private void ClearTileWithChain(ref GameState state, Position pos)
     var tile = state.GetTile(pos);
 
     // 已经是空的，跳过（防止重复处理）
-    if (tile.Type == ElementType.None) return;
+    if (tile.Type == ElementType.None) return;  // ElementType
 
-    if (tile.Type.IsBomb())
+    if (tile.Type.IsBomb())  // ElementType.IsBomb() extension
     {
         // 先清除炸弹本身（防止重复触发）
         state.SetTile(pos, None);
@@ -421,9 +422,9 @@ public interface IPowerUpHandler
 public interface IBombEffect
 {
     /// <summary>
-    /// 炸弹类型
+    /// 炸弹的 ElementType 值
     /// </summary>
-    BombType Type { get; }
+    ElementType Type { get; }
 
     /// <summary>
     /// 应用炸弹效果
@@ -471,7 +472,7 @@ public class BombEffectRegistry
     /// <summary>
     /// 获取指定类型的炸弹效果
     /// </summary>
-    public bool TryGetEffect(BombType type, out IBombEffect? effect);
+    public bool TryGetEffect(ElementType type, out IBombEffect? effect);
 }
 ```
 

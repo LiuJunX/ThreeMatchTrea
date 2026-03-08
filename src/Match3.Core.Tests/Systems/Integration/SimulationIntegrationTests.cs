@@ -1,20 +1,9 @@
-﻿using System.Diagnostics;
-using System.Numerics;
-using Match3.Core.Config;
-using Match3.Core.Events;
+﻿using Match3.Core.Events;
 using Match3.Core.Models.Enums;
-using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
 using Match3.Core.Simulation;
-using Match3.Core.Systems.Matching;
-using Match3.Core.Systems.Matching.Generation;
-using Match3.Core.Systems.Physics;
-using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Projectiles;
-using Match3.Core.Systems.Scoring;
-using Match3.Core.Systems.Spawning;
 using Match3.Core.Tests.TestFixtures;
-using Match3.Random;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -34,8 +23,8 @@ public class SimulationIntegrationTests
     [Fact]
     public void SimulationEngine_WithProjectileSystem_ProcessesProjectileImpacts()
     {
-        var state = CreateTestState();
-        var engine = CreateEngine(state);
+        var state = TestEngineFactory.CreateTestState();
+        var engine = TestEngineFactory.CreateEngine(state);
 
         // Launch a projectile
         var projectile = new UfoProjectile(
@@ -56,8 +45,8 @@ public class SimulationIntegrationTests
     [Fact]
     public void SimulationEngine_ProjectileImpact_ClearsTile()
     {
-        var state = CreateTestState();
-        var engine = CreateEngine(state);
+        var state = TestEngineFactory.CreateTestState();
+        var engine = TestEngineFactory.CreateEngine(state);
 
         var targetPos = new Position(4, 4);
         var targetTileBefore = engine.State.GetTile(targetPos.X, targetPos.Y);
@@ -81,8 +70,8 @@ public class SimulationIntegrationTests
     [Fact]
     public void SimulationEngine_MultipleProjectiles_AllProcessed()
     {
-        var state = CreateTestState();
-        var engine = CreateEngine(state);
+        var state = TestEngineFactory.CreateTestState();
+        var engine = TestEngineFactory.CreateEngine(state);
 
         // Launch multiple projectiles
         for (int i = 0; i < 3; i++)
@@ -110,9 +99,9 @@ public class SimulationIntegrationTests
     [Fact]
     public void SimulationEngine_EventCollector_CapturesAllEvents()
     {
-        var state = CreateTestState();
+        var state = TestEngineFactory.CreateTestState();
         var collector = new BufferedEventCollector();
-        var engine = CreateEngine(state, collector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
         // Apply a move
         engine.ApplyMove(new Position(0, 0), new Position(1, 0));
@@ -133,9 +122,9 @@ public class SimulationIntegrationTests
     [Fact]
     public void SimulationEngine_RunUntilStable_DisablesEventsDuringRun()
     {
-        var state = CreateTestState();
+        var state = TestEngineFactory.CreateTestState();
         var collector = new BufferedEventCollector();
-        var engine = CreateEngine(state, collector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
         // Clear any existing events
         collector.Clear();
@@ -150,9 +139,9 @@ public class SimulationIntegrationTests
     [Fact]
     public void SimulationEngine_Clone_DoesNotAffectOriginalEvents()
     {
-        var state = CreateTestState();
+        var state = TestEngineFactory.CreateTestState();
         var collector = new BufferedEventCollector();
-        var engine = CreateEngine(state, collector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
         var cloned = engine.Clone();
 
@@ -170,8 +159,8 @@ public class SimulationIntegrationTests
     [Fact]
     public void SimulationEngine_FullMoveSequence_MaintainsConsistency()
     {
-        var state = CreateTestState();
-        var engine = CreateEngine(state);
+        var state = TestEngineFactory.CreateTestState();
+        var engine = TestEngineFactory.CreateEngine(state);
 
         // Simulate a full game sequence
         for (int move = 0; move < 5; move++)
@@ -219,53 +208,6 @@ public class SimulationIntegrationTests
 
     #endregion
 
-    #region Helper Methods
-
-    private SimulationEngine CreateEngine(GameState state, IEventCollector? eventCollector = null)
-    {
-        var random = new StubRandom();
-        var config = new Match3Config();
-        var physics = new RealtimeGravitySystem(config, random);
-        var spawnModel = new StubSpawnModel();
-        var refill = new RealtimeRefillSystem(spawnModel);
-        var bombGenerator = new BombGenerator();
-        var matchFinder = new ClassicMatchFinder(bombGenerator);
-        var scoreSystem = new StubScoreSystem();
-        var matchProcessor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), BombEffectRegistry.CreateDefault());
-        var powerUpHandler = new PowerUpHandler(scoreSystem);
-        var projectileSystem = new ProjectileSystem();
-
-        return new SimulationEngine(
-            state,
-            SimulationConfig.ForHumanPlay(),
-            physics,
-            refill,
-            matchFinder,
-            matchProcessor,
-            powerUpHandler,
-            projectileSystem,
-            eventCollector);
-    }
-
-    private GameState CreateTestState()
-    {
-        var state = new GameState(8, 8, 5, new StubRandom());
-        var types = new[] { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4, ElementType.Item5 };
-
-        for (int y = 0; y < 8; y++)
-        {
-            for (int x = 0; x < 8; x++)
-            {
-                int idx = y * 8 + x;
-                // Pattern that avoids obvious matches
-                state.SetTile(x, y, new Tile(idx + 1, types[(x + y) % types.Length], x, y));
-            }
-        }
-
-        return state;
-    }
-
-    #endregion
 }
 
 

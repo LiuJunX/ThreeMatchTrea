@@ -111,11 +111,11 @@ public interface IMatchProcessor
 ```csharp
 public class MatchGroup
 {
-    public TileType Type;                    // 方块颜色
+    public ElementType Type;                 // 方块颜色 (ElementType.Item1-Item6)
     public HashSet<Position> Positions;      // 所有参与消除的位置
     public MatchShape Shape;                 // 匹配形状
     public Position? BombOrigin;             // 炸弹生成位置
-    public BombType SpawnBombType;           // 要生成的炸弹类型
+    public ElementType SpawnBombType;        // 要生成的炸弹类型 (ElementType bomb values)
 }
 ```
 
@@ -243,7 +243,7 @@ public bool HasMatchAt(in GameState state, Position p)
 │     └─ tilesToClear = 所有 MatchGroup 的 Positions          │
 │                                                             │
 │  2. 处理炸弹生成                                              │
-│     ├─ 如果 SpawnBombType != None                           │
+│     ├─ 如果 SpawnBombType != ElementType.None                │
 │     ├─ 从 tilesToClear 移除 BombOrigin                      │
 │     ├─ 加入 protectedTiles                                  │
 │     └─ 在 BombOrigin 位置放置新炸弹                          │
@@ -264,7 +264,7 @@ public bool HasMatchAt(in GameState state, Position p)
 当消除的方块带有炸弹时，自动触发连锁：
 
 ```csharp
-if (t.Type.IsBomb())
+if (t.Type.IsBomb())  // ElementType.IsBomb() extension method
 {
     if (_bombRegistry.TryGetEffect(t.Type, out var effect))
     {

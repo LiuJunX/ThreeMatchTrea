@@ -52,7 +52,7 @@
 ```csharp
 public interface ISpawnModel
 {
-    TileType Predict(ref GameState state, int spawnX, in SpawnContext context);
+    ElementType Predict(ref GameState state, int spawnX, in SpawnContext context);
 }
 ```
 
@@ -131,7 +131,7 @@ graph TD
 4. **次选近消除**：生成能形成 2 连的颜色（为后续消除铺垫）
 
 ```csharp
-private TileType SpawnHelpful(ref GameState state, int spawnX, int colorCount)
+private ElementType SpawnHelpful(ref GameState state, int spawnX, int colorCount)
 {
     // 1. 找出能创建消除的颜色
     Span<bool> wouldMatch = stackalloc bool[6];
@@ -161,7 +161,7 @@ private TileType SpawnHelpful(ref GameState state, int spawnX, int colorCount)
 3. **避免任何能消除的颜色**
 
 ```csharp
-private TileType SpawnChallenging(ref GameState state, int spawnX, int colorCount)
+private ElementType SpawnChallenging(ref GameState state, int spawnX, int colorCount)
 {
     Span<bool> wouldNotMatch = stackalloc bool[6];
     BoardAnalyzer.FindNonMatchingColors(ref state, spawnX, wouldNotMatch);
@@ -185,7 +185,7 @@ private TileType SpawnChallenging(ref GameState state, int spawnX, int colorCoun
 平衡各颜色分布，使棋盘颜色更均匀：
 
 ```csharp
-private TileType SpawnBalanced(ref GameState state, int spawnX, int colorCount)
+private ElementType SpawnBalanced(ref GameState state, int spawnX, int colorCount)
 {
     // 统计各颜色数量
     Span<int> counts = stackalloc int[6];
@@ -346,7 +346,7 @@ public class SpawnModelAdapter : ITileGenerator
 
     public void SetContext(SpawnContext context) => _context = context;
 
-    public TileType GenerateNonMatchingTile(ref GameState state, int x, int y)
+    public ElementType GenerateNonMatchingTile(ref GameState state, int x, int y)
         => _model.Predict(ref state, x, in _context);
 }
 ```
@@ -360,7 +360,7 @@ public class LegacySpawnModel : ISpawnModel
 {
     private readonly ITileGenerator _generator;
 
-    public TileType Predict(ref GameState state, int spawnX, in SpawnContext context)
+    public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context)
         => _generator.GenerateNonMatchingTile(ref state, spawnX, 0);
 }
 ```
@@ -383,7 +383,7 @@ public class LegacySpawnModel : ISpawnModel
 
 | 情况 | 处理方式 |
 | :--- | :--- |
-| `colorCount <= 0` | 返回 `TileType.None` |
+| `colorCount <= 0` | 返回 `ElementType.None` |
 | 单色占比超过 2×公平份额 | 多样性守卫介入，强制生成最稀缺颜色 |
 | 棋盘上棋子数 < colorCount | 守卫不触发，正常执行策略 |
 | 所有颜色都会形成消除 | Challenge 策略退化为随机 |
@@ -418,8 +418,7 @@ RealtimeRefillSystem
 | `GameState` | 添加 `MoveLimit`, `TargetDifficulty` 字段 |
 | `BoardInitializer` | 从 LevelConfig 初始化 GameState 的难度字段 |
 | `RealtimeRefillSystem` | 依赖从 `ITileGenerator` 改为 `ISpawnModel` |
-| `Match3GameService` | 创建 `RuleBasedSpawnModel` 实例 |
-| `EditorConfigPanel` | 添加难度滑块 UI (0% - 100%) |
+| `GameServiceFactory` | 创建 `RuleBasedSpawnModel` 实例 |
 
 ### 8.3 待集成项
 

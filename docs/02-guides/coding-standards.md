@@ -17,7 +17,6 @@
 ## 2. Code Organization
 1.  **Single Responsibility**: Split classes > 300 lines.
 2.  **State Management**: Use explicit State structs. Logic classes must be stateless.
-3.  **CSS Isolation**: Use `.razor.css` files. No `<style>` tags in razor.
 
 ## 3. Event Subscription
 

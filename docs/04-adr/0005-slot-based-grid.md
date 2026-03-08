@@ -1,4 +1,4 @@
-# ADR 001: Slot-Based Grid Architecture
+# ADR 0005: Slot-Based Grid Architecture
 
 ## Status
 Accepted

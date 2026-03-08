@@ -28,34 +28,18 @@ Auto Play 是关卡编辑器中的调试辅助功能，用于自动执行有效�
 
 ### 2.1 v2.0 架构（当前）
 
-v2.0 将移动选择逻辑从 Web 层迁移到 Core 层，通过统一的 `IMoveSelector` 接口实现。
+v2.0 将移动选择逻辑集中在 Core 层，通过统一的 `IMoveSelector` 接口实现。平台层（Unity）作为协调者调用 Core 接口。
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Auto Play 系统架构 v2.0                   │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│   GameControls.razor                                        │
+│   平台层（Unity GameController 等）                          │
 │       │                                                     │
 │       │ ToggleAutoPlay()                                    │
+│       │ 检查 IsStable() && !HasActiveAnimations             │
 │       ▼                                                     │
-│   ┌─────────────────────────────────────────┐               │
-│   │     Match3GameService (Web 层)          │               │
-│   │  ┌───────────────────────────────────┐  │               │
-│   │  │  _isAutoPlaying: bool             │  │               │
-│   │  │  _autoPlaySelector: IMoveSelector │  │  ← 协调者角色 │
-│   │  └───────────────────────────────────┘  │               │
-│   │                                         │               │
-│   │  GameLoopAsync()                        │               │
-│   │       │                                 │               │
-│   │       ├─ IsStable()?                    │               │
-│   │       ├─ HasActiveAnimations?           │               │
-│   │       ▼                                 │               │
-│   │  TryMakeRandomMove() ──────────────────────────┐        │
-│   └─────────────────────────────────────────┘      │        │
-│                                                    │        │
-│   ═══════════════════════════════════════════════  │        │
-│                                                    ▼        │
 │   ┌─────────────────────────────────────────────────────┐   │
 │   │              Core 层 - IMoveSelector                 │   │
 │   │  ┌─────────────────────────────────────────────┐    │   │
@@ -86,8 +70,6 @@ v2.0 将移动选择逻辑从 Web 层迁移到 Core 层，通过统一的 `IMove
 | `Match3.Core/Systems/Selection/MoveAction.cs` | Core | 移动操作数据结构 |
 | `Match3.Core/Config/MoveSelectionConfig.cs` | Core | 权重配置 |
 | `Match3.Core/Utility/GridUtility.cs` | Core | 共享工具方法 |
-| `Match3.Web/Services/Match3GameService.cs` | Web | 协调者，状态感知 |
-| `Match3.Web/Components/Game/GameControls.razor` | Web | UI 控制按钮 |
 
 ### 2.3 IMoveSelector 接口
 
@@ -128,9 +110,9 @@ if (_isAutoPlaying &&                              // 1. Auto Play 已启用
 | `IsStable()` | 棋盘无正在下落的方块、无待处理的消除 |
 | `!HasActiveAnimations` | 表现层动画已完成（交换动画、消除动画等） |
 
-### 3.2 Web 层协调代码
+### 3.2 平台层协调代码
 
-`Match3GameService.TryMakeRandomMove()` 现在只是一个简单的协调者：
+平台层（Unity GameController 等）作为协调者调用 Core 的 `IMoveSelector`：
 
 ```csharp
 private void TryMakeRandomMove()

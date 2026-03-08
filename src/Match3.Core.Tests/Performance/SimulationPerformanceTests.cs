@@ -1,19 +1,11 @@
 ﻿using System.Diagnostics;
-using Match3.Core.Config;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
 using Match3.Core.Simulation;
-using Match3.Core.Systems.Matching;
-using Match3.Core.Systems.Matching.Generation;
-using Match3.Core.Systems.Physics;
-using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Projectiles;
-using Match3.Core.Systems.Scoring;
-using Match3.Core.Systems.Spawning;
 using Match3.Core.Tests.TestFixtures;
-using Match3.Random;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -46,13 +38,13 @@ public class SimulationPerformanceTests
         const int iterations = 100;
         const double maxAverageMs = 3.0;
 
-        var state = CreateTestState(8, 8);
-        var engine = CreateEngine(state);
+        var state = TestEngineFactory.CreateTestState();
+        var engine = TestEngineFactory.CreateEngine(state);
 
         // Warmup
         for (int i = 0; i < 10; i++)
         {
-            var warmupEngine = CreateEngine(CreateTestState(8, 8));
+            var warmupEngine = TestEngineFactory.CreateEngine(TestEngineFactory.CreateTestState());
             warmupEngine.ApplyMove(new Position(0, 0), new Position(1, 0));
             warmupEngine.RunUntilStable();
         }
@@ -61,7 +53,7 @@ public class SimulationPerformanceTests
 
         for (int i = 0; i < iterations; i++)
         {
-            var testEngine = CreateEngine(CreateTestState(8, 8));
+            var testEngine = TestEngineFactory.CreateEngine(TestEngineFactory.CreateTestState());
             testEngine.ApplyMove(new Position(i % 7, i % 7), new Position((i % 7) + 1, i % 7));
             testEngine.RunUntilStable();
         }
@@ -83,8 +75,8 @@ public class SimulationPerformanceTests
         // Measure raw tick throughput
         const int tickCount = 10000;
 
-        var state = CreateTestState(8, 8);
-        var engine = CreateEngine(state);
+        var state = TestEngineFactory.CreateTestState();
+        var engine = TestEngineFactory.CreateEngine(state);
 
         // Warmup to avoid JIT overhead in timed section
         for (int i = 0; i < 500; i++)
@@ -128,7 +120,7 @@ public class SimulationPerformanceTests
         var nullTimes = new List<double>();
         for (int i = 0; i < iterations; i++)
         {
-            var engine = CreateEngine(CreateTestState(8, 8), NullEventCollector.Instance);
+            var engine = TestEngineFactory.CreateEngine(TestEngineFactory.CreateTestState(), eventCollector: NullEventCollector.Instance);
             engine.ApplyMove(new Position(3, 3), new Position(4, 3));
 
             var sw = Stopwatch.StartNew();
@@ -142,7 +134,7 @@ public class SimulationPerformanceTests
         for (int i = 0; i < iterations; i++)
         {
             var collector = new BufferedEventCollector();
-            var engine = CreateEngine(CreateTestState(8, 8), collector);
+            var engine = TestEngineFactory.CreateEngine(TestEngineFactory.CreateTestState(), eventCollector: collector);
             engine.ApplyMove(new Position(3, 3), new Position(4, 3));
 
             var sw = Stopwatch.StartNew();
@@ -215,7 +207,7 @@ public class SimulationPerformanceTests
         const int updateCount = 1000;
 
         var system = new ProjectileSystem();
-        var state = CreateTestState(8, 8);
+        var state = TestEngineFactory.CreateTestState();
 
         // Launch multiple projectiles (keep targets within 8x8 grid)
         for (int i = 0; i < projectileCount; i++)
@@ -259,8 +251,8 @@ public class SimulationPerformanceTests
         // Measure clone performance for AI branching
         const int cloneCount = 1000;
 
-        var state = CreateTestState(8, 8);
-        var engine = CreateEngine(state);
+        var state = TestEngineFactory.CreateTestState();
+        var engine = TestEngineFactory.CreateEngine(state);
 
         // Warmup
         for (int i = 0; i < 10; i++)
@@ -301,8 +293,8 @@ public class SimulationPerformanceTests
         // Verify that ticks don't cause excessive allocations
         const int tickCount = 100;
 
-        var state = CreateTestState(8, 8);
-        var engine = CreateEngine(state);
+        var state = TestEngineFactory.CreateTestState();
+        var engine = TestEngineFactory.CreateEngine(state);
 
         // Force initial allocations
         for (int i = 0; i < 50; i++)
@@ -335,53 +327,6 @@ public class SimulationPerformanceTests
 
     #endregion
 
-    #region Helper Methods
-
-    private SimulationEngine CreateEngine(GameState state, IEventCollector? eventCollector = null)
-    {
-        var random = new StubRandom();
-        var config = new Match3Config();
-        var physics = new RealtimeGravitySystem(config, random);
-        var spawnModel = new StubSpawnModel();
-        var refill = new RealtimeRefillSystem(spawnModel);
-        var bombGenerator = new BombGenerator();
-        var matchFinder = new ClassicMatchFinder(bombGenerator);
-        var scoreSystem = new StubScoreSystem();
-        var matchProcessor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), BombEffectRegistry.CreateDefault());
-        var powerUpHandler = new PowerUpHandler(scoreSystem);
-        var projectileSystem = new ProjectileSystem();
-
-        return new SimulationEngine(
-            state,
-            SimulationConfig.ForHumanPlay(),
-            physics,
-            refill,
-            matchFinder,
-            matchProcessor,
-            powerUpHandler,
-            projectileSystem,
-            eventCollector);
-    }
-
-    private GameState CreateTestState(int width, int height)
-    {
-        var state = new GameState(width, height, 5, new StubRandom());
-        var types = new[] { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4, ElementType.Item5 };
-
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                int idx = y * width + x;
-                // Avoid obvious matches with offset pattern
-                state.SetTile(x, y, new Tile(idx + 1, types[(x + y) % types.Length], x, y));
-            }
-        }
-
-        return state;
-    }
-
-    #endregion
 }
 
 

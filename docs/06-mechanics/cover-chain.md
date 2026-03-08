@@ -47,6 +47,6 @@ Chain（锁链）是 Cover 层级障碍物，位于 Tile 上方。锁链允许�
 
 ## 相关文档
 
-- [Ground/Cover 层级设计](../04-adr/adr-007-ground-cover-layer.md)
+- [Ground/Cover 层级设计](../04-adr/0007-ground-cover-layer.md)
 - [Cage 笼子](./cover-cage.md)
 - [Bubble 气泡](./cover-bubble.md)
