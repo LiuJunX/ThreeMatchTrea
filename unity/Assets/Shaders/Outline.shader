@@ -4,6 +4,8 @@ Shader "Match3/Outline"
     {
         _OutlineColor ("Outline Color", Color) = (1,1,1,1)
         _OutlineWidth ("Outline Width", Float) = 0.05
+        _ClipYMin ("Clip Y Min", Float) = -9999
+        _ClipYMax ("Clip Y Max", Float) =  9999
     }
     SubShader
     {
@@ -30,6 +32,8 @@ Shader "Match3/Outline"
             CBUFFER_START(UnityPerMaterial)
                 float4 _OutlineColor;
                 float _OutlineWidth;
+                float _ClipYMin;
+                float _ClipYMax;
             CBUFFER_END
 
             struct Attributes
@@ -41,6 +45,7 @@ Shader "Match3/Outline"
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
+                float3 positionWS : TEXCOORD0;
             };
 
             Varyings vert(Attributes input)
@@ -48,11 +53,14 @@ Shader "Match3/Outline"
                 Varyings output;
                 float3 posOS = input.positionOS.xyz + input.normalOS * _OutlineWidth;
                 output.positionCS = TransformObjectToHClip(posOS);
+                output.positionWS = TransformObjectToWorld(posOS);
                 return output;
             }
 
             half4 frag(Varyings input) : SV_Target
             {
+                clip(input.positionWS.y - _ClipYMin);
+                clip(_ClipYMax - input.positionWS.y);
                 return half4(_OutlineColor.rgb, 1);
             }
             ENDHLSL
@@ -75,6 +83,8 @@ Shader "Match3/Outline"
 
             float4 _OutlineColor;
             float _OutlineWidth;
+            float _ClipYMin;
+            float _ClipYMax;
 
             struct appdata
             {
@@ -85,6 +95,7 @@ Shader "Match3/Outline"
             struct v2f
             {
                 float4 pos : SV_POSITION;
+                float3 worldPos : TEXCOORD0;
             };
 
             v2f vert(appdata v)
@@ -92,11 +103,14 @@ Shader "Match3/Outline"
                 v2f o;
                 float3 posOS = v.vertex.xyz + v.normal * _OutlineWidth;
                 o.pos = UnityObjectToClipPos(float4(posOS, 1));
+                o.worldPos = mul(unity_ObjectToWorld, float4(posOS, 1)).xyz;
                 return o;
             }
 
             half4 frag(v2f i) : SV_Target
             {
+                clip(i.worldPos.y - _ClipYMin);
+                clip(_ClipYMax - i.worldPos.y);
                 return half4(_OutlineColor.rgb, 1);
             }
             ENDCG

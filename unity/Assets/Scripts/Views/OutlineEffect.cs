@@ -17,6 +17,8 @@ namespace Match3.Unity.Views
         private static readonly List<OutlineEffect> s_instances = new();
         private static readonly int OutlineColorId = Shader.PropertyToID("_OutlineColor");
         private static readonly int OutlineWidthId = Shader.PropertyToID("_OutlineWidth");
+        private static readonly int ClipYMinId = Shader.PropertyToID("_ClipYMin");
+        private static readonly int ClipYMaxId = Shader.PropertyToID("_ClipYMax");
 
         private MeshFilter _source;
         private GameObject _outlineGo;
@@ -29,6 +31,12 @@ namespace Match3.Unity.Views
         private Color _syncedColor;
         private Color _color = Color.white;
         private bool _forceVisible;
+
+        // Clip bounds for hole portal effect
+        private float _clipYMin = -9999f;
+        private float _clipYMax = 9999f;
+        private float _syncedClipYMin = -9999f;
+        private float _syncedClipYMax = 9999f;
 
         /// <summary>
         /// Global on/off toggle for all outline instances.
@@ -106,6 +114,24 @@ namespace Match3.Unity.Views
             RefreshVisibility();
         }
 
+        /// <summary>
+        /// Set Y-axis clip bounds for hole portal effect.
+        /// </summary>
+        public void SetClipBounds(float yMin, float yMax)
+        {
+            _clipYMin = yMin;
+            _clipYMax = yMax;
+        }
+
+        /// <summary>
+        /// Reset clip bounds to default (no clipping).
+        /// </summary>
+        public void ResetClipBounds()
+        {
+            _clipYMin = -9999f;
+            _clipYMax = 9999f;
+        }
+
         private void LateUpdate()
         {
             if (!s_enabled && !_forceVisible) return;
@@ -119,13 +145,26 @@ namespace Match3.Unity.Views
                 _syncedMesh = mesh;
             }
 
-            // Sync color (only when changed)
-            if (_color != _syncedColor)
+            // Sync properties (color + clip bounds) — single SetPropertyBlock call
+            bool colorChanged = _color != _syncedColor;
+            bool clipChanged = _clipYMin != _syncedClipYMin || _clipYMax != _syncedClipYMax;
+
+            if (colorChanged || clipChanged)
             {
                 _outlineRenderer.GetPropertyBlock(_propBlock);
-                _propBlock.SetColor(OutlineColorId, _color);
+                if (colorChanged)
+                {
+                    _propBlock.SetColor(OutlineColorId, _color);
+                    _syncedColor = _color;
+                }
+                if (clipChanged)
+                {
+                    _propBlock.SetFloat(ClipYMinId, _clipYMin);
+                    _propBlock.SetFloat(ClipYMaxId, _clipYMax);
+                    _syncedClipYMin = _clipYMin;
+                    _syncedClipYMax = _clipYMax;
+                }
                 _outlineRenderer.SetPropertyBlock(_propBlock);
-                _syncedColor = _color;
             }
         }
 
@@ -145,6 +184,10 @@ namespace Match3.Unity.Views
             _syncedColor = default;
             _color = Color.white;
             _forceVisible = false;
+            _clipYMin = -9999f;
+            _clipYMax = 9999f;
+            _syncedClipYMin = -9999f;
+            _syncedClipYMax = 9999f;
             RefreshVisibility();
         }
     }

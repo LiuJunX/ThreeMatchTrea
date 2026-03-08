@@ -19,6 +19,7 @@ namespace Match3.Unity.Pools
         private static readonly Dictionary<ElementType, Mesh> _bombMeshCache = new();
         private static readonly Dictionary<ElementType, Material[]> _bombMaterialCache = new();
         private static Shader _litShader;
+        private static Shader _tileLitShader;
 
         private static RenderTuningSettings _tuning;
 
@@ -123,10 +124,10 @@ namespace Match3.Unity.Pools
                 {
                     _bombMeshCache[type] = meshFilter.sharedMesh;
 
-                    // Cache embedded materials from the FBX model
+                    // Cache embedded materials from the FBX model (clone with TileLit for clip support)
                     var renderer = model.GetComponentInChildren<MeshRenderer>();
                     if (renderer != null && renderer.sharedMaterials.Length > 0)
-                        _bombMaterialCache[type] = renderer.sharedMaterials;
+                        _bombMaterialCache[type] = CloneMaterialsWithTileLit(renderer.sharedMaterials);
 
                     Debug.Log($"[MeshFactory] Loaded Bomb_{typeName} mesh from Resources ({renderer?.sharedMaterials.Length ?? 0} materials)");
                     return;
@@ -383,15 +384,31 @@ namespace Match3.Unity.Pools
             // Destroying them turns outlines/shadows magenta on pool re-use.
 
             _bombMeshCache.Clear();
+
+            // Destroy cloned bomb materials (created by CloneMaterialsWithTileLit)
+            foreach (var mats in _bombMaterialCache.Values)
+            {
+                if (mats == null) continue;
+                foreach (var mat in mats)
+                {
+                    if (mat != null)
+                        Object.Destroy(mat);
+                }
+            }
             _bombMaterialCache.Clear();
             _singleMaterialArrayCache.Clear();
             _tileMeshCache.Clear();
             _fallbackMesh = null;
             _litShader = null;
-            _complexLitShader = null;
+            _tileLitShader = null;
         }
 
-        private static Shader _complexLitShader;
+        private static Shader GetTileLitShader()
+        {
+            if (_tileLitShader != null) return _tileLitShader;
+            _tileLitShader = Shader.Find("Match3/TileLit");
+            return _tileLitShader;
+        }
 
         private static Shader GetLitShader()
         {
@@ -404,22 +421,37 @@ namespace Match3.Unity.Pools
             return _litShader;
         }
 
-        private static Shader GetComplexLitShader()
+        /// <summary>
+        /// Clone FBX materials and swap their shader to Match3/TileLit for clip support.
+        /// </summary>
+        private static Material[] CloneMaterialsWithTileLit(Material[] sourceMats)
         {
-            if (_complexLitShader != null) return _complexLitShader;
+            var tileLit = GetTileLitShader();
+            if (tileLit == null) return sourceMats;
 
-            _complexLitShader = Shader.Find("Universal Render Pipeline/Complex Lit");
-            return _complexLitShader;
+            var result = new Material[sourceMats.Length];
+            for (int i = 0; i < sourceMats.Length; i++)
+            {
+                if (sourceMats[i] != null)
+                {
+                    result[i] = new Material(sourceMats[i]); // clone all properties
+                    result[i].shader = tileLit;               // swap to TileLit
+                }
+            }
+            return result;
         }
 
         /// <summary>
-        /// Create ceramic material with glossy highlights and clear coat glaze.
-        /// URP: Complex Lit (supports clear coat). Fallback: Standard.
+        /// Create ceramic material with glossy PBR highlights.
+        /// Uses Match3/TileLit shader (supports Y-axis clipping for hole portals).
+        /// Note: ClearCoat (was 0.07 mask) is intentionally dropped — TileLit uses
+        /// UniversalFragmentPBR which doesn't support ClearCoat. The visual difference
+        /// at 0.07 mask was negligible.
         /// </summary>
         private static Material CreateCeramicMaterial(Color color)
         {
-            // Prefer Complex Lit for clear coat, fallback to Lit, then Standard
-            var shader = GetComplexLitShader() ?? GetLitShader();
+            // Prefer Match3/TileLit (supports Y-axis clipping), fallback to Lit, then Standard
+            var shader = GetTileLitShader() ?? GetLitShader();
             var mat = new Material(shader);
 
             // Base color
@@ -435,29 +467,10 @@ namespace Match3.Unity.Pools
             // Glossy ceramic: high enough for highlights, not so high that
             // flat-shading normal seams show harsh dark lines
             if (mat.HasProperty("_Smoothness"))
-                // Slightly higher smoothness = tighter/cleaner key-light highlight.
                 mat.SetFloat("_Smoothness", 0.62f);
 
-            // Clear coat glaze layer (Complex Lit only).
-            // Keep it subtle: adds "ceramic glaze" without turning into multiple oily hotspots.
-            if (mat.HasProperty("_ClearCoatMask"))
-            {
-                // Slightly stronger glaze, keep it subtle to avoid "oily" hotspots.
-                mat.SetFloat("_ClearCoatMask", 0.07f);
-                if (mat.GetFloat("_ClearCoatMask") > 0.001f)
-                    mat.EnableKeyword("_CLEARCOAT");
-                else
-                    mat.DisableKeyword("_CLEARCOAT");
-            }
-            if (mat.HasProperty("_ClearCoatSmoothness"))
-                mat.SetFloat("_ClearCoatSmoothness", 0.75f);
-
-            // Environment reflections: enabled, uses the warm-white cubemap set by Board3DView.
-            // This gives clean Fresnel highlights on tile edges instead of black.
-
-            // Enable emission keyword (default black = no glow)
-            // Tile3DView sets emission color via PropertyBlock when selected
-            mat.EnableKeyword("_EMISSION");
+            // Emission (default black = no glow).
+            // Tile3DView sets emission color via PropertyBlock when selected/hinted.
             if (mat.HasProperty("_EmissionColor"))
                 mat.SetColor("_EmissionColor", Color.black);
 
@@ -472,17 +485,6 @@ namespace Match3.Unity.Pools
                 mat.SetFloat("_Metallic", settings.Metallic);
             if (mat.HasProperty("_Smoothness"))
                 mat.SetFloat("_Smoothness", settings.Smoothness);
-
-            if (mat.HasProperty("_ClearCoatMask"))
-            {
-                mat.SetFloat("_ClearCoatMask", settings.ClearCoatMask);
-                if (settings.ClearCoatMask > 0.001f)
-                    mat.EnableKeyword("_CLEARCOAT");
-                else
-                    mat.DisableKeyword("_CLEARCOAT");
-            }
-            if (mat.HasProperty("_ClearCoatSmoothness"))
-                mat.SetFloat("_ClearCoatSmoothness", settings.ClearCoatSmoothness);
         }
 
         private static Material _fallbackMaterial;

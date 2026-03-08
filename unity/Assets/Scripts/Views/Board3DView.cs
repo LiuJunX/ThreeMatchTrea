@@ -38,11 +38,14 @@ namespace Match3.Unity.Views
 
         private ObjectiveDisplayController _objectiveDisplay;
 
-        // Per-column hole zone info for portal visual effects
+        // Per-column hole zone info for portal visual effects (shader clip)
         private struct HoleZone
         {
-            public int EntryY; // first hole row (from top, grid coords)
-            public int ExitY;  // last hole row
+            public int EntryY;         // first hole row (grid coords, Y-down)
+            public int ExitY;          // last hole row
+            public float HoleTopWorldY; // world Y of top edge of entry cell
+            public float HoleBotWorldY; // world Y of bottom edge of exit cell
+            public float MidGridY;      // midpoint in grid Y for side detection
         }
         private readonly Dictionary<int, HoleZone> _columnHoleZones = new();
 
@@ -453,7 +456,7 @@ namespace Match3.Unity.Views
                 if (!_activeProjectiles.TryGetValue(projectileId, out var projView))
                 {
                     projView = _projectilePool.Rent();
-                    projView.Setup(projectileId, visual.Type);
+                    projView.Setup(projectileId, visual.Type, visual.ColorIndex);
                     _activeProjectiles[projectileId] = projView;
                 }
 
@@ -562,13 +565,16 @@ namespace Match3.Unity.Views
         }
 
         /// <summary>
-        /// Scan each column for contiguous hole zones (from game state Holes array).
+        /// Scan each column for contiguous hole zones and precompute world-space clip boundaries.
         /// </summary>
         private void BuildHoleZones()
         {
             _columnHoleZones.Clear();
 
             var state = _bridge.CurrentState;
+            var cellSize = _bridge.CellSize;
+            var origin = _bridge.BoardOrigin;
+            var height = _bridge.Height;
 
             for (int x = 0; x < state.Width; x++)
             {
@@ -578,7 +584,19 @@ namespace Match3.Unity.Views
                     if (state.IsHole(x, y))
                     {
                         int exitY = GravityTargetResolver.FindHoleZoneExit(in state, x, y);
-                        _columnHoleZones[x] = new HoleZone { EntryY = y, ExitY = exitY };
+
+                        // World Y of cell center: origin.y + (height-1-gridY) * cellSize + cellSize/2
+                        float entryCenter = origin.y + (height - 1 - y) * cellSize + cellSize * 0.5f;
+                        float exitCenter  = origin.y + (height - 1 - exitY) * cellSize + cellSize * 0.5f;
+
+                        _columnHoleZones[x] = new HoleZone
+                        {
+                            EntryY = y,
+                            ExitY = exitY,
+                            HoleTopWorldY = entryCenter + cellSize * 0.5f,  // top edge of first hole cell
+                            HoleBotWorldY = exitCenter  - cellSize * 0.5f,  // bottom edge of last hole cell
+                            MidGridY = (y + exitY + 1) * 0.5f
+                        };
                         break; // one hole zone per column for now
                     }
                 }
@@ -587,10 +605,8 @@ namespace Match3.Unity.Views
 
         /// <summary>
         /// Apply portal visual effects to tiles falling through hole zones.
-        /// Uses pure scale clipping on the real tile — no ghost duplicates.
-        /// Entry: tile shrinks into hole (top-anchored).
-        /// Inside: tile invisible.
-        /// Exit: tile grows out of hole (bottom-anchored) as it physically arrives.
+        /// Uses shader Y-axis clipping — tile shape is preserved (no scale distortion).
+        /// The shader discards pixels outside [ClipYMin, ClipYMax] in world space.
         /// </summary>
         private void UpdatePortalEffects(float cellSize, Vector2 origin, int height)
         {
@@ -605,37 +621,27 @@ namespace Match3.Unity.Views
                 var gridPos = CoordinateConverter.WorldToGridFloat(worldPos, cellSize, origin, height);
                 int col = Mathf.RoundToInt(gridPos.X);
 
-                if (!_columnHoleZones.TryGetValue(col, out var zone)) continue;
+                if (!_columnHoleZones.TryGetValue(col, out var zone))
+                {
+                    tileView.ResetClipBounds();
+                    continue;
+                }
 
                 float tileGridY = gridPos.Y;
-                float entryStart = zone.EntryY - 1.0f; // one cell above first hole
-                float entryEnd = (float)zone.EntryY;    // first hole row
-                int exitGridY = zone.ExitY + 1;          // first non-hole row below
-                float exitStart = (float)zone.ExitY;     // last hole row (emerge starts here)
-                float exitEnd = (float)exitGridY;         // first non-hole row (fully emerged)
 
-                // 1. Entry phase: tile shrinking into hole (top-anchored)
-                if (tileGridY > entryStart && tileGridY < entryEnd)
+                // Only apply clip when tile is near the hole zone (±1.5 cells)
+                if (tileGridY < zone.EntryY - 1.5f || tileGridY > zone.ExitY + 1.5f)
                 {
-                    float progress = Mathf.Clamp01((tileGridY - entryStart) / (entryEnd - entryStart));
-                    tileView.SetPortalScale(1f - progress, anchorTop: true, cellSize);
+                    tileView.ResetClipBounds();
+                    continue;
                 }
-                // 2. Inside hole: fully hidden
-                else if (tileGridY >= entryEnd && tileGridY < exitStart)
-                {
-                    tileView.SetPortalScale(0f, anchorTop: true, cellSize);
-                }
-                // 3. Exit phase: tile emerging from hole (bottom-anchored)
-                else if (tileGridY >= exitStart && tileGridY < exitEnd)
-                {
-                    float progress = Mathf.Clamp01((tileGridY - exitStart) / (exitEnd - exitStart));
-                    tileView.SetPortalScale(progress, anchorTop: false, cellSize);
-                }
-                // 4. Normal: not in portal zone
+
+                // Upper side: show only above hole top edge
+                // Lower side: show only below hole bottom edge
+                if (tileGridY < zone.MidGridY)
+                    tileView.SetClipBounds(zone.HoleTopWorldY, 9999f);
                 else
-                {
-                    tileView.ResetPortalScale();
-                }
+                    tileView.SetClipBounds(-9999f, zone.HoleBotWorldY);
             }
         }
 
