@@ -19,10 +19,10 @@ public class StandardScoreSystem : IScoreSystem
         return group.Positions.Count * 10;
     }
 
-    public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2)
+    public int CalculateSpecialMoveScore(ElementType t1, ElementType t2)
     {
-        bool isRainbow1 = t1 == ElementType.Universal;
-        bool isRainbow2 = t2 == ElementType.Universal;
+        bool isRainbow1 = t1.IsColorBomb();
+        bool isRainbow2 = t2.IsColorBomb();
 
         // Rainbow + Rainbow
         if (isRainbow1 && isRainbow2) return 5000;
@@ -30,12 +30,12 @@ public class StandardScoreSystem : IScoreSystem
         // Rainbow + Bomb/Normal
         if (isRainbow1 || isRainbow2)
         {
-            var otherBomb = isRainbow1 ? b2 : b1;
-            return otherBomb != BombType.None ? 2500 : 2000; // Bonus for Rainbow+Bomb
+            var other = isRainbow1 ? t2 : t1;
+            return other.IsBomb() ? 2500 : 2000; // Bonus for Rainbow+Bomb
         }
 
         // Bomb + Bomb
-        if (b1 != BombType.None && b2 != BombType.None)
+        if (t1.IsBomb() && t2.IsBomb())
         {
             return 1000;
         }

@@ -40,9 +40,6 @@ public sealed record TileDestroyedEvent : GameEvent
     /// <summary>Type of the destroyed tile.</summary>
     public ElementType Type { get; init; }
 
-    /// <summary>Bomb type if tile had a bomb attached.</summary>
-    public BombType Bomb { get; init; }
-
     /// <summary>Reason for destruction.</summary>
     public DestroyReason Reason { get; init; }
 
@@ -69,9 +66,6 @@ public sealed record TileSpawnedEvent : GameEvent
 
     /// <summary>Type of the spawned tile.</summary>
     public ElementType Type { get; init; }
-
-    /// <summary>Bomb type if tile was spawned with a bomb.</summary>
-    public BombType Bomb { get; init; }
 
     /// <summary>Initial spawn position (may be above grid for animation).</summary>
     public Vector2 SpawnPosition { get; init; }

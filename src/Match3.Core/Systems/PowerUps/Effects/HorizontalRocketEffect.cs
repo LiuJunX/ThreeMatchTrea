@@ -6,7 +6,7 @@ namespace Match3.Core.Systems.PowerUps.Effects;
 
 public class HorizontalRocketEffect : IBombEffect
 {
-    public BombType Type => BombType.Horizontal;
+    public ElementType Type => ElementType.HorizontalRocket;
 
     public void Apply(in GameState state, Position origin, HashSet<Position> affectedTiles)
     {

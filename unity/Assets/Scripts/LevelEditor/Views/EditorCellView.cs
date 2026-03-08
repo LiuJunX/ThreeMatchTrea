@@ -30,12 +30,10 @@ namespace Match3.Unity.LevelEditor.Views
             var tileType = config.Grid[index];
             _background.color = EditorColorMap.GetTileColor(tileType);
 
-            // Bomb label
+            // Bomb label (bombs are stored directly in Grid as ElementType values)
             if (_bombLabel != null)
             {
-                var bombType = config.Bombs != null && index < config.Bombs.Length
-                    ? config.Bombs[index] : BombType.None;
-                var label = EditorColorMap.GetBombLabel(bombType);
+                var label = tileType.IsBomb() ? EditorColorMap.GetBombLabel(tileType) : "";
                 _bombLabel.text = label;
                 _bombLabel.gameObject.SetActive(!string.IsNullOrEmpty(label));
             }

@@ -661,7 +661,6 @@ public sealed class MCTSAnalyzer
     private sealed class SimpleScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(Models.Gameplay.MatchGroup match) => match.Positions.Count * 10;
-        public int CalculateSpecialMoveScore(Models.Enums.ElementType t1, Models.Enums.BombType b1,
-            Models.Enums.ElementType t2, Models.Enums.BombType b2) => 100;
+        public int CalculateSpecialMoveScore(Models.Enums.ElementType t1, Models.Enums.ElementType t2) => 100;
     }
 }

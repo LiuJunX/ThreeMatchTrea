@@ -130,7 +130,7 @@ public static class ValidMoveDetector
             for (int x = 0; x < state.Width; x++)
             {
                 var tile = state.GetTile(x, y);
-                if (tile.Bomb != BombType.None
+                if (tile.Type.IsBomb()
                     && state.CanInteract(new Position(x, y)))
                     return true;
             }
@@ -153,7 +153,7 @@ public static class ValidMoveDetector
         var tileB = state.GetTile(to.X, to.Y);
 
         // 炸弹交换始终有效（激活炸弹效果或触发 combo）
-        if (tileA.Bomb != BombType.None || tileB.Bomb != BombType.None)
+        if (tileA.Type.IsBomb() || tileB.Type.IsBomb())
             return true;
 
         // 普通交换：检查是否产生匹配

@@ -55,7 +55,7 @@ public class SquareRule : IShapeRule
                 }
 
                 var shape = Pools.Obtain<DetectedShape>();
-                shape.Type = BombType.Ufo;
+                shape.Type = ElementType.Ufo;
                 shape.Weight = BombDefinitions.UFO.Weight;
                 shape.Shape = MatchShape.Square;
                 shape.Cells = Pools.ObtainHashSet<Position>();

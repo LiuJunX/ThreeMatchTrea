@@ -110,7 +110,7 @@ public class AutoPlayWeightTests
         {
             _output.WriteLine($"  - Type: {group.Type}, Positions: {group.Positions.Count}, SpawnBombType: {group.SpawnBombType}");
 
-            if (group.SpawnBombType == BombType.Horizontal || group.SpawnBombType == BombType.Vertical)
+            if (group.SpawnBombType == ElementType.HorizontalRocket || group.SpawnBombType == ElementType.VerticalRocket)
             {
                 foundLineBomb = true;
             }
@@ -188,7 +188,7 @@ public class AutoPlayWeightTests
         foreach (var group in matchGroups)
         {
             _output.WriteLine($"  - Type: {group.Type}, Positions: {group.Positions.Count}, SpawnBombType: {group.SpawnBombType}");
-            Assert.Equal(BombType.None, group.SpawnBombType); // 3连不生成炸弹
+            Assert.Equal(ElementType.None, group.SpawnBombType); // 3连不生成炸弹
         }
 
         int matchCount = matchGroups.Count;
@@ -250,7 +250,7 @@ public class AutoPlayWeightTests
         foreach (var group in matchGroups)
         {
             _output.WriteLine($"  - Type: {group.Type}, Positions: {group.Positions.Count}, SpawnBombType: {group.SpawnBombType}");
-            if (group.SpawnBombType == BombType.Color)
+            if (group.SpawnBombType == ElementType.ColorBomb)
             {
                 foundColorBomb = true;
             }

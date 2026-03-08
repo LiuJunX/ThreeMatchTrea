@@ -92,26 +92,20 @@ public class BoardInitializerTests
             Height = 3,
             Grid = new[]
             {
-                ElementType.Item1, ElementType.Item3, ElementType.Item2,
-                ElementType.Item4, ElementType.Item5, ElementType.Item6,
-                ElementType.Item1, ElementType.Item3, ElementType.Item2
-            },
-            Bombs = new[]
-            {
-                BombType.None, BombType.Horizontal, BombType.None,
-                BombType.Vertical, BombType.None, BombType.None,
-                BombType.None, BombType.None, BombType.Square5x5
+                ElementType.Item1, ElementType.HorizontalRocket, ElementType.Item2,
+                ElementType.VerticalRocket, ElementType.Item5, ElementType.Item6,
+                ElementType.Item1, ElementType.Item3, ElementType.Square5x5
             }
         };
 
         // Act
         initializer.Initialize(ref state, levelConfig);
 
-        // Assert
-        Assert.Equal(BombType.None, state.GetTile(0, 0).Bomb);
-        Assert.Equal(BombType.Horizontal, state.GetTile(1, 0).Bomb);
-        Assert.Equal(BombType.Vertical, state.GetTile(0, 1).Bomb);
-        Assert.Equal(BombType.Square5x5, state.GetTile(2, 2).Bomb);
+        // Assert — bombs are stored directly as ElementType in Grid
+        Assert.Equal(ElementType.Item1, state.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.HorizontalRocket, state.GetTile(1, 0).Type);
+        Assert.Equal(ElementType.VerticalRocket, state.GetTile(0, 1).Type);
+        Assert.Equal(ElementType.Square5x5, state.GetTile(2, 2).Type);
     }
 
     [Fact]

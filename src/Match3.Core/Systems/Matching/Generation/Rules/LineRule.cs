@@ -59,7 +59,7 @@ public class LineRule : IShapeRule
             for (int offset = 0; offset < windowCount; offset++)
             {
                 var shape = Pools.Obtain<DetectedShape>();
-                shape.Type = BombType.Color;
+                shape.Type = ElementType.ColorBomb;
                 shape.Weight = BombDefinitions.Rainbow.Weight;
                 shape.Shape = MatchShape.Line5;
                 shape.Cells = Pools.ObtainHashSet<Position>();
@@ -86,7 +86,7 @@ public class LineRule : IShapeRule
                 if (isContainedIn5) continue;
 
                 var shape = Pools.Obtain<DetectedShape>();
-                shape.Type = BombType.Vertical; // Horizontal match -> Vertical rocket
+                shape.Type = ElementType.VerticalRocket; // Horizontal match -> Vertical rocket
                 shape.Weight = BombDefinitions.Rocket.Weight;
                 shape.Shape = MatchShape.Line4Horizontal;
                 shape.Cells = Pools.ObtainHashSet<Position>();
@@ -127,7 +127,7 @@ public class LineRule : IShapeRule
             for (int offset = 0; offset < windowCount; offset++)
             {
                 var shape = Pools.Obtain<DetectedShape>();
-                shape.Type = BombType.Color;
+                shape.Type = ElementType.ColorBomb;
                 shape.Weight = BombDefinitions.Rainbow.Weight;
                 shape.Shape = MatchShape.Line5;
                 shape.Cells = Pools.ObtainHashSet<Position>();
@@ -150,7 +150,7 @@ public class LineRule : IShapeRule
                 if (isContainedIn5) continue;
 
                 var shape = Pools.Obtain<DetectedShape>();
-                shape.Type = BombType.Horizontal; // Vertical match -> Horizontal rocket
+                shape.Type = ElementType.HorizontalRocket; // Vertical match -> Horizontal rocket
                 shape.Weight = BombDefinitions.Rocket.Weight;
                 shape.Shape = MatchShape.Line4Vertical;
                 shape.Cells = Pools.ObtainHashSet<Position>();

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Numerics;
+using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 
@@ -68,7 +69,6 @@ public sealed class VisualState : IVisualState
                     Alpha = 1f,
                     IsVisible = true,
                     TileType = tile.Type,
-                    BombType = tile.Bomb,
                     GridPosition = new Position(x, y)
                 };
             }
@@ -117,7 +117,6 @@ public sealed class VisualState : IVisualState
                         Alpha = 1f,
                         IsVisible = true,
                         TileType = tile.Type,
-                        BombType = tile.Bomb,
                         GridPosition = new Position(x, y)
                     };
                 }
@@ -142,7 +141,7 @@ public sealed class VisualState : IVisualState
     /// <summary>
     /// Add a new tile visual (for spawned tiles).
     /// </summary>
-    public void AddTile(int tileId, ElementType type, BombType bomb, Position gridPos, Vector2 spawnPos)
+    public void AddTile(int tileId, ElementType type, Position gridPos, Vector2 spawnPos)
     {
         _tiles[tileId] = new TileVisual
         {
@@ -152,7 +151,6 @@ public sealed class VisualState : IVisualState
             Alpha = 1f,
             IsVisible = true,
             TileType = type,
-            BombType = bomb,
             GridPosition = gridPos
         };
     }
@@ -168,13 +166,15 @@ public sealed class VisualState : IVisualState
     /// <summary>
     /// Add a new projectile visual.
     /// </summary>
-    public void AddProjectile(int projectileId, Vector2 position)
+    public void AddProjectile(int projectileId, Vector2 position,
+        ProjectileType type = ProjectileType.Ufo)
     {
         _projectiles[projectileId] = new ProjectileVisual
         {
             Id = projectileId,
             Position = position,
-            IsVisible = true
+            IsVisible = true,
+            Type = type
         };
     }
 
@@ -312,11 +312,8 @@ public sealed class TileVisual
     /// <summary>Whether the tile is visible.</summary>
     public bool IsVisible { get; set; } = true;
 
-    /// <summary>Type of tile.</summary>
+    /// <summary>Type of tile (color or bomb).</summary>
     public ElementType TileType { get; set; }
-
-    /// <summary>Bomb type (if any).</summary>
-    public BombType BombType { get; set; }
 
     /// <summary>Grid position.</summary>
     public Position GridPosition { get; set; }
@@ -332,6 +329,17 @@ public sealed class TileVisual
     /// Whether the tile's position is being controlled by any animation.
     /// </summary>
     public bool IsBeingAnimated => AnimationRefCount > 0;
+
+    /// <summary>
+    /// UFO flight progress (0→1). Negative means not in flight.
+    /// View uses this + Duration to compute 3D rotation/scale/tilt.
+    /// </summary>
+    public float UfoFlightProgress { get; set; } = -1f;
+
+    /// <summary>
+    /// Total UFO flight duration in seconds (for View to derive elapsed time).
+    /// </summary>
+    public float UfoFlightDuration { get; set; }
 
     /// <summary>
     /// Increment animation reference count (call when animation starts).
@@ -365,6 +373,9 @@ public sealed class ProjectileVisual
 
     /// <summary>Rotation angle for visual effects.</summary>
     public float Rotation { get; set; }
+
+    /// <summary>Projectile type (determines visual appearance).</summary>
+    public ProjectileType Type { get; init; }
 }
 
 /// <summary>

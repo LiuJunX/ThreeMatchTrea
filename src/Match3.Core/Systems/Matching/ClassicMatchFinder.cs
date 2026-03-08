@@ -36,7 +36,7 @@ public class ClassicMatchFinder : IMatchFinder
 
         var type = state.GetType(p.X, p.Y);
         // Universal (Rainbow) and Unmatchable items don't participate in standard color matching loops
-        if (type == ElementType.None || type == ElementType.Universal || type == ElementType.Unmatchable) return false;
+        if (!type.IsMatchable()) return false;
 
         int w = state.Width;
         int h = state.Height;
@@ -154,7 +154,7 @@ public class ClassicMatchFinder : IMatchFinder
                     if (!state.CanMatch(p)) continue;
 
                     var type = state.GetType(x, y);
-                    if (type == ElementType.None || type == ElementType.Universal || type == ElementType.Unmatchable) continue;
+                    if (!type.IsMatchable()) continue;
 
                     var component = GetConnectedComponent(in state, p, type);
                     try

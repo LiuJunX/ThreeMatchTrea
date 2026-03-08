@@ -33,12 +33,8 @@ namespace Match3.Editor.Logic
 
                     if (oldIdx < oldConfig.Grid.Length && newIdx < newConfig.Grid.Length)
                     {
-                        // Copy Tile layer
+                        // Copy Tile layer (Grid now contains both colors and bombs)
                         newConfig.Grid[newIdx] = oldConfig.Grid[oldIdx];
-                        if (oldConfig.Bombs != null && oldIdx < oldConfig.Bombs.Length)
-                        {
-                            newConfig.Bombs[newIdx] = oldConfig.Bombs[oldIdx];
-                        }
 
                         // Copy Ground layer
                         if (oldConfig.Grounds != null && oldIdx < oldConfig.Grounds.Length)
@@ -76,12 +72,6 @@ namespace Match3.Editor.Logic
                 config.Grid[i] = types[rng.Next(0, types.Length)];
             }
 
-            // Clear bombs
-            if (config.Bombs != null)
-            {
-                Array.Clear(config.Bombs, 0, config.Bombs.Length);
-            }
-
             // Clear ground and cover layers
             if (config.Grounds != null)
             {
@@ -101,42 +91,25 @@ namespace Match3.Editor.Logic
             }
         }
 
-        public void PaintTile(LevelConfig config, int index, ElementType selectedType, BombType selectedBomb)
+        public void PaintTile(LevelConfig config, int index, ElementType selectedType, ElementType selectedBomb)
         {
             if (index < 0 || index >= config.Grid.Length) return;
 
-            if (selectedBomb != BombType.None)
+            if (selectedBomb.IsBomb())
             {
-                config.Bombs[index] = selectedBomb;
-                if (selectedBomb == BombType.Color)
-                {
-                    config.Grid[index] = ElementType.Universal;
-                }
-                else
-                {
-                    // Safe check for valid colors
-                    var newColor = IsColorTile(selectedType) ? selectedType : ElementType.Item1;
-                    config.Grid[index] = newColor;
-                }
+                // Painting a bomb: store the bomb ElementType directly in Grid
+                config.Grid[index] = selectedBomb;
             }
             else
             {
+                // Painting a color tile (or None)
                 config.Grid[index] = selectedType;
-                if (selectedType == ElementType.Universal)
-                {
-                    config.Bombs[index] = BombType.Color;
-                }
-                else
-                {
-                    config.Bombs[index] = BombType.None;
-                }
             }
         }
 
         private bool IsColorTile(ElementType t)
         {
-            return t == ElementType.Item1 || t == ElementType.Item2 || t == ElementType.Item3 ||
-                   t == ElementType.Item4 || t == ElementType.Item5 || t == ElementType.Item6;
+            return t.IsColor();
         }
 
         /// <summary>

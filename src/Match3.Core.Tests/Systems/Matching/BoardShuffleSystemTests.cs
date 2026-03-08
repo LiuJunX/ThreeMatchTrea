@@ -94,19 +94,16 @@ public class BoardShuffleSystemTests
         var events = NullEventCollector.Instance;
 
         // 在 (0,0) 添加炸弹
-        var bombTile = state.GetTile(0, 0);
-        bombTile.Bomb = BombType.Horizontal;
+        var originalTile = state.GetTile(0, 0);
+        var bombTile = new Tile(originalTile.Id, ElementType.HorizontalRocket, 0, 0);
         state.SetTile(0, 0, bombTile);
-
-        var originalBombType = bombTile.Type;
 
         // Act
         shuffleSystem.Shuffle(ref state, events);
 
         // Assert
         var afterShuffle = state.GetTile(0, 0);
-        Assert.Equal(BombType.Horizontal, afterShuffle.Bomb);
-        Assert.Equal(originalBombType, afterShuffle.Type); // 炸弹的类型也应保留
+        Assert.Equal(ElementType.HorizontalRocket, afterShuffle.Type); // 炸弹应保留
     }
 
     [Fact]
@@ -298,7 +295,7 @@ public class BoardShuffleSystemTests
                 var type = (x + y) % 2 == 0 ? ElementType.Item1 : ElementType.Item3;
                 if (x == 0 && y == 0)
                 {
-                    type = ElementType.Universal; // 这个不应该被洗牌
+                    type = ElementType.ColorBomb; // 这个不应该被洗牌
                 }
                 state.SetTile(x, y, new Tile(y * state.Width + x, type, x, y));
             }
@@ -309,7 +306,7 @@ public class BoardShuffleSystemTests
 
         // Assert
         var rainbowTile = state.GetTile(0, 0);
-        Assert.Equal(ElementType.Universal, rainbowTile.Type); // Rainbow 应该保持不变
+        Assert.Equal(ElementType.ColorBomb, rainbowTile.Type); // Rainbow 应该保持不变
     }
 
     [Fact]

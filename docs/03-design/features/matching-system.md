@@ -264,9 +264,9 @@ public bool HasMatchAt(in GameState state, Position p)
 当消除的方块带有炸弹时，自动触发连锁：
 
 ```csharp
-if (t.Bomb != BombType.None)
+if (t.Type.IsBomb())
 {
-    if (_bombRegistry.TryGetEffect(t.Bomb, out var effect))
+    if (_bombRegistry.TryGetEffect(t.Type, out var effect))
     {
         effect.Apply(in state, p, explosionRange);
 

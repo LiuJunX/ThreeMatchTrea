@@ -144,7 +144,7 @@ public class StandardMatchProcessorTests
             {
                 Type = ElementType.Item1,
                 Positions = new HashSet<Position> { new(0, 0), new(1, 0), new(2, 0), new(3, 0) },
-                SpawnBombType = BombType.Horizontal,
+                SpawnBombType = ElementType.HorizontalRocket,
                 BombOrigin = new Position(1, 0) // 炸弹生成位置
             }
         };
@@ -154,8 +154,7 @@ public class StandardMatchProcessorTests
 
         // Assert
         var bombTile = state.GetTile(1, 0);
-        Assert.Equal(ElementType.Item1, bombTile.Type);
-        Assert.Equal(BombType.Horizontal, bombTile.Bomb);
+        Assert.Equal(ElementType.HorizontalRocket, bombTile.Type);
         // 其他位置被清除
         Assert.Equal(ElementType.None, state.GetTile(0, 0).Type);
         Assert.Equal(ElementType.None, state.GetTile(2, 0).Type);
@@ -179,7 +178,7 @@ public class StandardMatchProcessorTests
             {
                 Type = ElementType.Item5,
                 Positions = new HashSet<Position> { new(0, 0), new(1, 0), new(2, 0), new(3, 0), new(4, 0) },
-                SpawnBombType = BombType.Color,
+                SpawnBombType = ElementType.ColorBomb,
                 BombOrigin = new Position(2, 0)
             }
         };
@@ -189,8 +188,7 @@ public class StandardMatchProcessorTests
 
         // Assert
         var rainbowTile = state.GetTile(2, 0);
-        Assert.Equal(ElementType.Universal, rainbowTile.Type);
-        Assert.Equal(BombType.Color, rainbowTile.Bomb);
+        Assert.Equal(ElementType.ColorBomb, rainbowTile.Type);
     }
 
     #endregion
@@ -204,8 +202,7 @@ public class StandardMatchProcessorTests
         var state = CreateEmptyState();
         // 创建包含炸弹的匹配
         state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
-        var bombTile = new Tile(2, ElementType.Item1, 1, 0);
-        bombTile.Bomb = BombType.Horizontal;
+        var bombTile = new Tile(2, ElementType.HorizontalRocket, 1, 0);
         state.SetTile(1, 0, bombTile);
         state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
         // 同一行的其他方块
@@ -235,8 +232,7 @@ public class StandardMatchProcessorTests
     {
         // Arrange
         var state = CreateEmptyState();
-        var bombTile = new Tile(1, ElementType.Item1, 0, 0);
-        bombTile.Bomb = BombType.Vertical;
+        var bombTile = new Tile(1, ElementType.VerticalRocket, 0, 0);
         state.SetTile(0, 0, bombTile);
         state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
         state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
@@ -267,8 +263,7 @@ public class StandardMatchProcessorTests
     {
         // Arrange
         var state = CreateEmptyState();
-        var bombTile = new Tile(1, ElementType.Item1, 2, 2);
-        bombTile.Bomb = BombType.Square5x5;
+        var bombTile = new Tile(1, ElementType.Square5x5, 2, 2);
         state.SetTile(2, 2, bombTile);
         state.SetTile(3, 2, new Tile(2, ElementType.Item1, 3, 2));
         state.SetTile(4, 2, new Tile(3, ElementType.Item1, 4, 2));
@@ -315,7 +310,7 @@ public class StandardMatchProcessorTests
             {
                 Type = ElementType.Item1,
                 Positions = new HashSet<Position> { new(0, 0), new(1, 0), new(2, 0), new(3, 0) },
-                SpawnBombType = BombType.Horizontal,
+                SpawnBombType = ElementType.HorizontalRocket,
                 BombOrigin = new Position(2, 0)
             }
         };
@@ -326,7 +321,7 @@ public class StandardMatchProcessorTests
         // Assert: BombOrigin 位置应该保留炸弹，不被清除
         var tile = state.GetTile(2, 0);
         Assert.NotEqual(ElementType.None, tile.Type);
-        Assert.Equal(BombType.Horizontal, tile.Bomb);
+        Assert.Equal(ElementType.HorizontalRocket, tile.Type);
     }
 
     #endregion

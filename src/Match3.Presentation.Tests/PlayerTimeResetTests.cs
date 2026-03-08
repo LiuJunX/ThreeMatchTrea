@@ -35,8 +35,7 @@ public class PlayerTimeResetTests
         {
             new SpawnTileCommand
             {
-                TileId = 1, Type = ElementType.Item1, Bomb = BombType.None,
-                GridPos = new Position(0, 0), SpawnPos = new Vector2(0, 0),
+                TileId = 1, Type = ElementType.Item1,                GridPos = new Position(0, 0), SpawnPos = new Vector2(0, 0),
                 StartTime = 0f, Duration = 0f
             },
             new MoveTileCommand
@@ -67,8 +66,7 @@ public class PlayerTimeResetTests
         {
             new SpawnTileCommand
             {
-                TileId = 1, Type = ElementType.Item1, Bomb = BombType.None,
-                GridPos = new Position(0, 0), SpawnPos = new Vector2(0, 0),
+                TileId = 1, Type = ElementType.Item1,                GridPos = new Position(0, 0), SpawnPos = new Vector2(0, 0),
                 StartTime = 0f, Duration = 0f
             },
             new MoveTileCommand
@@ -96,8 +94,7 @@ public class PlayerTimeResetTests
         {
             new SpawnTileCommand
             {
-                TileId = 1, Type = ElementType.Item1, Bomb = BombType.None,
-                GridPos = new Position(0, 0), SpawnPos = new Vector2(0, 0),
+                TileId = 1, Type = ElementType.Item1,                GridPos = new Position(0, 0), SpawnPos = new Vector2(0, 0),
                 StartTime = 0f, Duration = 0f
             },
             new MoveTileCommand
@@ -151,8 +148,7 @@ public class PlayerTimeResetTests
         // Simulate 12 hours of idle by advancing time in large chunks
         var spawnCmd = new SpawnTileCommand
         {
-            TileId = 1, Type = ElementType.Item1, Bomb = BombType.None,
-            GridPos = new Position(0, 0), SpawnPos = new Vector2(0, 0),
+            TileId = 1, Type = ElementType.Item1,            GridPos = new Position(0, 0), SpawnPos = new Vector2(0, 0),
             StartTime = 0f, Duration = 0f
         };
         _player.Load(new RenderCommand[] { spawnCmd });
@@ -201,8 +197,7 @@ public class PlayerTimeResetTests
         // This test verifies animations don't take extra frames due to float drift
         var spawnCmd = new SpawnTileCommand
         {
-            TileId = 1, Type = ElementType.Item1, Bomb = BombType.None,
-            GridPos = new Position(0, 0), SpawnPos = new Vector2(0, 0),
+            TileId = 1, Type = ElementType.Item1,            GridPos = new Position(0, 0), SpawnPos = new Vector2(0, 0),
             StartTime = 0f, Duration = 0f
         };
         _player.Load(new RenderCommand[] { spawnCmd });
@@ -248,8 +243,7 @@ public class PlayerTimeResetTests
         // Verify that CurrentTime doesn't accumulate across cycles
         var spawnCmd = new SpawnTileCommand
         {
-            TileId = 1, Type = ElementType.Item1, Bomb = BombType.None,
-            GridPos = new Position(0, 0), SpawnPos = new Vector2(0, 0),
+            TileId = 1, Type = ElementType.Item1,            GridPos = new Position(0, 0), SpawnPos = new Vector2(0, 0),
             StartTime = 0f, Duration = 0f
         };
         _player.Load(new RenderCommand[] { spawnCmd });
@@ -296,8 +290,7 @@ public class PlayerTimeResetTests
         {
             new SpawnTileCommand
             {
-                TileId = 1, Type = ElementType.Item1, Bomb = BombType.None,
-                GridPos = new Position(0, 0), SpawnPos = new Vector2(0, 0),
+                TileId = 1, Type = ElementType.Item1,                GridPos = new Position(0, 0), SpawnPos = new Vector2(0, 0),
                 StartTime = 0f, Duration = 0f
             },
             new MoveTileCommand

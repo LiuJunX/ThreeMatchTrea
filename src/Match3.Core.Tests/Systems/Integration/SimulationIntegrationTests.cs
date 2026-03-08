@@ -41,7 +41,7 @@ public class SimulationIntegrationTests
     private class StubScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(MatchGroup match) => 10;
-        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 100;
+        public int CalculateSpecialMoveScore(ElementType t1, ElementType t2) => 100;
     }
 
     private class StubSpawnModel : ISpawnModel

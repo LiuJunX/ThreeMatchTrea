@@ -45,21 +45,21 @@ public partial class GridBoard : IDisposable
     private string GetTileIcon(TileVisual visual)
     {
         // Bomb types take priority
-        if (visual.BombType != BombType.None)
+        if (visual.TileType.IsBomb())
         {
-            return visual.BombType switch
+            return visual.TileType switch
             {
-                BombType.Horizontal => "↔️",
-                BombType.Vertical => "↕️",
-                BombType.Ufo => "🛸",
-                BombType.Square5x5 => "💣",
-                BombType.Color => "🌈",
+                ElementType.HorizontalRocket => "↔️",
+                ElementType.VerticalRocket => "↕️",
+                ElementType.Ufo => "🛸",
+                ElementType.Square5x5 => "💣",
+                ElementType.ColorBomb => "🌈",
                 _ => ""
             };
         }
 
         // Universal (Rainbow) tile
-        if (visual.TileType == ElementType.Universal) return "🌈";
+        if (visual.TileType == ElementType.ColorBomb) return "🌈";
 
         // Regular tile colors
         if (visual.TileType == ElementType.Item1) return "🔴";

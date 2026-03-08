@@ -168,7 +168,7 @@ public class BombGenerator : IBombGenerator
         simpleGroup.Positions.Clear();
         foreach (var p in linePositions) simpleGroup.Positions.Add(p);
         simpleGroup.Shape = MatchShape.Simple3;
-        simpleGroup.SpawnBombType = BombType.None;
+        simpleGroup.SpawnBombType = ElementType.None;
         simpleGroup.Type = ElementType.None; // Set by caller
         simpleGroup.BombOrigin = null;
 
@@ -395,7 +395,7 @@ public class BombGenerator : IBombGenerator
                     orphanGroup.Positions.Clear();
                     foreach (var p in validOrphans) orphanGroup.Positions.Add(p);
                     orphanGroup.Shape = MatchShape.Simple3;
-                    orphanGroup.SpawnBombType = BombType.None;
+                    orphanGroup.SpawnBombType = ElementType.None;
                     orphanGroup.Type = ElementType.None;
                     orphanGroup.BombOrigin = null;
                     results.Add(orphanGroup);

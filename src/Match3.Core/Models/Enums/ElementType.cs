@@ -5,8 +5,7 @@ namespace Match3.Core.Models.Enums;
 
 /// <summary>
 /// Defines the identity of the movable content within a cell.
-/// This is the "Item" or "Unit" layer.
-/// These elements are subject to gravity and matching rules.
+/// A tile is either a color gem, a bomb, or a blocker — never both.
 /// </summary>
 public enum ElementType : byte
 {
@@ -15,9 +14,7 @@ public enum ElementType : byte
     /// </summary>
     None = 0,
 
-    // --- Basic Matchable Colors ---
-    // Using generic names allows for skinning/theming.
-    // The underlying logic only cares about equality.
+    // --- Basic Matchable Colors (1-6) ---
 
     [AIMapping(0, "Red")]
     Item1 = 1, // Red
@@ -37,19 +34,64 @@ public enum ElementType : byte
     [AIMapping(5, "Orange")]
     Item6 = 6, // Orange
 
-    // --- Special Items ---
+    // --- Bombs (10-14) ---
+
+    /// <summary>Clears the entire row.</summary>
+    HorizontalRocket = 10,
+
+    /// <summary>Clears the entire column.</summary>
+    VerticalRocket = 11,
 
     /// <summary>
-    /// A universal matching item (e.g., Rainbow Ball, Color Bomb).
-    /// Matches with any color.
-    /// Previously represented by TileType.Rainbow.
+    /// Color bomb (rainbow ball). Clears all tiles of the most frequent color.
     /// </summary>
-    Universal = 100,
+    ColorBomb = 12,
+
+    /// <summary>Homing missile that targets a specific tile.</summary>
+    Ufo = 13,
+
+    /// <summary>Explodes a 5x5 square area.</summary>
+    Square5x5 = 14,
+
+    // --- Blockers ---
 
     /// <summary>
     /// An unmatchable blocker item (e.g., Stone, Wood Box).
     /// Occupies space, can fall, but doesn't match by color.
-    /// Usually destroyed by nearby explosions or special conditions.
     /// </summary>
     Unmatchable = 200
+}
+
+/// <summary>
+/// Extension methods for ElementType identity queries.
+/// </summary>
+public static class ElementTypeExtensions
+{
+    /// <summary>Whether this is a matchable color (Item1-Item6).</summary>
+    public static bool IsColor(this ElementType type)
+        => type >= ElementType.Item1 && type <= ElementType.Item6;
+
+    /// <summary>Whether this is any bomb type.</summary>
+    public static bool IsBomb(this ElementType type)
+        => type >= ElementType.HorizontalRocket && type <= ElementType.Square5x5;
+
+    /// <summary>Whether this is a rocket (horizontal or vertical).</summary>
+    public static bool IsRocket(this ElementType type)
+        => type == ElementType.HorizontalRocket || type == ElementType.VerticalRocket;
+
+    /// <summary>Whether this is the color bomb (rainbow ball).</summary>
+    public static bool IsColorBomb(this ElementType type)
+        => type == ElementType.ColorBomb;
+
+    /// <summary>Whether this is a UFO bomb.</summary>
+    public static bool IsUfo(this ElementType type)
+        => type == ElementType.Ufo;
+
+    /// <summary>Whether this is an area bomb (5x5).</summary>
+    public static bool IsAreaBomb(this ElementType type)
+        => type == ElementType.Square5x5;
+
+    /// <summary>Whether this type can participate in color matching (colors only).</summary>
+    public static bool IsMatchable(this ElementType type)
+        => type.IsColor();
 }

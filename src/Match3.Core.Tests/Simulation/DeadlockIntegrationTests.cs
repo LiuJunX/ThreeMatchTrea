@@ -49,7 +49,7 @@ public class DeadlockIntegrationTests
     private class StubScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(Core.Models.Gameplay.MatchGroup match) => 10;
-        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 100;
+        public int CalculateSpecialMoveScore(ElementType t1, ElementType t2) => 100;
     }
 
     private class StubSpawnModel : ISpawnModel
@@ -221,8 +221,7 @@ public class DeadlockIntegrationTests
         var eventCollector = new BufferedEventCollector();
 
         // 在 (0,0) 添加炸弹
-        var bombTile = state.GetTile(0, 0);
-        bombTile.Bomb = BombType.Horizontal;
+        var bombTile = new Tile(state.GetTile(0, 0).Id, ElementType.HorizontalRocket, 0, 0);
         state.SetTile(0, 0, bombTile);
 
         var engine = CreateEngine(state, eventCollector);
@@ -232,7 +231,7 @@ public class DeadlockIntegrationTests
 
         // Assert
         var afterShuffle = engine.State.GetTile(0, 0);
-        Assert.Equal(BombType.Horizontal, afterShuffle.Bomb);
+        Assert.Equal(ElementType.HorizontalRocket, afterShuffle.Type);
     }
 
     [Fact]

@@ -43,7 +43,7 @@ Core → GameEvent → Core.Choreographer → RenderCommand[] → Player → Web
 ```csharp
 // Tile 指令
 SpawnTileCommand, MoveTileCommand, DestroyTileCommand,
-SwapTilesCommand, RemoveTileCommand, UpdateTileBombCommand
+SwapTilesCommand, RemoveTileCommand, UpdateTileTypeCommand
 
 // Effect 指令
 ShowEffectCommand, ShowMatchHighlightCommand

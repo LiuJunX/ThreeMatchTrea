@@ -38,18 +38,26 @@ public sealed class ChoreographyConfig
     /// <summary>Delay per cell for rocket trail effect staggering.</summary>
     public float RocketTrailInterval { get; set; } = 0.015f;
 
-    /// <summary>Base delay per Chebyshev-distance unit for color bomb beam propagation.</summary>
-    public float ColorBombInterval { get; set; } = 0.04f;
+    /// <summary>Flight speed for color bomb beam projectiles (grid units per second).</summary>
+    public float ColorBombBeamSpeed { get; set; } = 12f;
 
-    /// <summary>Acceleration factor for color bomb beam propagation (each step shorter than the last).</summary>
-    public float ColorBombAccel { get; set; } = 0.85f;
+    /// <summary>Fixed overhead for UFO launch sequence: spin-up + launch + landing (seconds).</summary>
+    public float UfoLaunchOverhead { get; set; } = 0.6f;
 
-    /// <summary>Duration for UFO takeoff animation (vertical rise).</summary>
-    public float UfoTakeoffDuration { get; set; } = 0.25f;
+    /// <summary>UFO flight speed during cruise phase (grid units per second).</summary>
+    public float UfoFlightSpeed { get; set; } = 10f;
 
-    /// <summary>Height the UFO rises during takeoff (grid units).</summary>
-    public float UfoTakeoffHeight { get; set; } = 1.5f;
+    // --- Double Color Bomb Phases ---
 
-    /// <summary>UFO flight speed (grid units per second).</summary>
-    public float UfoFlightSpeed { get; set; } = 8f;
+    /// <summary>Duration for the converge phase (two bombs merge toward midpoint).</summary>
+    public float DoubleColorConvergeDuration { get; set; } = 0.3f;
+
+    /// <summary>Duration for the fusion flash at the merge point.</summary>
+    public float DoubleColorFusionDuration { get; set; } = 0.2f;
+
+    /// <summary>Base interval per Chebyshev distance ring during the wipe wave.</summary>
+    public float DoubleColorWipeInterval { get; set; } = 0.04f;
+
+    /// <summary>Acceleration for wipe wave (each ring faster than the last).</summary>
+    public float DoubleColorWipeAccel { get; set; } = 0.85f;
 }

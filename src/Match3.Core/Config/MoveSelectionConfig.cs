@@ -41,7 +41,7 @@ public class MoveSelectionConfig
         /// <summary>
         /// UFO 炸弹权重
         /// </summary>
-        public int Ufo { get; init; } = 20;
+        public int Ufo { get; init; } = 100;
 
         /// <summary>
         /// 条形炸弹权重（水平/垂直）
@@ -61,16 +61,16 @@ public class MoveSelectionConfig
         /// <summary>
         /// 根据炸弹类型获取权重
         /// </summary>
-        public int GetWeight(BombType bombType)
+        public int GetWeight(ElementType bombType)
         {
             return bombType switch
             {
-                BombType.None => Normal,
-                BombType.Ufo => Ufo,
-                BombType.Horizontal => Line,
-                BombType.Vertical => Line,
-                BombType.Square5x5 => Cross,
-                BombType.Color => Rainbow,
+                ElementType.None => Normal,
+                ElementType.Ufo => Ufo,
+                ElementType.HorizontalRocket => Line,
+                ElementType.VerticalRocket => Line,
+                ElementType.Square5x5 => Cross,
+                ElementType.ColorBomb => Rainbow,
                 _ => Normal
             };
         }

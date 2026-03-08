@@ -7,7 +7,7 @@ namespace Match3.Core.Models.Gameplay
 {
     public class DetectedShape
     {
-        public BombType Type { get; set; }
+        public ElementType Type { get; set; }
         public HashSet<Position>? Cells { get; set; } // Managed by Pool
         public int Weight { get; set; }
         public MatchShape Shape { get; set; }
@@ -25,7 +25,7 @@ namespace Match3.Core.Models.Gameplay
         {
             // Cells are released externally
             Cells = null;
-            Type = BombType.None;
+            Type = ElementType.None;
             Weight = 0;
             Shape = MatchShape.Simple3;
             Intersection = null;

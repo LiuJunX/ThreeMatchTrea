@@ -31,7 +31,7 @@ public class PowerUpHandlerTests
     private class StubScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(Match3.Core.Models.Gameplay.MatchGroup match) => 10;
-        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 100;
+        public int CalculateSpecialMoveScore(ElementType t1, ElementType t2) => 100;
     }
 
     private PowerUpHandler CreateHandler()
@@ -75,8 +75,7 @@ public class PowerUpHandlerTests
         // Arrange
         var handler = CreateHandler();
         var state = CreateFilledState();
-        var bombTile = new Tile(100, ElementType.Item1, 3, 3);
-        bombTile.Bomb = BombType.Horizontal;
+        var bombTile = new Tile(100, ElementType.HorizontalRocket, 3, 3);
         state.SetTile(3, 3, bombTile);
 
         // Act
@@ -95,8 +94,7 @@ public class PowerUpHandlerTests
         // Arrange
         var handler = CreateHandler();
         var state = CreateFilledState();
-        var bombTile = new Tile(100, ElementType.Item3, 3, 3);
-        bombTile.Bomb = BombType.Vertical;
+        var bombTile = new Tile(100, ElementType.VerticalRocket, 3, 3);
         state.SetTile(3, 3, bombTile);
 
         // Act
@@ -115,8 +113,7 @@ public class PowerUpHandlerTests
         // Arrange
         var handler = CreateHandler();
         var state = CreateFilledState();
-        var bombTile = new Tile(100, ElementType.Item2, 4, 4);
-        bombTile.Bomb = BombType.Square5x5;
+        var bombTile = new Tile(100, ElementType.Square5x5, 4, 4);
         state.SetTile(4, 4, bombTile);
 
         // Act
@@ -145,8 +142,7 @@ public class PowerUpHandlerTests
         var state = CreateEmptyState();
 
         // 设置彩球
-        var bombTile = new Tile(100, ElementType.Universal, 3, 3);
-        bombTile.Bomb = BombType.Color;
+        var bombTile = new Tile(100, ElementType.ColorBomb, 3, 3);
         state.SetTile(3, 3, bombTile);
 
         // 放置不同颜色的方块，红色最多 (5个)，蓝色较少 (3个)
@@ -185,8 +181,7 @@ public class PowerUpHandlerTests
         // Arrange
         var handler = CreateHandler();
         var state = CreateFilledState();
-        var bombTile = new Tile(100, ElementType.Item4, 3, 3);
-        bombTile.Bomb = BombType.Ufo;
+        var bombTile = new Tile(100, ElementType.Ufo, 3, 3);
         state.SetTile(3, 3, bombTile);
 
         // 记录初始非空 tile 数量
@@ -231,10 +226,8 @@ public class PowerUpHandlerTests
         // Arrange
         var handler = CreateHandler();
         var state = CreateFilledState();
-        var rainbow1 = new Tile(100, ElementType.Universal, 3, 3);
-        rainbow1.Bomb = BombType.Color;
-        var rainbow2 = new Tile(101, ElementType.Universal, 4, 3);
-        rainbow2.Bomb = BombType.Color;
+        var rainbow1 = new Tile(100, ElementType.ColorBomb, 3, 3);
+        var rainbow2 = new Tile(101, ElementType.ColorBomb, 4, 3);
         state.SetTile(3, 3, rainbow1);
         state.SetTile(4, 3, rainbow2);
 
@@ -257,8 +250,7 @@ public class PowerUpHandlerTests
         // Arrange
         var handler = CreateHandler();
         var state = CreateFilledState();
-        var rainbow = new Tile(100, ElementType.Universal, 3, 3);
-        rainbow.Bomb = BombType.Color;
+        var rainbow = new Tile(100, ElementType.ColorBomb, 3, 3);
         state.SetTile(3, 3, rainbow);
         // 确保 (4, 3) 是红色
         state.SetTile(4, 3, new Tile(101, ElementType.Item1, 4, 3));
@@ -283,12 +275,10 @@ public class PowerUpHandlerTests
         // Arrange
         var handler = CreateHandler();
         var state = CreateFilledState();
-        var rainbow = new Tile(100, ElementType.Universal, 3, 3);
-        rainbow.Bomb = BombType.Color;
+        var rainbow = new Tile(100, ElementType.ColorBomb, 3, 3);
         state.SetTile(3, 3, rainbow);
 
-        var horizontalBomb = new Tile(101, ElementType.Item1, 4, 3);
-        horizontalBomb.Bomb = BombType.Horizontal;
+        var horizontalBomb = new Tile(101, ElementType.HorizontalRocket, 4, 3);
         state.SetTile(4, 3, horizontalBomb);
 
         // 放置更多红色方块
@@ -314,10 +304,8 @@ public class PowerUpHandlerTests
         // Arrange
         var handler = CreateHandler();
         var state = CreateFilledState();
-        var hBomb = new Tile(100, ElementType.Item1, 3, 3);
-        hBomb.Bomb = BombType.Horizontal;
-        var vBomb = new Tile(101, ElementType.Item1, 4, 3);
-        vBomb.Bomb = BombType.Vertical;
+        var hBomb = new Tile(100, ElementType.HorizontalRocket, 3, 3);
+        var vBomb = new Tile(101, ElementType.VerticalRocket, 4, 3);
         state.SetTile(3, 3, hBomb);
         state.SetTile(4, 3, vBomb);
 
@@ -343,10 +331,8 @@ public class PowerUpHandlerTests
         // Arrange
         var handler = CreateHandler();
         var state = CreateFilledState();
-        var bomb1 = new Tile(100, ElementType.Item1, 3, 3);
-        bomb1.Bomb = BombType.Square5x5;
-        var bomb2 = new Tile(101, ElementType.Item1, 4, 3);
-        bomb2.Bomb = BombType.Square5x5;
+        var bomb1 = new Tile(100, ElementType.Square5x5, 3, 3);
+        var bomb2 = new Tile(101, ElementType.Square5x5, 4, 3);
         state.SetTile(3, 3, bomb1);
         state.SetTile(4, 3, bomb2);
 
@@ -384,8 +370,8 @@ public class PowerUpHandlerTests
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
 
-        var hBomb1 = new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Horizontal };
-        var hBomb2 = new Tile(101, ElementType.Item1, p2.X, p2.Y) { Bomb = BombType.Horizontal };
+        var hBomb1 = new Tile(100, ElementType.HorizontalRocket, p1.X, p1.Y);
+        var hBomb2 = new Tile(101, ElementType.HorizontalRocket, p2.X, p2.Y);
         state.SetTile(p1.X, p1.Y, hBomb1);
         state.SetTile(p2.X, p2.Y, hBomb2);
 
@@ -417,8 +403,8 @@ public class PowerUpHandlerTests
         var p1 = new Position(4, 3);
         var p2 = new Position(4, 4);
 
-        var vBomb1 = new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Vertical };
-        var vBomb2 = new Tile(101, ElementType.Item1, p2.X, p2.Y) { Bomb = BombType.Vertical };
+        var vBomb1 = new Tile(100, ElementType.VerticalRocket, p1.X, p1.Y);
+        var vBomb2 = new Tile(101, ElementType.VerticalRocket, p2.X, p2.Y);
         state.SetTile(p1.X, p1.Y, vBomb1);
         state.SetTile(p2.X, p2.Y, vBomb2);
 
@@ -448,8 +434,8 @@ public class PowerUpHandlerTests
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
 
-        var hBomb = new Tile(100, ElementType.Item1, p1.X, p1.Y) { Bomb = BombType.Horizontal };
-        var vBomb = new Tile(101, ElementType.Item1, p2.X, p2.Y) { Bomb = BombType.Vertical };
+        var hBomb = new Tile(100, ElementType.HorizontalRocket, p1.X, p1.Y);
+        var vBomb = new Tile(101, ElementType.VerticalRocket, p2.X, p2.Y);
         state.SetTile(p1.X, p1.Y, hBomb);
         state.SetTile(p2.X, p2.Y, vBomb);
 
@@ -494,13 +480,11 @@ public class PowerUpHandlerTests
         var state = CreateFilledState();
 
         // 在 (3, 3) 放置横向火箭
-        var hBomb = new Tile(100, ElementType.Item1, 3, 3);
-        hBomb.Bomb = BombType.Horizontal;
+        var hBomb = new Tile(100, ElementType.HorizontalRocket, 3, 3);
         state.SetTile(3, 3, hBomb);
 
         // 在 (6, 3) 放置纵向火箭（同一行，会被横向火箭波及）
-        var vBomb = new Tile(101, ElementType.Item3, 6, 3);
-        vBomb.Bomb = BombType.Vertical;
+        var vBomb = new Tile(101, ElementType.VerticalRocket, 6, 3);
         state.SetTile(6, 3, vBomb);
 
         // Act
@@ -526,13 +510,11 @@ public class PowerUpHandlerTests
         var state = CreateFilledState();
 
         // 在 (4, 4) 放置方块炸弹
-        var squareBomb = new Tile(100, ElementType.Item1, 4, 4);
-        squareBomb.Bomb = BombType.Square5x5;
+        var squareBomb = new Tile(100, ElementType.Square5x5, 4, 4);
         state.SetTile(4, 4, squareBomb);
 
         // 在 (3, 4) 放置横向火箭（在5x5范围内）
-        var hBomb = new Tile(101, ElementType.Item3, 3, 4);
-        hBomb.Bomb = BombType.Horizontal;
+        var hBomb = new Tile(101, ElementType.HorizontalRocket, 3, 4);
         state.SetTile(3, 4, hBomb);
 
         // Act
@@ -553,18 +535,15 @@ public class PowerUpHandlerTests
         var state = CreateFilledState();
 
         // 在 (2, 3) 放置横向火箭
-        var hBomb = new Tile(100, ElementType.Item1, 2, 3);
-        hBomb.Bomb = BombType.Horizontal;
+        var hBomb = new Tile(100, ElementType.HorizontalRocket, 2, 3);
         state.SetTile(2, 3, hBomb);
 
         // 在 (5, 3) 放置纵向火箭（同一行）
-        var vBomb = new Tile(101, ElementType.Item3, 5, 3);
-        vBomb.Bomb = BombType.Vertical;
+        var vBomb = new Tile(101, ElementType.VerticalRocket, 5, 3);
         state.SetTile(5, 3, vBomb);
 
         // 在 (5, 6) 放置方块炸弹（同一列）
-        var squareBomb = new Tile(102, ElementType.Item2, 5, 6);
-        squareBomb.Bomb = BombType.Square5x5;
+        var squareBomb = new Tile(102, ElementType.Square5x5, 5, 6);
         state.SetTile(5, 6, squareBomb);
 
         // Act
@@ -597,8 +576,7 @@ public class PowerUpHandlerTests
         // Arrange: 炸弹在边角
         var handler = CreateHandler();
         var state = CreateFilledState();
-        var bombTile = new Tile(100, ElementType.Item1, 0, 0);
-        bombTile.Bomb = BombType.Square5x5;
+        var bombTile = new Tile(100, ElementType.Square5x5, 0, 0);
         state.SetTile(0, 0, bombTile);
 
         // Act & Assert: 不应该抛出异常
@@ -612,8 +590,7 @@ public class PowerUpHandlerTests
         // Arrange: Rainbow + None tile
         var handler = CreateHandler();
         var state = CreateEmptyState();
-        var rainbow = new Tile(100, ElementType.Universal, 3, 3);
-        rainbow.Bomb = BombType.Color;
+        var rainbow = new Tile(100, ElementType.ColorBomb, 3, 3);
         state.SetTile(3, 3, rainbow);
         // (4, 3) 是 None
 
@@ -630,10 +607,8 @@ public class PowerUpHandlerTests
         // Arrange
         var handler = CreateHandler();
         var state = CreateFilledState();
-        var rainbow1 = new Tile(100, ElementType.Universal, 3, 3);
-        rainbow1.Bomb = BombType.Color;
-        var rainbow2 = new Tile(101, ElementType.Universal, 4, 3);
-        rainbow2.Bomb = BombType.Color;
+        var rainbow1 = new Tile(100, ElementType.ColorBomb, 3, 3);
+        var rainbow2 = new Tile(101, ElementType.ColorBomb, 4, 3);
         state.SetTile(3, 3, rainbow1);
         state.SetTile(4, 3, rainbow2);
 

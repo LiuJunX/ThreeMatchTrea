@@ -12,7 +12,7 @@ public interface IBombEffect
     /// <summary>
     /// The type of bomb this effect handles.
     /// </summary>
-    BombType Type { get; }
+    ElementType Type { get; }
 
     /// <summary>
     /// Calculates which tiles are affected by the explosion at the given origin.

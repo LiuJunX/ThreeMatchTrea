@@ -70,11 +70,6 @@ internal static class AnalysisUtility
                 int idx = y * levelConfig.Width + x;
 
                 var type = levelConfig.Grid[idx];
-                var bomb = BombType.None;
-                if (levelConfig.Bombs != null && idx < levelConfig.Bombs.Length)
-                {
-                    bomb = levelConfig.Bombs[idx];
-                }
 
                 if (type == ElementType.None)
                 {
@@ -85,7 +80,7 @@ internal static class AnalysisUtility
                     } while (WouldCreateMatch(in state, x, y, type));
                 }
 
-                state.SetTile(x, y, new Tile(state.NextTileId++, type, x, y, bomb));
+                state.SetTile(x, y, new Tile(state.NextTileId++, type, x, y));
 
                 if (levelConfig.Grounds != null && idx < levelConfig.Grounds.Length)
                 {
@@ -134,7 +129,7 @@ internal static class AnalysisUtility
         var seen = new HashSet<ElementType>();
         foreach (var type in grid)
         {
-            if (type != ElementType.None && type != ElementType.Universal)
+            if (type != ElementType.None && type != ElementType.ColorBomb)
             {
                 seen.Add(type);
             }

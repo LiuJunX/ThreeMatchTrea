@@ -14,7 +14,7 @@ namespace Match3.Core.Systems.PowerUps;
 
 public class BombEffectRegistry
 {
-    private readonly Dictionary<BombType, IBombEffect> _effects = new();
+    private readonly Dictionary<ElementType, IBombEffect> _effects = new();
 
     public BombEffectRegistry(IEnumerable<IBombEffect> effects)
     {
@@ -29,7 +29,7 @@ public class BombEffectRegistry
         _effects[effect.Type] = effect;
     }
 
-    public bool TryGetEffect(BombType type, out IBombEffect? effect)
+    public bool TryGetEffect(ElementType type, out IBombEffect? effect)
     {
         return _effects.TryGetValue(type, out effect);
     }

@@ -7,7 +7,7 @@ namespace Match3.Core.Systems.PowerUps.Effects;
 
 public class ColorBombEffect : IBombEffect
 {
-    public BombType Type => BombType.Color;
+    public ElementType Type => ElementType.ColorBomb;
 
     public void Apply(in GameState state, Position origin, HashSet<Position> affectedTiles)
     {
@@ -20,7 +20,7 @@ public class ColorBombEffect : IBombEffect
             for (int i = 0; i < state.Grid.Length; i++)
             {
                 var t = state.Grid[i];
-                if (t.Type != ElementType.None && t.Type != ElementType.Universal)
+                if (t.Type != ElementType.None && t.Type != ElementType.ColorBomb)
                 {
                     // Use TryGetValue to minimize lookups
                     if (counts.TryGetValue(t.Type, out int existingCount))

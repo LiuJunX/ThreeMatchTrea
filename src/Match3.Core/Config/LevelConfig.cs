@@ -25,8 +25,6 @@ public class LevelConfig
     /// </summary>
     public CellKind[] Cells { get; set; }
 
-    public BombType[] Bombs { get; set; }
-
     /// <summary>
     /// Ground layer configuration.
     /// </summary>
@@ -96,12 +94,11 @@ public class LevelConfig
         var size = Width * Height;
         Grid = new ElementType[size];
         Cells = new CellKind[size];
-        Bombs = new BombType[size];
         Grounds = new GroundType[size];
         GroundHealths = new byte[size];
         Covers = new CoverType[size];
         CoverHealths = new byte[size];
-        
+
         // Default cells to Slot
         Array.Fill(Cells, CellKind.Slot);
     }
@@ -113,7 +110,6 @@ public class LevelConfig
         var size = width * height;
         Grid = new ElementType[size];
         Cells = new CellKind[size];
-        Bombs = new BombType[size];
         Grounds = new GroundType[size];
         GroundHealths = new byte[size];
         Covers = new CoverType[size];
@@ -132,7 +128,6 @@ public class LevelConfig
         };
         Array.Copy(Grid, copy.Grid, Grid.Length);
         Array.Copy(Cells, copy.Cells, Cells.Length);
-        Array.Copy(Bombs, copy.Bombs, Bombs.Length);
         Array.Copy(Grounds, copy.Grounds, Grounds.Length);
         Array.Copy(GroundHealths, copy.GroundHealths, GroundHealths.Length);
         Array.Copy(Covers, copy.Covers, Covers.Length);

@@ -19,7 +19,7 @@ namespace Match3.Unity.LevelEditor.Views
         private readonly string[] _layerNames = { "Tiles", "Covers", "Grounds" };
         private int _lastLayer = -1;
         private ElementType _lastTileType;
-        private BombType _lastBombType;
+        private ElementType _lastBombType;
         private CoverType _lastCoverType;
         private GroundType _lastGroundType;
 
@@ -101,7 +101,7 @@ namespace Match3.Unity.LevelEditor.Views
             var elementTypes = new[] {
                 ElementType.Item1, ElementType.Item2, ElementType.Item3,
                 ElementType.Item4, ElementType.Item5, ElementType.Item6,
-                ElementType.Universal, ElementType.None
+                ElementType.ColorBomb, ElementType.None
             };
             var elementNames = new[] {
                 "Red", "Green", "Blue", "Yellow", "Purple", "Orange", "Rainbow", "None"
@@ -114,7 +114,7 @@ namespace Match3.Unity.LevelEditor.Views
                 var btn = CreateButton(_typeButtonContainer, label, () =>
                 {
                     _editor.SetSelectedTileType(type);
-                    _editor.SetSelectedBombType(type == ElementType.Universal ? BombType.Color : BombType.None);
+                    _editor.SetSelectedBombType(type == ElementType.ColorBomb ? ElementType.ColorBomb : ElementType.None);
                 });
                 var img = btn.GetComponent<Image>();
                 if (img != null)
@@ -135,7 +135,7 @@ namespace Match3.Unity.LevelEditor.Views
                 {
                     // Structural types map to ElementType.None for tile content
                     _editor.SetSelectedTileType(ElementType.None);
-                    _editor.SetSelectedBombType(BombType.None);
+                    _editor.SetSelectedBombType(ElementType.None);
                 });
                 var img = btn.GetComponent<Image>();
                 if (img != null)
@@ -143,7 +143,7 @@ namespace Match3.Unity.LevelEditor.Views
             }
 
             // Bomb buttons
-            var bombs = new[] { BombType.Horizontal, BombType.Vertical, BombType.Square5x5, BombType.Ufo };
+            var bombs = new[] { ElementType.HorizontalRocket, ElementType.VerticalRocket, ElementType.Square5x5, ElementType.Ufo };
             foreach (var b in bombs)
             {
                 var bomb = b;

@@ -36,7 +36,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var results = _generator.Generate(component);
             // It should return 1 group of type None (Simple3)
             Assert.Single(results);
-            Assert.Equal(BombType.None, results[0].SpawnBombType);
+            Assert.Equal(ElementType.None, results[0].SpawnBombType);
         }
 
         [Fact]
@@ -73,7 +73,7 @@ namespace Match3.Core.Tests.Systems.Matching
             );
             var results = _generator.Generate(component);
             Assert.Single(results);
-            Assert.Equal(BombType.Ufo, results[0].SpawnBombType);
+            Assert.Equal(ElementType.Ufo, results[0].SpawnBombType);
         }
 
         [Fact]
@@ -84,7 +84,7 @@ namespace Match3.Core.Tests.Systems.Matching
             );
             var results = _generator.Generate(component);
             Assert.Single(results);
-            Assert.Equal(BombType.Color, results[0].SpawnBombType);
+            Assert.Equal(ElementType.ColorBomb, results[0].SpawnBombType);
         }
 
         [Fact]
@@ -95,7 +95,7 @@ namespace Match3.Core.Tests.Systems.Matching
             );
             var results = _generator.Generate(component);
             Assert.Single(results);
-            Assert.Equal(BombType.Color, results[0].SpawnBombType);
+            Assert.Equal(ElementType.ColorBomb, results[0].SpawnBombType);
             Assert.Equal(6, results[0].Positions.Count);
         }
 
@@ -109,7 +109,7 @@ namespace Match3.Core.Tests.Systems.Matching
             );
             var results = _generator.Generate(component);
             // Should contain at least one high tier bomb (Area/Square5x5 or Color)
-            Assert.Contains(results, g => g.SpawnBombType.IsAreaBomb() || g.SpawnBombType == BombType.Color);
+            Assert.Contains(results, g => g.SpawnBombType.IsAreaBomb() || g.SpawnBombType == ElementType.ColorBomb);
         }
 
         [Fact]
@@ -138,7 +138,7 @@ namespace Match3.Core.Tests.Systems.Matching
 
             Assert.Single(results);
             var group = results[0];
-            Assert.Equal(BombType.Color, group.SpawnBombType);
+            Assert.Equal(ElementType.ColorBomb, group.SpawnBombType);
             Assert.Equal(5, group.Positions.Count); // Only the line, no perpendicular scraps
         }
 
@@ -199,7 +199,7 @@ namespace Match3.Core.Tests.Systems.Matching
             Assert.True(sw.ElapsedMilliseconds < 200, $"Performance check failed: {sw.ElapsedMilliseconds}ms");
 
             // Should verify some bombs are generated
-            Assert.Contains(results, g => g.SpawnBombType == BombType.Color);
+            Assert.Contains(results, g => g.SpawnBombType == ElementType.ColorBomb);
         }
 
         [Fact]
@@ -266,7 +266,7 @@ namespace Match3.Core.Tests.Systems.Matching
             int rainbowCount = 0;
             foreach (var g in results)
             {
-                if (g.SpawnBombType == BombType.Color)
+                if (g.SpawnBombType == ElementType.ColorBomb)
                     rainbowCount++;
             }
 

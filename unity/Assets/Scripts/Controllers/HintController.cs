@@ -37,9 +37,9 @@ namespace Match3.Unity.Controllers
     {
         public enum HintState { Disabled, Waiting, Showing }
 
-        private const float InitialDelay = 4f;
+        private const float InitialDelay = 1f;
         private const float ShowDuration = 3f;
-        private const float CycleInterval = 3f;
+        private const float CycleInterval = 1f;
 
         private readonly IHintContext _context;
         private float _timer;

@@ -206,19 +206,6 @@ namespace Match3.Unity.Pools
                         AnimationCurve.EaseInOut(0f, 1f, 1f, 0.2f));
                     break;
 
-                case "color_bomb_trail":
-                    // Small bright streak at beam midpoint — suggests fast-moving beam
-                    main.startLifetime = 0.12f;
-                    main.startSpeed = new ParticleSystem.MinMaxCurve(1f, 2f);
-                    main.startSize = new ParticleSystem.MinMaxCurve(0.06f, 0.12f);
-                    main.startColor = new ParticleSystem.MinMaxGradient(
-                        new Color(1f, 1f, 0.7f, 0.9f),
-                        new Color(1f, 0.9f, 0.4f, 0.7f));
-                    emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 4, 6) });
-                    shape.shapeType = ParticleSystemShapeType.Sphere;
-                    shape.radius = 0.08f;
-                    break;
-
                 case "color_bomb_hit":
                     // Bright sparkle impact burst at target tile
                     main.startLifetime = 0.25f;

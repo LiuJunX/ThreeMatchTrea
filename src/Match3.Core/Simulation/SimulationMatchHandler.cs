@@ -119,7 +119,6 @@ internal sealed class SimulationMatchHandler
                     TileId = tile.Id,
                     GridPosition = pos,
                     Type = tile.Type,
-                    Bomb = tile.Bomb,
                     Reason = DestroyReason.Projectile
                 });
             }
@@ -192,9 +191,8 @@ internal sealed class SimulationMatchHandler
                         TileId = tile.Id,
                         GridPosition = pos,
                         Type = tile.Type,
-                        Bomb = tile.Bomb,
                         Reason = DestroyReason.Match,
-                        MergeTarget = group.SpawnBombType != BombType.None ? group.BombOrigin : null
+                        MergeTarget = group.SpawnBombType != ElementType.None ? group.BombOrigin : null
                     });
                 }
 
@@ -210,7 +208,7 @@ internal sealed class SimulationMatchHandler
     {
         foreach (var group in stableGroups)
         {
-            if (group.SpawnBombType != BombType.None && group.BombOrigin.HasValue)
+            if (group.SpawnBombType != ElementType.None && group.BombOrigin.HasValue)
             {
                 var pos = group.BombOrigin.Value;
                 var tile = state.GetTile(pos.X, pos.Y);
@@ -234,7 +232,7 @@ internal sealed class SimulationMatchHandler
 
         foreach (var group in stableGroups)
         {
-            if (group.SpawnBombType != BombType.None && group.BombOrigin.HasValue)
+            if (group.SpawnBombType != ElementType.None && group.BombOrigin.HasValue)
             {
                 var pos = group.BombOrigin.Value;
                 if (bombOrigins.TryGetValue(pos, out int oldTileId))
@@ -249,8 +247,7 @@ internal sealed class SimulationMatchHandler
                         TileId = oldTileId,
                         NewTileId = newTile.Id,
                         Position = pos,
-                        BombType = group.SpawnBombType,
-                        BaseType = group.Type
+                        BombType = group.SpawnBombType
                     });
                 }
             }

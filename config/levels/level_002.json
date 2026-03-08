@@ -10,7 +10,15 @@
     { "targetLayer": "Tile", "elementType": 2, "targetCount": 15 },
     { "targetLayer": "Tile", "elementType": 5, "targetCount": 15 }
   ],
-  "grid": null,
+  "grid": [
+    0,  0,  0,  0,  0,  0,  0,
+    0, 12,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0, 12,  0,
+    0,  0,  0,  0,  0,  0,  0,
+    0, 12,  0,  0,  0,  0,  0,
+    0,  0,  0,  0, 12,  0,  0,
+    0,  0,  0,  0,  0,  0,  0
+  ],
   "cells": [
     1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1,

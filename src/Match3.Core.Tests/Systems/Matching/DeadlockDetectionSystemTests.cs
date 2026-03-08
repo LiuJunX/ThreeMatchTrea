@@ -221,8 +221,8 @@ public class DeadlockDetectionSystemTests
         var detector = CreateDetector();
         var state = CreateDeadlockBoard();
 
-        // 在 (2,2) 放一个炸弹（保持原始模式颜色，三色旋转模式本身无匹配交换）
-        state.SetTile(2, 2, new Tile(14, ElementType.Item3, 2, 2, BombType.Horizontal));
+        // 在 (2,2) 放一个炸弹
+        state.SetTile(2, 2, new Tile(14, ElementType.HorizontalRocket, 2, 2));
 
         Assert.True(detector.HasValidMoves(in state),
             "棋盘上有可点击的炸弹，不应判定为死锁");
@@ -237,8 +237,8 @@ public class DeadlockDetectionSystemTests
         var detector = CreateDetector();
         var state = CreateDeadlockBoard();
 
-        // 放一个炸弹（保持原始模式颜色 Item3），但用 Cage 挡住
-        state.SetTile(2, 2, new Tile(14, ElementType.Item3, 2, 2, BombType.Square5x5));
+        // 放一个炸弹，但用 Cage 挡住
+        state.SetTile(2, 2, new Tile(14, ElementType.Square5x5, 2, 2));
         state.SetCover(2, 2, new Cover { Type = CoverType.Cage, Health = 1 });
 
         Assert.False(detector.HasValidMoves(in state),
@@ -255,7 +255,7 @@ public class DeadlockDetectionSystemTests
         var state = CreateDeadlockBoard();
 
         // 在 (0,0) 放一个炸弹，(1,0) 是普通棋子
-        state.SetTile(0, 0, new Tile(0, ElementType.Item1, 0, 0, BombType.Vertical));
+        state.SetTile(0, 0, new Tile(0, ElementType.VerticalRocket, 0, 0));
 
         Assert.True(detector.HasValidMoves(in state),
             "炸弹与普通棋子的交换始终有效，不应判定为死锁");
@@ -271,8 +271,8 @@ public class DeadlockDetectionSystemTests
         var state = CreateDeadlockBoard();
 
         // 两个相邻炸弹
-        state.SetTile(3, 3, new Tile(21, ElementType.Item1, 3, 3, BombType.Horizontal));
-        state.SetTile(4, 3, new Tile(22, ElementType.Item2, 4, 3, BombType.Vertical));
+        state.SetTile(3, 3, new Tile(21, ElementType.HorizontalRocket, 3, 3));
+        state.SetTile(4, 3, new Tile(22, ElementType.VerticalRocket, 4, 3));
 
         Assert.True(detector.HasValidMoves(in state),
             "两个相邻炸弹可以交换触发 combo，不应判定为死锁");
@@ -288,7 +288,7 @@ public class DeadlockDetectionSystemTests
         var state = CreateDeadlockBoard();
 
         // 在 (0,0) 放一个炸弹
-        state.SetTile(0, 0, new Tile(0, ElementType.Item1, 0, 0, BombType.Horizontal));
+        state.SetTile(0, 0, new Tile(0, ElementType.HorizontalRocket, 0, 0));
 
         var moves = detector.FindAllValidMoves(in state);
         try

@@ -7,7 +7,7 @@ namespace Match3.Core.Systems.PowerUps.Effects;
 
 public class UfoEffect : IBombEffect
 {
-    public BombType Type => BombType.Ufo;
+    public ElementType Type => ElementType.Ufo;
 
     public void Apply(in GameState state, Position origin, HashSet<Position> affectedTiles)
     {

@@ -365,11 +365,11 @@ public sealed class SimulationEngine : IDisposable
         var tileBId = tileB.Id;
 
         // Check if either tile is a bomb or color bomb (before swap)
-        bool tileAIsBomb = tileA.Bomb != BombType.None;
-        bool tileBIsBomb = tileB.Bomb != BombType.None;
-        bool tileAIsColorBomb = tileA.Type == ElementType.Universal;
-        bool tileBIsColorBomb = tileB.Type == ElementType.Universal;
-        bool hasSpecialMove = tileAIsBomb || tileBIsBomb || tileAIsColorBomb || tileBIsColorBomb;
+        bool tileAIsBomb = tileA.Type.IsBomb();
+        bool tileBIsBomb = tileB.Type.IsBomb();
+        bool tileAIsColorBomb = tileA.Type.IsColorBomb();
+        bool tileBIsColorBomb = tileB.Type.IsColorBomb();
+        bool hasSpecialMove = tileAIsBomb || tileBIsBomb;
 
         // Swap tiles in grid using shared operations
         _swapOperations.SwapTiles(ref state, from, to);
@@ -516,7 +516,7 @@ public sealed class SimulationEngine : IDisposable
         var tile = state.GetTile(p.X, p.Y);
 
         // 1. Check for Bomb - single tap activates bomb
-        if (tile.Bomb != BombType.None)
+        if (tile.Type.IsBomb())
         {
             ActivateBomb(p);
             return;

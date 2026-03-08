@@ -10,7 +10,7 @@ namespace Match3.Core.Systems.Matching.Generation;
 public sealed class DefaultBombTypeSelector : IBombTypeSelector
 {
     /// <inheritdoc />
-    public BombType SelectBombType(DetectedShape shape)
+    public ElementType SelectBombType(DetectedShape shape)
     {
         // Type is already determined during detection by ShapeDetector rules
         return shape.Type;

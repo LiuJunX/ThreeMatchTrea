@@ -118,10 +118,6 @@ namespace Match3.Editor.Logic
                 CurrentLevel = new LevelConfig(8, 8);
                 // GridManipulator will handle filling content
             }
-            if (CurrentLevel.Bombs == null || CurrentLevel.Bombs.Length != CurrentLevel.Grid.Length)
-            {
-                CurrentLevel.Bombs = new BombType[CurrentLevel.Grid.Length];
-            }
             // 确保有默认目标
             if (CurrentLevel.Objectives[0].TargetLayer == ObjectiveTargetLayer.None)
             {

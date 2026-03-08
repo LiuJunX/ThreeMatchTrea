@@ -609,7 +609,7 @@ namespace Match3.Unity.Bridge
             // Both bombs → always highlight from
             var tileA = state.GetTile(from.X, from.Y);
             var tileB = state.GetTile(to.X, to.Y);
-            if (tileA.Bomb != BombType.None && tileB.Bomb != BombType.None) return from;
+            if (tileA.Type.IsBomb() && tileB.Type.IsBomb()) return from;
 
             var matchFinder = new ClassicMatchFinder(new BombGenerator());
 
@@ -629,7 +629,7 @@ namespace Match3.Unity.Bridge
                 bool fromPosBomb = false;
                 foreach (var g in groups)
                 {
-                    if (g.SpawnBombType == BombType.None) continue;
+                    if (g.SpawnBombType == ElementType.None) continue;
                     foreach (var pos in g.Positions)
                     {
                         if (pos == from) { fromPosBomb = true; break; }

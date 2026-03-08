@@ -30,7 +30,7 @@ public class SimulationEngineTests
     private class StubScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(MatchGroup match) => 10;
-        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 100;
+        public int CalculateSpecialMoveScore(ElementType t1, ElementType t2) => 100;
     }
 
     private class StubSpawnModel : ISpawnModel
@@ -440,7 +440,7 @@ public class SimulationEngineTests
         var bombTile2 = engine.State.GetTile(1, 0);
 
         // One of the swap positions should have a bomb
-        bool bombAtSwapPosition = bombTile.Bomb != BombType.None || bombTile2.Bomb != BombType.None;
+        bool bombAtSwapPosition = bombTile.Type.IsBomb() || bombTile2.Type.IsBomb();
 
         // If tiles fell due to gravity, check the events for where bomb was created
         var events = collector.GetEvents();
@@ -464,7 +464,7 @@ public class SimulationEngineTests
         {
             for (int x = 0; x < 5; x++)
             {
-                if (engine.State.GetTile(x, y).Bomb != BombType.None)
+                if (engine.State.GetTile(x, y).Type.IsBomb())
                 {
                     anyBombExists = true;
                     break;
@@ -618,7 +618,7 @@ public class SimulationEngineTests
             for (int x = 0; x < 5; x++)
             {
                 var tile = engine.State.GetTile(x, y);
-                if (tile.Bomb == BombType.Ufo)
+                if (tile.Type == ElementType.Ufo)
                 {
                     ufoFound = true;
                     ufoPosition = new Position(x, y);
@@ -663,8 +663,7 @@ public class SimulationEngineTests
         var state = CreateNoMatchSwapState();
 
         // 在 (0,0) 放置横向火箭
-        var bombTile = state.GetTile(0, 0);
-        bombTile.Bomb = BombType.Horizontal;
+        var bombTile = new Tile(state.GetTile(0, 0).Id, ElementType.HorizontalRocket, 0, 0);
         state.SetTile(0, 0, bombTile);
 
         var engine = CreateEngine(state);
@@ -702,13 +701,11 @@ public class SimulationEngineTests
         var state = CreateNoMatchSwapState();
 
         // 在 (0,0) 放置横向火箭
-        var hBomb = state.GetTile(0, 0);
-        hBomb.Bomb = BombType.Horizontal;
+        var hBomb = new Tile(state.GetTile(0, 0).Id, ElementType.HorizontalRocket, 0, 0);
         state.SetTile(0, 0, hBomb);
 
         // 在 (1,0) 放置纵向火箭
-        var vBomb = state.GetTile(1, 0);
-        vBomb.Bomb = BombType.Vertical;
+        var vBomb = new Tile(state.GetTile(1, 0).Id, ElementType.VerticalRocket, 1, 0);
         state.SetTile(1, 0, vBomb);
 
         var collector = new BufferedEventCollector();
@@ -730,9 +727,9 @@ public class SimulationEngineTests
         Assert.True(destroyedEvents.Count >= 7,
             $"火箭+火箭组合应该触发十字消除，预期至少 7 个 TileDestroyedEvent，实际 {destroyedEvents.Count} 个");
 
-        // 验证第 0 行的方块被消除（通过事件验证，因为填充系统可能已生成新方块）
+        // 验证第 0 行非炸弹位置的方块被消除（炸弹自身被组合消耗，不产生 TileDestroyedEvent）
         var destroyedPositions = destroyedEvents.Select(e => e.GridPosition).ToHashSet();
-        for (int x = 0; x < 5; x++)
+        for (int x = 2; x < 5; x++)
         {
             Assert.Contains(new Position(x, 0), destroyedPositions);
         }
@@ -749,7 +746,7 @@ public class SimulationEngineTests
         var state = new GameState(5, 5, 4, new StubRandom());
 
         // 在 (0,0) 放置彩球
-        state.SetTile(0, 0, new Tile(1, ElementType.Universal, 0, 0) { Bomb = BombType.Color });
+        state.SetTile(0, 0, new Tile(1, ElementType.ColorBomb, 0, 0));
 
         // 在 (1,0) 放置蓝色普通方块（将被交换）
         state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0));
@@ -814,8 +811,7 @@ public class SimulationEngineTests
         var state = CreateNoMatchSwapState();
 
         // 在 (0,0) 放置纵向火箭
-        var bombTile = state.GetTile(0, 0);
-        bombTile.Bomb = BombType.Vertical;
+        var bombTile = new Tile(state.GetTile(0, 0).Id, ElementType.VerticalRocket, 0, 0);
         state.SetTile(0, 0, bombTile);
 
         var collector = new BufferedEventCollector();
@@ -926,8 +922,7 @@ public class SimulationEngineTests
         Assert.Equal(new Position(1, 1), engine.State.SelectedPosition);
 
         // Place a bomb at adjacent position
-        var bombTile = engine.State.GetTile(2, 1);
-        bombTile.Bomb = BombType.Horizontal;
+        var bombTile = new Tile(engine.State.GetTile(2, 1).Id, ElementType.HorizontalRocket, 2, 1);
         var engineState = engine.State;
         engineState.SetTile(2, 1, bombTile);
         // Need to update state through the engine
@@ -937,8 +932,7 @@ public class SimulationEngineTests
 
         // Since we can't easily inject state, let's recreate
         state = CreateStableState();
-        var bTile = state.GetTile(2, 1);
-        bTile.Bomb = BombType.Horizontal;
+        var bTile = new Tile(state.GetTile(2, 1).Id, ElementType.HorizontalRocket, 2, 1);
         state.SetTile(2, 1, bTile);
         state.SelectedPosition = new Position(1, 1);
 

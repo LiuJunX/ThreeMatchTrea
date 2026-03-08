@@ -17,7 +17,7 @@ namespace Match3.Editor.Tests
             Assert.Contains(ElementType.Item4, types);
             Assert.Contains(ElementType.Item5, types);
             Assert.Contains(ElementType.Item6, types);
-            Assert.Contains(ElementType.Universal, types);
+            Assert.Contains(ElementType.ColorBomb, types);
             Assert.Contains(ElementType.None, types);
             Assert.Equal(8, types.Count);
         }
@@ -27,7 +27,7 @@ namespace Match3.Editor.Tests
         {
             var red = EditorStyleHelper.GetTileColor(ElementType.Item1);
             var none = EditorStyleHelper.GetTileColor(ElementType.None);
-            var rainbow = EditorStyleHelper.GetTileColor(ElementType.Universal);
+            var rainbow = EditorStyleHelper.GetTileColor(ElementType.ColorBomb);
 
             Assert.Equal("#dc3545", red);
             Assert.Equal("#f8f9fa", none);

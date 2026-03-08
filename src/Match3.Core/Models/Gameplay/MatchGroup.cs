@@ -21,5 +21,5 @@ public class MatchGroup
     public HashSet<Position> Positions { get; set; } = new HashSet<Position>();
     public MatchShape Shape { get; set; }
     public Position? BombOrigin { get; set; } // Where to spawn the bomb (usually the swap position)
-    public BombType SpawnBombType { get; set; } = BombType.None;
+    public ElementType SpawnBombType { get; set; } = ElementType.None;
 }

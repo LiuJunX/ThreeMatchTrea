@@ -292,11 +292,11 @@ public sealed class Player
         switch (cmd)
         {
             case SpawnTileCommand spawn:
-                _visualState.AddTile(spawn.TileId, spawn.Type, spawn.Bomb, spawn.GridPos, spawn.SpawnPos);
+                _visualState.AddTile(spawn.TileId, spawn.Type, spawn.GridPos, spawn.SpawnPos);
                 break;
 
             case SpawnProjectileCommand spawnProj:
-                _visualState.AddProjectile(spawnProj.ProjectileId, spawnProj.Origin);
+                _visualState.AddProjectile(spawnProj.ProjectileId, spawnProj.Origin, spawnProj.Type);
                 break;
 
             case ShowEffectCommand effect:
@@ -310,14 +310,6 @@ public sealed class Player
                 }
                 break;
 
-            case UpdateTileBombCommand updateBomb:
-                var tile = _visualState.GetTile(updateBomb.TileId);
-                if (tile != null)
-                {
-                    tile.BombType = updateBomb.BombType;
-                }
-                break;
-
             case UpdateTileTypeCommand updateType:
                 var tileToUpdate = _visualState.GetTile(updateType.TileId);
                 if (tileToUpdate != null)
@@ -328,6 +320,15 @@ public sealed class Player
 
             case ScaleTileCommand scaleCmd:
                 _visualState.SetTileScale(scaleCmd.TileId, scaleCmd.FromScale);
+                break;
+
+            case UfoLaunchCommand ufo:
+                var ufoTile = _visualState.GetTile(ufo.TileId);
+                if (ufoTile != null)
+                {
+                    ufoTile.UfoFlightProgress = 0f;
+                    ufoTile.UfoFlightDuration = ufo.Duration;
+                }
                 break;
         }
 
@@ -418,6 +419,32 @@ public sealed class Player
                 // Fade out projectile
                 _visualState.SetProjectileVisible(impact.ProjectileId, t < 0.5f);
                 break;
+
+            case UfoLaunchCommand ufo:
+            {
+                var ufoT = _visualState.GetTile(ufo.TileId);
+                if (ufoT != null)
+                {
+                    ufoT.UfoFlightProgress = t;
+
+                    // XY position: stay at origin during spin-up/launch, then cruise to target
+                    const float stayFrac = 0.35f; // first 35% of duration: origin
+                    const float arriveFrac = 0.90f; // arrive by 90%
+                    float moveT;
+                    if (t <= stayFrac)
+                        moveT = 0f;
+                    else if (t >= arriveFrac)
+                        moveT = 1f;
+                    else
+                        moveT = (t - stayFrac) / (arriveFrac - stayFrac);
+
+                    // Smoothstep
+                    float eased = moveT * moveT * (3f - 2f * moveT);
+                    var ufoPos = Vector2.Lerp(ufo.Origin, ufo.Target, eased);
+                    _visualState.SetTilePosition(ufo.TileId, ufoPos);
+                }
+                break;
+            }
         }
     }
 
@@ -452,6 +479,15 @@ public sealed class Player
 
             case ImpactProjectileCommand impact:
                 _visualState.SetProjectileVisible(impact.ProjectileId, false);
+                break;
+
+            case UfoLaunchCommand ufo:
+                var ufoTile = _visualState.GetTile(ufo.TileId);
+                if (ufoTile != null)
+                {
+                    ufoTile.UfoFlightProgress = 1f;
+                    _visualState.SetTilePosition(ufo.TileId, ufo.Target);
+                }
                 break;
         }
 
@@ -516,6 +552,17 @@ public sealed class Player
                         sTile.AddAnimationRef();
                     else
                         sTile.ReleaseAnimationRef();
+                }
+                break;
+
+            case UfoLaunchCommand ufoCmd:
+                var uTile = _visualState.GetTile(ufoCmd.TileId);
+                if (uTile != null)
+                {
+                    if (isStarting)
+                        uTile.AddAnimationRef();
+                    else
+                        uTile.ReleaseAnimationRef();
                 }
                 break;
         }

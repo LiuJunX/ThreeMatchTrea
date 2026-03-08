@@ -64,14 +64,13 @@ public class StandardMatchProcessor : IMatchProcessor
                     tilesToClear.Add(p);
                 }
 
-                if (g.SpawnBombType != BombType.None && g.BombOrigin.HasValue)
+                if (g.SpawnBombType != ElementType.None && g.BombOrigin.HasValue)
                 {
                     var p = g.BombOrigin.Value;
                     tilesToClear.Remove(p);
                     protectedTiles.Add(p);
 
-                    var newType = g.SpawnBombType == BombType.Color ? ElementType.Universal : g.Type;
-                    state.SetTile(p.X, p.Y, new Tile(state.NextTileId++, newType, p.X, p.Y, g.SpawnBombType));
+                    state.SetTile(p.X, p.Y, new Tile(state.NextTileId++, g.SpawnBombType, p.X, p.Y));
                 }
             }
 
@@ -100,9 +99,9 @@ public class StandardMatchProcessor : IMatchProcessor
 
                 cleared.Add(p);
 
-                if (t.Bomb != BombType.None)
+                if (t.Type.IsBomb())
                 {
-                    if (_bombRegistry.TryGetEffect(t.Bomb, out var effect))
+                    if (_bombRegistry.TryGetEffect(t.Type, out var effect))
                     {
                         explosionRange.Clear();
                         effect!.Apply(in state, p, explosionRange);
@@ -125,7 +124,6 @@ public class StandardMatchProcessor : IMatchProcessor
                         TileId = t.Id,
                         GridPosition = p,
                         Type = t.Type,
-                        Bomb = t.Bomb,
                         Reason = DestroyReason.Match
                     });
                 }

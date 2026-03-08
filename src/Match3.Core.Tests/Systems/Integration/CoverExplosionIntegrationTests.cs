@@ -45,7 +45,7 @@ public class CoverExplosionIntegrationTests
     private class StubScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(MatchGroup match) => match.Positions.Count * 10;
-        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 100;
+        public int CalculateSpecialMoveScore(ElementType t1, ElementType t2) => 100;
     }
 
     public CoverExplosionIntegrationTests(ITestOutputHelper output)
@@ -73,8 +73,7 @@ public class CoverExplosionIntegrationTests
 
         state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
 
-        var bombTile = new Tile(2, ElementType.Item1, 1, 0);
-        bombTile.Bomb = BombType.Horizontal;
+        var bombTile = new Tile(2, ElementType.HorizontalRocket, 1, 0);
         state.SetTile(1, 0, bombTile);
 
         state.SetTile(2, 0, new Tile(3, ElementType.Item3, 2, 0));
@@ -131,8 +130,7 @@ public class CoverExplosionIntegrationTests
 
         state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
 
-        var bombTile = new Tile(2, ElementType.Item1, 0, 1);
-        bombTile.Bomb = BombType.Vertical;
+        var bombTile = new Tile(2, ElementType.VerticalRocket, 0, 1);
         state.SetTile(0, 1, bombTile);
 
         var blueTile = new Tile(3, ElementType.Item3, 0, 2);
@@ -190,8 +188,7 @@ public class CoverExplosionIntegrationTests
 
         // 第 1 行
         state.SetTile(0, 1, new Tile(4, ElementType.Item3, 0, 1));
-        var areaBomb = new Tile(5, ElementType.Item1, 1, 1);
-        areaBomb.Bomb = BombType.Square5x5;
+        var areaBomb = new Tile(5, ElementType.Square5x5, 1, 1);
         state.SetTile(1, 1, areaBomb);
         state.SetTile(2, 1, new Tile(6, ElementType.Item3, 2, 1));
 
@@ -241,8 +238,7 @@ public class CoverExplosionIntegrationTests
 
         state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
 
-        var bombTile = new Tile(2, ElementType.Item1, 1, 0);
-        bombTile.Bomb = BombType.Horizontal;
+        var bombTile = new Tile(2, ElementType.HorizontalRocket, 1, 0);
         state.SetTile(1, 0, bombTile);
 
         state.SetTile(2, 0, new Tile(3, ElementType.Item3, 2, 0));
@@ -312,12 +308,10 @@ public class CoverExplosionIntegrationTests
 
         // 第 1 行 - 水平炸弹和垂直炸弹
         state.SetTile(0, 1, new Tile(6, ElementType.Item1, 0, 1));
-        var hBomb = new Tile(7, ElementType.Item1, 1, 1);
-        hBomb.Bomb = BombType.Horizontal;
+        var hBomb = new Tile(7, ElementType.HorizontalRocket, 1, 1);
         state.SetTile(1, 1, hBomb);
         state.SetTile(2, 1, new Tile(8, ElementType.Item3, 2, 1));
-        var vBomb = new Tile(9, ElementType.Item1, 3, 1);
-        vBomb.Bomb = BombType.Vertical;
+        var vBomb = new Tile(9, ElementType.VerticalRocket, 3, 1);
         state.SetTile(3, 1, vBomb);
         state.SetTile(4, 1, new Tile(10, ElementType.Item2, 4, 1));
 
@@ -406,8 +400,7 @@ public class CoverExplosionIntegrationTests
 
         // 第 1 行
         state.SetTile(0, 1, new Tile(4, ElementType.Item1, 0, 1));
-        var hBomb = new Tile(5, ElementType.Item1, 1, 1);
-        hBomb.Bomb = BombType.Horizontal;
+        var hBomb = new Tile(5, ElementType.HorizontalRocket, 1, 1);
         state.SetTile(1, 1, hBomb);
         state.SetTile(2, 1, new Tile(6, ElementType.Item3, 2, 1));
 
@@ -479,14 +472,14 @@ public class CoverExplosionIntegrationTests
                 {
                     symbol = "_";
                 }
-                else if (t.Bomb != BombType.None)
+                else if (t.Type.IsBomb())
                 {
-                    symbol = t.Bomb switch
+                    symbol = t.Type switch
                     {
-                        BombType.Horizontal => "H",
-                        BombType.Vertical => "V",
-                        BombType.Square5x5 => "W",
-                        BombType.Color => "C",
+                        ElementType.HorizontalRocket => "H",
+                        ElementType.VerticalRocket => "V",
+                        ElementType.Square5x5 => "W",
+                        ElementType.ColorBomb => "C",
                         _ => t.Type.ToString()[0].ToString()
                     };
                 }
@@ -514,9 +507,9 @@ public class CoverExplosionIntegrationTests
             var c = state.GetCover(new Position(x, y));
 
             string symbol = t.Type == ElementType.None ? "_" : t.Type.ToString()[0].ToString();
-            if (t.Bomb != BombType.None)
+            if (t.Type.IsBomb())
             {
-                symbol = t.Bomb.ToString()[0].ToString();
+                symbol = t.Type.ToString()[0].ToString();
             }
             if (c.Type != CoverType.None)
             {
@@ -533,7 +526,7 @@ public class CoverExplosionIntegrationTests
         {
             var t = state.GetTile(x, y);
             var c = state.GetCover(new Position(x, y));
-            _output.WriteLine($"  ({x},{y}): Type={t.Type}, Bomb={t.Bomb}, Cover={c.Type}");
+            _output.WriteLine($"  ({x},{y}): Type={t.Type}, Bomb={t.Type}, Cover={c.Type}");
         }
     }
 

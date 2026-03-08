@@ -66,7 +66,10 @@ public enum ProjectileType
     Ufo,
 
     /// <summary>Homing missile projectile.</summary>
-    HomingMissile
+    HomingMissile,
+
+    /// <summary>Color bomb beam — visual-only projectile flying from origin to target.</summary>
+    ColorBombBeam
 }
 
 // Note: MatchShape is defined in Match3.Core.Models.Gameplay.MatchGroup

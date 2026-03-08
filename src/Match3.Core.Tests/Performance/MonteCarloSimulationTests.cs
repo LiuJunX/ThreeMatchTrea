@@ -755,7 +755,7 @@ public class MonteCarloSimulationTests
     private sealed class SimpleScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(MatchGroup match) => match.Positions.Count * 10;
-        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 100;
+        public int CalculateSpecialMoveScore(ElementType t1, ElementType t2) => 100;
     }
 
     private sealed class RandomSpawnModel : ISpawnModel

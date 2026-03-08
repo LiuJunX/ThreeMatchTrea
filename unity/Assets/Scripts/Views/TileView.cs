@@ -54,12 +54,12 @@ namespace Match3.Unity.Views
         }
 
         /// <summary>
-        /// Initialize the tile with ID, type, and bomb.
+        /// Initialize the tile with ID and type.
         /// </summary>
-        public void Setup(int id, ElementType type, BombType bomb)
+        public void Setup(int id, ElementType type)
         {
             TileId = id;
-            ApplyAppearance(type, bomb);
+            ApplyAppearance(type);
         }
 
         /// <summary>
@@ -145,14 +145,14 @@ namespace Match3.Unity.Views
             gameObject.SetActive(visual.IsVisible);
 
             // Immediate mode: sync appearance from visual state every frame
-            ApplyAppearance(visual.TileType, visual.BombType);
+            ApplyAppearance(visual.TileType);
         }
 
-        private void ApplyAppearance(ElementType type, BombType bomb)
+        private void ApplyAppearance(ElementType type)
         {
             ViewHelper.SetSprite(_renderer, SpriteFactory.GetTileSprite(type));
             ViewHelper.SetBombOverlay(_bombOverlay, _bombOverlayGo,
-                bomb != BombType.None ? SpriteFactory.GetBombOverlay(bomb) : null);
+                type.IsBomb() ? SpriteFactory.GetBombOverlay(type) : null);
         }
 
         /// <summary>

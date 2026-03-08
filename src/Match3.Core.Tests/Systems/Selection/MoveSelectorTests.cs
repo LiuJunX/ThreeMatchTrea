@@ -259,7 +259,7 @@ public class MoveSelectorTests
         var state = CreateEmptyState(4, 2, random);
 
         // 放置一个炸弹
-        var bombTile = new Tile(0, ElementType.Item1, 0, 0) { Bomb = BombType.Horizontal };
+        var bombTile = new Tile(0, ElementType.HorizontalRocket, 0, 0);
         state.SetTile(0, 0, bombTile);
         state.SetTile(1, 0, new Tile(1, ElementType.Item3, 1, 0));
         state.SetTile(2, 0, new Tile(2, ElementType.Item2, 2, 0));
@@ -296,8 +296,8 @@ public class MoveSelectorTests
         var random = new StubRandom(0);
         var state = CreateEmptyState(4, 2, random);
 
-        var bombA = new Tile(0, ElementType.Item1, 0, 0) { Bomb = BombType.Horizontal };
-        var bombB = new Tile(1, ElementType.Item3, 1, 0) { Bomb = BombType.Vertical };
+        var bombA = new Tile(0, ElementType.HorizontalRocket, 0, 0);
+        var bombB = new Tile(1, ElementType.VerticalRocket, 1, 0);
         state.SetTile(0, 0, bombA);
         state.SetTile(1, 0, bombB);
         state.SetTile(2, 0, new Tile(2, ElementType.Item2, 2, 0));
@@ -379,12 +379,12 @@ public class MoveSelectorTests
         var config = MoveSelectionConfig.Default;
 
         // Assert
-        Assert.Equal(10, config.Weights.GetWeight(BombType.None));
-        Assert.Equal(20, config.Weights.GetWeight(BombType.Ufo));
-        Assert.Equal(20, config.Weights.GetWeight(BombType.Horizontal));
-        Assert.Equal(20, config.Weights.GetWeight(BombType.Vertical));
-        Assert.Equal(30, config.Weights.GetWeight(BombType.Square5x5));
-        Assert.Equal(40, config.Weights.GetWeight(BombType.Color));
+        Assert.Equal(10, config.Weights.GetWeight(ElementType.None));
+        Assert.Equal(20, config.Weights.GetWeight(ElementType.Ufo));
+        Assert.Equal(20, config.Weights.GetWeight(ElementType.HorizontalRocket));
+        Assert.Equal(20, config.Weights.GetWeight(ElementType.VerticalRocket));
+        Assert.Equal(30, config.Weights.GetWeight(ElementType.Square5x5));
+        Assert.Equal(40, config.Weights.GetWeight(ElementType.ColorBomb));
     }
 
     [Fact]

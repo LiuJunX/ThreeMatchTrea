@@ -50,9 +50,9 @@ public static class FastMoveScorer
         var fromTile = state.GetTile(move.From);
         var toTile = state.GetTile(move.To);
 
-        if (fromTile.Bomb != BombType.None)
+        if (fromTile.Type.IsBomb())
             score += 50f; // 激活炸弹
-        if (toTile.Bomb != BombType.None)
+        if (toTile.Type.IsBomb())
             score += 50f;
 
         return score;
@@ -67,7 +67,7 @@ public static class FastMoveScorer
         // 获取交换后该位置的类型
         var type = state.GetType(swapWith);
 
-        if (type == ElementType.None || type == ElementType.Universal)
+        if (type == ElementType.None || type == ElementType.ColorBomb)
             return (0, MatchDirection.None);
 
         if (!state.CanMatch(pos))

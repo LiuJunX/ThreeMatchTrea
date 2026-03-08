@@ -27,7 +27,7 @@ public class VisualStateTests
         state.SetTile(2, 3, tile);
 
         // Add same tile to visual state at old position, NOT being animated
-        visualState.AddTile(tile.Id, ElementType.Item1, BombType.None, new Position(2, 0), new Vector2(2, 0));
+        visualState.AddTile(tile.Id, ElementType.Item1, new Position(2, 0), new Vector2(2, 0));
         // IsBeingAnimated defaults to false
 
         // Sync
@@ -54,7 +54,7 @@ public class VisualStateTests
         state.SetTile(2, 3, tile);
 
         // Add same tile to visual state at animation position, marked as being animated
-        visualState.AddTile(tile.Id, ElementType.Item1, BombType.None, new Position(2, 3), new Vector2(1.5f, 3));
+        visualState.AddTile(tile.Id, ElementType.Item1, new Position(2, 3), new Vector2(1.5f, 3));
         var visual = visualState.GetTile(tile.Id);
         visual!.AddAnimationRef();  // Being controlled by Player animation
 
@@ -79,7 +79,7 @@ public class VisualStateTests
 
         // Add same tile to visual state at different position, not being animated
         // (AnimationRefCount defaults to 0, so IsBeingAnimated is false)
-        visualState.AddTile(tile.Id, ElementType.Item1, BombType.None, new Position(2, 0), new Vector2(2, 2.5f));
+        visualState.AddTile(tile.Id, ElementType.Item1, new Position(2, 0), new Vector2(2, 2.5f));
         var visual = visualState.GetTile(tile.Id);
         Assert.False(visual!.IsBeingAnimated);  // Verify not being animated
 
@@ -97,8 +97,8 @@ public class VisualStateTests
         var visualState = new VisualState();
         var state = CreateGameState(8, 8);
 
-        // Add tile to game state but not to visual state
-        var tile = CreateTile(ElementType.Item3, 4, 5, BombType.Horizontal);
+        // Add tile to game state but not to visual state (bomb tile)
+        var tile = CreateTile(ElementType.HorizontalRocket, 4, 5);
         state.SetTile(4, 5, tile);
 
         // Visual state is empty
@@ -110,8 +110,7 @@ public class VisualStateTests
         // Tile should now exist in visual state
         var visual = visualState.GetTile(tile.Id);
         Assert.NotNull(visual);
-        Assert.Equal(ElementType.Item3, visual.TileType);
-        Assert.Equal(BombType.Horizontal, visual.BombType);
+        Assert.Equal(ElementType.HorizontalRocket, visual.TileType);
         Assert.Equal(4f, visual.Position.X, 0.001f);
         Assert.Equal(5f, visual.Position.Y, 0.001f);
     }
@@ -123,7 +122,7 @@ public class VisualStateTests
         var state = CreateGameState(8, 8);
 
         // Add tile only to visual state (not in game state)
-        visualState.AddTile(999, ElementType.Item2, BombType.None, new Position(1, 1), new Vector2(1, 1));
+        visualState.AddTile(999, ElementType.Item2, new Position(1, 1), new Vector2(1, 1));
 
         Assert.NotNull(visualState.GetTile(999));
 
@@ -140,14 +139,14 @@ public class VisualStateTests
         var visualState = new VisualState();
         var state = CreateGameState(8, 8);
 
-        var tile = CreateTile(ElementType.Item4, 3, 3, BombType.Vertical);
+        var tile = CreateTile(ElementType.VerticalRocket, 3, 3);
         // Modify position before SetTile (Tile is a struct)
         tile.Position = new Vector2(3, 2);
         tile.IsFalling = true;  // Mark as falling
         state.SetTile(3, 3, tile);
 
         // Add tile to visual state with custom scale and alpha
-        visualState.AddTile(tile.Id, ElementType.Item4, BombType.Vertical, new Position(3, 0), new Vector2(3, 0));
+        visualState.AddTile(tile.Id, ElementType.VerticalRocket, new Position(3, 0), new Vector2(3, 0));
         visualState.SetTileScale(tile.Id, new Vector2(1.5f, 1.5f));
         visualState.SetTileAlpha(tile.Id, 0.8f);
 
@@ -187,7 +186,7 @@ public class VisualStateTests
         state.SetTile(2, 2, tile3);
 
         // Add only tile1 to visual state
-        visualState.AddTile(tile1.Id, ElementType.Item1, BombType.None, new Position(0, 0), new Vector2(0, 0));
+        visualState.AddTile(tile1.Id, ElementType.Item1, new Position(0, 0), new Vector2(0, 0));
 
         // Sync
         visualState.SyncFallingTilesFromGameState(in state);
@@ -232,7 +231,7 @@ public class VisualStateTests
         tile.IsFalling = true;  // Mark as falling
         state.SetTile(5, 7, tile);
 
-        visualState.AddTile(tile.Id, ElementType.Item1, BombType.None, new Position(5, 0), new Vector2(5, 0));
+        visualState.AddTile(tile.Id, ElementType.Item1, new Position(5, 0), new Vector2(5, 0));
 
         visualState.SyncFallingTilesFromGameState(in state);
 
@@ -253,8 +252,8 @@ public class VisualStateTests
         var state = CreateGameState(8, 8);
 
         // Add tiles to visual state
-        visualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), Vector2.Zero);
-        visualState.AddTile(2, ElementType.Item3, BombType.None, new Position(1, 0), Vector2.One);
+        visualState.AddTile(1, ElementType.Item1, new Position(0, 0), Vector2.Zero);
+        visualState.AddTile(2, ElementType.Item3, new Position(1, 0), Vector2.One);
 
         Assert.Equal(2, visualState.Tiles.Count);
 
@@ -274,7 +273,7 @@ public class VisualStateTests
         // Game state is empty (tile already removed by engine)
 
         // Visual state has the tile with an active animation (e.g. destroy fade-out)
-        visualState.AddTile(1, ElementType.Item1, BombType.None, new Position(3, 4), new Vector2(3, 4));
+        visualState.AddTile(1, ElementType.Item1, new Position(3, 4), new Vector2(3, 4));
         var visual = visualState.GetTile(1);
         visual!.AddAnimationRef(); // Simulates DestroyTileCommand marking it as animated
 
@@ -292,7 +291,7 @@ public class VisualStateTests
         var state = CreateGameState(8, 8);
 
         // Tile with active animation
-        visualState.AddTile(1, ElementType.Item1, BombType.None, new Position(3, 4), new Vector2(3, 4));
+        visualState.AddTile(1, ElementType.Item1, new Position(3, 4), new Vector2(3, 4));
         var visual = visualState.GetTile(1);
         visual!.AddAnimationRef();
 
@@ -316,8 +315,8 @@ public class VisualStateTests
         return new GameState(width, height, 6, new DefaultRandom(12345));
     }
 
-    private Tile CreateTile(ElementType type, int x, int y, BombType bomb = BombType.None)
+    private Tile CreateTile(ElementType type, int x, int y)
     {
-        return new Tile(_nextTileId++, type, x, y, bomb);
+        return new Tile(_nextTileId++, type, x, y);
     }
 }

@@ -192,7 +192,7 @@ public class ExplosionSystem : IExplosionSystem
                 {
                     // Check for chain reaction (Bombs)
                     // If it's a bomb and NOT the origin (which is the source of this explosion), trigger it
-                    if (tile.Bomb != BombType.None && !(pos.X == explosion.Origin.X && pos.Y == explosion.Origin.Y))
+                    if (tile.Type.IsBomb() && !(pos.X == explosion.Origin.X && pos.Y == explosion.Origin.Y))
                     {
                         triggeredBombs.Add(pos);
                         // Clear suspended flag but don't destroy - let triggered activation handle it
@@ -211,7 +211,6 @@ public class ExplosionSystem : IExplosionSystem
                             TileId = tile.Id,
                             GridPosition = pos,
                             Type = tile.Type,
-                            Bomb = tile.Bomb,
                             Reason = DestroyReason.BombEffect
                         });
                     }

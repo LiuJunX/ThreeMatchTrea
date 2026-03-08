@@ -71,25 +71,22 @@ namespace Match3.Editor.Tests
         }
 
         [Fact]
-        public void PaintTile_ShouldUpdateGridAndBombs()
+        public void PaintTile_ShouldUpdateGrid()
         {
             var manipulator = new GridManipulator();
             var config = new LevelConfig(3, 3);
 
             // Paint Color
-            manipulator.PaintTile(config, 0, ElementType.Item2, BombType.None);
+            manipulator.PaintTile(config, 0, ElementType.Item2, ElementType.None);
             Assert.Equal(ElementType.Item2, config.Grid[0]);
-            Assert.Equal(BombType.None, config.Bombs[0]);
 
-            // Paint Bomb
-            manipulator.PaintTile(config, 0, ElementType.Item1, BombType.Horizontal);
-            Assert.Equal(ElementType.Item1, config.Grid[0]);
-            Assert.Equal(BombType.Horizontal, config.Bombs[0]);
+            // Paint Bomb — bomb ElementType stored directly in Grid
+            manipulator.PaintTile(config, 0, ElementType.Item1, ElementType.HorizontalRocket);
+            Assert.Equal(ElementType.HorizontalRocket, config.Grid[0]);
 
             // Paint Rainbow
-            manipulator.PaintTile(config, 1, ElementType.Universal, BombType.Color);
-            Assert.Equal(ElementType.Universal, config.Grid[1]);
-            Assert.Equal(BombType.Color, config.Bombs[1]);
+            manipulator.PaintTile(config, 1, ElementType.ColorBomb, ElementType.ColorBomb);
+            Assert.Equal(ElementType.ColorBomb, config.Grid[1]);
         }
 
         [Fact]

@@ -36,6 +36,6 @@ public sealed record TapCommand : IGameCommand
 
         // Check tile is a tappable power-up
         var tile = state.GetTile(Position.X, Position.Y);
-        return tile.Bomb != BombType.None;
+        return tile.Type.IsBomb();
     }
 }

@@ -127,8 +127,7 @@ public class StandardScoreSystemTests
     public void CalculateSpecialMoveScore_RainbowPlusRainbow_ShouldReturn5000()
     {
         var score = _system.CalculateSpecialMoveScore(
-            ElementType.Universal, BombType.None,
-            ElementType.Universal, BombType.None);
+            ElementType.ColorBomb, ElementType.ColorBomb);
 
         Assert.Equal(5000, score);
     }
@@ -137,8 +136,7 @@ public class StandardScoreSystemTests
     public void CalculateSpecialMoveScore_RainbowPlusNormal_ShouldReturn2000()
     {
         var score = _system.CalculateSpecialMoveScore(
-            ElementType.Universal, BombType.None,
-            ElementType.Item1, BombType.None);
+            ElementType.ColorBomb, ElementType.Item1);
 
         Assert.Equal(2000, score);
     }
@@ -148,37 +146,33 @@ public class StandardScoreSystemTests
     {
         // Order shouldn't matter
         var score = _system.CalculateSpecialMoveScore(
-            ElementType.Item3, BombType.None,
-            ElementType.Universal, BombType.None);
+            ElementType.Item3, ElementType.ColorBomb);
 
         Assert.Equal(2000, score);
     }
 
     [Theory]
-    [InlineData(BombType.Horizontal)]
-    [InlineData(BombType.Vertical)]
-    [InlineData(BombType.Square5x5)]
-    [InlineData(BombType.Ufo)]
-    [InlineData(BombType.Color)]
-    public void CalculateSpecialMoveScore_RainbowPlusBomb_ShouldReturn2500(BombType bombType)
+    [InlineData(ElementType.HorizontalRocket)]
+    [InlineData(ElementType.VerticalRocket)]
+    [InlineData(ElementType.Square5x5)]
+    [InlineData(ElementType.Ufo)]
+    public void CalculateSpecialMoveScore_RainbowPlusBomb_ShouldReturn2500(ElementType bombType)
     {
         var score = _system.CalculateSpecialMoveScore(
-            ElementType.Universal, BombType.None,
-            ElementType.Item1, bombType);
+            ElementType.ColorBomb, bombType);
 
         Assert.Equal(2500, score);
     }
 
     [Theory]
-    [InlineData(BombType.Horizontal)]
-    [InlineData(BombType.Vertical)]
-    [InlineData(BombType.Square5x5)]
-    public void CalculateSpecialMoveScore_BombPlusRainbow_ShouldReturn2500(BombType bombType)
+    [InlineData(ElementType.HorizontalRocket)]
+    [InlineData(ElementType.VerticalRocket)]
+    [InlineData(ElementType.Square5x5)]
+    public void CalculateSpecialMoveScore_BombPlusRainbow_ShouldReturn2500(ElementType bombType)
     {
         // Order shouldn't matter
         var score = _system.CalculateSpecialMoveScore(
-            ElementType.Item1, bombType,
-            ElementType.Universal, BombType.None);
+            bombType, ElementType.ColorBomb);
 
         Assert.Equal(2500, score);
     }
@@ -188,18 +182,16 @@ public class StandardScoreSystemTests
     #region CalculateSpecialMoveScore Tests - Bomb Combinations
 
     [Theory]
-    [InlineData(BombType.Horizontal, BombType.Horizontal)]
-    [InlineData(BombType.Horizontal, BombType.Vertical)]
-    [InlineData(BombType.Vertical, BombType.Vertical)]
-    [InlineData(BombType.Horizontal, BombType.Square5x5)]
-    [InlineData(BombType.Square5x5, BombType.Square5x5)]
-    [InlineData(BombType.Ufo, BombType.Horizontal)]
-    [InlineData(BombType.Ufo, BombType.Ufo)]
-    public void CalculateSpecialMoveScore_BombPlusBomb_ShouldReturn1000(BombType bomb1, BombType bomb2)
+    [InlineData(ElementType.HorizontalRocket, ElementType.HorizontalRocket)]
+    [InlineData(ElementType.HorizontalRocket, ElementType.VerticalRocket)]
+    [InlineData(ElementType.VerticalRocket, ElementType.VerticalRocket)]
+    [InlineData(ElementType.HorizontalRocket, ElementType.Square5x5)]
+    [InlineData(ElementType.Square5x5, ElementType.Square5x5)]
+    [InlineData(ElementType.Ufo, ElementType.HorizontalRocket)]
+    [InlineData(ElementType.Ufo, ElementType.Ufo)]
+    public void CalculateSpecialMoveScore_BombPlusBomb_ShouldReturn1000(ElementType bomb1, ElementType bomb2)
     {
-        var score = _system.CalculateSpecialMoveScore(
-            ElementType.Item1, bomb1,
-            ElementType.Item3, bomb2);
+        var score = _system.CalculateSpecialMoveScore(bomb1, bomb2);
 
         Assert.Equal(1000, score);
     }
@@ -212,8 +204,7 @@ public class StandardScoreSystemTests
     public void CalculateSpecialMoveScore_NormalPlusNormal_ShouldReturn0()
     {
         var score = _system.CalculateSpecialMoveScore(
-            ElementType.Item1, BombType.None,
-            ElementType.Item3, BombType.None);
+            ElementType.Item1, ElementType.Item3);
 
         Assert.Equal(0, score);
     }
@@ -223,8 +214,7 @@ public class StandardScoreSystemTests
     {
         // One bomb, one normal - not a special combo
         var score = _system.CalculateSpecialMoveScore(
-            ElementType.Item1, BombType.Horizontal,
-            ElementType.Item3, BombType.None);
+            ElementType.HorizontalRocket, ElementType.Item3);
 
         Assert.Equal(0, score);
     }

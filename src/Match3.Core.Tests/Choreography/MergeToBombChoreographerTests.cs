@@ -67,8 +67,7 @@ public class MergeToBombChoreographerTests
             {
                 TileId = 20, NewTileId = 200,
                 Position = new Position(2, 2),
-                BombType = BombType.Horizontal,
-                BaseType = ElementType.Item1,
+                BombType = ElementType.HorizontalRocket,
                 SimulationTime = 0f
             },
             // 4. Gravity: tile at (3,1) falls to (3,2) — same column as merge tile 30
@@ -95,7 +94,6 @@ public class MergeToBombChoreographerTests
                 TileId = 50,
                 GridPosition = new Position(3, 0),
                 Type = ElementType.Item3,
-                Bomb = BombType.None,
                 SpawnPosition = new Vector2(3, -1),
                 SimulationTime = 0f
             }
@@ -265,8 +263,7 @@ public class MergeToBombChoreographerTests
             {
                 TileId = 20, NewTileId = 200,
                 Position = new Position(2, 2),
-                BombType = BombType.Horizontal,
-                BaseType = ElementType.Item1,
+                BombType = ElementType.HorizontalRocket,
                 SimulationTime = 0f
             }
         };
@@ -289,8 +286,7 @@ public class MergeToBombChoreographerTests
             {
                 TileId = 20, NewTileId = 200,
                 Position = new Position(2, 2),
-                BombType = BombType.Horizontal,
-                BaseType = ElementType.Item1,
+                BombType = ElementType.HorizontalRocket,
                 SimulationTime = 0f
             }
         };
@@ -310,8 +306,7 @@ public class MergeToBombChoreographerTests
             {
                 TileId = 20, NewTileId = 200,
                 Position = new Position(2, 2),
-                BombType = BombType.Horizontal,
-                BaseType = ElementType.Item1,
+                BombType = ElementType.HorizontalRocket,
                 SimulationTime = 0f
             }
         };
@@ -322,8 +317,7 @@ public class MergeToBombChoreographerTests
         // from creating the tile at full scale during the merge animation
         var spawnCmd = commands.OfType<SpawnTileCommand>().First(c => c.TileId == 200);
         Assert.Equal(0f, spawnCmd.StartTime, 0.001f);
-        Assert.Equal(BombType.Horizontal, spawnCmd.Bomb);
-        Assert.Equal(ElementType.Item1, spawnCmd.Type);
+        Assert.Equal(ElementType.HorizontalRocket, spawnCmd.Type);
 
         // Scale should be zero during merge, then pop-in at mergeEnd
         var scaleCommands = commands.OfType<ScaleTileCommand>()
@@ -349,8 +343,7 @@ public class MergeToBombChoreographerTests
             {
                 TileId = 20, NewTileId = 200,
                 Position = new Position(2, 2),
-                BombType = BombType.Horizontal,
-                BaseType = ElementType.Item1,
+                BombType = ElementType.HorizontalRocket,
                 SimulationTime = 0f
             },
             new TileMovedEvent
@@ -397,8 +390,7 @@ public class MergeToBombChoreographerTests
             new TileSpawnedEvent
             {
                 TileId = 50, GridPosition = new Position(3, 0),
-                Type = ElementType.Item3, Bomb = BombType.None,
-                SpawnPosition = new Vector2(3, -1),
+                Type = ElementType.Item3,                SpawnPosition = new Vector2(3, -1),
                 SimulationTime = 0f
             }
         };
@@ -425,8 +417,7 @@ public class MergeToBombChoreographerTests
             new TileSpawnedEvent
             {
                 TileId = 50, GridPosition = new Position(5, 0),
-                Type = ElementType.Item3, Bomb = BombType.None,
-                SpawnPosition = new Vector2(5, -1),
+                Type = ElementType.Item3,                SpawnPosition = new Vector2(5, -1),
                 SimulationTime = 0f
             }
         };
@@ -470,7 +461,7 @@ public class MergeToBombChoreographerTests
         // --- Bomb spawn (immediate at scale 0, before merge ends) ---
         var bombSpawn = commands.OfType<SpawnTileCommand>().First(c => c.TileId == 200);
         Assert.Equal(0f, bombSpawn.StartTime, 0.001f);
-        Assert.Equal(BombType.Horizontal, bombSpawn.Bomb);
+        Assert.Equal(ElementType.HorizontalRocket, bombSpawn.Type);
 
         // --- Gravity hold ---
         // Tile 31 (column 3) should be held during merge

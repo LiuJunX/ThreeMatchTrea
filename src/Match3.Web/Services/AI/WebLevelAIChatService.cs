@@ -366,7 +366,7 @@ namespace Match3.Web.Services.AI
             sb.AppendLine();
             sb.AppendLine("## 可用元素");
             sb.AppendLine("- TileType: Red, Green, Blue, Yellow, Purple, Orange, Rainbow, None");
-            sb.AppendLine("- BombType: None, Horizontal, Vertical, Color, Ufo, Square5x5");
+            sb.AppendLine("- Bomb ElementTypes: HorizontalRocket, VerticalRocket, ColorBomb, Ufo, Square5x5");
             sb.AppendLine("- CoverType: None, Cage, Chain, Bubble");
             sb.AppendLine("- GroundType: None, Ice");
             sb.AppendLine();
@@ -466,7 +466,7 @@ namespace Match3.Web.Services.AI
             sb.AppendLine();
             sb.AppendLine("## 可用元素");
             sb.AppendLine("- TileType: Red, Green, Blue, Yellow, Purple, Orange, Rainbow, None");
-            sb.AppendLine("- BombType: None, Horizontal, Vertical, Color, Ufo, Square5x5");
+            sb.AppendLine("- Bomb ElementTypes: HorizontalRocket, VerticalRocket, ColorBomb, Ufo, Square5x5");
             sb.AppendLine("- CoverType: None, Cage, Chain, Bubble");
             sb.AppendLine("- GroundType: None, Ice");
             sb.AppendLine();

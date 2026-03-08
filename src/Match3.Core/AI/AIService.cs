@@ -121,7 +121,7 @@ public sealed class AIService : IAIService
             for (int x = 0; x < state.Width; x++)
             {
                 var tile = state.GetTile(x, y);
-                if (tile.Bomb != BombType.None)
+                if (tile.Type.IsBomb())
                 {
                     score += 100f; // Each bomb is valuable
                 }

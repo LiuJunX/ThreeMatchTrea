@@ -72,7 +72,7 @@ public class BombEffectTests
     public void HorizontalRocket_Type_IsHorizontal()
     {
         var effect = new HorizontalRocketEffect();
-        Assert.Equal(BombType.Horizontal, effect.Type);
+        Assert.Equal(ElementType.HorizontalRocket, effect.Type);
     }
 
     [Fact]
@@ -193,7 +193,7 @@ public class BombEffectTests
     public void VerticalRocket_Type_IsVertical()
     {
         var effect = new VerticalRocketEffect();
-        Assert.Equal(BombType.Vertical, effect.Type);
+        Assert.Equal(ElementType.VerticalRocket, effect.Type);
     }
 
     [Fact]
@@ -314,7 +314,7 @@ public class BombEffectTests
     public void SquareBomb_Type_IsSquare5x5()
     {
         var effect = new SquareBombEffect();
-        Assert.Equal(BombType.Square5x5, effect.Type);
+        Assert.Equal(ElementType.Square5x5, effect.Type);
     }
 
     [Fact]
@@ -509,7 +509,7 @@ public class BombEffectTests
     public void ColorBomb_Type_IsColor()
     {
         var effect = new ColorBombEffect();
-        Assert.Equal(BombType.Color, effect.Type);
+        Assert.Equal(ElementType.ColorBomb, effect.Type);
     }
 
     [Fact]
@@ -548,25 +548,25 @@ public class BombEffectTests
     }
 
     [Fact]
-    public void ColorBomb_Apply_IncludesColoredBombs()
+    public void ColorBomb_Apply_TargetsMostFrequentType()
     {
-        // Arrange: Colored Bombs (Item1) should be counted and cleared
+        // Arrange: ColorBomb targets the most frequent non-Rainbow type
         var state = CreateEmptyState();
-        // 3 normal Red
+        // 3 normal Red (Item1)
         state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
         state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
         state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
-        // 10 Rainbows (ignored)
+        // 10 Rainbows (ignored by ColorBomb)
         for (int x = 0; x < 8; x++)
         {
-            state.SetTile(x, 1, new Tile(10 + x, ElementType.Universal, x, 1));
+            state.SetTile(x, 1, new Tile(10 + x, ElementType.ColorBomb, x, 1));
         }
-        state.SetTile(0, 2, new Tile(20, ElementType.Universal, 0, 2));
-        state.SetTile(1, 2, new Tile(21, ElementType.Universal, 1, 2));
-        // 5 Red Bombs (should be counted)
+        state.SetTile(0, 2, new Tile(20, ElementType.ColorBomb, 0, 2));
+        state.SetTile(1, 2, new Tile(21, ElementType.ColorBomb, 1, 2));
+        // 5 HorizontalRocket bombs (counted as their own type)
         for (int x = 0; x < 5; x++)
         {
-            state.SetTile(x, 3, new Tile(30 + x, ElementType.Item1, x, 3) { Bomb = BombType.Horizontal });
+            state.SetTile(x, 3, new Tile(30 + x, ElementType.HorizontalRocket, x, 3));
         }
 
         var effect = new ColorBombEffect();
@@ -575,10 +575,10 @@ public class BombEffectTests
         // Act
         effect.Apply(in state, new Position(4, 4), affected);
 
-        // Assert: 3 normal + 5 bombs = 8
-        Assert.Equal(8, affected.Count);
-        Assert.Contains(new Position(0, 0), affected);
+        // Assert: HorizontalRocket (5) is most frequent, so all 5 are cleared
+        Assert.Equal(5, affected.Count);
         Assert.Contains(new Position(0, 3), affected);
+        Assert.Contains(new Position(4, 3), affected);
     }
 
     [Fact]
@@ -647,19 +647,19 @@ public class BombEffectTests
     }
 
     [Fact]
-    public void ColorBomb_Apply_OnlySpecialTypes_ClearsThem()
+    public void ColorBomb_Apply_OnlySpecialTypes_ClearsMostFrequent()
     {
-        // Arrange: Only Colored Bombs (Item1) and Rainbows
+        // Arrange: Only HorizontalRocket bombs and Rainbows
         var state = CreateEmptyState();
-        // 4 Red Bombs
+        // 4 HorizontalRocket bombs
         for (int x = 0; x < 4; x++)
         {
-            state.SetTile(x, 0, new Tile(x + 1, ElementType.Item1, x, 0) { Bomb = BombType.Horizontal });
+            state.SetTile(x, 0, new Tile(x + 1, ElementType.HorizontalRocket, x, 0));
         }
-        // 4 Rainbows
+        // 4 Rainbows (ignored by ColorBomb)
         for (int x = 0; x < 4; x++)
         {
-            state.SetTile(x, 1, new Tile(10 + x, ElementType.Universal, x, 1));
+            state.SetTile(x, 1, new Tile(10 + x, ElementType.ColorBomb, x, 1));
         }
 
         var effect = new ColorBombEffect();
@@ -668,7 +668,7 @@ public class BombEffectTests
         // Act
         effect.Apply(in state, new Position(4, 4), affected);
 
-        // Assert: Should clear the 4 Red Bombs
+        // Assert: Should clear the 4 HorizontalRocket bombs (most frequent non-Rainbow type)
         Assert.Equal(4, affected.Count);
         for (int x = 0; x < 4; x++)
         {
@@ -728,7 +728,7 @@ public class BombEffectTests
     public void UfoEffect_Type_IsUfo()
     {
         var effect = new UfoEffect();
-        Assert.Equal(BombType.Ufo, effect.Type);
+        Assert.Equal(ElementType.Ufo, effect.Type);
     }
 
     [Fact]
@@ -978,19 +978,19 @@ public class BombEffectTests
         var registry = BombEffectRegistry.CreateDefault();
 
         // Assert: 验证所有效果都已注册
-        Assert.True(registry.TryGetEffect(BombType.Horizontal, out var h));
+        Assert.True(registry.TryGetEffect(ElementType.HorizontalRocket, out var h));
         Assert.IsType<HorizontalRocketEffect>(h);
 
-        Assert.True(registry.TryGetEffect(BombType.Vertical, out var v));
+        Assert.True(registry.TryGetEffect(ElementType.VerticalRocket, out var v));
         Assert.IsType<VerticalRocketEffect>(v);
 
-        Assert.True(registry.TryGetEffect(BombType.Square5x5, out var square));
+        Assert.True(registry.TryGetEffect(ElementType.Square5x5, out var square));
         Assert.IsType<SquareBombEffect>(square);
 
-        Assert.True(registry.TryGetEffect(BombType.Color, out var color));
+        Assert.True(registry.TryGetEffect(ElementType.ColorBomb, out var color));
         Assert.IsType<ColorBombEffect>(color);
 
-        Assert.True(registry.TryGetEffect(BombType.Ufo, out var ufo));
+        Assert.True(registry.TryGetEffect(ElementType.Ufo, out var ufo));
         Assert.IsType<UfoEffect>(ufo);
     }
 
@@ -1001,7 +1001,7 @@ public class BombEffectTests
         var registry = new BombEffectRegistry(new List<IBombEffect>());
 
         // Act
-        bool found = registry.TryGetEffect(BombType.Horizontal, out var effect);
+        bool found = registry.TryGetEffect(ElementType.HorizontalRocket, out var effect);
 
         // Assert
         Assert.False(found);
@@ -1018,7 +1018,7 @@ public class BombEffectTests
 
         // Act
         registry.Register(effect2);
-        registry.TryGetEffect(BombType.Horizontal, out var retrieved);
+        registry.TryGetEffect(ElementType.HorizontalRocket, out var retrieved);
 
         // Assert: 应该是新注册的
         Assert.Same(effect2, retrieved);
@@ -1036,9 +1036,9 @@ public class BombEffectTests
         var registry = new BombEffectRegistry(customEffects);
 
         // Assert
-        Assert.True(registry.TryGetEffect(BombType.Horizontal, out _));
-        Assert.True(registry.TryGetEffect(BombType.Vertical, out _));
-        Assert.False(registry.TryGetEffect(BombType.Color, out _));
+        Assert.True(registry.TryGetEffect(ElementType.HorizontalRocket, out _));
+        Assert.True(registry.TryGetEffect(ElementType.VerticalRocket, out _));
+        Assert.False(registry.TryGetEffect(ElementType.ColorBomb, out _));
     }
 
     #endregion
@@ -1123,7 +1123,7 @@ public class BombEffectTests
             var ex = Record.Exception(() => effect.Apply(in state, new Position(1, 1), affected));
             Assert.Null(ex);
             // 至少应该有一些效果（除非是 UFO 且随机导致没有选中）
-            if (effect.Type != BombType.Ufo)
+            if (effect.Type != ElementType.Ufo)
             {
                 Assert.NotEmpty(affected);
             }

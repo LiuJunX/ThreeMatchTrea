@@ -38,9 +38,6 @@ public sealed record SpawnTileCommand : RenderCommand
     /// <summary>Type of the tile.</summary>
     public ElementType Type { get; init; }
 
-    /// <summary>Bomb type (if any).</summary>
-    public BombType Bomb { get; init; }
-
     /// <summary>Grid position of the tile.</summary>
     public Position GridPos { get; init; }
 
@@ -130,21 +127,6 @@ public sealed record RemoveTileCommand : RenderCommand
 {
     /// <summary>Unique identifier of the tile to remove.</summary>
     public int TileId { get; init; }
-}
-
-/// <summary>
-/// Update a tile's bomb type (when bomb is created from match).
-/// </summary>
-public sealed record UpdateTileBombCommand : RenderCommand
-{
-    /// <summary>Unique identifier of the tile.</summary>
-    public int TileId { get; init; }
-
-    /// <summary>Position of the tile.</summary>
-    public Position Position { get; init; }
-
-    /// <summary>New bomb type.</summary>
-    public BombType BombType { get; init; }
 }
 
 /// <summary>
@@ -246,6 +228,26 @@ public sealed record RemoveProjectileCommand : RenderCommand
 {
     /// <summary>Unique identifier of the projectile to remove.</summary>
     public int ProjectileId { get; init; }
+}
+
+#endregion
+
+#region UFO Commands
+
+/// <summary>
+/// Launch a UFO tile: spin-up, takeoff towards camera, fly to target, land.
+/// Player drives position + progress; View handles 3D rotation/scale/tilt.
+/// </summary>
+public sealed record UfoLaunchCommand : RenderCommand
+{
+    /// <summary>Tile ID of the UFO bomb.</summary>
+    public int TileId { get; init; }
+
+    /// <summary>Grid origin position.</summary>
+    public Vector2 Origin { get; init; }
+
+    /// <summary>Grid target position.</summary>
+    public Vector2 Target { get; init; }
 }
 
 #endregion

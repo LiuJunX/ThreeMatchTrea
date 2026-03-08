@@ -52,13 +52,13 @@ public class IntersectionRule : IShapeRule
                         if (IsPlusShape(hLine, vLine, intersectionPoint.Value))
                         {
                             // Plus generates UFO
-                            shape.Type = BombType.Ufo;
+                            shape.Type = ElementType.Ufo;
                             shape.Weight = BombDefinitions.UFO.Weight;
                         }
                         else
                         {
                             // T/L generates TNT
-                            shape.Type = BombType.Square5x5;
+                            shape.Type = ElementType.Square5x5;
                             shape.Weight = BombDefinitions.TNT.Weight;
                         }
 

@@ -146,10 +146,10 @@ namespace Match3.Editor.Tests
             var intent = new LevelIntent
             {
                 Type = LevelIntentType.PlaceBomb,
-                Parameters = new Dictionary<string, object> { { "bombType", "horizontal" } }
+                Parameters = new Dictionary<string, object> { { "bombType", "HorizontalRocket" } }
             };
 
-            Assert.Equal(BombType.Horizontal, intent.GetEnum<BombType>("bombType"));
+            Assert.Equal(ElementType.HorizontalRocket, intent.GetEnum<ElementType>("bombType"));
         }
 
         [Fact]
@@ -179,9 +179,9 @@ namespace Match3.Editor.Tests
         [Fact]
         public void GetEnum_AllElementTypes_ParseCorrectly()
         {
-            var elementTypes = new[] { "Item1", "Item2", "Item3", "Item4", "Item5", "Item6", "Universal", "None" };
+            var elementTypes = new[] { "Item1", "Item2", "Item3", "Item4", "Item5", "Item6", "ColorBomb", "None" };
             var expected = new[] { ElementType.Item1, ElementType.Item2, ElementType.Item3, ElementType.Item4,
-                                   ElementType.Item5, ElementType.Item6, ElementType.Universal, ElementType.None };
+                                   ElementType.Item5, ElementType.Item6, ElementType.ColorBomb, ElementType.None };
 
             for (int i = 0; i < elementTypes.Length; i++)
             {
@@ -197,9 +197,9 @@ namespace Match3.Editor.Tests
         [Fact]
         public void GetEnum_AllBombTypes_ParseCorrectly()
         {
-            var bombTypes = new[] { "None", "Horizontal", "Vertical", "Color", "Ufo", "Square5x5" };
-            var expected = new[] { BombType.None, BombType.Horizontal, BombType.Vertical,
-                                   BombType.Color, BombType.Ufo, BombType.Square5x5 };
+            var bombTypes = new[] { "None", "HorizontalRocket", "VerticalRocket", "ColorBomb", "Ufo", "Square5x5" };
+            var expected = new[] { ElementType.None, ElementType.HorizontalRocket, ElementType.VerticalRocket,
+                                   ElementType.ColorBomb, ElementType.Ufo, ElementType.Square5x5 };
 
             for (int i = 0; i < bombTypes.Length; i++)
             {
@@ -208,7 +208,7 @@ namespace Match3.Editor.Tests
                     Type = LevelIntentType.PlaceBomb,
                     Parameters = new Dictionary<string, object> { { "type", bombTypes[i] } }
                 };
-                Assert.Equal(expected[i], intent.GetEnum<BombType>("type"));
+                Assert.Equal(expected[i], intent.GetEnum<ElementType>("type"));
             }
         }
 

@@ -96,8 +96,7 @@ public class ReplayControllerTests
     private static GameStateSnapshot CreateStableSnapshot(int width = 8, int height = 8)
     {
         int size = width * height;
-        var ElementTypes = new ElementType[size];
-        var bombTypes = new BombType[size];
+        var elementTypes = new ElementType[size];
         var coverLayers = new Cover[size];
         var groundLayers = new Ground[size];
 
@@ -106,8 +105,7 @@ public class ReplayControllerTests
             for (int x = 0; x < width; x++)
             {
                 int index = y * width + x;
-                ElementTypes[index] = (x + y) % 2 == 0 ? ElementType.Item1 : ElementType.Item3;
-                bombTypes[index] = BombType.None;
+                elementTypes[index] = (x + y) % 2 == 0 ? ElementType.Item1 : ElementType.Item3;
                 coverLayers[index] = default;
                 groundLayers[index] = default;
             }
@@ -118,8 +116,7 @@ public class ReplayControllerTests
             Width = width,
             Height = height,
             TileTypesCount = 6,
-            TileTypes = ElementTypes,
-            BombTypes = bombTypes,
+            TileTypes = elementTypes,
             CoverLayers = coverLayers,
             GroundLayers = groundLayers,
             NextTileId = size,

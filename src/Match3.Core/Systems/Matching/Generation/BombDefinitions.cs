@@ -23,6 +23,6 @@ namespace Match3.Core.Systems.Matching.Generation
         public static readonly BombConfig Rocket = new() { Weight = 40, MinLength = 4 };
 
         // UFO (Square) - 2x2 Square
-        public static readonly BombConfig UFO = new() { Weight = 20, MinLength = 4 }; // 4 tiles total
+        public static readonly BombConfig UFO = new() { Weight = 150, MinLength = 4 }; // 4 tiles total
     }
 }

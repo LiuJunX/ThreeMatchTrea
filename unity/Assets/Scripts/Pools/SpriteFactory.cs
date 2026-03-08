@@ -14,7 +14,7 @@ namespace Match3.Unity.Pools
     public static class SpriteFactory
     {
         private static readonly Dictionary<Color, Sprite> _colorCache = new();
-        private static readonly Dictionary<BombType, Sprite> _bombOverlayCache = new();
+        private static readonly Dictionary<ElementType, Sprite> _bombOverlayCache = new();
 
         // Cached colors from config
         private static Dictionary<string, Color> _tileColors;
@@ -101,7 +101,7 @@ namespace Match3.Unity.Pools
             if (type == ElementType.Item4) return new Color(0.95f, 0.85f, 0.2f);     // Yellow
             if (type == ElementType.Item5) return new Color(0.7f, 0.3f, 0.8f);       // Purple
             if (type == ElementType.Item6) return new Color(0.95f, 0.5f, 0.1f);      // Orange
-            if (type == ElementType.Universal) return new Color(0.9f, 0.9f, 0.9f);   // Rainbow
+            if (type == ElementType.ColorBomb) return new Color(0.9f, 0.9f, 0.9f);   // Rainbow
 
             return Color.gray;
         }
@@ -117,7 +117,7 @@ namespace Match3.Unity.Pools
             if (type == ElementType.Item4) return "Yellow";
             if (type == ElementType.Item5) return "Purple";
             if (type == ElementType.Item6) return "Orange";
-            if (type == ElementType.Universal) return "Rainbow";
+            if (type == ElementType.ColorBomb) return "Rainbow";
             return null;
         }
 
@@ -133,9 +133,9 @@ namespace Match3.Unity.Pools
         /// <summary>
         /// Get bomb overlay sprite.
         /// </summary>
-        public static Sprite GetBombOverlay(BombType bombType)
+        public static Sprite GetBombOverlay(ElementType bombType)
         {
-            if (bombType == BombType.None)
+            if (bombType == ElementType.None)
                 return null;
 
             if (_bombOverlayCache.TryGetValue(bombType, out var cached))
@@ -163,7 +163,7 @@ namespace Match3.Unity.Pools
             return sprite;
         }
 
-        private static Color GetBombIndicatorColor(BombType bombType)
+        private static Color GetBombIndicatorColor(ElementType bombType)
         {
             EnsureConfigLoaded();
 
@@ -177,20 +177,20 @@ namespace Match3.Unity.Pools
             // Fallback to hardcoded defaults
             return bombType switch
             {
-                BombType.Horizontal => new Color(1f, 1f, 1f, 0.9f),
-                BombType.Vertical => new Color(1f, 1f, 1f, 0.9f),
-                BombType.Square5x5 => new Color(1f, 0.8f, 0.2f, 0.9f),
-                BombType.Color => new Color(1f, 1f, 1f, 0.9f),
-                BombType.Ufo => new Color(0.5f, 1f, 0.5f, 0.9f),
+                ElementType.HorizontalRocket => new Color(1f, 1f, 1f, 0.9f),
+                ElementType.VerticalRocket => new Color(1f, 1f, 1f, 0.9f),
+                ElementType.Square5x5 => new Color(1f, 0.8f, 0.2f, 0.9f),
+                ElementType.ColorBomb => new Color(1f, 1f, 1f, 0.9f),
+                ElementType.Ufo => new Color(0.5f, 1f, 0.5f, 0.9f),
                 _ => Color.white
             };
         }
 
-        private static void DrawBombPattern(Texture2D tex, BombType bombType, Color color)
+        private static void DrawBombPattern(Texture2D tex, ElementType bombType, Color color)
         {
             switch (bombType)
             {
-                case BombType.Horizontal:
+                case ElementType.HorizontalRocket:
                     // Horizontal line
                     for (int x = 1; x < 7; x++)
                     {
@@ -199,7 +199,7 @@ namespace Match3.Unity.Pools
                     }
                     break;
 
-                case BombType.Vertical:
+                case ElementType.VerticalRocket:
                     // Vertical line
                     for (int y = 1; y < 7; y++)
                     {
@@ -208,7 +208,7 @@ namespace Match3.Unity.Pools
                     }
                     break;
 
-                case BombType.Square5x5:
+                case ElementType.Square5x5:
                     // Cross pattern for area bomb
                     for (int i = 1; i < 7; i++)
                     {
@@ -219,7 +219,7 @@ namespace Match3.Unity.Pools
                     }
                     break;
 
-                case BombType.Color:
+                case ElementType.ColorBomb:
                     // Diamond pattern for color bomb
                     tex.SetPixel(3, 1, color);
                     tex.SetPixel(4, 1, color);
@@ -235,7 +235,7 @@ namespace Match3.Unity.Pools
                     tex.SetPixel(4, 6, color);
                     break;
 
-                case BombType.Ufo:
+                case ElementType.Ufo:
                     // UFO shape
                     tex.SetPixel(3, 5, color);
                     tex.SetPixel(4, 5, color);

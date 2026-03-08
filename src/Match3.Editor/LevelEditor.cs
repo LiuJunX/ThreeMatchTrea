@@ -49,7 +49,7 @@ namespace Match3.Editor
                 }
             }
         }
-        public BombType SelectedBombType { get; private set; } = BombType.None;
+        public Match3.Core.Models.Enums.ElementType SelectedBombType { get; private set; } = Match3.Core.Models.Enums.ElementType.None;
         public CoverType SelectedCoverType { get; private set; } = CoverType.None;
         public GroundType SelectedGroundType { get; private set; } = GroundType.None;
 
@@ -93,7 +93,7 @@ namespace Match3.Editor
             Notify();
         }
 
-        public void SetSelectedBombType(BombType type)
+        public void SetSelectedBombType(Match3.Core.Models.Enums.ElementType type)
         {
             SelectedBombType = type;
             Notify();

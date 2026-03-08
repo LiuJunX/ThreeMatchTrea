@@ -417,7 +417,7 @@ public sealed class DeepAnalysisService
         int count = 0;
         for (int i = 0; i < state.Grid.Length; i++)
         {
-            if (state.Grid[i].Bomb != BombType.None) count++;
+            if (state.Grid[i].Type.IsBomb()) count++;
         }
         return count;
     }

@@ -16,8 +16,8 @@ namespace Match3.Unity.Pools
         private static Mesh _fallbackMesh;
         private static readonly Dictionary<ElementType, Material> _materialCache = new();
         private static readonly Dictionary<ElementType, Material[]> _singleMaterialArrayCache = new();
-        private static readonly Dictionary<BombType, Mesh> _bombMeshCache = new();
-        private static readonly Dictionary<BombType, Material[]> _bombMaterialCache = new();
+        private static readonly Dictionary<ElementType, Mesh> _bombMeshCache = new();
+        private static readonly Dictionary<ElementType, Material[]> _bombMaterialCache = new();
         private static Shader _litShader;
 
         private static RenderTuningSettings _tuning;
@@ -58,6 +58,11 @@ namespace Match3.Unity.Pools
         }
 
         /// <summary>
+        /// Get a built-in sphere mesh (alias for fallback mesh).
+        /// </summary>
+        public static Mesh GetSphereMesh() => GetFallbackMesh();
+
+        /// <summary>
         /// Get the shared fallback mesh (built-in sphere).
         /// </summary>
         public static Mesh GetFallbackMesh()
@@ -74,9 +79,9 @@ namespace Match3.Unity.Pools
         /// Get the mesh for a bomb type.
         /// Loads from Resources, falls back to tile mesh.
         /// </summary>
-        public static Mesh GetBombMesh(BombType type)
+        public static Mesh GetBombMesh(ElementType type)
         {
-            if (type == BombType.None) return GetFallbackMesh();
+            if (type == ElementType.None) return GetFallbackMesh();
 
             if (_bombMeshCache.TryGetValue(type, out var cached))
                 return cached;
@@ -89,9 +94,9 @@ namespace Match3.Unity.Pools
         /// Get the cached materials array for a bomb type.
         /// Returns null if the bomb model has no embedded materials.
         /// </summary>
-        public static Material[] GetBombMaterials(BombType type)
+        public static Material[] GetBombMaterials(ElementType type)
         {
-            if (type == BombType.None) return null;
+            if (type == ElementType.None) return null;
 
             if (!_bombMaterialCache.ContainsKey(type))
                 LoadBombModel(type);
@@ -99,11 +104,17 @@ namespace Match3.Unity.Pools
             return _bombMaterialCache.TryGetValue(type, out var mats) ? mats : null;
         }
 
-        private static void LoadBombModel(BombType type)
+        private static void LoadBombModel(ElementType type)
         {
             if (_bombMeshCache.ContainsKey(type)) return;
 
-            var typeName = type.ToString();
+            var typeName = type switch
+            {
+                ElementType.HorizontalRocket => "Horizontal",
+                ElementType.VerticalRocket => "Vertical",
+                ElementType.ColorBomb => "Color",
+                _ => type.ToString()
+            };
             var model = ResourceService.Loader.Load<GameObject>($"Art/Gems/Models/Bomb_{typeName}");
             if (model != null)
             {
@@ -164,12 +175,15 @@ namespace Match3.Unity.Pools
         /// Get a cached single-element material array for the given tile type.
         /// Avoids per-frame allocation when setting sharedMaterials.
         /// </summary>
-        public static Material[] GetTileMaterialArray(ElementType type, BombType bomb)
+        public static Material[] GetTileMaterialArray(ElementType type)
         {
-            // Bombs use their own multi-material array
-            var bombMats = bomb != BombType.None ? GetBombMaterials(bomb) : null;
-            if (bombMats != null && bombMats.Length > 0)
-                return bombMats;
+            // Bombs use their own multi-material array from FBX model
+            if (type.IsBomb())
+            {
+                var bombMats = GetBombMaterials(type);
+                if (bombMats != null && bombMats.Length > 0)
+                    return bombMats;
+            }
 
             // Cached single-element array for tile materials
             if (_singleMaterialArrayCache.TryGetValue(type, out var cached))

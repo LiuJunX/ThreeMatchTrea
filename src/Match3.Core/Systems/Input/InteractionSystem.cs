@@ -41,7 +41,7 @@ public class InteractionSystem : IInteractionSystem
         var tile = state.GetTile(p.X, p.Y);
 
         // Check for bomb activation first
-        if (tile.Bomb != BombType.None)
+        if (tile.Type.IsBomb())
         {
             StatusMessage = "Bomb activated!";
             _logger.LogInfo("Bomb activated at: {0}", p);

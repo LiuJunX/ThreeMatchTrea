@@ -36,6 +36,16 @@ namespace Match3.Unity.Views
         private Vector3 _baseScale = Vector3.one;
         private bool _isHighlighted;
         private bool _isHinted;
+
+        // UFO flight animation state (View-local, driven by TileVisual.UfoFlightProgress)
+        private bool _ufoFlying;
+        private float _ufoSpinAngle;
+        private bool _ufoSpinSettling;     // true once spin begins settling to 0°
+        private float _ufoSpinSettleAngle; // captured angle at settle start (shortest path to 0)
+        private float _ufoTiltX, _ufoTiltZ;
+        private float _ufoTiltVelX, _ufoTiltVelZ;
+        private Vector3 _ufoPrevWorldPos;
+        private Vector3 _ufoSmoothVel; // EMA-smoothed velocity to avoid frame jitter
         private HintAnimationType _hintType;
         private Vector2 _hintNudgeDir;
         private float _hintTime;
@@ -108,25 +118,25 @@ namespace Match3.Unity.Views
         }
 
         /// <summary>
-        /// Initialize the tile with ID, type, and bomb.
+        /// Initialize the tile with ID and type.
         /// </summary>
-        public void Setup(int id, ElementType type, BombType bomb)
+        public void Setup(int id, ElementType type)
         {
             TileId = id;
-            ApplyAppearance(type, bomb);
+            ApplyAppearance(type);
 
             // 棋子在棋盘上投射并接收阴影
             _meshRenderer.shadowCastingMode = ShadowCastingMode.On;
             _meshRenderer.receiveShadows = true;
         }
 
-        private void ApplyAppearance(ElementType type, BombType bomb)
+        private void ApplyAppearance(ElementType type)
         {
-            var targetMesh = bomb != BombType.None
-                ? MeshFactory.GetBombMesh(bomb)
+            var targetMesh = type.IsBomb()
+                ? MeshFactory.GetBombMesh(type)
                 : MeshFactory.GetTileMesh(type);
             ViewHelper.SetMesh(_meshFilter, targetMesh);
-            ViewHelper.SetMaterials(_meshRenderer, MeshFactory.GetTileMaterialArray(type, bomb));
+            ViewHelper.SetMaterials(_meshRenderer, MeshFactory.GetTileMaterialArray(type));
 
             if (_outline != null)
                 _outline.OutlineColor = MeshFactory.GetOutlineColor(type);
@@ -148,6 +158,23 @@ namespace Match3.Unity.Views
 
             // Position (with Y-flip)
             var worldPos = CoordinateConverter.GridToWorld(visual.Position, cellSize, origin, height);
+
+            // UFO flight: delegate all visuals to dedicated method
+            if (visual.UfoFlightProgress >= 0f)
+            {
+                ApplyUfoFlight(visual, worldPos, cellSize);
+                return;
+            }
+
+            // Reset UFO state when flight ends
+            if (_ufoFlying)
+            {
+                _ufoFlying = false;
+                transform.localEulerAngles = Vector3.zero;
+                if (_shadowTransform != null)
+                    _shadowTransform.gameObject.SetActive(true);
+            }
+
             var pos = new Vector3(worldPos.x, worldPos.y, 0f);
             // NOTE: Idle breathing intentionally disabled (keep tiles perfectly still when idle).
 
@@ -261,7 +288,7 @@ namespace Match3.Unity.Views
             gameObject.SetActive(visual.IsVisible);
 
             // Immediate mode: sync appearance from visual state every frame
-            ApplyAppearance(visual.TileType, visual.BombType);
+            ApplyAppearance(visual.TileType);
         }
 
         /// <summary>
@@ -376,6 +403,151 @@ namespace Match3.Unity.Views
             UpdateBlobShadow(_lastShadowWorldPos, _lastShadowCellSize, _lastShadowTileScale, _lastShadowTileZ);
         }
 
+        #region UFO Flight
+
+        // Spin-up phase before flight begins
+        private const float UfoSpinUpTime = 0.25f;
+
+        // Parabolic arc: peak Z offset towards camera (negative Z = closer to player)
+        private const float UfoArcPeakZ = -0.5f;
+        // Peak scale boost at arc apex (closer to camera = bigger)
+        private const float UfoArcPeakScale = 1.5f;
+        // Landing shrink: last fraction of flight phase where scale goes to 0
+        private const float UfoLandFrac = 0.12f;
+
+        // Physics spring constants for tilt — tuned for "heavy ball dragged by propeller"
+        private const float UfoTiltSpring = 12f;   // soft spring → slow to respond
+        private const float UfoTiltDamp = 14f;      // overdamped → no oscillation
+        private const float UfoTiltScale = 4f;      // gentle lean per unit velocity
+        private const float UfoMaxTilt = 18f;       // subtle, not acrobatic
+
+        private void ApplyUfoFlight(TileVisual visual, Vector3 worldPos, float cellSize)
+        {
+            float progress = visual.UfoFlightProgress;
+            float duration = visual.UfoFlightDuration;
+            float elapsed = progress * duration;
+            float dt = Time.deltaTime;
+
+            // Initialize on first frame
+            if (!_ufoFlying)
+            {
+                _ufoFlying = true;
+                _ufoSpinAngle = 0f;
+                _ufoSpinSettling = false;
+                _ufoTiltX = _ufoTiltZ = 0f;
+                _ufoTiltVelX = _ufoTiltVelZ = 0f;
+                _ufoSmoothVel = Vector3.zero;
+                _ufoPrevWorldPos = worldPos;
+                if (_shadowTransform != null)
+                    _shadowTransform.gameObject.SetActive(false);
+            }
+
+            float spinEnd = UfoSpinUpTime;
+
+            // --- 1. Y-axis spin: spin-up then settle to 0° (face camera) ---
+            if (elapsed < spinEnd)
+            {
+                float t = elapsed / spinEnd;
+                float spinSpeed = Mathf.Lerp(0f, 1200f, t * t);
+                _ufoSpinAngle += spinSpeed * dt;
+            }
+            else if (!_ufoSpinSettling)
+            {
+                // Begin settling spin to 0° on first frame after spin-up
+                _ufoSpinSettling = true;
+                _ufoSpinSettleAngle = _ufoSpinAngle % 360f;
+                if (_ufoSpinSettleAngle > 180f) _ufoSpinSettleAngle -= 360f;
+                if (_ufoSpinSettleAngle < -180f) _ufoSpinSettleAngle += 360f;
+            }
+
+            // After spin-up: flight phase uses a single parabolic arc
+            // flightT: 0 = just left origin, 1 = arrived at target
+            float flightDuration = Mathf.Max(duration - spinEnd, 0.01f);
+            float flightT = Mathf.Clamp01((elapsed - spinEnd) / flightDuration);
+
+            // Settle spin during early flight (first 30% of flight)
+            if (elapsed >= spinEnd)
+            {
+                float settleT = Mathf.Clamp01(flightT / 0.3f);
+                float eased = settleT * settleT * (3f - 2f * settleT);
+                _ufoSpinAngle = Mathf.Lerp(_ufoSpinSettleAngle, 0f, eased);
+            }
+
+            // --- 2. Parabolic Z arc (gravity pulls INTO screen = Z+) ---
+            // UFO launches towards camera (Z-), gravity pulls back to board (Z+)
+            // arc: 4*t*(1-t) peaks at t=0.5 with value 1
+            float arc = 4f * flightT * (1f - flightT);
+            float zOffset;
+            float depthScale;
+
+            if (elapsed < spinEnd)
+            {
+                // Spin-up: slight scale increase, no Z offset
+                float t = elapsed / spinEnd;
+                zOffset = 0f;
+                depthScale = Mathf.Lerp(1f, 1.1f, t);
+            }
+            else
+            {
+                // Parabolic Z arc towards camera
+                zOffset = UfoArcPeakZ * arc * cellSize;
+
+                // Scale follows arc (closer = bigger), with landing shrink at the end
+                float arcScale = 1f + (UfoArcPeakScale - 1f) * arc;
+
+                // Landing: shrink to 0 in the final fraction
+                float landStart = 1f - UfoLandFrac;
+                if (flightT > landStart)
+                {
+                    float landT = (flightT - landStart) / UfoLandFrac;
+                    depthScale = Mathf.Lerp(arcScale, 0f, landT * landT);
+                }
+                else
+                {
+                    depthScale = arcScale;
+                }
+            }
+
+            float s = cellSize * TileScaleMultiplier * depthScale;
+            transform.localScale = new Vector3(s, s, s);
+
+            // --- 3. Position (before pivot adjustment) ---
+            var pos = new Vector3(worldPos.x, worldPos.y, zOffset);
+
+            // --- 4. Tilt (spring-damped, propeller leads / ball trails) ---
+            if (dt > 0.0001f)
+            {
+                Vector3 rawVel = (pos - _ufoPrevWorldPos) / dt;
+                _ufoPrevWorldPos = pos;
+
+                // Exponential moving average to smooth out frame jitter
+                const float smoothFactor = 0.15f;
+                _ufoSmoothVel = Vector3.Lerp(_ufoSmoothVel, rawVel, smoothFactor);
+
+                // Target tilt: lean into movement direction
+                float targetTiltX = Mathf.Clamp(-_ufoSmoothVel.y * UfoTiltScale, -UfoMaxTilt, UfoMaxTilt);
+                float targetTiltZ = Mathf.Clamp(_ufoSmoothVel.x * UfoTiltScale, -UfoMaxTilt, UfoMaxTilt);
+
+                // Spring-damper integration (overdamped → sluggish, heavy feel)
+                _ufoTiltVelX += ((targetTiltX - _ufoTiltX) * UfoTiltSpring - _ufoTiltVelX * UfoTiltDamp) * dt;
+                _ufoTiltVelZ += ((targetTiltZ - _ufoTiltZ) * UfoTiltSpring - _ufoTiltVelZ * UfoTiltDamp) * dt;
+                _ufoTiltX += _ufoTiltVelX * dt;
+                _ufoTiltZ += _ufoTiltVelZ * dt;
+            }
+
+            // --- 5. Apply rotation with pivot at model top (propeller stays, bomb swings) ---
+            var rotation = Quaternion.Euler(_ufoTiltX, _ufoSpinAngle, _ufoTiltZ);
+            float halfH = s * 0.5f;
+            var pivotUp = new Vector3(0f, halfH, 0f);
+            transform.position = pos + pivotUp - rotation * pivotUp;
+            transform.localEulerAngles = new Vector3(_ufoTiltX, _ufoSpinAngle, _ufoTiltZ);
+
+            // Visibility
+            gameObject.SetActive(visual.IsVisible);
+        }
+
+        #endregion
+
         #region Portal Effects
 
         private bool _portalActive;
@@ -432,8 +604,17 @@ namespace Match3.Unity.Views
             _bounceTime = -1f;
             _highlightTime = 0f;
             _portalActive = false;
+            _ufoFlying = false;
+            _ufoSpinAngle = 0f;
+            _ufoSpinSettling = false;
+            _ufoSpinSettleAngle = 0f;
+            _ufoTiltX = _ufoTiltZ = 0f;
+            _ufoTiltVelX = _ufoTiltVelZ = 0f;
+            _ufoSmoothVel = Vector3.zero;
             transform.localScale = Vector3.one;
             transform.localEulerAngles = Vector3.zero;
+            if (_shadowTransform != null)
+                _shadowTransform.gameObject.SetActive(true);
             _meshRenderer.SetPropertyBlock(null);
             if (_outline != null)
                 _outline.ResetState();

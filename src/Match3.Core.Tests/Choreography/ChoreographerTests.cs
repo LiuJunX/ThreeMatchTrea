@@ -68,7 +68,6 @@ public class ChoreographerTests
                 TileId = 1,
                 GridPosition = new Position(3, 0),
                 Type = ElementType.Item1,
-                Bomb = BombType.None,
                 SpawnPosition = new Vector2(3, -1),
                 SimulationTime = 0.5f
             }
@@ -137,8 +136,7 @@ public class ChoreographerTests
                 TileId = 1,
                 NewTileId = 10,
                 Position = new Position(3, 4),
-                BombType = BombType.Horizontal,
-                BaseType = ElementType.Item1,
+                BombType = ElementType.HorizontalRocket,
                 SimulationTime = 0f
             }
         };
@@ -156,8 +154,7 @@ public class ChoreographerTests
         // Spawn new bomb tile after merge
         var spawnCmd = commands.OfType<SpawnTileCommand>().First();
         Assert.Equal(10, spawnCmd.TileId);
-        Assert.Equal(BombType.Horizontal, spawnCmd.Bomb);
-        Assert.Equal(ElementType.Item1, spawnCmd.Type);
+        Assert.Equal(ElementType.HorizontalRocket, spawnCmd.Type);
 
         Assert.Contains(commands, c => c is ShowEffectCommand { EffectType: "bomb_created" });
     }
@@ -288,7 +285,6 @@ public class ChoreographerTests
                 TileId = 2,
                 GridPosition = new Position(3, 0),
                 Type = ElementType.Item3,
-                Bomb = BombType.None,
                 SpawnPosition = new Vector2(3, -1),
                 SimulationTime = 0f
             }
@@ -401,7 +397,6 @@ public class ChoreographerTests
                 TileId = 2,
                 GridPosition = new Position(3, 4),
                 Type = ElementType.Item3,
-                Bomb = BombType.None,
                 SpawnPosition = new Vector2(3, -1),
                 SimulationTime = 0.1f
             }
@@ -472,7 +467,7 @@ public class ChoreographerTests
             {
                 TileId = 1,
                 Position = new Position(3, 4),
-                BombType = BombType.Square5x5,
+                BombType = ElementType.Square5x5,
                 SimulationTime = 0f
             }
         };
@@ -497,7 +492,7 @@ public class ChoreographerTests
             {
                 TileId = 1,
                 Position = new Position(3, 4),
-                BombType = BombType.Horizontal,
+                BombType = ElementType.HorizontalRocket,
                 AffectedPositions = affected,
                 SimulationTime = 0f
             }
@@ -528,7 +523,7 @@ public class ChoreographerTests
             {
                 TileId = 1,
                 Position = new Position(3, 4),
-                BombType = BombType.Horizontal,
+                BombType = ElementType.HorizontalRocket,
                 AffectedPositions = affected,
                 SimulationTime = 0f
             }
@@ -564,7 +559,7 @@ public class ChoreographerTests
             {
                 TileId = 1,
                 Position = new Position(3, 4),
-                BombType = BombType.Color,
+                BombType = ElementType.ColorBomb,
                 AffectedPositions = affected,
                 SimulationTime = 0f
             }
@@ -575,39 +570,61 @@ public class ChoreographerTests
 
         Assert.Contains(effects, c => c.EffectType == "bomb_flash");
         Assert.Contains(effects, c => c.EffectType == "color_bomb_wave");
-        Assert.Contains(effects, c => c.EffectType == "color_bomb_trail");
         Assert.Contains(effects, c => c.EffectType == "color_bomb_hit");
         Assert.DoesNotContain(effects, c => c.EffectType == "bomb_explosion");
+
+        // Beam projectiles for non-origin targets
+        var beams = commands.OfType<SpawnProjectileCommand>()
+            .Where(c => c.Type == ProjectileType.ColorBombBeam).ToList();
+        Assert.Equal(2, beams.Count); // (1,1) and (7,7), not (3,4) which is origin
+        Assert.True(beams.All(b => b.ProjectileId < 0), "Beam IDs should be negative");
     }
 
     [Fact]
-    public void Choreograph_ColorBomb_TrailAtMidpoint()
+    public void Choreograph_ColorBomb_BeamFliesFromOriginToTarget()
     {
-        // Origin (2,2), target (6,6) → midpoint should be (4,4)
+        var origin = new Position(2, 2);
         var affected = new[] { new Position(6, 6) };
         var events = new GameEvent[]
         {
             new BombActivatedEvent
             {
                 TileId = 1,
-                Position = new Position(2, 2),
-                BombType = BombType.Color,
+                Position = origin,
+                BombType = ElementType.ColorBomb,
                 AffectedPositions = affected,
                 SimulationTime = 0f
             }
         };
 
         var commands = _choreographer.Choreograph(events);
-        var trails = commands.OfType<ShowEffectCommand>()
-            .Where(c => c.EffectType == "color_bomb_trail").ToList();
+        var spawn = commands.OfType<SpawnProjectileCommand>().Single();
+        var move = commands.OfType<MoveProjectileCommand>().Single();
+        var impact = commands.OfType<ImpactProjectileCommand>().Single();
+        var remove = commands.OfType<RemoveProjectileCommand>().Single();
 
-        Assert.Single(trails);
-        Assert.Equal(4f, trails[0].Position.X, 0.01f);
-        Assert.Equal(4f, trails[0].Position.Y, 0.01f);
+        // Spawn at origin
+        Assert.Equal(2f, spawn.Origin.X, 0.01f);
+        Assert.Equal(2f, spawn.Origin.Y, 0.01f);
+        Assert.Equal(0f, spawn.ArcHeight); // No arc for beams
+
+        // Move from origin to target
+        Assert.Equal(spawn.ProjectileId, move.ProjectileId);
+        Assert.Equal(2f, move.From.X, 0.01f);
+        Assert.Equal(6f, move.To.X, 0.01f);
+        Assert.True(move.Duration > 0);
+
+        // Impact at target
+        Assert.Equal(spawn.ProjectileId, impact.ProjectileId);
+        Assert.Equal(6f, impact.Position.X, 0.01f);
+
+        // Remove after impact
+        Assert.Equal(spawn.ProjectileId, remove.ProjectileId);
+        Assert.True(remove.StartTime >= impact.StartTime);
     }
 
     [Fact]
-    public void Choreograph_ColorBomb_TrailBeforeHit()
+    public void Choreograph_ColorBomb_BeamBeforeHitEffect()
     {
         var affected = new[] { new Position(0, 0), new Position(7, 7) };
         var events = new GameEvent[]
@@ -616,44 +633,34 @@ public class ChoreographerTests
             {
                 TileId = 1,
                 Position = new Position(3, 3),
-                BombType = BombType.Color,
+                BombType = ElementType.ColorBomb,
                 AffectedPositions = affected,
                 SimulationTime = 0f
             }
         };
 
         var commands = _choreographer.Choreograph(events);
-        var effects = commands.OfType<ShowEffectCommand>().ToList();
 
-        // For each target, trail must start before hit
+        // Each target has an impact + a hit effect, both at the same start time
         foreach (var pos in affected)
         {
-            var hit = effects.First(e =>
-                e.EffectType == "color_bomb_hit"
-                && (int)e.Position.X == pos.X && (int)e.Position.Y == pos.Y);
-            // Trail midpoint is between origin and target — find the closest trail
-            var trail = effects
-                .Where(e => e.EffectType == "color_bomb_trail")
-                .OrderBy(e => Vector2.Distance(e.Position,
-                    new Vector2((3 + pos.X) * 0.5f, (3 + pos.Y) * 0.5f)))
-                .First();
-            Assert.True(trail.StartTime < hit.StartTime,
-                $"Trail at ({trail.Position.X},{trail.Position.Y}) start {trail.StartTime} " +
-                $"should be before hit at ({hit.Position.X},{hit.Position.Y}) start {hit.StartTime}");
+            var impact = commands.OfType<ImpactProjectileCommand>()
+                .First(c => (int)c.Position.X == pos.X && (int)c.Position.Y == pos.Y);
+            var hit = commands.OfType<ShowEffectCommand>()
+                .First(c => c.EffectType == "color_bomb_hit"
+                    && (int)c.Position.X == pos.X && (int)c.Position.Y == pos.Y);
+            Assert.Equal(impact.StartTime, hit.StartTime, 0.001f);
         }
     }
 
     [Fact]
-    public void Choreograph_ColorBomb_AcceleratingDelay()
+    public void Choreograph_ColorBomb_NearerTargetsHitFirst()
     {
-        // Multiple targets at increasing distances — verify delay gaps shrink
         var origin = new Position(4, 4);
         var affected = new[]
         {
             new Position(5, 4), // dist 1
-            new Position(6, 4), // dist 2
             new Position(7, 4), // dist 3
-            new Position(4, 0), // dist 4
         };
         var events = new GameEvent[]
         {
@@ -661,36 +668,24 @@ public class ChoreographerTests
             {
                 TileId = 1,
                 Position = origin,
-                BombType = BombType.Color,
+                BombType = ElementType.ColorBomb,
                 AffectedPositions = affected,
                 SimulationTime = 0f
             }
         };
 
         var commands = _choreographer.Choreograph(events);
-        var hits = commands.OfType<ShowEffectCommand>()
-            .Where(c => c.EffectType == "color_bomb_hit")
-            .OrderBy(c => c.StartTime)
-            .ToList();
+        var impacts = commands.OfType<ImpactProjectileCommand>().OrderBy(c => c.StartTime).ToList();
 
-        Assert.Equal(4, hits.Count);
-
-        // Gaps between consecutive hit start times should decrease (acceleration)
-        var gaps = new float[hits.Count - 1];
-        for (int i = 0; i < gaps.Length; i++)
-            gaps[i] = hits[i + 1].StartTime - hits[i].StartTime;
-
-        for (int i = 1; i < gaps.Length; i++)
-        {
-            Assert.True(gaps[i] <= gaps[i - 1] + 0.001f,
-                $"Gap[{i}]={gaps[i]:F4} should be <= Gap[{i - 1}]={gaps[i - 1]:F4} (accelerating)");
-        }
+        Assert.Equal(2, impacts.Count);
+        // Nearer target (5,4) should impact before farther (7,4)
+        Assert.Equal(5f, impacts[0].Position.X, 0.01f);
+        Assert.Equal(7f, impacts[1].Position.X, 0.01f);
     }
 
     [Fact]
     public void Choreograph_ColorBomb_OriginSkipped()
     {
-        // Origin tile in affected list should not produce trail or hit
         var origin = new Position(3, 3);
         var affected = new[] { origin, new Position(5, 5) };
         var events = new GameEvent[]
@@ -699,51 +694,25 @@ public class ChoreographerTests
             {
                 TileId = 1,
                 Position = origin,
-                BombType = BombType.Color,
+                BombType = ElementType.ColorBomb,
                 AffectedPositions = affected,
                 SimulationTime = 0f
             }
         };
 
         var commands = _choreographer.Choreograph(events);
+        var beams = commands.OfType<SpawnProjectileCommand>()
+            .Where(c => c.Type == ProjectileType.ColorBombBeam).ToList();
         var hits = commands.OfType<ShowEffectCommand>()
             .Where(c => c.EffectType == "color_bomb_hit").ToList();
-        var trails = commands.OfType<ShowEffectCommand>()
-            .Where(c => c.EffectType == "color_bomb_trail").ToList();
 
         // Only one target (5,5), origin (3,3) should be skipped
+        Assert.Single(beams);
         Assert.Single(hits);
-        Assert.Single(trails);
-        Assert.Equal(5f, hits[0].Position.X, 0.01f);
     }
 
     [Fact]
-    public void Choreograph_ColorBomb_Dist1_NoTrail()
-    {
-        // Adjacent target (dist=1) should produce hit but no trail
-        var origin = new Position(4, 4);
-        var affected = new[] { new Position(5, 4) }; // dist 1
-        var events = new GameEvent[]
-        {
-            new BombActivatedEvent
-            {
-                TileId = 1,
-                Position = origin,
-                BombType = BombType.Color,
-                AffectedPositions = affected,
-                SimulationTime = 0f
-            }
-        };
-
-        var commands = _choreographer.Choreograph(events);
-        var effects = commands.OfType<ShowEffectCommand>().ToList();
-
-        Assert.Single(effects.Where(e => e.EffectType == "color_bomb_hit"));
-        Assert.DoesNotContain(effects, e => e.EffectType == "color_bomb_trail");
-    }
-
-    [Fact]
-    public void Choreograph_ColorBomb_AllAtOrigin_NoTrailOrHit()
+    public void Choreograph_ColorBomb_AllAtOrigin_NoBeamsOrHits()
     {
         // All affected tiles at origin distance 0
         var origin = new Position(4, 4);
@@ -754,7 +723,7 @@ public class ChoreographerTests
             {
                 TileId = 1,
                 Position = origin,
-                BombType = BombType.Color,
+                BombType = ElementType.ColorBomb,
                 AffectedPositions = affected,
                 SimulationTime = 0f
             }
@@ -765,7 +734,9 @@ public class ChoreographerTests
 
         Assert.Contains(effects, e => e.EffectType == "color_bomb_wave");
         Assert.DoesNotContain(effects, e => e.EffectType == "color_bomb_hit");
-        Assert.DoesNotContain(effects, e => e.EffectType == "color_bomb_trail");
+        // No beams when all targets are at origin
+        Assert.DoesNotContain(commands, c =>
+            c is SpawnProjectileCommand s && s.Type == ProjectileType.ColorBombBeam);
     }
 
     [Fact]
@@ -775,8 +746,8 @@ public class ChoreographerTests
         {
             new BombComboEvent
             {
-                BombTypeA = BombType.Horizontal,
-                BombTypeB = BombType.Vertical,
+                BombTypeA = ElementType.HorizontalRocket,
+                BombTypeB = ElementType.VerticalRocket,
                 PositionA = new Position(3, 4),
                 PositionB = new Position(4, 4),
                 SimulationTime = 0f

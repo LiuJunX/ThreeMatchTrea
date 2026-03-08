@@ -16,7 +16,7 @@ public class VisualConfig
     public Dictionary<string, string> TileColors { get; set; } = new();
 
     /// <summary>
-    /// BombType name to hex color with alpha (e.g., "Horizontal" -> "#FFFFFFE6").
+    /// Bomb ElementType name to hex color with alpha (e.g., "HorizontalRocket" -> "#FFFFFFE6").
     /// </summary>
     public Dictionary<string, string> BombIndicatorColors { get; set; } = new();
 

@@ -101,7 +101,7 @@ public class ShapeRuleTests
             _rule.Detect(line, feature, results);
 
             Assert.Single(results);
-            Assert.Equal(BombType.Vertical, results[0].Type); // Horizontal match -> Vertical rocket
+            Assert.Equal(ElementType.VerticalRocket, results[0].Type); // Horizontal match -> Vertical rocket
             Assert.Equal(MatchShape.Line4Horizontal, results[0].Shape);
             Assert.Equal(4, results[0].Cells!.Count);
         }
@@ -116,7 +116,7 @@ public class ShapeRuleTests
             _rule.Detect(line, feature, results);
 
             Assert.Single(results);
-            Assert.Equal(BombType.Horizontal, results[0].Type); // Vertical match -> Horizontal rocket
+            Assert.Equal(ElementType.HorizontalRocket, results[0].Type); // Vertical match -> Horizontal rocket
             Assert.Equal(MatchShape.Line4Vertical, results[0].Shape);
             Assert.Equal(4, results[0].Cells!.Count);
         }
@@ -131,7 +131,7 @@ public class ShapeRuleTests
             _rule.Detect(line, feature, results);
 
             // Should have Rainbow candidates
-            Assert.Contains(results, r => r.Type == BombType.Color && r.Shape == MatchShape.Line5);
+            Assert.Contains(results, r => r.Type == ElementType.ColorBomb && r.Shape == MatchShape.Line5);
         }
 
         [Fact]
@@ -143,7 +143,7 @@ public class ShapeRuleTests
 
             _rule.Detect(line, feature, results);
 
-            Assert.Contains(results, r => r.Type == BombType.Color && r.Shape == MatchShape.Line5);
+            Assert.Contains(results, r => r.Type == ElementType.ColorBomb && r.Shape == MatchShape.Line5);
         }
 
         [Fact]
@@ -162,8 +162,8 @@ public class ShapeRuleTests
             var rocketCount = 0;
             foreach (var r in results)
             {
-                if (r.Type == BombType.Color) rainbowCount++;
-                else if (r.Type == BombType.Vertical) rocketCount++;
+                if (r.Type == ElementType.ColorBomb) rainbowCount++;
+                else if (r.Type == ElementType.VerticalRocket) rocketCount++;
             }
 
             Assert.Equal(2, rainbowCount);
@@ -192,7 +192,7 @@ public class ShapeRuleTests
 
             _rule.Detect(line, feature, results);
 
-            var rainbow = results.Find(r => r.Type == BombType.Color);
+            var rainbow = results.Find(r => r.Type == ElementType.ColorBomb);
             Assert.NotNull(rainbow);
             Assert.Equal(130, rainbow.Weight);
         }
@@ -216,7 +216,7 @@ public class ShapeRuleTests
             _rule.Detect(square, feature, results);
 
             Assert.Single(results);
-            Assert.Equal(BombType.Ufo, results[0].Type);
+            Assert.Equal(ElementType.Ufo, results[0].Type);
             Assert.Equal(MatchShape.Square, results[0].Shape);
             Assert.Equal(4, results[0].Cells!.Count);
         }
@@ -267,7 +267,7 @@ public class ShapeRuleTests
             _rule.Detect(square, feature, results);
 
             Assert.Single(results);
-            Assert.Equal(BombType.Ufo, results[0].Type);
+            Assert.Equal(ElementType.Ufo, results[0].Type);
         }
 
         [Fact]
@@ -292,7 +292,7 @@ public class ShapeRuleTests
             _rule.Detect(component, feature, results);
 
             Assert.Equal(2, results.Count);
-            Assert.All(results, r => Assert.Equal(BombType.Ufo, r.Type));
+            Assert.All(results, r => Assert.Equal(ElementType.Ufo, r.Type));
         }
 
         [Fact]
@@ -360,7 +360,7 @@ public class ShapeRuleTests
             _rule.Detect(component, feature, results);
 
             Assert.Single(results);
-            Assert.Equal(BombType.Square5x5, results[0].Type);
+            Assert.Equal(ElementType.Square5x5, results[0].Type);
             Assert.Equal(MatchShape.Cross, results[0].Shape);
         }
 
@@ -389,7 +389,7 @@ public class ShapeRuleTests
             _rule.Detect(component, feature, results);
 
             Assert.Single(results);
-            Assert.Equal(BombType.Square5x5, results[0].Type);
+            Assert.Equal(ElementType.Square5x5, results[0].Type);
         }
 
         [Fact]
@@ -537,7 +537,7 @@ public class ShapeRuleTests
 
             _detector.DetectAll(component, results);
 
-            Assert.Contains(results, r => r.Type == BombType.Vertical);
+            Assert.Contains(results, r => r.Type == ElementType.VerticalRocket);
         }
 
         [Fact]
@@ -548,7 +548,7 @@ public class ShapeRuleTests
 
             _detector.DetectAll(component, results);
 
-            Assert.Contains(results, r => r.Type == BombType.Ufo);
+            Assert.Contains(results, r => r.Type == ElementType.Ufo);
         }
 
         [Fact]
@@ -568,7 +568,7 @@ public class ShapeRuleTests
 
             _detector.DetectAll(component, results);
 
-            Assert.Contains(results, r => r.Type == BombType.Square5x5);
+            Assert.Contains(results, r => r.Type == ElementType.Square5x5);
         }
 
         [Fact]

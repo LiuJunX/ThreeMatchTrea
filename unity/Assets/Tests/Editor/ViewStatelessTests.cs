@@ -8,7 +8,7 @@ namespace Match3.Unity.Tests
 {
     /// <summary>
     /// Structural tests that enforce View layer stateless conventions.
-    /// View types must not cache upstream data (TileType, BombType, etc.) as instance fields.
+    /// View types must not cache upstream data (TileType, ElementType, etc.) as instance fields.
     /// See: docs/01-architecture/core-patterns.md §14 "Tile Data Flow"
     /// </summary>
     public class ViewStatelessTests
@@ -17,7 +17,6 @@ namespace Match3.Unity.Tests
         private static readonly HashSet<Type> ForbiddenFieldTypes = new()
         {
             typeof(TileType),
-            typeof(BombType),
         };
 
         // View types to scan. Add new View classes here as they are created.

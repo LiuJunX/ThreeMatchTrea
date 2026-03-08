@@ -185,8 +185,7 @@ public class Match3EngineInteractionTests
         var state = (GameState)stateField!.GetValue(engine)!;
 
         // Place a bomb at (0,0)
-        var bombTile = new Tile(1, ElementType.Item1, 0, 0);
-        bombTile.Bomb = BombType.Horizontal;
+        var bombTile = new Tile(1, ElementType.HorizontalRocket, 0, 0);
         state.SetTile(0, 0, bombTile);
 
         // Act

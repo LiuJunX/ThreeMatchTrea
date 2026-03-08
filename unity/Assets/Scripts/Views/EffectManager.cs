@@ -59,7 +59,6 @@ namespace Match3.Unity.Views
             PrewarmPool("bomb_shockwave", 3);
             PrewarmPool("bomb_flash", 3);
             PrewarmPool("color_bomb_wave", 2);
-            PrewarmPool("color_bomb_trail", 8);
             PrewarmPool("color_bomb_hit", 8);
 
             _initialized = true;

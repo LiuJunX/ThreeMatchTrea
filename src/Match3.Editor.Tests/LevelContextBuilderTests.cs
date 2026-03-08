@@ -90,17 +90,15 @@ namespace Match3.Editor.Tests
         public void Build_WithBombsInGrid_IncludesBombsInSummary()
         {
             var config = new LevelConfig(3, 3);
-            config.Grid[0] = ElementType.Item1;
-            config.Bombs[0] = BombType.Horizontal;
-            config.Grid[1] = ElementType.Item3;
-            config.Bombs[1] = BombType.Vertical;
+            config.Grid[0] = ElementType.HorizontalRocket;
+            config.Grid[1] = ElementType.VerticalRocket;
 
             var context = LevelContextBuilder.Build(config);
 
             Assert.NotNull(context.GridSummary);
             Assert.Contains("Bombs:", context.GridSummary);
-            Assert.Contains("Horizontal=1", context.GridSummary);
-            Assert.Contains("Vertical=1", context.GridSummary);
+            Assert.Contains("HorizontalRocket=1", context.GridSummary);
+            Assert.Contains("VerticalRocket=1", context.GridSummary);
         }
 
         [Fact]

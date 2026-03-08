@@ -5,8 +5,7 @@ namespace Match3.Core.Models.Grid;
 
 public struct Tile
 {
-    public ElementType Type; // Was TileType
-    public BombType Bomb;
+    public ElementType Type;
     public Vector2 Position; // Logic position (World Space), e.g. (3, 4.5)
     public Vector2 Velocity; // Physics velocity
     public TileState State;  // Physics/lifecycle state flags
@@ -30,21 +29,19 @@ public struct Tile
         set => State = value ? State | TileState.Falling : State & ~TileState.Falling;
     }
 
-    public Tile(int id, ElementType type, int x, int y, BombType bomb = BombType.None)
+    public Tile(int id, ElementType type, int x, int y)
     {
         Id = id;
         Type = type;
-        Bomb = bomb;
         Position = new Vector2(x, y);
         Velocity = Vector2.Zero;
         State = TileState.None;
     }
 
-    public Tile(int id, ElementType type, Vector2 position, BombType bomb = BombType.None)
+    public Tile(int id, ElementType type, Vector2 position)
     {
         Id = id;
         Type = type;
-        Bomb = bomb;
         Position = position;
         Velocity = Vector2.Zero;
         State = TileState.None;

@@ -45,7 +45,7 @@ public class MatchCascadeIntegrationTests
     private class StubScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(MatchGroup match) => match.Positions.Count * 10;
-        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 100;
+        public int CalculateSpecialMoveScore(ElementType t1, ElementType t2) => 100;
     }
 
     public MatchCascadeIntegrationTests(ITestOutputHelper output)
@@ -251,8 +251,7 @@ public class MatchCascadeIntegrationTests
                 if (x == 2 && y == 2)
                 {
                     // 放置水平炸弹
-                    var bombTile = new Tile(id++, ElementType.Item1, x, y);
-                    bombTile.Bomb = BombType.Horizontal;
+                    var bombTile = new Tile(id++, ElementType.HorizontalRocket, x, y);
                     state.SetTile(x, y, bombTile);
                 }
                 else
@@ -404,12 +403,10 @@ public class MatchCascadeIntegrationTests
 
         // 第 0 行 - 水平炸弹和垂直炸弹在同一行
         state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
-        var hBomb = new Tile(2, ElementType.Item1, 1, 0);
-        hBomb.Bomb = BombType.Horizontal;
+        var hBomb = new Tile(2, ElementType.HorizontalRocket, 1, 0);
         state.SetTile(1, 0, hBomb);
         state.SetTile(2, 0, new Tile(3, ElementType.Item3, 2, 0));
-        var vBomb = new Tile(4, ElementType.Item1, 3, 0);
-        vBomb.Bomb = BombType.Vertical;
+        var vBomb = new Tile(4, ElementType.VerticalRocket, 3, 0);
         state.SetTile(3, 0, vBomb);
         state.SetTile(4, 0, new Tile(5, ElementType.Item2, 4, 0));
 
@@ -468,7 +465,7 @@ public class MatchCascadeIntegrationTests
             {
                 var t = state.GetTile(x, y);
                 string symbol = t.Type == ElementType.None ? "_" : t.Type.ToString().Substring(0, 1);
-                if (t.Bomb != BombType.None)
+                if (t.Type.IsBomb())
                 {
                     symbol = "[" + symbol + "]";
                 }
@@ -653,8 +650,7 @@ public class MatchCascadeIntegrationTests
         state.SetTile(2, 0, new Tile(3, ElementType.Item3, 2, 0));
 
         state.SetTile(0, 1, new Tile(4, ElementType.Item2, 0, 1));
-        var bombTile = new Tile(5, ElementType.Item1, 1, 1);
-        bombTile.Bomb = BombType.Horizontal;
+        var bombTile = new Tile(5, ElementType.HorizontalRocket, 1, 1);
         state.SetTile(1, 1, bombTile);
         state.SetTile(2, 1, new Tile(6, ElementType.Item4, 2, 1));
 

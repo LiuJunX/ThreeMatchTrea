@@ -27,7 +27,7 @@ public class SimulationOrchestratorChainTests
         var state = CreateFilledState();
 
         // Place a horizontal bomb at (6,5) distance 1 from origin
-        var bombTile = new Tile(100, ElementType.Item1, 6, 5) { Bomb = BombType.Horizontal };
+        var bombTile = new Tile(100, ElementType.HorizontalRocket, 6, 5);
         state.SetTile(6, 5, bombTile);
 
         // Create explosion system and orchestrator
@@ -100,7 +100,7 @@ public class SimulationOrchestratorChainTests
     private class StubScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(Match3.Core.Models.Gameplay.MatchGroup match) => 0;
-        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 0;
+        public int CalculateSpecialMoveScore(ElementType t1, ElementType t2) => 0;
     }
 
     private class StubEventCollector : IEventCollector

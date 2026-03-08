@@ -45,7 +45,7 @@ public class CoverPhysicsMatchingIntegrationTests
     private class StubScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(Match3.Core.Models.Gameplay.MatchGroup match) => match.Positions.Count * 10;
-        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 100;
+        public int CalculateSpecialMoveScore(ElementType t1, ElementType t2) => 100;
     }
 
     public CoverPhysicsMatchingIntegrationTests(ITestOutputHelper output)

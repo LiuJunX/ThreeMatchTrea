@@ -88,7 +88,7 @@ internal static class BombComboHelpers
             for (int i = 0; i < state.Grid.Length; i++)
             {
                 var t = state.Grid[i];
-                if (t.Type != ElementType.None && t.Type != ElementType.Universal)
+                if (t.Type.IsColor())
                 {
                     // Use TryGetValue to minimize lookups
                     if (counts.TryGetValue(t.Type, out int existingCount))
@@ -122,32 +122,14 @@ internal static class BombComboHelpers
     }
 
     /// <summary>
-    /// Get the effective bomb type for a tile (handles Rainbow tiles).
-    /// </summary>
-    public static BombType GetEffectiveBombType(Tile tile)
-    {
-        if (tile.Type == ElementType.Universal || tile.Bomb == BombType.Color)
-            return BombType.Color;
-        return tile.Bomb;
-    }
-
-    /// <summary>
-    /// Check if the bomb type is a rocket (horizontal or vertical).
-    /// </summary>
-    public static bool IsRocket(BombType type)
-    {
-        return type == BombType.Horizontal || type == BombType.Vertical;
-    }
-
-    /// <summary>
     /// Check if this is a color bomb with a normal tile combination.
     /// </summary>
     public static bool IsColorBombWithNormalTile(Tile t1, Tile t2)
     {
-        bool t1IsColorBomb = t1.Type == ElementType.Universal || t1.Bomb == BombType.Color;
-        bool t2IsColorBomb = t2.Type == ElementType.Universal || t2.Bomb == BombType.Color;
-        bool t1IsNormal = !t1IsColorBomb && t1.Bomb == BombType.None && t1.Type != ElementType.None;
-        bool t2IsNormal = !t2IsColorBomb && t2.Bomb == BombType.None && t2.Type != ElementType.None;
+        bool t1IsColorBomb = t1.Type.IsColorBomb();
+        bool t2IsColorBomb = t2.Type.IsColorBomb();
+        bool t1IsNormal = t1.Type.IsColor();
+        bool t2IsNormal = t2.Type.IsColor();
 
         return (t1IsColorBomb && t2IsNormal) || (t2IsColorBomb && t1IsNormal);
     }

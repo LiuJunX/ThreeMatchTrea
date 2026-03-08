@@ -85,7 +85,7 @@ public class StubScoreSystem : IScoreSystem
     public int CalculateMatchScore(MatchGroup match) =>
         match.Positions.Count * MatchScoreMultiplier;
 
-    public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) =>
+    public int CalculateSpecialMoveScore(ElementType t1, ElementType t2) =>
         SpecialMoveScore;
 }
 

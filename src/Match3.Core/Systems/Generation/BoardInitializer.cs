@@ -62,12 +62,7 @@ public class BoardInitializer : IBoardInitializer
                         type = _tileGenerator.GenerateNonMatchingTile(ref state, x, y);
                     }
 
-                    var bomb = BombType.None;
-                    if (levelConfig.Bombs != null && i < levelConfig.Bombs.Length)
-                    {
-                        bomb = levelConfig.Bombs[i];
-                    }
-                    state.SetTile(x, y, new Tile(state.NextTileId++, type, x, y, bomb));
+                    state.SetTile(x, y, new Tile(state.NextTileId++, type, x, y));
 
                     // Initialize Ground layer
                     if (levelConfig.Grounds != null && i < levelConfig.Grounds.Length)

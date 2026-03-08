@@ -43,10 +43,7 @@ public sealed record BombCreatedEvent : GameEvent
     public Position Position { get; init; }
 
     /// <summary>Type of bomb created.</summary>
-    public BombType BombType { get; init; }
-
-    /// <summary>Base tile type of the bomb.</summary>
-    public ElementType BaseType { get; init; }
+    public ElementType BombType { get; init; }
 
     /// <inheritdoc />
     public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
@@ -64,7 +61,7 @@ public sealed record BombActivatedEvent : GameEvent
     public Position Position { get; init; }
 
     /// <summary>Type of bomb that was activated.</summary>
-    public BombType BombType { get; init; }
+    public ElementType BombType { get; init; }
 
     /// <summary>All positions affected by the explosion.</summary>
     public IReadOnlyCollection<Position> AffectedPositions { get; init; } = Array.Empty<Position>();
@@ -82,10 +79,10 @@ public sealed record BombActivatedEvent : GameEvent
 public sealed record BombComboEvent : GameEvent
 {
     /// <summary>First bomb type in the combo.</summary>
-    public BombType BombTypeA { get; init; }
+    public ElementType BombTypeA { get; init; }
 
     /// <summary>Second bomb type in the combo.</summary>
-    public BombType BombTypeB { get; init; }
+    public ElementType BombTypeB { get; init; }
 
     /// <summary>Position of first bomb.</summary>
     public Position PositionA { get; init; }

@@ -1,3 +1,4 @@
+using Match3.Core.Events.Enums;
 using Match3.Presentation;
 using Match3.Unity.Bridge;
 using Match3.Unity.Pools;
@@ -6,7 +7,7 @@ using UnityEngine;
 namespace Match3.Unity.Views
 {
     /// <summary>
-    /// Visual representation of a projectile (UFO, etc).
+    /// 2D visual representation of a projectile (UFO or color bomb beam).
     /// </summary>
     [RequireComponent(typeof(SpriteRenderer))]
     public sealed class ProjectileView : MonoBehaviour, IPoolable
@@ -15,18 +16,16 @@ namespace Match3.Unity.Views
 
         private SpriteRenderer _renderer;
         private TrailRenderer _trail;
+        private ProjectileType _currentType;
 
-        /// <summary>
-        /// Unique projectile ID from the game state.
-        /// </summary>
         public int ProjectileId { get; private set; }
 
         private void Awake()
         {
             _renderer = GetComponent<SpriteRenderer>();
-            _renderer.sprite = SpriteFactory.GetColorSprite(new Color(0.5f, 1f, 0.5f));
-
+            EnsureTrailMaterial();
             CreateTrail();
+            ApplyUfoAppearance();
         }
 
         private void CreateTrail()
@@ -36,44 +35,56 @@ namespace Match3.Unity.Views
             trailGo.transform.localPosition = Vector3.zero;
 
             _trail = trailGo.AddComponent<TrailRenderer>();
-            _trail.startWidth = 0.3f;
-            _trail.endWidth = 0f;
-            _trail.time = 0.2f;
-
-            // Use shared material to avoid memory leak
-            if (_sharedTrailMaterial == null)
-            {
-                _sharedTrailMaterial = new Material(Shader.Find("Sprites/Default"));
-            }
             _trail.sharedMaterial = _sharedTrailMaterial;
-
-            _trail.startColor = new Color(0.5f, 1f, 0.5f, 0.8f);
-            _trail.endColor = new Color(0.5f, 1f, 0.5f, 0f);
             _trail.sortingLayerName = "Projectiles";
             _trail.sortingOrder = 39;
         }
 
-        /// <summary>
-        /// Initialize the projectile with an ID.
-        /// </summary>
-        public void Setup(int id)
+        public void Setup(int id, ProjectileType type)
         {
             ProjectileId = id;
+            if (_currentType != type)
+            {
+                _currentType = type;
+                if (type == ProjectileType.ColorBombBeam)
+                    ApplyBeamAppearance();
+                else
+                    ApplyUfoAppearance();
+            }
         }
 
-        /// <summary>
-        /// Update projectile from visual state.
-        /// </summary>
+        private void ApplyUfoAppearance()
+        {
+            _currentType = ProjectileType.Ufo;
+            _renderer.sprite = SpriteFactory.GetColorSprite(new Color(0.5f, 1f, 0.5f));
+            _renderer.color = new Color(0.5f, 1f, 0.5f);
+            transform.localScale = Vector3.one * 0.5f;
+
+            _trail.startWidth = 0.3f;
+            _trail.endWidth = 0f;
+            _trail.time = 0.2f;
+            _trail.startColor = new Color(0.5f, 1f, 0.5f, 0.8f);
+            _trail.endColor = new Color(0.5f, 1f, 0.5f, 0f);
+        }
+
+        private void ApplyBeamAppearance()
+        {
+            _renderer.sprite = SpriteFactory.GetColorSprite(new Color(1f, 1f, 0.6f));
+            _renderer.color = new Color(1f, 1f, 0.6f);
+            transform.localScale = Vector3.one * 0.2f;
+
+            _trail.startWidth = 0.15f;
+            _trail.endWidth = 0f;
+            _trail.time = 0.15f;
+            _trail.startColor = new Color(1f, 1f, 0.7f, 0.9f);
+            _trail.endColor = new Color(1f, 0.8f, 0.3f, 0f);
+        }
+
         public void UpdateFromVisual(ProjectileVisual visual, float cellSize, Vector2 origin, int height)
         {
-            // Update position (with Y-flip for Unity coordinate system)
             var worldPos = CoordinateConverter.GridToWorld(visual.Position, cellSize, origin, height);
             transform.position = worldPos;
-
-            // Update rotation
             transform.rotation = Quaternion.Euler(0, 0, visual.Rotation);
-
-            // Update visibility
             gameObject.SetActive(visual.IsVisible);
         }
 
@@ -82,8 +93,6 @@ namespace Match3.Unity.Views
         public void OnSpawn()
         {
             ProjectileId = -1;
-            transform.localScale = Vector3.one * 0.5f;
-            _renderer.color = new Color(0.5f, 1f, 0.5f);
             _trail.Clear();
         }
 
@@ -95,5 +104,11 @@ namespace Match3.Unity.Views
         }
 
         #endregion
+
+        private static void EnsureTrailMaterial()
+        {
+            if (_sharedTrailMaterial != null) return;
+            _sharedTrailMaterial = new Material(Shader.Find("Sprites/Default"));
+        }
     }
 }

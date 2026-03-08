@@ -48,7 +48,7 @@ public class SimulationPerformanceTests
     private class StubScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(MatchGroup match) => match.Positions.Count * 10;
-        public int CalculateSpecialMoveScore(ElementType t1, BombType b1, ElementType t2, BombType b2) => 100;
+        public int CalculateSpecialMoveScore(ElementType t1, ElementType t2) => 100;
     }
 
     private class StubSpawnModel : ISpawnModel
@@ -211,7 +211,6 @@ public class SimulationPerformanceTests
                 TileId = i,
                 GridPosition = new Position(i % 8, i / 8),
                 Type = ElementType.Item1,
-                Bomb = BombType.None,
                 Reason = Match3.Core.Events.Enums.DestroyReason.Match
             });
         }

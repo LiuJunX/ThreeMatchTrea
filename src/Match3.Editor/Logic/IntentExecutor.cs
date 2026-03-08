@@ -147,7 +147,7 @@ namespace Match3.Editor.Logic
             var x = intent.GetInt("x");
             var y = intent.GetInt("y");
             var tileType = intent.GetEnum("tileType", ElementType.Item1);
-            var bombType = intent.GetEnum("bombType", BombType.None);
+            var bombType = intent.GetEnum("bombType", ElementType.None);
 
             if (IsValidPosition(x, y, config))
             {
@@ -163,7 +163,7 @@ namespace Match3.Editor.Logic
             var x2 = intent.GetInt("x2");
             var y2 = intent.GetInt("y2");
             var tileType = intent.GetEnum("tileType", ElementType.Item1);
-            var bombType = intent.GetEnum("bombType", BombType.None);
+            var bombType = intent.GetEnum("bombType", ElementType.None);
 
             NormalizeRegion(ref x1, ref y1, ref x2, ref y2);
 
@@ -268,7 +268,7 @@ namespace Match3.Editor.Logic
         {
             var x = intent.GetInt("x");
             var y = intent.GetInt("y");
-            var bombType = intent.GetEnum("bombType", BombType.Horizontal);
+            var bombType = intent.GetEnum("bombType", ElementType.HorizontalRocket);
             var tileType = intent.GetEnum("tileType", ElementType.Item1);
 
             // 特殊处理 center
@@ -303,7 +303,7 @@ namespace Match3.Editor.Logic
                     if (IsValidPosition(x, y, config))
                     {
                         var index = y * config.Width + x;
-                        _gridManipulator.PaintTile(config, index, ElementType.None, BombType.None);
+                        _gridManipulator.PaintTile(config, index, ElementType.None, ElementType.None);
                         _gridManipulator.ClearCover(config, index);
                         _gridManipulator.ClearGround(config, index);
                     }
@@ -315,7 +315,7 @@ namespace Match3.Editor.Logic
         {
             for (int i = 0; i < config.Grid.Length; i++)
             {
-                _gridManipulator.PaintTile(config, i, ElementType.None, BombType.None);
+                _gridManipulator.PaintTile(config, i, ElementType.None, ElementType.None);
                 _gridManipulator.ClearCover(config, i);
                 _gridManipulator.ClearGround(config, i);
             }

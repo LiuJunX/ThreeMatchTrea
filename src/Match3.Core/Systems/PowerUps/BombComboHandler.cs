@@ -39,8 +39,8 @@ public class BombComboHandler
         }
 
         // 检查是否两个都是炸弹（或彩球）
-        bool isT1Bomb = t1.Bomb != BombType.None || t1.Type == ElementType.Universal;
-        bool isT2Bomb = t2.Bomb != BombType.None || t2.Type == ElementType.Universal;
+        bool isT1Bomb = t1.Type.IsBomb();
+        bool isT2Bomb = t2.Type.IsBomb();
 
         if (!isT1Bomb || !isT2Bomb)
             return false;
@@ -57,66 +57,66 @@ public class BombComboHandler
         var t1 = state.GetTile(p1.X, p1.Y);
         var t2 = state.GetTile(p2.X, p2.Y);
 
-        var b1 = GetEffectiveBombType(t1);
-        var b2 = GetEffectiveBombType(t2);
+        var b1 = t1.Type;
+        var b2 = t2.Type;
 
         // 彩球 + 彩球
-        if (b1 == BombType.Color && b2 == BombType.Color)
+        if (b1 == ElementType.ColorBomb && b2 == ElementType.ColorBomb)
         {
             ApplyColorPlusColor(ref state, affected);
             return;
         }
 
         // 彩球 + 其他炸弹
-        if (b1 == BombType.Color || b2 == BombType.Color)
+        if (b1 == ElementType.ColorBomb || b2 == ElementType.ColorBomb)
         {
-            var colorBombPos = b1 == BombType.Color ? p1 : p2;
-            var otherBombType = b1 == BombType.Color ? b2 : b1;
-            var otherTile = b1 == BombType.Color ? t2 : t1;
+            var colorBombPos = b1 == ElementType.ColorBomb ? p1 : p2;
+            var otherBombType = b1 == ElementType.ColorBomb ? b2 : b1;
+            var otherTile = b1 == ElementType.ColorBomb ? t2 : t1;
             ApplyColorBombCombo(ref state, colorBombPos, otherBombType, otherTile, affected);
             return;
         }
 
         // 火箭 + 火箭
-        if (IsRocket(b1) && IsRocket(b2))
+        if (b1.IsRocket() && b2.IsRocket())
         {
             ApplyRocketPlusRocket(ref state, p2, affected);
             return;
         }
 
         // 火箭 + 方块炸弹
-        if ((IsRocket(b1) && b2 == BombType.Square5x5) || (IsRocket(b2) && b1 == BombType.Square5x5))
+        if ((b1.IsRocket() && b2 == ElementType.Square5x5) || (b2.IsRocket() && b1 == ElementType.Square5x5))
         {
             ApplyRocketPlusSquare(ref state, p2, affected);
             return;
         }
 
         // 火箭 + UFO
-        if ((IsRocket(b1) && b2 == BombType.Ufo) || (IsRocket(b2) && b1 == BombType.Ufo))
+        if ((b1.IsRocket() && b2 == ElementType.Ufo) || (b2.IsRocket() && b1 == ElementType.Ufo))
         {
-            var rocketType = IsRocket(b1) ? b1 : b2;
-            var ufoPos = b1 == BombType.Ufo ? p1 : p2;
+            var rocketType = b1.IsRocket() ? b1 : b2;
+            var ufoPos = b1 == ElementType.Ufo ? p1 : p2;
             ApplyRocketPlusUfo(ref state, ufoPos, rocketType, affected);
             return;
         }
 
         // 方块炸弹 + 方块炸弹
-        if (b1 == BombType.Square5x5 && b2 == BombType.Square5x5)
+        if (b1 == ElementType.Square5x5 && b2 == ElementType.Square5x5)
         {
             ApplySquarePlusSquare(ref state, p2, affected);
             return;
         }
 
         // 方块炸弹 + UFO
-        if ((b1 == BombType.Square5x5 && b2 == BombType.Ufo) || (b2 == BombType.Square5x5 && b1 == BombType.Ufo))
+        if ((b1 == ElementType.Square5x5 && b2 == ElementType.Ufo) || (b2 == ElementType.Square5x5 && b1 == ElementType.Ufo))
         {
-            var ufoPos = b1 == BombType.Ufo ? p1 : p2;
+            var ufoPos = b1 == ElementType.Ufo ? p1 : p2;
             ApplySquarePlusUfo(ref state, ufoPos, affected);
             return;
         }
 
         // UFO + UFO
-        if (b1 == BombType.Ufo && b2 == BombType.Ufo)
+        if (b1 == ElementType.Ufo && b2 == ElementType.Ufo)
         {
             ApplyUfoPlusUfo(ref state, p1, p2, affected);
             return;
@@ -170,7 +170,7 @@ public class BombComboHandler
     /// <summary>
     /// 火箭 + UFO = 小十字 + 一行或一列
     /// </summary>
-    private void ApplyRocketPlusUfo(ref GameState state, Position ufoPos, BombType rocketType, HashSet<Position> affected)
+    private void ApplyRocketPlusUfo(ref GameState state, Position ufoPos, ElementType rocketType, HashSet<Position> affected)
     {
         // UFO起飞前小十字
         ApplySmallCross(state, ufoPos, affected);
@@ -180,8 +180,8 @@ public class BombComboHandler
         if (target.HasValue)
         {
             // 根据火箭类型决定消除行还是列
-            bool clearRow = rocketType == BombType.Horizontal ||
-                           (rocketType == BombType.Vertical ? false : state.Random.Next(0, 2) == 0);
+            bool clearRow = rocketType == ElementType.HorizontalRocket ||
+                           (rocketType == ElementType.VerticalRocket ? false : state.Random.Next(0, 2) == 0);
 
             if (clearRow)
             {
@@ -257,7 +257,7 @@ public class BombComboHandler
     /// <summary>
     /// 彩球 + 其他炸弹
     /// </summary>
-    private void ApplyColorBombCombo(ref GameState state, Position colorBombPos, BombType otherBombType, Tile otherTile, HashSet<Position> affected)
+    private void ApplyColorBombCombo(ref GameState state, Position colorBombPos, ElementType otherBombType, Tile otherTile, HashSet<Position> affected)
     {
         // 找出数量最多的颜色
         var targetColor = FindMostFrequentColor(ref state);
@@ -282,13 +282,13 @@ public class BombComboHandler
             // 根据组合类型应用效果
             switch (otherBombType)
             {
-                case BombType.Horizontal:
-                case BombType.Vertical:
+                case ElementType.HorizontalRocket:
+                case ElementType.VerticalRocket:
                     // 彩球 + 火箭：每个位置变成火箭并爆炸
                     foreach (var pos in positions)
                     {
                         affected.Add(pos);
-                        if (otherBombType == BombType.Horizontal)
+                        if (otherBombType == ElementType.HorizontalRocket)
                         {
                             for (int x = 0; x < state.Width; x++)
                                 affected.Add(new Position(x, pos.Y));
@@ -301,7 +301,7 @@ public class BombComboHandler
                     }
                     break;
 
-                case BombType.Square5x5:
+                case ElementType.Square5x5:
                     // 彩球 + 方块炸弹：每个位置变成3x3炸弹并爆炸
                     foreach (var pos in positions)
                     {
@@ -309,7 +309,7 @@ public class BombComboHandler
                     }
                     break;
 
-                case BombType.Ufo:
+                case ElementType.Ufo:
                     // 彩球 + UFO：每个位置变成UFO并起飞
                     foreach (var pos in positions)
                     {
@@ -333,7 +333,7 @@ public class BombComboHandler
     private void ApplyColorBombWithNormalTile(ref GameState state, Tile t1, Tile t2, Position p1, Position p2, HashSet<Position> affected)
     {
         // 确定哪个是彩球，哪个是普通方块
-        var targetColor = t1.Type == ElementType.Universal ? t2.Type : t1.Type;
+        var targetColor = t1.Type == ElementType.ColorBomb ? t2.Type : t1.Type;
 
         // 消除所有该颜色的方块
         for (int y = 0; y < state.Height; y++)
@@ -357,8 +357,6 @@ public class BombComboHandler
     #region 辅助方法
 
     // Delegated to BombComboHelpers static class
-    private static BombType GetEffectiveBombType(Tile tile) => BombComboHelpers.GetEffectiveBombType(tile);
-    private static bool IsRocket(BombType type) => BombComboHelpers.IsRocket(type);
     private static bool IsColorBombWithNormalTile(Tile t1, Tile t2) => BombComboHelpers.IsColorBombWithNormalTile(t1, t2);
     private static void ApplySmallCross(in GameState state, Position center, HashSet<Position> affected) => BombComboHelpers.ApplySmallCross(state, center, affected);
     private static void ApplyArea(in GameState state, Position center, int radius, HashSet<Position> affected) => BombComboHelpers.ApplyArea(state, center, radius, affected);

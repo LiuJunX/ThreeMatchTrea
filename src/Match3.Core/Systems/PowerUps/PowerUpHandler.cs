@@ -59,7 +59,7 @@ public class PowerUpHandler : IPowerUpHandler
         var t2 = state.GetTile(p2.X, p2.Y);
 
         // Calculate score before modifying state (tiles might be cleared)
-        points = _scoreSystem.CalculateSpecialMoveScore(t1.Type, t1.Bomb, t2.Type, t2.Bomb);
+        points = _scoreSystem.CalculateSpecialMoveScore(t1.Type, t2.Type);
 
         // Use BombComboHandler to process combos
         var affected = Pools.ObtainHashSet<Position>();
@@ -67,12 +67,37 @@ public class PowerUpHandler : IPowerUpHandler
         {
             if (_comboHandler.TryApplyCombo(ref state, p1, p2, affected))
             {
+                // Emit BombComboEvent before modifying state
+                if (events.IsEnabled)
+                {
+                    events.Emit(new BombComboEvent
+                    {
+                        Tick = tick,
+                        SimulationTime = simTime,
+                        BombTypeA = t1.Type,
+                        BombTypeB = t2.Type,
+                        PositionA = p1,
+                        PositionB = p2,
+                        AffectedPositions = new List<Position>(affected)
+                    });
+                }
+
                 // Clear bomb attributes from combo participants to prevent double explosion
                 // The combo effect already accounts for both bombs' effects
                 ClearBombAttribute(ref state, p1);
                 ClearBombAttribute(ref state, p2);
 
-                ClearAffectedTiles(ref state, affected, tick, simTime, events);
+                // Double color bomb: use wave-based destruction from midpoint
+                bool isDoubleColorBomb = t1.Type == ElementType.ColorBomb && t2.Type == ElementType.ColorBomb;
+                if (isDoubleColorBomb && _explosionSystem != null)
+                {
+                    // Use p2 as origin (swap destination), slow wave for dramatic effect
+                    _explosionSystem.CreateTargetedExplosion(ref state, p2, affected, 0.08f, 0.85f);
+                }
+                else
+                {
+                    ClearAffectedTiles(ref state, affected, tick, simTime, events);
+                }
                 return;
             }
         }
@@ -94,12 +119,12 @@ public class PowerUpHandler : IPowerUpHandler
         bool isChainReaction = false)
     {
         var t = state.GetTile(p.X, p.Y);
-        if (t.Bomb == BombType.None) return;
+        if (!t.Type.IsBomb()) return;
 
         var affected = Pools.ObtainHashSet<Position>();
         try
         {
-            if (_effectRegistry.TryGetEffect(t.Bomb, out var effect))
+            if (_effectRegistry.TryGetEffect(t.Type, out var effect))
             {
                 effect!.Apply(in state, p, affected);
                 affected.Add(p); // Ensure origin is in the affected set
@@ -113,7 +138,7 @@ public class PowerUpHandler : IPowerUpHandler
                         SimulationTime = simTime,
                         TileId = t.Id,
                         Position = p,
-                        BombType = t.Bomb,
+                        BombType = t.Type,
                         AffectedPositions = new List<Position>(affected),
                         IsChainReaction = isChainReaction
                     });
@@ -125,7 +150,7 @@ public class PowerUpHandler : IPowerUpHandler
                 if (_explosionSystem != null)
                 {
                     // Rockets spread 2x faster than other bombs
-                    bool isRocket = t.Bomb == BombType.Horizontal || t.Bomb == BombType.Vertical;
+                    bool isRocket = t.Type == ElementType.HorizontalRocket || t.Type == ElementType.VerticalRocket;
                     if (isRocket)
                         _explosionSystem.CreateTargetedExplosion(ref state, p, affected, 0.04f, 0.8f);
                     else
@@ -149,7 +174,6 @@ public class PowerUpHandler : IPowerUpHandler
                                 TileId = currentT.Id,
                                 GridPosition = p,
                                 Type = currentT.Type,
-                                Bomb = currentT.Bomb,
                                 Reason = DestroyReason.BombEffect
                             });
                         }
@@ -177,14 +201,9 @@ public class PowerUpHandler : IPowerUpHandler
     private static void ClearBombAttribute(ref GameState state, Position p)
     {
         var tile = state.GetTile(p.X, p.Y);
-        if (tile.Bomb != BombType.None)
+        if (tile.Type.IsBomb())
         {
-            // Create a new tile without the bomb attribute
-            var newTile = new Tile(tile.Id, tile.Type, p.X, p.Y, BombType.None)
-            {
-                Position = tile.Position
-            };
-            state.SetTile(p.X, p.Y, newTile);
+            state.SetTile(p.X, p.Y, new Tile(tile.Id, ElementType.None, p.X, p.Y) { Position = tile.Position });
         }
     }
 
@@ -237,7 +256,7 @@ public class PowerUpHandler : IPowerUpHandler
                     continue;
 
                 // If it's a bomb, trigger chain explosion
-                if (tile.Bomb != BombType.None && _effectRegistry.TryGetEffect(tile.Bomb, out var effect))
+                if (tile.Type.IsBomb() && _effectRegistry.TryGetEffect(tile.Type, out var effect))
                 {
                     chainEffect.Clear();
                     effect!.Apply(in state, pos, chainEffect);
@@ -260,7 +279,6 @@ public class PowerUpHandler : IPowerUpHandler
                         TileId = tile.Id,
                         GridPosition = pos,
                         Type = tile.Type,
-                        Bomb = tile.Bomb,
                         Reason = DestroyReason.BombEffect
                     });
                 }

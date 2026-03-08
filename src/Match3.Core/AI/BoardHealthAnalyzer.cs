@@ -31,7 +31,7 @@ internal sealed class BoardHealthAnalyzer
                     var tile = state.GetTile(x, y);
                     if (tile.Type == ElementType.None) continue;
 
-                    if (tile.Bomb != BombType.None)
+                    if (tile.Type.IsBomb())
                         bombCount++;
 
                     // Use TryGetValue to minimize lookups (single lookup on hit, two on miss)

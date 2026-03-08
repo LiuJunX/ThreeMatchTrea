@@ -123,16 +123,18 @@ Match3.Core.Systems.PowerUps/
 
 #### 彩球视觉编排 (Choreography)
 
-彩球触发时产生三阶段视觉效果，通过加速延迟营造"光束从中心辐射"的观感：
+彩球触发时产生三阶段视觉效果，光束从原点飞向每个目标：
 
-| 阶段 | 效果类型 | 时序 | 粒子特征 |
+| 阶段 | 效果类型 | 时序 | 视觉表现 |
 |------|----------|------|----------|
-| 1. 彩虹波 | `color_bomb_wave` | 触发即刻，持续 0.6s | 35-45 颗粒子，五色渐变（红→黄→绿→蓝→紫），环形外扩 |
-| 2. 光束轨迹 | `color_bomb_trail` | 到达时间的一半，持续 0.15s | 4-6 颗金白色小粒子，出现在原点与目标的中点 |
-| 3. 命中星爆 | `color_bomb_hit` | 按加速延迟到达，持续 0.3s | 10-14 颗粒子，着色为被消方块颜色，速度衰减 |
+| 1. 彩虹波 | `color_bomb_wave` 粒子 | 触发即刻，持续 0.6s | 35-45 颗粒子，五色渐变，环形外扩 |
+| 2. 飞行光束 | `ColorBombBeam` 投射物 | 触发后 0.05s 发射 | 发光球体 + 彩虹拖尾，从原点飞向目标 |
+| 3. 命中星爆 | `color_bomb_hit` 粒子 | 光束到达时 | 10-14 颗粒子，着色为被消方块颜色 |
 
-**时序模型**：采用加速累积延迟（`ColorBombInterval=0.04s`, `ColorBombAccel=0.85`），
-距离越远的目标间隔越短，模拟光束加速飞出。距离 0 的原点位置不产生 trail/hit。
+**实现方式**：光束复用 Projectile 系统（`SpawnProjectileCommand` → `MoveProjectileCommand` →
+`ImpactProjectileCommand` → `RemoveProjectileCommand`），使用负 ID 避免与 Core 投射物冲突。
+飞行速度由 `ColorBombBeamSpeed`（默认 12 格/秒）控制，距离近的目标先到达。
+距离 0 的原点位置不产生光束/命中效果。
 
 ### 5. UFO (UfoEffect)
 
@@ -328,9 +330,9 @@ private void ClearTileWithChain(ref GameState state, Position pos)
     var tile = state.GetTile(pos);
 
     // 已经是空的，跳过（防止重复处理）
-    if (tile.Type == TileType.None) return;
+    if (tile.Type == ElementType.None) return;
 
-    if (tile.Bomb != BombType.None)
+    if (tile.Type.IsBomb())
     {
         // 先清除炸弹本身（防止重复触发）
         state.SetTile(pos, None);
@@ -463,7 +465,7 @@ handler.ActivateBomb(ref state, bombPosition);
 ```csharp
 public class CustomBombEffect : IBombEffect
 {
-    public BombType Type => BombType.Custom; // 需要扩展 BombType 枚举
+    public ElementType Type => ElementType.Custom; // 需要扩展 ElementType 枚举
 
     public void Apply(in GameState state, Position origin, HashSet<Position> affectedTiles)
     {

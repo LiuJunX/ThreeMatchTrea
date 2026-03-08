@@ -22,7 +22,7 @@ public class ChoreographerBombEffectTests
             {
                 TileId = 1,
                 Position = new Position(4, 4),
-                BombType = BombType.Square5x5,
+                BombType = ElementType.Square5x5,
                 SimulationTime = 0f
             }
         };

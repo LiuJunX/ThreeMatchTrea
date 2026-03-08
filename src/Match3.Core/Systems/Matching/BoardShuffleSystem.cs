@@ -64,7 +64,7 @@ public class BoardShuffleSystem : IBoardShuffleSystem
                     var tile = state.GetTile(pos);
 
                     // 只收集普通色块（排除特殊棋子）
-                    if (IsShuffleableTileType(tile.Type) && tile.Bomb == BombType.None)
+                    if (IsShuffleableTileType(tile.Type) && !tile.Type.IsBomb())
                     {
                         types.Add(tile.Type);
                         oldTypes.Add((pos, tile.Type, tile.Id));
@@ -88,7 +88,7 @@ public class BoardShuffleSystem : IBoardShuffleSystem
                 {
                     // 更新棋盘
                     var tile = state.GetTile(pos);
-                    state.SetTile(pos.X, pos.Y, new Tile(tile.Id, newType, tile.Position, tile.Bomb));
+                    state.SetTile(pos.X, pos.Y, new Tile(tile.Id, newType, tile.Position));
 
                     // 记录变化
                     changes.Add(new TileTypeChange

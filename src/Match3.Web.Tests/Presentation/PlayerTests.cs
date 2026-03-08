@@ -34,7 +34,7 @@ public class PlayerTests
     public void Tick_MoveTile_InterpolatesPosition()
     {
         // Setup: add a tile first
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), Vector2.Zero);
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(0, 0), Vector2.Zero);
 
         _player.Load(new RenderCommand[]
         {
@@ -61,7 +61,7 @@ public class PlayerTests
     [Fact]
     public void Tick_MoveTile_CompletesAtEnd()
     {
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), Vector2.Zero);
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(0, 0), Vector2.Zero);
 
         _player.Load(new RenderCommand[]
         {
@@ -91,7 +91,6 @@ public class PlayerTests
             {
                 TileId = 1,
                 Type = ElementType.Item3,
-                Bomb = BombType.None,
                 GridPos = new Position(3, 0),
                 SpawnPos = new Vector2(3, -1),
                 StartTime = 0f,
@@ -109,10 +108,10 @@ public class PlayerTests
     [Fact]
     public void Tick_RemoveTile_RemovesTileFromVisualState()
     {
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), Vector2.Zero);
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(0, 0), Vector2.Zero);
 
         // Keep an active animation so fast-forward doesn't skip ahead
-        _player.VisualState.AddTile(2, ElementType.Item3, BombType.None, new Position(1, 0), new Vector2(1, 0));
+        _player.VisualState.AddTile(2, ElementType.Item3, new Position(1, 0), new Vector2(1, 0));
         _player.Load(new RenderCommand[]
         {
             new MoveTileCommand
@@ -143,8 +142,8 @@ public class PlayerTests
     [Fact]
     public void Tick_SwapTiles_InterpolatesPositions()
     {
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), new Vector2(0, 0));
-        _player.VisualState.AddTile(2, ElementType.Item3, BombType.None, new Position(1, 0), new Vector2(1, 0));
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(0, 0), new Vector2(0, 0));
+        _player.VisualState.AddTile(2, ElementType.Item3, new Position(1, 0), new Vector2(1, 0));
 
         _player.Load(new RenderCommand[]
         {
@@ -173,7 +172,7 @@ public class PlayerTests
     [Fact]
     public void Tick_DestroyTile_FadesOutTile()
     {
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), Vector2.Zero);
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(0, 0), Vector2.Zero);
 
         _player.Load(new RenderCommand[]
         {
@@ -247,7 +246,7 @@ public class PlayerTests
     [Fact]
     public void SeekTo_RewindFromStart()
     {
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), Vector2.Zero);
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(0, 0), Vector2.Zero);
 
         _player.Load(new RenderCommand[]
         {
@@ -271,7 +270,7 @@ public class PlayerTests
     [Fact]
     public void SkipToEnd_CompletesAllCommands()
     {
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), Vector2.Zero);
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(0, 0), Vector2.Zero);
 
         _player.Load(new RenderCommand[]
         {
@@ -296,7 +295,7 @@ public class PlayerTests
     [Fact]
     public void HasActiveAnimations_TrueWhileCommandsRunning()
     {
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), Vector2.Zero);
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(0, 0), Vector2.Zero);
 
         _player.Load(new RenderCommand[]
         {
@@ -335,8 +334,8 @@ public class PlayerTests
     [Fact]
     public void Append_AddsCommandsToExistingSequence()
     {
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), Vector2.Zero);
-        _player.VisualState.AddTile(2, ElementType.Item3, BombType.None, new Position(1, 0), new Vector2(1, 0));
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(0, 0), Vector2.Zero);
+        _player.VisualState.AddTile(2, ElementType.Item3, new Position(1, 0), new Vector2(1, 0));
 
         _player.Load(new RenderCommand[]
         {
@@ -375,7 +374,7 @@ public class PlayerTests
     [Fact]
     public void Tick_NegativeDeltaTime_Ignored()
     {
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), Vector2.Zero);
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(0, 0), Vector2.Zero);
 
         _player.Load(new RenderCommand[]
         {
@@ -413,7 +412,7 @@ public class PlayerTests
     [Fact]
     public void Tick_LargeDeltaTime_SkipsToEnd()
     {
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), Vector2.Zero);
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(0, 0), Vector2.Zero);
 
         _player.Load(new RenderCommand[]
         {
@@ -438,7 +437,7 @@ public class PlayerTests
     [Fact]
     public void Tick_MultipleMovesSameTile_ExecutesSequentially()
     {
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), Vector2.Zero);
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(0, 0), Vector2.Zero);
 
         _player.Load(new RenderCommand[]
         {
@@ -474,8 +473,8 @@ public class PlayerTests
     [Fact]
     public void Tick_OverlappingCommands_BothExecute()
     {
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), Vector2.Zero);
-        _player.VisualState.AddTile(2, ElementType.Item3, BombType.None, new Position(1, 0), new Vector2(1, 0));
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(0, 0), Vector2.Zero);
+        _player.VisualState.AddTile(2, ElementType.Item3, new Position(1, 0), new Vector2(1, 0));
 
         _player.Load(new RenderCommand[]
         {
@@ -514,7 +513,7 @@ public class PlayerTests
             {
                 TileId = 1,
                 Type = ElementType.Item1,
-                Bomb = BombType.None,
+
                 GridPos = new Position(0, 0),
                 SpawnPos = Vector2.Zero,
                 StartTime = 0f,
@@ -530,8 +529,8 @@ public class PlayerTests
     [Fact]
     public void Append_DuringAnimation_ContinuesCorrectly()
     {
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), Vector2.Zero);
-        _player.VisualState.AddTile(2, ElementType.Item3, BombType.None, new Position(1, 0), new Vector2(1, 0));
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(0, 0), Vector2.Zero);
+        _player.VisualState.AddTile(2, ElementType.Item3, new Position(1, 0), new Vector2(1, 0));
 
         _player.Load(new RenderCommand[]
         {
@@ -574,8 +573,8 @@ public class PlayerTests
     public void Append_CommandsWithEarlierStartTime_AreSkipped()
     {
         // Commands with StartTime before current time are skipped (cannot go back in time)
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), Vector2.Zero);
-        _player.VisualState.AddTile(2, ElementType.Item3, BombType.None, new Position(1, 0), new Vector2(1, 0));
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(0, 0), Vector2.Zero);
+        _player.VisualState.AddTile(2, ElementType.Item3, new Position(1, 0), new Vector2(1, 0));
 
         _player.Load(new RenderCommand[]
         {
@@ -619,8 +618,8 @@ public class PlayerTests
     [Fact]
     public void Append_CommandsWithCurrentOrFutureStartTime_Execute()
     {
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), Vector2.Zero);
-        _player.VisualState.AddTile(2, ElementType.Item3, BombType.None, new Position(1, 0), new Vector2(1, 0));
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(0, 0), Vector2.Zero);
+        _player.VisualState.AddTile(2, ElementType.Item3, new Position(1, 0), new Vector2(1, 0));
 
         _player.Load(new RenderCommand[]
         {
@@ -659,20 +658,19 @@ public class PlayerTests
 
     #endregion
 
-    #region UpdateTileBombCommand Tests
+    #region UpdateTileTypeCommand Tests
 
     [Fact]
-    public void Tick_UpdateTileBomb_ChangesBombType()
+    public void Tick_UpdateTileType_ChangesType()
     {
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(3, 4), new Vector2(3, 4));
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(3, 4), new Vector2(3, 4));
 
         _player.Load(new RenderCommand[]
         {
-            new UpdateTileBombCommand
+            new UpdateTileTypeCommand
             {
                 TileId = 1,
-                Position = new Position(3, 4),
-                BombType = BombType.Horizontal,
+                TileType = ElementType.HorizontalRocket,
                 StartTime = 0f,
                 Duration = 0f
             }
@@ -682,19 +680,18 @@ public class PlayerTests
 
         var tile = _player.VisualState.GetTile(1);
         Assert.NotNull(tile);
-        Assert.Equal(BombType.Horizontal, tile.BombType);
+        Assert.Equal(ElementType.HorizontalRocket, tile.TileType);
     }
 
     [Fact]
-    public void Tick_UpdateTileBomb_NonExistentTile_NoError()
+    public void Tick_UpdateTileType_NonExistentTile_NoError()
     {
         _player.Load(new RenderCommand[]
         {
-            new UpdateTileBombCommand
+            new UpdateTileTypeCommand
             {
                 TileId = 999,  // Non-existent
-                Position = new Position(3, 4),
-                BombType = BombType.Horizontal,
+                TileType = ElementType.HorizontalRocket,
                 StartTime = 0f,
                 Duration = 0f
             }
@@ -740,7 +737,7 @@ public class PlayerTests
         _player.VisualState.AddProjectile(100, new Vector2(3, 4));
 
         // Keep an active animation so fast-forward doesn't skip ahead
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), Vector2.Zero);
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(0, 0), Vector2.Zero);
         _player.Load(new RenderCommand[]
         {
             new MoveTileCommand
@@ -858,7 +855,7 @@ public class PlayerTests
     [Fact]
     public void Tick_MoveTile_OutCubicEasing_NotLinear()
     {
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), Vector2.Zero);
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(0, 0), Vector2.Zero);
 
         _player.Load(new RenderCommand[]
         {
@@ -884,7 +881,7 @@ public class PlayerTests
     [Fact]
     public void Tick_MoveTile_LinearEasing_IsLinear()
     {
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), Vector2.Zero);
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(0, 0), Vector2.Zero);
 
         _player.Load(new RenderCommand[]
         {
@@ -913,7 +910,7 @@ public class PlayerTests
     [Fact]
     public void SyncFromGameState_ClearsCommandsAndResets()
     {
-        _player.VisualState.AddTile(1, ElementType.Item1, BombType.None, new Position(0, 0), Vector2.Zero);
+        _player.VisualState.AddTile(1, ElementType.Item1, new Position(0, 0), Vector2.Zero);
 
         _player.Load(new RenderCommand[]
         {

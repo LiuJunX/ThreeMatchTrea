@@ -108,8 +108,8 @@ namespace Match3.Editor.ViewModels
             }
         }
 
-        private BombType _selectedBomb = BombType.None;
-        public BombType SelectedBomb
+        private ElementType _selectedBomb = ElementType.None;
+        public ElementType SelectedBomb
         {
             get => _selectedBomb;
             set
@@ -221,8 +221,6 @@ namespace Match3.Editor.ViewModels
 
         // --- Computed Properties ---
         public LevelConfig ActiveLevelConfig => _session.ActiveLevelConfig;
-        public BombType[] ActiveBombs => ActiveLevelConfig.Bombs;
-
         private static readonly ElementType[] _tilePaletteTypes =
         {
             ElementType.Item1,
@@ -231,18 +229,26 @@ namespace Match3.Editor.ViewModels
             ElementType.Item4,
             ElementType.Item5,
             ElementType.Item6,
-            ElementType.Universal,
+            ElementType.ColorBomb,
             ElementType.None
         };
 
         private static readonly GroundType[] _groundPaletteTypes = (GroundType[])Enum.GetValues(typeof(GroundType));
         private static readonly CoverType[] _coverPaletteTypes = (CoverType[])Enum.GetValues(typeof(CoverType));
-        private static readonly BombType[] _bombPaletteTypes = (BombType[])Enum.GetValues(typeof(BombType));
+        private static readonly ElementType[] _bombPaletteTypes = new[]
+        {
+            ElementType.None,
+            ElementType.HorizontalRocket,
+            ElementType.VerticalRocket,
+            ElementType.ColorBomb,
+            ElementType.Ufo,
+            ElementType.Square5x5
+        };
 
         public static IReadOnlyList<ElementType> TilePaletteTypes => _tilePaletteTypes;
         public static IReadOnlyList<GroundType> GroundPaletteTypes => _groundPaletteTypes;
         public static IReadOnlyList<CoverType> CoverPaletteTypes => _coverPaletteTypes;
-        public static IReadOnlyList<BombType> BombPaletteTypes => _bombPaletteTypes;
+        public static IReadOnlyList<ElementType> BombPaletteTypes => _bombPaletteTypes;
 
         public static string GetGroundName(GroundType g) => g.ToString();
         public static string GetCoverName(CoverType c) => c.ToString();
@@ -475,14 +481,12 @@ namespace Match3.Editor.ViewModels
                 else
                 {
                     var type = AssertColor ? SelectedType : (ElementType?)null;
-                    var bomb = AssertBomb ? SelectedBomb : (BombType?)null;
 
                     _session.CurrentScenario.Assertions.Add(new ScenarioAssertion
                     {
                         X = x,
                         Y = y,
-                        Type = type,
-                        Bomb = bomb
+                        Type = type
                     });
                 }
                 _session.IsDirty = true;

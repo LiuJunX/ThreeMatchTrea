@@ -336,7 +336,7 @@ namespace Match3.Unity.Views
                 if (!_activeTiles.TryGetValue(tileId, out var tileView))
                 {
                     tileView = _tilePool.Rent();
-                    tileView.Setup(tileId, visual.TileType, visual.BombType);
+                    tileView.Setup(tileId, visual.TileType);
                     _activeTiles[tileId] = tileView;
                 }
 
@@ -453,7 +453,7 @@ namespace Match3.Unity.Views
                 if (!_activeProjectiles.TryGetValue(projectileId, out var projView))
                 {
                     projView = _projectilePool.Rent();
-                    projView.Setup(projectileId);
+                    projView.Setup(projectileId, visual.Type);
                     _activeProjectiles[projectileId] = projView;
                 }
 

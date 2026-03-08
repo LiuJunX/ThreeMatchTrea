@@ -133,9 +133,9 @@ public class ClassicMatchFinderTests
     {
         // Arrange: Rainbow 类型不参与普通匹配
         var state = CreateEmptyState();
-        state.SetTile(0, 0, new Tile(1, ElementType.Universal, 0, 0));
-        state.SetTile(1, 0, new Tile(2, ElementType.Universal, 1, 0));
-        state.SetTile(2, 0, new Tile(3, ElementType.Universal, 2, 0));
+        state.SetTile(0, 0, new Tile(1, ElementType.ColorBomb, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.ColorBomb, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.ColorBomb, 2, 0));
 
         var finder = CreateMatchFinder();
 
@@ -144,18 +144,19 @@ public class ClassicMatchFinderTests
     }
 
     [Fact]
-    public void HasMatchAt_BombTile_ReturnsTrue()
+    public void HasMatchAt_BombTile_ReturnsFalse()
     {
-        // Arrange: Colored Bomb tiles SHOULD participate in matches
+        // Arrange: Bomb tiles (HorizontalRocket etc.) do NOT participate in color matching
+        // Their Type is the bomb ElementType, not a color
         var state = CreateEmptyState();
-        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0) { Bomb = BombType.Horizontal });
+        state.SetTile(0, 0, new Tile(1, ElementType.HorizontalRocket, 0, 0));
         state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
         state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
 
         var finder = CreateMatchFinder();
 
-        // Act & Assert
-        Assert.True(finder.HasMatchAt(in state, new Position(0, 0)));
+        // Act & Assert: Bomb tile does not match with color tiles
+        Assert.False(finder.HasMatchAt(in state, new Position(0, 0)));
     }
 
     [Fact]
@@ -430,7 +431,7 @@ public class ClassicMatchFinderTests
         // Assert
         Assert.NotEmpty(groups);
         // 5连应该生成 Color 炸弹
-        Assert.Contains(groups, g => g.SpawnBombType != BombType.None);
+        Assert.Contains(groups, g => g.SpawnBombType != ElementType.None);
 
         ClassicMatchFinder.ReleaseGroups(groups);
     }
@@ -453,10 +454,10 @@ public class ClassicMatchFinderTests
         // Assert
         Assert.NotEmpty(groups);
         // 4连水平应该生成 Horizontal 或 Vertical 炸弹
-        var bombGroup = groups.FirstOrDefault(g => g.SpawnBombType != BombType.None);
+        var bombGroup = groups.FirstOrDefault(g => g.SpawnBombType != ElementType.None);
         Assert.NotNull(bombGroup);
-        Assert.True(bombGroup.SpawnBombType == BombType.Horizontal ||
-                    bombGroup.SpawnBombType == BombType.Vertical);
+        Assert.True(bombGroup.SpawnBombType == ElementType.HorizontalRocket ||
+                    bombGroup.SpawnBombType == ElementType.VerticalRocket);
 
         ClassicMatchFinder.ReleaseGroups(groups);
     }

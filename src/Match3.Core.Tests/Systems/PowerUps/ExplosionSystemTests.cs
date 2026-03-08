@@ -117,7 +117,7 @@ public class ExplosionSystemTests : IDisposable
         var bombPos = new Position(6, 5); // Distance 1
         
         // Place a bomb
-        var bombTile = new Tile(100, ElementType.Item1, bombPos.X, bombPos.Y) { Bomb = BombType.Horizontal };
+        var bombTile = new Tile(100, ElementType.HorizontalRocket, bombPos.X, bombPos.Y);
         state.SetTile(bombPos.X, bombPos.Y, bombTile);
         
         _sut.CreateExplosion(ref state, origin, 2);
@@ -129,7 +129,7 @@ public class ExplosionSystemTests : IDisposable
         // Assert 1: Bomb not triggered yet
         Assert.Empty(triggeredBombs);
         var tileBefore = state.GetTile(bombPos.X, bombPos.Y);
-        Assert.Equal(BombType.Horizontal, tileBefore.Bomb);
+        Assert.Equal(ElementType.HorizontalRocket, tileBefore.Type);
         Assert.True(tileBefore.IsSuspended); // Should be suspended
 
         // Act 2: Wave 1 (Hits bomb)
@@ -139,7 +139,7 @@ public class ExplosionSystemTests : IDisposable
         Assert.Single(triggeredBombs);
         Assert.Equal(bombPos, triggeredBombs[0]);
         var tileAfter = state.GetTile(bombPos.X, bombPos.Y);
-        Assert.Equal(BombType.Horizontal, tileAfter.Bomb);
+        Assert.Equal(ElementType.HorizontalRocket, tileAfter.Type);
         Assert.NotEqual(ElementType.None, tileAfter.Type);
         // Suspended flag is cleared when bomb is triggered (BombActivationSystem will handle it)
         Assert.False(tileAfter.IsSuspended);

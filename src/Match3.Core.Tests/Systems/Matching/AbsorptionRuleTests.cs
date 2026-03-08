@@ -537,7 +537,7 @@ public class AbsorptionRuleTests
         var results = _generator.Generate(component);
 
         Assert.Single(results);
-        Assert.Equal(BombType.Ufo, results[0].SpawnBombType);
+        Assert.Equal(ElementType.Ufo, results[0].SpawnBombType);
         Assert.Equal(5, results[0].Positions.Count);
     }
 
@@ -558,7 +558,7 @@ public class AbsorptionRuleTests
         var results = _generator.Generate(component);
 
         Assert.Single(results);
-        Assert.Equal(BombType.Square5x5, results[0].SpawnBombType); // TNT
+        Assert.Equal(ElementType.Square5x5, results[0].SpawnBombType); // TNT
         Assert.Equal(5, results[0].Positions.Count);
     }
 
@@ -578,7 +578,7 @@ public class AbsorptionRuleTests
         var results = _generator.Generate(component);
 
         Assert.Single(results);
-        Assert.Equal(BombType.Square5x5, results[0].SpawnBombType); // TNT
+        Assert.Equal(ElementType.Square5x5, results[0].SpawnBombType); // TNT
         Assert.Equal(5, results[0].Positions.Count);
     }
 
@@ -598,7 +598,7 @@ public class AbsorptionRuleTests
         var results = _generator.Generate(component);
 
         Assert.Single(results);
-        Assert.Equal(BombType.Square5x5, results[0].SpawnBombType); // TNT (not UFO)
+        Assert.Equal(ElementType.Square5x5, results[0].SpawnBombType); // TNT (not UFO)
     }
 
     #endregion

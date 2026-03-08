@@ -22,9 +22,6 @@ public sealed record GameStateSnapshot
     /// <summary>Flattened tile type array (row-major order).</summary>
     public ElementType[] TileTypes { get; init; } = System.Array.Empty<ElementType>();
 
-    /// <summary>Flattened bomb type array (row-major order).</summary>
-    public BombType[] BombTypes { get; init; } = System.Array.Empty<BombType>();
-
     /// <summary>Flattened cover layer array.</summary>
     public Cover[] CoverLayers { get; init; } = System.Array.Empty<Cover>();
 
@@ -50,7 +47,6 @@ public sealed record GameStateSnapshot
     {
         int size = state.Width * state.Height;
         var tileTypes = new ElementType[size];
-        var bombTypes = new BombType[size];
         var coverLayers = new Cover[size];
         var groundLayers = new Ground[size];
 
@@ -63,7 +59,6 @@ public sealed record GameStateSnapshot
                 int index = y * state.Width + x;
                 var tile = state.GetTile(x, y);
                 tileTypes[index] = tile.Type;
-                bombTypes[index] = tile.Bomb;
                 coverLayers[index] = state.GetCover(x, y);
                 groundLayers[index] = state.GetGround(x, y);
                 cells[index] = state.Cells[index];
@@ -76,7 +71,6 @@ public sealed record GameStateSnapshot
             Height = state.Height,
             TileTypesCount = state.TileTypesCount,
             TileTypes = tileTypes,
-            BombTypes = bombTypes,
             CoverLayers = coverLayers,
             GroundLayers = groundLayers,
             Cells = cells,
@@ -107,8 +101,7 @@ public sealed record GameStateSnapshot
                 var tile = new Tile(
                     state.NextTileId++,
                     TileTypes[index],
-                    x, y,
-                    BombTypes[index]
+                    x, y
                 );
                 state.SetTile(x, y, tile);
                 state.SetCover(x, y, CoverLayers[index]);

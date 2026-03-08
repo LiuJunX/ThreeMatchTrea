@@ -14,7 +14,7 @@ public interface IBombTypeSelector
     /// </summary>
     /// <param name="shape">The detected shape with cells.</param>
     /// <returns>The bomb type to generate, or None for simple match.</returns>
-    BombType SelectBombType(DetectedShape shape);
+    ElementType SelectBombType(DetectedShape shape);
 
     /// <summary>
     /// Get the weight/priority of a shape for partition optimization.

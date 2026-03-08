@@ -17,7 +17,7 @@ namespace Match3.Unity.LevelEditor
             { ElementType.Item4,      new Color(1.00f, 0.76f, 0.03f) }, // Yellow
             { ElementType.Item5,      new Color(0.61f, 0.32f, 0.88f) }, // Purple
             { ElementType.Item6,      new Color(1.00f, 0.60f, 0.00f) }, // Orange
-            { ElementType.Universal,  new Color(0.95f, 0.95f, 0.95f) }, // Rainbow
+            { ElementType.ColorBomb,  new Color(0.95f, 0.95f, 0.95f) }, // Rainbow
             { ElementType.None,       new Color(0.20f, 0.20f, 0.20f) },
         };
 
@@ -44,14 +44,14 @@ namespace Match3.Unity.LevelEditor
             { GroundType.Ice,  new Color(0.75f, 0.92f, 1.00f, 0.6f) },
         };
 
-        private static readonly Dictionary<BombType, string> BombLabels = new Dictionary<BombType, string>
+        private static readonly Dictionary<ElementType, string> BombLabels = new Dictionary<ElementType, string>
         {
-            { BombType.None,       "" },
-            { BombType.Horizontal, "─" },
-            { BombType.Vertical,   "│" },
-            { BombType.Color,      "★" },
-            { BombType.Ufo,        "◎" },
-            { BombType.Square5x5,  "■" },
+            { ElementType.None,       "" },
+            { ElementType.HorizontalRocket, "─" },
+            { ElementType.VerticalRocket,   "│" },
+            { ElementType.ColorBomb,      "★" },
+            { ElementType.Ufo,        "◎" },
+            { ElementType.Square5x5,  "■" },
         };
 
         public static Color GetTileColor(ElementType type)
@@ -74,7 +74,7 @@ namespace Match3.Unity.LevelEditor
             return GroundColors.TryGetValue(type, out var c) ? c : Color.clear;
         }
 
-        public static string GetBombLabel(BombType type)
+        public static string GetBombLabel(ElementType type)
         {
             return BombLabels.TryGetValue(type, out var s) ? s : "?";
         }

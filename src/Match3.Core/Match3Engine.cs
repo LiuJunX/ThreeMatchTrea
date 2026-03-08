@@ -143,7 +143,7 @@ public sealed class Match3Engine : IDisposable
         
         // Check for Bomb
         var tile = _state.GetTile(p.X, p.Y);
-        if (tile.Bomb != BombType.None)
+        if (tile.Type.IsBomb())
         {
             _gameLoopSystem.ActivateBomb(ref _state, p);
             return;
@@ -218,8 +218,8 @@ public sealed class Match3Engine : IDisposable
         _state.SetTile(p.X, p.Y, new Tile(_state.NextTileId++, t, p.X, p.Y));
     }
     
-    public void SetTileWithBomb(int x, int y, ElementType t, BombType b)
+    public void SetTileWithBomb(int x, int y, ElementType tileType)
     {
-        _state.SetTile(x, y, new Tile(_state.NextTileId++, t, x, y, b));
+        _state.SetTile(x, y, new Tile(_state.NextTileId++, tileType, x, y));
     }
 }

@@ -6,7 +6,7 @@ namespace Match3.Core.Systems.PowerUps.Effects;
 
 public class SquareBombEffect : IBombEffect
 {
-    public BombType Type => BombType.Square5x5;
+    public ElementType Type => ElementType.Square5x5;
 
     public void Apply(in GameState state, Position origin, HashSet<Position> affectedTiles)
     {

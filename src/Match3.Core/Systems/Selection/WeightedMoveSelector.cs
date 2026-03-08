@@ -120,7 +120,7 @@ public sealed class WeightedMoveSelector : IMoveSelector
 
                     if (IsTappableBomb(in tile) && state.CanInteract(pos) && !tile.IsFalling)
                     {
-                        candidates.Add(MoveAction.Tap(pos, _weights.GetWeight(tile.Bomb)));
+                        candidates.Add(MoveAction.Tap(pos, _weights.GetWeight(tile.Type)));
                     }
                 }
             }
@@ -147,10 +147,10 @@ public sealed class WeightedMoveSelector : IMoveSelector
         var tileA = state.GetTile(from.X, from.Y);
         var tileB = state.GetTile(to.X, to.Y);
 
-        int weightA = _weights.GetWeight(tileA.Bomb);
-        int weightB = _weights.GetWeight(tileB.Bomb);
-        bool isBombA = tileA.Bomb != BombType.None;
-        bool isBombB = tileB.Bomb != BombType.None;
+        int weightA = _weights.GetWeight(tileA.Type);
+        int weightB = _weights.GetWeight(tileB.Type);
+        bool isBombA = tileA.Type.IsBomb();
+        bool isBombB = tileB.Type.IsBomb();
 
         int weight;
         if (isBombA && isBombB)
@@ -182,7 +182,7 @@ public sealed class WeightedMoveSelector : IMoveSelector
             // 加上将生成的新炸弹权重
             foreach (var group in matchGroups)
             {
-                if (group.SpawnBombType != BombType.None)
+                if (group.SpawnBombType != ElementType.None)
                 {
                     weight += _weights.GetWeight(group.SpawnBombType);
                 }
@@ -196,7 +196,7 @@ public sealed class WeightedMoveSelector : IMoveSelector
 
     private static bool IsTappableBomb(in Tile tile)
     {
-        return tile.Bomb != BombType.None;
+        return tile.Type.IsBomb();
     }
 
     private static MoveAction WeightedRandomSelect(List<MoveAction> actions, IRandom random)

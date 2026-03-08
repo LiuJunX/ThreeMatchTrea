@@ -323,15 +323,10 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
 
                 // Tile 层
                 var type = levelConfig.Grid[idx];
-                var bomb = Models.Enums.BombType.None;
-                if (levelConfig.Bombs != null && idx < levelConfig.Bombs.Length)
-                {
-                    bomb = levelConfig.Bombs[idx];
-                }
 
-                // 如果是 None 或 Random，生成随机颜色
                 if (type == Models.Enums.ElementType.None)
                 {
+                    // 如果是 None 或 Random，生成随机颜色
                     var types = GetTileTypes(tileTypesCount);
                     do
                     {
@@ -339,7 +334,7 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
                     } while (WouldCreateMatch(state, x, y, type));
                 }
 
-                state.SetTile(x, y, new Tile(state.NextTileId++, type, x, y, bomb));
+                state.SetTile(x, y, new Tile(state.NextTileId++, type, x, y));
 
                 // Ground 层
                 if (levelConfig.Grounds != null && idx < levelConfig.Grounds.Length)
@@ -388,7 +383,7 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
         var seen = new System.Collections.Generic.HashSet<Models.Enums.ElementType>();
         foreach (var type in grid)
         {
-            if (type != Models.Enums.ElementType.None && type != Models.Enums.ElementType.Universal)
+            if (type != Models.Enums.ElementType.None && type != Models.Enums.ElementType.ColorBomb)
             {
                 seen.Add(type);
             }
@@ -608,7 +603,6 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
     private sealed class SimpleScoreSystem : IScoreSystem
     {
         public int CalculateMatchScore(Models.Gameplay.MatchGroup match) => match.Positions.Count * 10;
-        public int CalculateSpecialMoveScore(Models.Enums.ElementType t1, Models.Enums.BombType b1,
-            Models.Enums.ElementType t2, Models.Enums.BombType b2) => 100;
+        public int CalculateSpecialMoveScore(Models.Enums.ElementType t1, Models.Enums.ElementType t2) => 100;
     }
 }

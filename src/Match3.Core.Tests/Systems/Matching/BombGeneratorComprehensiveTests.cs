@@ -37,7 +37,7 @@ namespace Match3.Core.Tests.Systems.Matching
             return component;
         }
 
-        private int CountBombType(List<Match3.Core.Models.Gameplay.MatchGroup> results, BombType type)
+        private int CountBombType(List<Match3.Core.Models.Gameplay.MatchGroup> results, ElementType type)
         {
             return results.Count(g => g.SpawnBombType == type);
         }
@@ -66,7 +66,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var results = _generator.Generate(component);
 
             Assert.Single(results);
-            Assert.Equal(BombType.None, results[0].SpawnBombType);
+            Assert.Equal(ElementType.None, results[0].SpawnBombType);
             Assert.Equal(3, results[0].Positions.Count);
         }
 
@@ -84,7 +84,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var results = _generator.Generate(component);
 
             Assert.Single(results);
-            Assert.Equal(BombType.None, results[0].SpawnBombType);
+            Assert.Equal(ElementType.None, results[0].SpawnBombType);
             Assert.Equal(3, results[0].Positions.Count);
         }
 
@@ -100,7 +100,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var results = _generator.Generate(component);
 
             Assert.Single(results);
-            Assert.Equal(BombType.Vertical, results[0].SpawnBombType);
+            Assert.Equal(ElementType.VerticalRocket, results[0].SpawnBombType);
             Assert.Equal(4, results[0].Positions.Count);
         }
 
@@ -117,7 +117,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var results = _generator.Generate(component);
 
             Assert.Single(results);
-            Assert.Equal(BombType.Horizontal, results[0].SpawnBombType);
+            Assert.Equal(ElementType.HorizontalRocket, results[0].SpawnBombType);
             Assert.Equal(4, results[0].Positions.Count);
         }
 
@@ -132,7 +132,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var results = _generator.Generate(component);
 
             Assert.Single(results);
-            Assert.Equal(BombType.Color, results[0].SpawnBombType);
+            Assert.Equal(ElementType.ColorBomb, results[0].SpawnBombType);
             Assert.Equal(5, results[0].Positions.Count);
         }
 
@@ -149,7 +149,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var results = _generator.Generate(component);
 
             Assert.Single(results);
-            Assert.Equal(BombType.Color, results[0].SpawnBombType);
+            Assert.Equal(ElementType.ColorBomb, results[0].SpawnBombType);
             Assert.Equal(5, results[0].Positions.Count);
         }
 
@@ -160,7 +160,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var results = _generator.Generate(component);
 
             Assert.Single(results);
-            Assert.Equal(BombType.Color, results[0].SpawnBombType);
+            Assert.Equal(ElementType.ColorBomb, results[0].SpawnBombType);
             Assert.Equal(6, results[0].Positions.Count);
         }
 
@@ -171,7 +171,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var results = _generator.Generate(component);
 
             Assert.Single(results);
-            Assert.Equal(BombType.Color, results[0].SpawnBombType);
+            Assert.Equal(ElementType.ColorBomb, results[0].SpawnBombType);
             Assert.Equal(7, results[0].Positions.Count);
         }
 
@@ -185,7 +185,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var component = ParseGrid("A A A A A A A A");
             var results = _generator.Generate(component);
 
-            Assert.Contains(results, g => g.SpawnBombType == BombType.Color);
+            Assert.Contains(results, g => g.SpawnBombType == ElementType.ColorBomb);
         }
 
         [Fact]
@@ -197,7 +197,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var results = _generator.Generate(component);
 
             // Should have at least 1 Rainbow
-            Assert.Contains(results, g => g.SpawnBombType == BombType.Color);
+            Assert.Contains(results, g => g.SpawnBombType == ElementType.ColorBomb);
         }
 
         [Fact]
@@ -208,7 +208,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var component = ParseGrid("A A A A A A A A A A");
             var results = _generator.Generate(component);
 
-            int rainbowCount = CountBombType(results, BombType.Color);
+            int rainbowCount = CountBombType(results, ElementType.ColorBomb);
             Assert.Equal(2, rainbowCount);
         }
 
@@ -226,7 +226,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var results = _generator.Generate(component);
 
             Assert.Single(results);
-            Assert.Equal(BombType.Ufo, results[0].SpawnBombType);
+            Assert.Equal(ElementType.Ufo, results[0].SpawnBombType);
             Assert.Equal(4, results[0].Positions.Count);
         }
 
@@ -242,7 +242,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var results = _generator.Generate(component);
 
             Assert.Single(results);
-            Assert.Equal(BombType.Ufo, results[0].SpawnBombType);
+            Assert.Equal(ElementType.Ufo, results[0].SpawnBombType);
         }
 
         #endregion
@@ -479,7 +479,7 @@ namespace Match3.Core.Tests.Systems.Matching
             // Should generate Rocket (vertical 4-line) not Area bomb
             // because the horizontal arm is only 2 cells
             Assert.Single(results);
-            Assert.True(results[0].SpawnBombType.IsRocket() || results[0].SpawnBombType == BombType.None);
+            Assert.True(results[0].SpawnBombType.IsRocket() || results[0].SpawnBombType == ElementType.None);
         }
 
         #endregion
@@ -565,7 +565,7 @@ namespace Match3.Core.Tests.Systems.Matching
             );
             var results = _generator.Generate(component);
 
-            Assert.Contains(results, g => g.SpawnBombType == BombType.Ufo);
+            Assert.Contains(results, g => g.SpawnBombType == ElementType.Ufo);
         }
 
         [Fact]
@@ -580,7 +580,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var results = _generator.Generate(component);
 
             // 6 cells, contains 2 overlapping 2x2
-            Assert.Contains(results, g => g.SpawnBombType == BombType.Ufo);
+            Assert.Contains(results, g => g.SpawnBombType == ElementType.Ufo);
         }
 
         [Fact]
@@ -599,7 +599,7 @@ namespace Match3.Core.Tests.Systems.Matching
             );
             var results = _generator.Generate(component);
 
-            int rainbowCount = CountBombType(results, BombType.Color);
+            int rainbowCount = CountBombType(results, ElementType.ColorBomb);
             Assert.Equal(2, rainbowCount);
         }
 
@@ -621,7 +621,7 @@ namespace Match3.Core.Tests.Systems.Matching
             );
             var results = _generator.Generate(component);
 
-            int rainbowCount = CountBombType(results, BombType.Color);
+            int rainbowCount = CountBombType(results, ElementType.ColorBomb);
             Assert.Equal(2, rainbowCount);
         }
 
@@ -706,7 +706,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var component = ParseGrid(rows);
             var results = _generator.Generate(component);
 
-            int rainbowCount = CountBombType(results, BombType.Color);
+            int rainbowCount = CountBombType(results, ElementType.ColorBomb);
             Assert.Equal(5, rainbowCount);
         }
 
@@ -730,7 +730,7 @@ namespace Match3.Core.Tests.Systems.Matching
             );
             var results = _generator.Generate(component);
 
-            Assert.Contains(results, g => g.SpawnBombType == BombType.Color);
+            Assert.Contains(results, g => g.SpawnBombType == ElementType.ColorBomb);
             // Only Rainbow's 5 cells are matched, perpendicular scraps not absorbed
             Assert.Equal(5, results.Sum(g => g.Positions.Count));
         }
@@ -755,7 +755,7 @@ namespace Match3.Core.Tests.Systems.Matching
             // Line4 detected at x=0 (4 cells) → Horizontal Rocket
             // Remaining scraps (1,1), (1,2) are perpendicular to the line, not absorbed
             Assert.Single(results);
-            Assert.Equal(BombType.Horizontal, results[0].SpawnBombType);
+            Assert.Equal(ElementType.HorizontalRocket, results[0].SpawnBombType);
             Assert.Equal(4, results[0].Positions.Count);
         }
 
@@ -1063,7 +1063,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var component = ParseGrid(rows);
             var results = _generator.Generate(component);
 
-            int rainbowCount = CountBombType(results, BombType.Color);
+            int rainbowCount = CountBombType(results, ElementType.ColorBomb);
             int totalWeight = rainbowCount * 130;
 
             // Should be 5 Rainbows
@@ -1088,7 +1088,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var component = ParseGrid(rows);
             var results = _generator.Generate(component);
 
-            int rainbowCount = CountBombType(results, BombType.Color);
+            int rainbowCount = CountBombType(results, ElementType.ColorBomb);
             Assert.Equal(4, rainbowCount);
         }
 
@@ -1110,7 +1110,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var component = ParseGrid(rows);
             var results = _generator.Generate(component);
 
-            int rainbowCount = CountBombType(results, BombType.Color);
+            int rainbowCount = CountBombType(results, ElementType.ColorBomb);
             Assert.Equal(4, rainbowCount);
         }
 
@@ -1127,7 +1127,7 @@ namespace Match3.Core.Tests.Systems.Matching
             );
             var results = _generator.Generate(component);
 
-            int rainbowCount = CountBombType(results, BombType.Color);
+            int rainbowCount = CountBombType(results, ElementType.ColorBomb);
             Assert.Equal(2, rainbowCount);
         }
 
@@ -1146,7 +1146,7 @@ namespace Match3.Core.Tests.Systems.Matching
             );
             var results = _generator.Generate(component);
 
-            int rainbowCount = CountBombType(results, BombType.Color);
+            int rainbowCount = CountBombType(results, ElementType.ColorBomb);
             Assert.Equal(2, rainbowCount);
         }
 
@@ -1163,7 +1163,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var results = _generator.Generate(component);
 
             Assert.Single(results);
-            Assert.Equal(BombType.Color, results[0].SpawnBombType);
+            Assert.Equal(ElementType.ColorBomb, results[0].SpawnBombType);
         }
 
         [Fact]
@@ -1209,7 +1209,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var component = ParseGrid("A A A A A");
             var results = _generator.Generate(component);
 
-            Assert.Equal(BombType.Color, results[0].SpawnBombType);
+            Assert.Equal(ElementType.ColorBomb, results[0].SpawnBombType);
         }
 
         #endregion
@@ -1246,7 +1246,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var results = _generator.Generate(component, foci);
 
             Assert.Single(results);
-            Assert.Equal(BombType.Ufo, results[0].SpawnBombType);
+            Assert.Equal(ElementType.Ufo, results[0].SpawnBombType);
 
             // The bomb should be placed at (1,1) - the swap destination that's in the square
             // NOT at (1,0) which is just an absorbed scrap
@@ -1273,7 +1273,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var results = _generator.Generate(component, foci);
 
             Assert.Single(results);
-            Assert.Equal(BombType.Ufo, results[0].SpawnBombType);
+            Assert.Equal(ElementType.Ufo, results[0].SpawnBombType);
             Assert.Equal(new Position(1, 1), results[0].BombOrigin);
         }
 
@@ -1297,7 +1297,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var results = _generator.Generate(component, foci);
 
             Assert.Single(results);
-            Assert.Equal(BombType.Ufo, results[0].SpawnBombType);
+            Assert.Equal(ElementType.Ufo, results[0].SpawnBombType);
 
             // Should be one of the foci positions
             Assert.True(
@@ -1321,7 +1321,7 @@ namespace Match3.Core.Tests.Systems.Matching
             var results = _generator.Generate(component, foci: null);
 
             Assert.Single(results);
-            Assert.Equal(BombType.Ufo, results[0].SpawnBombType);
+            Assert.Equal(ElementType.Ufo, results[0].SpawnBombType);
             Assert.NotNull(results[0].BombOrigin);
             Assert.Contains(results[0].BombOrigin!.Value, component);
         }

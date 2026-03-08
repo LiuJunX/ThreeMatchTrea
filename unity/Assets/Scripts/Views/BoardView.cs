@@ -127,7 +127,7 @@ namespace Match3.Unity.Views
                 {
                     // Create new tile view
                     tileView = _tilePool.Rent();
-                    tileView.Setup(tileId, visual.TileType, visual.BombType);
+                    tileView.Setup(tileId, visual.TileType);
                     _activeTiles[tileId] = tileView;
                 }
 
@@ -177,7 +177,7 @@ namespace Match3.Unity.Views
                 {
                     // Create new projectile view
                     projectileView = _projectilePool.Rent();
-                    projectileView.Setup(projectileId);
+                    projectileView.Setup(projectileId, visual.Type);
                     _activeProjectiles[projectileId] = projectileView;
                 }
 

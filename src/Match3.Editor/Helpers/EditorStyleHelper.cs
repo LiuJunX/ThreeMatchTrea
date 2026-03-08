@@ -40,7 +40,7 @@ namespace Match3.Editor.Helpers
             ElementType.Item4 => COLOR_YELLOW,
             ElementType.Item5 => COLOR_PURPLE,
             ElementType.Item6 => COLOR_ORANGE,
-            ElementType.Universal => COLOR_RAINBOW,
+            ElementType.ColorBomb => COLOR_RAINBOW,
             ElementType.None => COLOR_NONE,
             _ => COLOR_DEFAULT
         };
@@ -53,7 +53,7 @@ namespace Match3.Editor.Helpers
             ElementType.Item4 => COLOR_YELLOW,
             ElementType.Item5 => COLOR_PURPLE,
             ElementType.Item6 => COLOR_ORANGE,
-            ElementType.Universal => COLOR_RAINBOW,
+            ElementType.ColorBomb => COLOR_RAINBOW,
             ElementType.None => COLOR_TRANSPARENT,
             _ => COLOR_DEFAULT
         };
@@ -64,14 +64,14 @@ namespace Match3.Editor.Helpers
             _ => COLOR_TRANSPARENT
         };
 
-        public static string GetBombIcon(BombType bomb) => bomb switch
+        public static string GetBombIcon(ElementType bomb) => bomb switch
         {
-            BombType.None => "",
-            BombType.Horizontal => ICON_BOMB_H,
-            BombType.Vertical => ICON_BOMB_V,
-            BombType.Ufo => ICON_BOMB_UFO,
-            BombType.Square5x5 => ICON_BOMB_SQUARE,
-            BombType.Color => ICON_BOMB_COLOR,
+            ElementType.None => "",
+            ElementType.HorizontalRocket => ICON_BOMB_H,
+            ElementType.VerticalRocket => ICON_BOMB_V,
+            ElementType.Ufo => ICON_BOMB_UFO,
+            ElementType.Square5x5 => ICON_BOMB_SQUARE,
+            ElementType.ColorBomb => ICON_BOMB_COLOR,
             _ => ""
         };
 
