@@ -10,7 +10,7 @@ public static class UfoConstants
     public const float LaunchOverhead = 0.6f;
 
     /// <summary>Flight speed during cruise phase (grid units per second).</summary>
-    public const float FlightSpeed = 3f;
+    public const float FlightSpeed = 3.9f;
 
     /// <summary>
     /// Lock-in time before impact (seconds). Once remaining flight time drops
