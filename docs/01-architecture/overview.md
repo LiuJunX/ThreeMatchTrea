@@ -44,37 +44,43 @@ The Match3 Core is the heart of the game engine, designed with a **Slot-Based La
 ```
 
 ## 1. Grid System
-The game board is represented by `Match3Grid`, which manages a 2D array of `Match3Cell` objects. Unlike traditional single-layer grids, each cell is a **multi-layered container**.
+The game board is represented by `GameState`, a **mutable struct** containing parallel 1D arrays for each layer. Indexing: `y * Width + x`.
 
-### The 5-Layer Slot Model
-Each `Match3Cell` contains specific slots for different types of elements. This enforces the "One Item Per Layer" rule physically.
+### The 5-Layer Array Model
+`GameState` holds five parallel arrays — one per layer. This enforces the "One Item Per Layer" rule structurally.
 
-| Layer | Property | Interface | Description |
+| Layer | Field | Type | Description |
 | :--- | :--- | :--- | :--- |
-| **1. Topology** | `Topology` | `TileType` (Enum) | Physical properties of the cell (Wall, Spawner, Hole, Sink). Stored as a BitMask. |
-| **2. Ground** | `Ground` | `IGroundElement` | Elements sitting on the "floor" (e.g., Jelly, Carpet). They do not move with gravity. |
-| **3. Unit** | `Unit` | `IUnitElement` | The main playable items (e.g., Color Blocks, Bombs). Subject to gravity and matching. |
-| **4. Cover** | `Cover` | `ICoverElement` | Obstacles covering the unit (e.g., Ice, Cages). Can be Static (fixed) or Dynamic (moves with unit). |
-| **5. Aux** | `Aux` | `IAuxElement` | Reserved for future expansions (e.g., temporary status effects, markers). |
+| **1. Structure** | `Cells` | `CellKind[]` | Static grid topology (Void, Slot, Wall, Spawner, Sink). |
+| **2. Ground** | `GroundLayer` | `Ground[]` | Floor elements (e.g., Jelly). `Ground` struct: `GroundType` + `Health`. |
+| **3. Tile** | `Grid` | `Tile[]` | Movable content (colors, bombs). `Tile` struct: `ElementType` + `Position` + `Velocity` + `State`. |
+| **4. Cover** | `CoverLayer` | `Cover[]` | Obstacles above tiles (e.g., Ice). `Cover` struct: `CoverType` + `Health` + `IsDynamic`. |
+| **5. Lock** | `CellLocks` | `uint[]` | Ref-counted per-cell locks (choreography synchronization). |
 
 ### Coordinate System
-- **Vector2Int**: A fundamental primitive used for grid coordinates `(x, y)`.
-- **Origin**: `(0, 0)` is typically the bottom-left or top-left (implementation dependent, currently logical).
+- **`Position`**: Grid coordinate struct `(int X, int Y)` for discrete grid positions.
+- **`Vector2`**: Continuous position for physics interpolation (`Tile.Position`).
+- **Origin**: `(0, 0)` is top-left in grid space; Unity View layer flips Y axis.
 
-## 2. Element Interfaces
-All items on the grid implement specific interfaces to define their behavior.
+## 2. Core Types
+All game data uses **value types** (structs and enums) for cache-friendly, GC-free simulation.
 
-### Core Interfaces
-- **`IGridElement`**: The base contract. Defines `Size` (default 1x1).
-- **`IDamageable`**: The Unified Damage Model.
-    - `int Health { get; }`
-    - `int MaxHealth { get; }`
-    - `bool TakeDamage(int amount)`
+### ElementType (byte enum)
+Unified identity for all movable content — colors and bombs share one type field.
 
-### Specific Interfaces
-- **`IMatchable`**: For items that participate in color matching (e.g., `UnitNormalItem`).
-- **`IUnitElement`**: Marker for items in the Unit layer.
-- **`ICoverElement`**: Defines `AttachmentMode` (Static/Dynamic).
+| Range | Values | Description |
+| :--- | :--- | :--- |
+| Colors | `Item1`–`Item6` (1–6) | Matchable color tiles |
+| Bombs | `HorizontalRocket`(10), `VerticalRocket`(11), `ColorBomb`(12), `Ufo`(13), `Square5x5`(14) | Power-ups |
+| Special | `Unmatchable`(200) | Stone blocks |
+
+Extension methods: `IsColor()`, `IsBomb()`, `IsRocket()`, `IsColorBomb()`, `IsUfo()`, `IsMatchable()`.
+
+### CellKind (byte enum)
+Static structural role per grid slot: `Void`, `Slot`, `Wall`, `Spawner`, `Sink`.
+
+### Tile (struct)
+The main movable element: `Id`, `Type` (ElementType), `Position` (Vector2), `Velocity` (Vector2), `State` (TileState flags).
 
 ## 3. Core Systems (Planned & Implemented)
 - **MatchFinder**: Scans `Unit` layer for matches based on `IMatchable`.
@@ -120,7 +126,7 @@ public interface IEventVisitor
 // Usage - replaces switch statements
 public class Choreographer : IEventVisitor
 {
-    public IReadOnlyList<RenderCommand> Choreograph(IReadOnlyList<GameEvent> events)
+    public IReadOnlyList<RenderCommand> Choreograph(IReadOnlyList<GameEvent> events, float baseTime = 0f)
     {
         foreach (var evt in events) evt.Accept(this);
         return _commands;
@@ -205,7 +211,7 @@ unity/Assets/
 ```
 
 **架构约束**：
-- ❌ 禁止在 MonoBehaviour 中直接操作 `Match3Grid`
+- ❌ 禁止在 MonoBehaviour 中直接操作 `GameState`
 - ❌ 禁止绕过 `Player` 直接处理 `GameEvent`
 - ✅ 通过 `RenderCommand` 驱动所有视觉变化
 - ✅ 输入转换为 Core 的 `InputSystem` 调用
@@ -237,7 +243,7 @@ public interface IAIService
 - Board health indicators
 
 ## 8. Key Design Decisions
-- **OOP over Pure DOD**: We use classes (`Match3Cell`) and interfaces to handle the complexity of multi-layered interactions, favoring maintainability and flexibility over raw struct-array performance for this specific component.
+- **Struct-of-Arrays (SoA)**: `GameState` uses parallel arrays of value types (`Tile[]`, `Cover[]`, `Ground[]`) for cache-friendly, GC-free simulation. Systems operate on these arrays by index.
 - **Unified Damage**: Clearing a block, breaking ice, or spreading jelly are all treated as `TakeDamage` events.
 - **Event Sourcing**: All state changes produce events, enabling replay, AI analysis, and decoupled presentation.
 - **Tick-Based Simulation**: Fixed time step (16ms default) enables deterministic simulation and time-based animations.

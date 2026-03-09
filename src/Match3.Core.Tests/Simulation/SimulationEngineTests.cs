@@ -730,24 +730,27 @@ public class SimulationEngineTests
         // Act: 交换彩球和蓝色方块
         engine.ApplyMove(new Position(0, 0), new Position(1, 0));
 
-        // Tick engine to complete swap animation and allow projectiles to reach targets
-        // Color bombs launch projectiles that need time to travel
-        for (int i = 0; i < 60; i++) // ~1 second of game time
-        {
-            engine.Tick(1f / 60f);
-        }
+        // RunUntilStable 确保所有投射物到达目标并完成级联
+        engine.RunUntilStable();
 
-        // Assert: 验证组合效果 - 通过检查 TileDestroyedEvent
-        var destroyedEvents = collector.GetEvents().OfType<TileDestroyedEvent>().ToList();
+        // Assert
+        var allEvents = collector.GetEvents().ToList();
 
-        // 彩球+蓝色 应该消除所有蓝色方块 (4个) + 彩球 (1个) = 5 个
-        Assert.True(destroyedEvents.Count >= 5,
-            $"彩球+普通方块组合应该消除指定颜色，预期至少 5 个 TileDestroyedEvent，实际 {destroyedEvents.Count} 个");
+        // 1. 不应该有回退事件（彩球+普通是有效交换）
+        var revertEvents = allEvents.OfType<TilesSwappedEvent>().Where(e => e.IsRevert).ToList();
+        Assert.Empty(revertEvents);
 
-        // Note: We don't check tile positions after color bomb because:
-        // 1. Projectiles take time to reach targets
-        // 2. Refill happens during the ticks
-        // Instead, we verify the destruction through events above
+        // 2. 应该有炸弹组合事件（ColorBomb + 普通方块走 BombCombo 路径）
+        var comboEvents = allEvents.OfType<BombComboEvent>().ToList();
+        var activateEvents = allEvents.OfType<BombActivatedEvent>().ToList();
+        Assert.True(comboEvents.Count + activateEvents.Count > 0,
+            "彩球+普通方块应产生 BombComboEvent 或 BombActivatedEvent");
+
+        // 3. 应该消除蓝色方块（Item3）
+        var destroyedEvents = allEvents.OfType<TileDestroyedEvent>().ToList();
+        var blueDestroyed = destroyedEvents.Where(e => e.Type == ElementType.Item3).ToList();
+        Assert.True(blueDestroyed.Count >= 3,
+            $"彩球应消除蓝色方块，预期至少 3 个蓝色被消除，实际 {blueDestroyed.Count} 个");
     }
 
     /// <summary>

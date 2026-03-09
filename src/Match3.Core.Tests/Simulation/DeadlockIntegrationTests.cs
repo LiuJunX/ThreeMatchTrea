@@ -39,6 +39,18 @@ public class DeadlockIntegrationTests
         return state;
     }
 
+    /// <summary>
+    /// Creates deadlock detection and shuffle systems wired to a shared match finder.
+    /// </summary>
+    private static (DeadlockDetectionSystem detector, BoardShuffleSystem shuffler) CreateDeadlockSystems()
+    {
+        var bombGenerator = new BombGenerator();
+        var matchFinder = new ClassicMatchFinder(bombGenerator);
+        var detector = new DeadlockDetectionSystem(matchFinder);
+        var shuffler = new BoardShuffleSystem(matchFinder);
+        return (detector, shuffler);
+    }
+
     [Fact]
     public void SimulationEngine_DetectsAndResolvesDeadlock()
     {
@@ -46,15 +58,13 @@ public class DeadlockIntegrationTests
         var state = CreateDeadlockBoard();
         var eventCollector = new BufferedEventCollector();
 
-        // 创建死锁检测器验证棋盘确实是死锁
-        var bombGenerator = new BombGenerator();
-        var matchFinder = new ClassicMatchFinder(bombGenerator);
-        var deadlockDetector = new DeadlockDetectionSystem(matchFinder);
+        var (deadlockDetector, shuffleSystem) = CreateDeadlockSystems();
 
         // 验证棋盘确实是死锁
         Assert.False(deadlockDetector.HasValidMoves(in state), "测试棋盘应该是死锁");
 
-        var engine = TestEngineFactory.CreateEngine(state, eventCollector: eventCollector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: eventCollector,
+            deadlockDetector: deadlockDetector, shuffleSystem: shuffleSystem);
 
         // 验证初始状态是稳定的
         Assert.True(engine.IsStable(), "初始死锁棋盘应该是稳定的");
@@ -98,7 +108,9 @@ public class DeadlockIntegrationTests
         // Arrange
         var state = CreateDeadlockBoard();
         var eventCollector = new BufferedEventCollector();
-        var engine = TestEngineFactory.CreateEngine(state, eventCollector: eventCollector);
+        var (deadlockDetector, shuffleSystem) = CreateDeadlockSystems();
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: eventCollector,
+            deadlockDetector: deadlockDetector, shuffleSystem: shuffleSystem);
 
         // Act - 执行单个 Tick，可能还在处理动画
         engine.Tick();
@@ -115,11 +127,13 @@ public class DeadlockIntegrationTests
         // Arrange
         var state = CreateDeadlockBoard();
         var eventCollector = new BufferedEventCollector();
+        var (deadlockDetector, shuffleSystem) = CreateDeadlockSystems();
         var config = new SimulationConfig
         {
             EnableDeadlockDetection = false // 禁用死锁检测
         };
-        var engine = TestEngineFactory.CreateEngine(state, eventCollector: eventCollector, simulationConfig: config);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: eventCollector, simulationConfig: config,
+            deadlockDetector: deadlockDetector, shuffleSystem: shuffleSystem);
 
         // Act
         var result = engine.RunUntilStable();
@@ -142,12 +156,14 @@ public class DeadlockIntegrationTests
         // Arrange
         var state = CreateDeadlockBoard();
         var eventCollector = new BufferedEventCollector();
+        var (deadlockDetector, shuffleSystem) = CreateDeadlockSystems();
 
         // 在 (0,0) 添加炸弹
         var bombTile = new Tile(state.GetTile(0, 0).Id, ElementType.HorizontalRocket, 0, 0);
         state.SetTile(0, 0, bombTile);
 
-        var engine = TestEngineFactory.CreateEngine(state, eventCollector: eventCollector);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: eventCollector,
+            deadlockDetector: deadlockDetector, shuffleSystem: shuffleSystem);
 
         // Act
         engine.RunUntilStable();
@@ -163,11 +179,13 @@ public class DeadlockIntegrationTests
         // Arrange
         var state = CreateDeadlockBoard();
         var eventCollector = new BufferedEventCollector();
+        var (deadlockDetector, shuffleSystem) = CreateDeadlockSystems();
         var config = new SimulationConfig
         {
             ShuffleMaxAttempts = 3 // 限制最大尝试次数
         };
-        var engine = TestEngineFactory.CreateEngine(state, eventCollector: eventCollector, simulationConfig: config);
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: eventCollector, simulationConfig: config,
+            deadlockDetector: deadlockDetector, shuffleSystem: shuffleSystem);
 
         // Act
         engine.RunUntilStable();
@@ -204,7 +222,9 @@ public class DeadlockIntegrationTests
         }
 
         var eventCollector = new BufferedEventCollector();
-        var engine = TestEngineFactory.CreateEngine(state, eventCollector: eventCollector);
+        var (deadlockDetector, shuffleSystem) = CreateDeadlockSystems();
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: eventCollector,
+            deadlockDetector: deadlockDetector, shuffleSystem: shuffleSystem);
 
         // Act
         engine.RunUntilStable();

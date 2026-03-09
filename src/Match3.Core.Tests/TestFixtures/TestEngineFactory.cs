@@ -34,7 +34,9 @@ public static class TestEngineFactory
         IScoreSystem? scoreSystem = null,
         ISpawnModel? spawnModel = null,
         SimulationConfig? simulationConfig = null,
-        IProjectileSystem? projectileSystem = null)
+        IProjectileSystem? projectileSystem = null,
+        IDeadlockDetectionSystem? deadlockDetector = null,
+        IBoardShuffleSystem? shuffleSystem = null)
     {
         var rng = random ?? new StubRandom();
         var config = new Match3Config();
@@ -60,7 +62,10 @@ public static class TestEngineFactory
             matchProcessor,
             powerUpHandler,
             projectileSystem,
-            eventCollector);
+            eventCollector,
+            deadlockDetector: deadlockDetector,
+            shuffleSystem: shuffleSystem,
+            objectiveSystem: objectiveSystem);
     }
 
     /// <summary>

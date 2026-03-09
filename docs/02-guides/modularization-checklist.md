@@ -4,7 +4,7 @@ Use this checklist when implementing any new feature in Match3Explore.
 
 ## 1. Planning Phase
 - [ ] **Identify Domain**: Does this feature belong to Physics, Scoring, Input, or AI?
-- [ ] **Define Interface**: Create a `I{Feature}System.cs` in `Match3.Core/Interfaces`.
+- [ ] **Define Interface**: Create a `I{Feature}System.cs` in `Match3.Core/Systems/{Domain}/` (co-located with implementation).
     - [ ] Add XML documentation to all methods.
     - [ ] Ensure inputs depend on `GameState` (by ref/in) or POCOs.
 - [ ] **Define Dependencies**: What other systems does this feature need? (e.g., RNG, Logger).
@@ -25,7 +25,7 @@ Use this checklist when implementing any new feature in Match3Explore.
     - [ ] Pass it to the `Match3Engine` constructor.
 
 ## 4. Verification Phase
-- [ ] **Unit Tests**: Create `Match3.Tests/Systems/{Feature}SystemTests.cs`.
+- [ ] **Unit Tests**: Create `Match3.Core.Tests/Systems/{Domain}/{Feature}SystemTests.cs`.
 - [ ] **Integration Test**: Run `Match3EngineTests` to ensure no regressions.
 - [ ] **Build**: Run `dotnet build` to verify DI chains.
 

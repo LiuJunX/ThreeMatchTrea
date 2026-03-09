@@ -11,8 +11,8 @@ All logic implementation must adhere to these patterns to ensure performance and
 *   **Why**: To avoid GC spikes during the game loop (60fps).
 *   **What**: `MatchGroup`, `TileMove`, `Command` objects must be pooled.
 *   **How**:
-    *   **Rent**: `Pools.Rent<T>()`
-    *   **Return**: `Pools.Return(obj)`
+    *   **Obtain**: `Pools.ObtainList<T>()`, `Pools.ObtainHashSet<T>()`, `Pools.ObtainQueue<T>()`
+    *   **Release**: `Pools.Release(obj)`
     *   **Forbidden**: `new T()` in hot paths (Update/Process loops).
 *   **Utility**: `Match3.Core.Utility`
     *   `GenericObjectPool<T>`: Thread-safe, standard implementation.
@@ -37,7 +37,7 @@ All logic implementation must adhere to these patterns to ensure performance and
 *   **Interface**: `IRandom` (from Match3.Random)
 *   **Usage**: All RNG must go through this interface to ensure determinism for replays/testing.
 *   **Forbidden**: `System.Random`.
-*   **Rule**: **MUST** use `Match3.Core.Interfaces.IRandom`. NEVER use `System.Random` or `Guid` directly.
+*   **Rule**: **MUST** use `Match3.Random.IRandom`. NEVER use `System.Random` or `Guid` directly.
 
 ## 5. Performance Guidelines
 1.  **Single Responsibility**: Split classes > 300 lines.

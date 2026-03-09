@@ -6,7 +6,7 @@
   - 新增随机点需先在 RandomDomain 中声明新域，并通过 SeedManager 注入。
 
 - 代码检查
-  - 规范测试会在违规时失败：src/Match3.Tests/CodingStandardsTests.cs。
+  - 架构规范测试会在违规时失败：src/Match3.Core.Tests/Architecture/ArchitectureTests.cs。
   - 测试会扫描 src/Match3.Core 的代码，确保未直接使用 System.Random/Guid。
 
 - 模块边界

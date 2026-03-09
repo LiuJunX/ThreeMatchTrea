@@ -588,11 +588,12 @@ namespace Match3.Unity.Views
 
         private static readonly int s_colorProp = Shader.PropertyToID("_BaseColor");
         private static readonly int s_colorPropFallback = Shader.PropertyToID("_Color");
-        private static readonly MaterialPropertyBlock s_alphaPropBlock = new();
+        private static MaterialPropertyBlock s_alphaPropBlock;
 
         private static void ApplyAlpha(MeshRenderer renderer, float alpha)
         {
             if (renderer == null) return;
+            s_alphaPropBlock ??= new MaterialPropertyBlock();
             renderer.GetPropertyBlock(s_alphaPropBlock);
             var mat = renderer.sharedMaterial;
             var color = mat.HasProperty(s_colorProp)

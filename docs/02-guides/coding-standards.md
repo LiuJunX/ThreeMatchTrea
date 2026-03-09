@@ -54,7 +54,7 @@ void OnDestroy()
 
 ## 5. Testing
 *   **Unit Tests**: Test Logic classes with mocked interfaces.
-*   **Architecture Tests**: `Match3.Tests.Architecture` enforces layer rules automatically.
+*   **Architecture Tests**: `Match3.Core.Tests.Architecture` enforces layer rules automatically.
 
 ## Related Documents
 *   Architecture & Performance: `docs/01-architecture/core-patterns.md`

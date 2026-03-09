@@ -71,7 +71,7 @@ alwaysApply: true
 - **PROHIBITED**: `Match3.Core` referencing outer layers (Unity/UI/IO)
 - **PROHIBITED**: State in Logic classes → State belongs in Structs
 - **PROHIBITED**: Creating events without checking `IsEnabled` → Always check `events.IsEnabled` first
-- **PROHIBITED**: Presentation logic in Core → Use EventInterpreter in Match3.Presentation
+- **PROHIBITED**: Presentation logic in Core → Use Choreographer (Core) + Player (Presentation)
 
 ## 10. Modularization
 遵循 `docs/01-architecture/core-patterns.md` §6（真源）
