@@ -7,6 +7,7 @@ using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Objectives;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
+using Match3.Core.Systems.PowerUps.ColorBomb;
 using Match3.Core.Systems.Projectiles;
 using Match3.Core.Systems.Swap;
 
@@ -95,7 +96,8 @@ public sealed class SimulationEngine : IDisposable
         IExplosionSystem? explosionSystem = null,
         IDeadlockDetectionSystem? deadlockDetector = null,
         IBoardShuffleSystem? shuffleSystem = null,
-        ILevelObjectiveSystem? objectiveSystem = null)
+        ILevelObjectiveSystem? objectiveSystem = null,
+        IColorBombSessionManager? colorBombSessionManager = null)
     {
         State = initialState;
         _config = config ?? new SimulationConfig();
@@ -117,7 +119,8 @@ public sealed class SimulationEngine : IDisposable
             powerUpHandler,
             projectileSystem ?? new ProjectileSystem(),
             explosionSystem ?? new ExplosionSystem(),
-            objectiveSystem);
+            objectiveSystem,
+            colorBombSessionManager);
 
         // Initialize shared swap operations with instant context
         var swapContext = new InstantSwapContext(SwapAnimationDuration);
@@ -210,6 +213,14 @@ public sealed class SimulationEngine : IDisposable
             _elapsedTime,
             _eventCollector);
         _bombsActivated += bombCount;
+
+        // 3.5. Update ColorBomb sessions (beam timing, re-scan, batch destruction)
+        _orchestrator.UpdateColorBombSessions(
+            ref state,
+            deltaTime,
+            _currentTick,
+            _elapsedTime,
+            _eventCollector);
 
         // 4. Physics (gravity)
         _orchestrator.UpdatePhysics(ref state, deltaTime);
@@ -571,6 +582,7 @@ public sealed class SimulationEngine : IDisposable
         return _orchestrator.IsPhysicsStable(in state)
             && !_orchestrator.HasActiveProjectiles
             && !_orchestrator.HasActiveExplosions
+            && !_orchestrator.HasActiveColorBombSessions
             && !HasPendingMatches()
             && !_pendingMoveState.HasPending;
     }
@@ -586,10 +598,12 @@ public sealed class SimulationEngine : IDisposable
             clonedState.Random = newRandom;
         }
 
-        // Each clone gets its own explosion system and projectile system,
-        // and a PowerUpHandler that references both
-        var cloneExplosion = new ExplosionSystem(new CoverSystem(_objectiveSystem), new GroundSystem(_objectiveSystem), _objectiveSystem);
+        // Each clone gets its own explosion system, projectile system, and session manager
+        var cloneCover = new CoverSystem(_objectiveSystem);
+        var cloneGround = new GroundSystem(_objectiveSystem);
+        var cloneExplosion = new ExplosionSystem(cloneCover, cloneGround, _objectiveSystem);
         var cloneProjectile = new ProjectileSystem();
+        var cloneColorBomb = new ColorBombSessionManager(null, cloneCover, cloneGround, _objectiveSystem);
         var clonePowerUp = _powerUpHandler.WithExplosionSystem(cloneExplosion).WithProjectileSystem(cloneProjectile);
 
         return new SimulationEngine(
@@ -605,7 +619,8 @@ public sealed class SimulationEngine : IDisposable
             cloneExplosion,
             _deadlockDetector,
             _shuffleSystem,
-            _objectiveSystem
+            _objectiveSystem,
+            cloneColorBomb
         );
     }
 

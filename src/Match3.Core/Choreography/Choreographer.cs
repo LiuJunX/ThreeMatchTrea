@@ -59,7 +59,13 @@ public sealed class Choreographer : IEventVisitor
     // Persists across Choreograph() batches because launch/retarget/impact may span ticks.
     private readonly Dictionary<int, UfoFlightInfo> _activeUfoFlights = new();
 
+    // ColorBomb session tracking — persists across batches because session events span ticks.
+    // Key = BombTileId. Cleared when ColorBombBatchDestroyEvent is processed.
+    private readonly Dictionary<int, ColorBombSessionInfo> _activeColorBombSessions = new();
+
     private record struct UfoFlightInfo(int TileId, float LaunchTime, float Duration, Vector2 Origin, Vector2 Target, float StayFraction);
+
+    private record struct ColorBombSessionInfo(float SessionStartTime, Vector2 HoppedOrigin, float MaxBeamArrivalTime);
 
     private record struct MoveRecord(float StartTime, float EndTime, int TargetRow, Vector2 From, Vector2 To);
 
@@ -409,6 +415,7 @@ public sealed class Choreographer : IEventVisitor
     {
         // New move boundary — clear any stale beam hit times from previous moves
         _beamHitTimes.Clear();
+        _activeColorBombSessions.Clear();
 
         float startTime = GetStartTime(evt);
         var posA = new Vector2(evt.PositionA.X, evt.PositionA.Y);
@@ -1401,6 +1408,215 @@ public sealed class Choreographer : IEventVisitor
     {
         // Level completed events don't generate render commands
         // UI handles victory/defeat display separately
+    }
+
+    /// <inheritdoc />
+    public void Visit(ColorBombSessionStartEvent evt)
+    {
+        float startTime = GetStartTime(evt);
+        var origin = new Vector2(evt.Position.X, evt.Position.Y);
+        var hopOffset = new Vector2(0, Config.ColorBombHopOffset);
+        var hoppedOrigin = origin + hopOffset;
+
+        float chargeDuration = Config.ColorBombChargeDuration;
+        float chargeScale = Config.ColorBombChargeScale;
+        float holdDuration = Config.ColorBombHoldDuration;
+        float totalDuration = chargeDuration + holdDuration;
+
+        // Phase 1: Charge-up — scale pulse + hop
+        _commands.Add(new ScaleTileCommand
+        {
+            TileId = evt.TileId,
+            FromScale = Vector2.One,
+            ToScale = new Vector2(chargeScale, chargeScale),
+            Easing = EasingType.OutBack,
+            StartTime = startTime,
+            Duration = chargeDuration
+        });
+
+        _commands.Add(new MoveTileCommand
+        {
+            TileId = evt.TileId,
+            From = origin,
+            To = hoppedOrigin,
+            Easing = EasingType.OutBack,
+            StartTime = startTime,
+            Duration = chargeDuration
+        });
+
+        // Hold at charged position (keeps tile alive until BatchDestroy removes it)
+        _commands.Add(new MoveTileCommand
+        {
+            TileId = evt.TileId,
+            From = hoppedOrigin,
+            To = hoppedOrigin,
+            Easing = EasingType.Linear,
+            StartTime = startTime + chargeDuration,
+            Duration = holdDuration
+        });
+
+        // Spin covers entire performance (charge + hold, removed by BatchDestroy)
+        _commands.Add(new RotateTileCommand
+        {
+            TileId = evt.TileId,
+            FromAngle = 0f,
+            ToAngle = Config.ColorBombSpinRate * totalDuration,
+            Easing = EasingType.InQuadratic,
+            StartTime = startTime,
+            Duration = totalDuration
+        });
+
+        // Glow effect
+        _commands.Add(new ShowEffectCommand
+        {
+            EffectType = "bomb_flash",
+            Position = hoppedOrigin,
+            StartTime = startTime,
+            Duration = totalDuration
+        });
+
+        // Lock origin cell during session
+        _lockEntries.Add(new CellLockEntry
+        {
+            Position = evt.Position,
+            LockType = CellLockType.Receive,
+            Duration = startTime + totalDuration,
+            IsMerge = false
+        });
+
+        // Track session for beam coordination
+        _activeColorBombSessions[evt.TileId] = new ColorBombSessionInfo(
+            startTime, hoppedOrigin, startTime + chargeDuration);
+    }
+
+    /// <inheritdoc />
+    public void Visit(ColorBombBeamLaunchedEvent evt)
+    {
+        float launchTime = GetStartTime(evt);
+        float arrivalTime = launchTime + evt.FlightDuration;
+
+        // Get beam origin from session info or fallback to event origin
+        Vector2 beamOrigin;
+        if (_activeColorBombSessions.TryGetValue(evt.BombTileId, out var sessionInfo))
+        {
+            beamOrigin = sessionInfo.HoppedOrigin;
+            if (arrivalTime > sessionInfo.MaxBeamArrivalTime)
+            {
+                _activeColorBombSessions[evt.BombTileId] =
+                    sessionInfo with { MaxBeamArrivalTime = arrivalTime };
+            }
+        }
+        else
+        {
+            beamOrigin = evt.Origin;
+        }
+
+        var targetPos = new Vector2(evt.TargetPosition.X, evt.TargetPosition.Y);
+
+        // Record beam hit time for TileDestroyedEvent coordination
+        _beamHitTimes[evt.TargetPosition] = arrivalTime;
+
+        // Beam projectile: spawn → fly → impact → remove
+        int beamId = _nextBeamId--;
+        byte beamColor = (byte)(evt.BeamIndex % 6);
+
+        _commands.Add(new SpawnProjectileCommand
+        {
+            ProjectileId = beamId,
+            Origin = beamOrigin,
+            ArcHeight = 0f,
+            Type = ProjectileType.ColorBombBeam,
+            ColorIndex = beamColor,
+            StartTime = launchTime,
+            Duration = 0
+        });
+
+        _commands.Add(new MoveProjectileCommand
+        {
+            ProjectileId = beamId,
+            From = beamOrigin,
+            To = targetPos,
+            StartTime = launchTime,
+            Duration = evt.FlightDuration
+        });
+
+        _commands.Add(new ImpactProjectileCommand
+        {
+            ProjectileId = beamId,
+            Position = targetPos,
+            EffectType = "color_bomb_hit",
+            StartTime = arrivalTime,
+            Duration = 0.5f
+        });
+
+        _commands.Add(new RemoveProjectileCommand
+        {
+            ProjectileId = beamId,
+            StartTime = arrivalTime + 0.5f,
+            Duration = 0
+        });
+
+        _commands.Add(new ShowEffectCommand
+        {
+            EffectType = "color_bomb_hit",
+            Position = targetPos,
+            StartTime = arrivalTime,
+            Duration = 0.5f
+        });
+    }
+
+    /// <inheritdoc />
+    public void Visit(ColorBombBatchDestroyEvent evt)
+    {
+        float startTime = GetStartTime(evt);
+
+        if (_activeColorBombSessions.TryGetValue(evt.BombTileId, out var sessionInfo))
+        {
+            // Override _beamHitTimes for all destroyed positions to use max arrival time
+            // This ensures all targets are destroyed simultaneously (batch)
+            float maxHitTime = sessionInfo.MaxBeamArrivalTime;
+            foreach (var pos in evt.DestroyedPositions)
+            {
+                _beamHitTimes[pos] = maxHitTime;
+            }
+
+            // Bomb removal: shrink + remove
+            const float hitPause = 0.5f;
+            float shrinkStart = Math.Max(maxHitTime + hitPause, startTime);
+            float shrinkDuration = Config.ColorBombShrinkDuration;
+
+            _commands.Add(new ScaleTileCommand
+            {
+                TileId = evt.BombTileId,
+                FromScale = new Vector2(Config.ColorBombChargeScale, Config.ColorBombChargeScale),
+                ToScale = Vector2.Zero,
+                Easing = EasingType.InQuadratic,
+                StartTime = shrinkStart,
+                Duration = shrinkDuration
+            });
+
+            _commands.Add(new RemoveTileCommand
+            {
+                TileId = evt.BombTileId,
+                StartTime = shrinkStart + shrinkDuration,
+                Duration = 0,
+                Priority = 10
+            });
+
+            _activeColorBombSessions.Remove(evt.BombTileId);
+        }
+        else
+        {
+            // Session info missing (edge case: game restart cleared state).
+            // Emit minimal bomb removal so the tile doesn't linger.
+            _commands.Add(new RemoveTileCommand
+            {
+                TileId = evt.BombTileId,
+                StartTime = startTime,
+                Duration = 0,
+                Priority = 10
+            });
+        }
     }
 
     #endregion

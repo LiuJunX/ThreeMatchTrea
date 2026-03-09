@@ -8,5 +8,18 @@
       "Bash(git diff:*)",
       "Bash(git log:*)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(dotnet *)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "taskkill /F /IM testhost.exe >nul 2>&1 || true"
+          }
+        ]
+      }
+    ]
   }
 }

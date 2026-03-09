@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.PowerUps;
@@ -16,7 +16,7 @@ namespace Match3.Core.Tests.Systems.PowerUps;
 /// - VerticalRocketEffect: 清除整列
 /// - SquareBombEffect: 清除 5x5 区域
 /// - ColorBombEffect: 清除出现最多的颜色
-/// - UfoEffect: 随机清除一个方块
+/// - UfoEffect: 小十字消除（远程目标由 ProjectileSystem 处理）
 /// </summary>
 public class BombEffectTests
 {
@@ -754,10 +754,9 @@ public class BombEffectTests
         // Act
         effect.Apply(in state, origin, affected);
 
-        // Assert: 小十字 (5格) + 1个随机 = 6
-        Assert.Equal(6, affected.Count);
+        // Assert: 小十字 5 格（远程目标由 ProjectileSystem 处理）
+        Assert.Equal(5, affected.Count);
 
-        // 验证小十字被包含
         Assert.Contains(new Position(4, 4), affected); // 中心
         Assert.Contains(new Position(3, 4), affected); // 左
         Assert.Contains(new Position(5, 4), affected); // 右
@@ -782,8 +781,8 @@ public class BombEffectTests
         // Act
         effect.Apply(in state, origin, affected);
 
-        // Assert: 小十字在角落只有 3 格 (中心、右、下) + 1 随机 = 4
-        Assert.Equal(4, affected.Count);
+        // Assert: 小十字在角落只有 3 格 (中心、右、下)
+        Assert.Equal(3, affected.Count);
         Assert.Contains(new Position(0, 0), affected); // 中心
         Assert.Contains(new Position(1, 0), affected); // 右
         Assert.Contains(new Position(0, 1), affected); // 下
@@ -834,8 +833,8 @@ public class BombEffectTests
         // Act
         effect.Apply(in state, origin, affected);
 
-        // Assert: 小十字在右下角只有 3 格 (中心、左、上) + 1 随机 = 4
-        Assert.Equal(4, affected.Count);
+        // Assert: 小十字在右下角只有 3 格 (中心、左、上)
+        Assert.Equal(3, affected.Count);
         Assert.Contains(new Position(4, 4), affected); // 中心
         Assert.Contains(new Position(3, 4), affected); // 左
         Assert.Contains(new Position(4, 3), affected); // 上
@@ -858,8 +857,8 @@ public class BombEffectTests
         // Act
         effect.Apply(in state, origin, affected);
 
-        // Assert: 小十字在右上角只有 3 格 (中心、左、下) + 1 随机 = 4
-        Assert.Equal(4, affected.Count);
+        // Assert: 小十字在右上角只有 3 格 (中心、左、下)
+        Assert.Equal(3, affected.Count);
         Assert.Contains(new Position(4, 0), affected); // 中心
         Assert.Contains(new Position(3, 0), affected); // 左
         Assert.Contains(new Position(4, 1), affected); // 下
@@ -882,8 +881,8 @@ public class BombEffectTests
         // Act
         effect.Apply(in state, origin, affected);
 
-        // Assert: 小十字在左下角只有 3 格 (中心、右、上) + 1 随机 = 4
-        Assert.Equal(4, affected.Count);
+        // Assert: 小十字在左下角只有 3 格 (中心、右、上)
+        Assert.Equal(3, affected.Count);
         Assert.Contains(new Position(0, 4), affected); // 中心
         Assert.Contains(new Position(1, 4), affected); // 右
         Assert.Contains(new Position(0, 3), affected); // 上
@@ -906,8 +905,8 @@ public class BombEffectTests
         // Act
         effect.Apply(in state, origin, affected);
 
-        // Assert: 小十字在顶边有 4 格 (中心、左、右、下) + 1 随机 = 5
-        Assert.Equal(5, affected.Count);
+        // Assert: 小十字在顶边有 4 格 (中心、左、右、下)
+        Assert.Equal(4, affected.Count);
         Assert.Contains(new Position(2, 0), affected); // 中心
         Assert.Contains(new Position(1, 0), affected); // 左
         Assert.Contains(new Position(3, 0), affected); // 右
@@ -931,9 +930,8 @@ public class BombEffectTests
         // Act
         effect.Apply(in state, origin, affected);
 
-        // Assert: 应该有 6 个 (小十字 5 + 随机 1)
-        Assert.Equal(6, affected.Count);
-        // 验证小十字
+        // Assert: 小十字 5 格（远程目标由 ProjectileSystem 处理）
+        Assert.Equal(5, affected.Count);
         Assert.Contains(new Position(2, 2), affected);
         Assert.Contains(new Position(1, 2), affected);
         Assert.Contains(new Position(3, 2), affected);

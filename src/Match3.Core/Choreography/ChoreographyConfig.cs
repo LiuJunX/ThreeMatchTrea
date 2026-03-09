@@ -33,7 +33,7 @@ public sealed class ChoreographyConfig
     public float DropDelay { get; set; } = 0f;
 
     /// <summary>Duration for drop acceptance delay after bomb destroy (cell lock). Longer than match to let the explosion settle.</summary>
-    public float BombDropDelay { get; set; } = 0.3f;
+    public float BombDropDelay { get; set; } = 0f;
 
     /// <summary>Delay per cell for rocket trail effect staggering.</summary>
     public float RocketTrailInterval { get; set; } = 0.015f;
@@ -55,6 +55,10 @@ public sealed class ChoreographyConfig
 
     /// <summary>Duration for color bomb shrink-to-nothing after beams land.</summary>
     public float ColorBombShrinkDuration { get; set; } = 0.15f;
+
+    /// <summary>Maximum hold duration for color bomb tile between charge-up and batch destruction.
+    /// Must exceed the longest possible session duration (targets × interval × re-scans + flight).</summary>
+    public float ColorBombHoldDuration { get; set; } = 60f;
 
     /// <summary>Delay between consecutive color bomb beam launches (seconds). Beams fire
     /// farthest-first and all arrive simultaneously — this controls the visual rhythm.</summary>

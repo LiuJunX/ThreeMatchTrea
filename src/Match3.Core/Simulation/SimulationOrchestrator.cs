@@ -4,6 +4,7 @@ using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Objectives;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
+using Match3.Core.Systems.PowerUps.ColorBomb;
 using Match3.Core.Systems.Projectiles;
 using Match3.Core.Utility.Pools;
 
@@ -22,6 +23,7 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
     private readonly IPowerUpHandler _powerUpHandler;
     private readonly SimulationMatchHandler _matchHandler;
     private readonly ILevelObjectiveSystem? _objectiveSystem;
+    private readonly IColorBombSessionManager? _colorBombSessionManager;
 
     public SimulationOrchestrator(
         IPhysicsSimulation physics,
@@ -31,7 +33,8 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
         IPowerUpHandler powerUpHandler,
         IProjectileSystem? projectileSystem = null,
         IExplosionSystem? explosionSystem = null,
-        ILevelObjectiveSystem? objectiveSystem = null)
+        ILevelObjectiveSystem? objectiveSystem = null,
+        IColorBombSessionManager? colorBombSessionManager = null)
     {
         _physics = physics;
         _refill = refill;
@@ -39,6 +42,7 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
         _explosionSystem = explosionSystem ?? new ExplosionSystem();
         _powerUpHandler = powerUpHandler;
         _objectiveSystem = objectiveSystem;
+        _colorBombSessionManager = colorBombSessionManager;
         _matchHandler = new SimulationMatchHandler(matchFinder, matchProcessor, objectiveSystem);
     }
 
@@ -142,6 +146,18 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
 
     /// <inheritdoc />
     public bool HasActiveExplosions => _explosionSystem.HasActiveExplosions;
+
+    /// <summary>True if any ColorBomb session is still active.</summary>
+    public bool HasActiveColorBombSessions =>
+        _colorBombSessionManager != null && _colorBombSessionManager.HasActiveSessions;
+
+    /// <summary>
+    /// Update ColorBomb sessions (beam timing, re-scan, batch destruction).
+    /// </summary>
+    public void UpdateColorBombSessions(ref GameState state, float deltaTime, int tick, float simTime, IEventCollector events)
+    {
+        _colorBombSessionManager?.Update(ref state, deltaTime, tick, simTime, events);
+    }
 
     /// <summary>
     /// Gets the projectile system for direct access.

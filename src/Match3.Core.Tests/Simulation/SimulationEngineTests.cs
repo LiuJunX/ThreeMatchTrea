@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
@@ -739,17 +739,16 @@ public class SimulationEngineTests
 
         // Assert
         var allEvents = collector.GetEvents().ToList();
-        var eventSummary = string.Join(", ", allEvents.Select(e => e.GetType().Name).Distinct());
 
         // 1. 不应该有回退事件（彩球+普通是有效交换）
         var revertEvents = allEvents.OfType<TilesSwappedEvent>().Where(e => e.IsRevert).ToList();
         Assert.Empty(revertEvents);
 
-        // 2. 应该有蓝色方块被消除
+        // 2. 应该有蓝色方块被消除（彩球消除目标颜色的所有方块）
         var destroyedEvents = allEvents.OfType<TileDestroyedEvent>().ToList();
         var blueDestroyed = destroyedEvents.Where(e => e.Type == ElementType.Item3).ToList();
         Assert.True(blueDestroyed.Count >= 3,
-            $"彩球应消除蓝色方块，预期至少 3 个蓝色被消除，实际 {blueDestroyed.Count} 个。事件类型: {eventSummary}");
+            $"彩球应消除蓝色方块，预期至少 3 个蓝色被消除，实际 {blueDestroyed.Count} 个");
     }
 
     /// <summary>

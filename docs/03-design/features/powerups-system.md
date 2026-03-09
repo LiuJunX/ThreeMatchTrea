@@ -103,16 +103,18 @@ Match3.Core.Systems.PowerUps/
 □□□□□□□□
 ```
 
-### 4. 彩球 (ColorBombEffect)
+### 4. 彩球 (ColorBombEffect + ColorBombSession)
 
 **触发条件**: 5 连消生成
 
 **效果**: 消除棋盘上数量最多的颜色
 
 **颜色选择规则**:
-- 只统计普通颜色 (Red, Blue, Green, Yellow, Purple, Orange)
-- 忽略 Rainbow、Bomb、None 类型
-- 数量相同时选择先遍历到的颜色
+- 只统计普通颜色 (Item1-Item6)
+- 排除已被其他 ColorBomb 预约的颜色
+- 排除已锁定（Targeting）的格子中的 tile
+- 数量最多的颜色优先，相同时选先遍历到的
+- 如果所有颜色都被预约，彩球空转（不产生效果）
 
 ```
 示例 (红色 10 个，蓝色 5 个):
@@ -122,24 +124,79 @@ Match3.Core.Systems.PowerUps/
 □□□□□□□□
 ```
 
+#### 多 Tick 会话机制 (ColorBombSessionManager)
+
+单个彩球激活时路由到 `ColorBombSessionManager`，通过多 tick 会话实现延迟消除：
+
+```
+Match3.Core.Systems.PowerUps/ColorBomb/
+├── IColorBombSessionManager.cs    # 接口
+├── ColorBombSessionManager.cs     # 会话管理器
+├── ColorBombSession.cs            # 会话状态 + BeamTarget + Phase enum
+└── ColorBombConfig.cs             # 配置参数
+```
+
+**会话生命周期**:
+
+```
+Shooting → WaitingForBeams → BatchDestroy → Done
+   ↑
+   └── re-scan (最多 MaxReScans 次) ──┘
+```
+
+| 阶段 | 行为 |
+|------|------|
+| **Shooting** | 按固定间隔 (`BeamInterval`=0.12s) 随机顺序发射光束。每次发射锁定目标格子。发完后尝试 re-scan。 |
+| **WaitingForBeams** | 等待所有飞行中的光束到达。每 tick 检查外部销毁。 |
+| **BatchDestroy** | 彩球 + 所有存活目标同时销毁。释放所有锁、颜色预约。 |
+
+**配置参数** (`ColorBombConfig`):
+
+| 参数 | 默认值 | 含义 |
+|------|--------|------|
+| `BeamInterval` | 0.12s | 连续光束发射间隔 |
+| `BeamSpeed` | 24 格/秒 | 光束飞行速度 |
+| `MinFlightDuration` | 0.08s | 最短飞行时间 |
+| `MaxReScans` | 3 | 最大重扫次数 |
+
+**颜色预约机制**:
+- 会话创建时预约目标颜色（`_reservedColors`）
+- 其他彩球触发时跳过已预约颜色
+- 重扫停止后立即释放颜色（不等到 BatchDestroy）
+
+**格子锁定**:
+- 光束发射时对目标格子施加 `Drop|Swap|Matching|Targeting` 锁
+- 正在下落进入的 tile 不受影响（锁不含 Receive）
+- 外部销毁时立即释放对应锁
+- BatchDestroy 后释放所有剩余锁
+
+**UFO 交互**:
+- `UfoEffect.PickRemoteTarget()` 检查 `CellLockType.Targeting`，跳过被锁定格子
+- `UfoProjectile.FindBestTarget()` 同样检查，重定向时排除锁定目标
+
+**事件流**:
+
+| 事件 | 时机 | 数据 |
+|------|------|------|
+| `ColorBombSessionStartEvent` | 会话创建 | TileId, Position, TargetColor |
+| `ColorBombBeamLaunchedEvent` | 每条光束发射 | BombTileId, Origin, TargetPosition, FlightDuration, BeamIndex |
+| `ColorBombBatchDestroyEvent` | 批量销毁（在 TileDestroyedEvent 之前） | BombTileId, BombPosition, DestroyedPositions, DestroyedTileIds |
+| `TileDestroyedEvent` ×N | 每个目标 tile | Reason = BombEffect |
+
 #### 彩球视觉编排 (Choreography)
 
-点击触发时产生四阶段表演动画，交换触发时跳过蓄力阶段直接发射光束：
+**会话模式**（单独激活）— 三个事件驱动：
 
-| 阶段 | 效果类型 | 时序 | 视觉表现 |
-|------|----------|------|----------|
-| 1. 蓄力 | `ScaleTileCommand` + `MoveTileCommand` + `RotateTileCommand` | 触发即刻，持续 `ColorBombChargeDuration`(0.25s) | 彩球放大至 1.2x、向上弹跳 0.3 格、加速旋转(InQuadratic)，浮在其他元素之上 |
-| 2. 飞行光束 | `ColorBombBeam` 投射物 | 蓄力结束后按距离环分批发射 | 发光球体 + 彩色拖尾(6色彩虹循环)，从弹跳位置飞向目标，每环间隔 `ColorBombWaveInterval`(0.06s) |
-| 3. 命中星爆 | `color_bomb_hit` 粒子 + `explosion` 特效 | 光束到达后延迟 0.15s | 目标格子被消除，带爆裂视觉反馈 |
-| 4. 消失 | `ScaleTileCommand` + `RemoveTileCommand` | 所有光束到达后 | 彩球缩小至 0 后移除，格子解锁允许掉落 |
+| 事件 | RenderCommand | 视觉表现 |
+|------|---------------|----------|
+| `ColorBombSessionStartEvent` | ScaleTile + MoveTile + RotateTile + ShowEffect(bomb_flash) | 彩球放大 1.2x、弹跳、加速旋转、持续发光 |
+| `ColorBombBeamLaunchedEvent` | SpawnProjectile → MoveProjectile → ImpactProjectile → ShowEffect(color_bomb_hit) | 彩色光束飞向目标，到达后闪光 |
+| `ColorBombBatchDestroyEvent` | ScaleTile(→0) + RemoveTile | 彩球缩小消失，目标 tile 同步销毁 |
 
-**实现方式**：光束复用 Projectile 系统（`SpawnProjectileCommand` → `MoveProjectileCommand` →
-`ImpactProjectileCommand` → `RemoveProjectileCommand`），使用负 ID 避免与 Core 投射物冲突。
-飞行速度由 `ColorBombBeamSpeed`（默认 12 格/秒）控制。光束按 Chebyshev 距离环分批发射，
-每条光束携带 `ColorIndex`(0-5) 实现六色彩虹循环。`_beamHitTimes` 跨批次保留（因
-`BombActivatedEvent` 和 `TileDestroyedEvent` 分属不同 tick），在 `TilesSwappedEvent`
-（新回合边界）时清空防止泄漏。目标 tile 通过 hold `MoveTileCommand`(from=to) 保持
-`IsBeingAnimated=true`，防止 `SyncFallingTilesFromGameState` 提前回收。
+Choreographer 用 `_activeColorBombSessions` 字典跨批次追踪会话状态。
+`_beamHitTimes` 在 `BatchDestroyEvent` 中被统一为最晚光束到达时间，确保所有目标同步销毁。
+
+**组合模式**（交换触发）— 仍使用旧的 `BombActivatedEvent` + `EmitColorBombPerformance` 路径。
 
 ### 5. UFO (UfoEffect)
 
@@ -534,7 +591,8 @@ registry.Register(new CustomBombEffect());
 | BombEffectTests | 48 | 单个炸弹效果测试 |
 | BombComboTests | 25 | 组合炸弹测试 |
 | PowerUpHandlerTests | 18 | 集成测试（含连锁爆炸） |
-| **总计** | **91** | |
+| ColorBombSessionManagerTests | 23 | 会话系统测试（颜色预约、锁定、re-scan、外部销毁、批量销毁） |
+| **总计** | **114** | |
 
 ### 测试场景覆盖
 
@@ -547,6 +605,15 @@ registry.Register(new CustomBombEffect());
 - ✅ 效果确定性（多次调用相同结果）
 - ✅ 注册表功能
 - ✅ 递归连锁爆炸（二级、三级连锁）
+- ✅ 彩球会话：颜色预约与释放
+- ✅ 彩球会话：两个会话并发运行（不同颜色）
+- ✅ 彩球会话：格子锁定（Drop/Swap/Matching/Targeting）
+- ✅ 彩球会话：外部销毁（飞行中 + 已到达）
+- ✅ 彩球会话：re-scan 发现新目标 + 上限限制
+- ✅ 彩球会话：所有颜色被预约时空转
+- ✅ 彩球会话：Cover 吸收命中
+- ✅ 彩球会话：跳过下落中的 tile
+- ✅ 彩球会话：BatchDestroy 事件顺序（在 TileDestroyed 之前）
 
 ---
 
@@ -589,3 +656,4 @@ void Apply(in GameState state, Position origin, HashSet<Position> affectedTiles)
 | 1.1 | 2024-01 | 添加 BombComboHandler：10 种组合效果 |
 | 1.2 | 2024-01 | 彩球规则修正：单独激活消除最多颜色，手动交换消除指定颜色 |
 | 2.0 | 2026-03 | UFO 投射物系统重构：计时器飞行、动态重定向、锁定窗口、UfoConstants 共享常量 |
+| 3.0 | 2026-03 | 彩球多 tick 会话系统：颜色预约、随机顺序固定间隔光束、格子锁定、re-scan、批量销毁 |

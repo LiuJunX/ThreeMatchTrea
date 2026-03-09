@@ -68,4 +68,13 @@ public interface IEventVisitor
 
     /// <summary>Visit a level completed event.</summary>
     void Visit(LevelCompletedEvent evt);
+
+    /// <summary>Visit a color bomb session start event.</summary>
+    void Visit(ColorBombSessionStartEvent evt);
+
+    /// <summary>Visit a color bomb beam launched event.</summary>
+    void Visit(ColorBombBeamLaunchedEvent evt);
+
+    /// <summary>Visit a color bomb batch destroy event.</summary>
+    void Visit(ColorBombBatchDestroyEvent evt);
 }
