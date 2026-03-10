@@ -272,6 +272,12 @@ public sealed record UfoLaunchCommand : RenderCommand
 
     /// <summary>Fraction of duration to stay at origin (spin-up phase). 0.35 for initial launch, 0 for retarget.</summary>
     public float StayFraction { get; init; } = 0.35f;
+
+    /// <summary>
+    /// Optional quadratic Bezier control point for curved retarget paths.
+    /// Null for initial launches (straight-line path).
+    /// </summary>
+    public Vector2? MomentumControl { get; init; }
 }
 
 /// <summary>

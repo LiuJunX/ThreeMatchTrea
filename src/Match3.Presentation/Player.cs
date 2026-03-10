@@ -459,9 +459,25 @@ public sealed class Player
                     else
                         moveT = (t - stayFrac) / (arriveFrac - stayFrac);
 
-                    // Smoothstep
-                    float eased = moveT * moveT * (3f - 2f * moveT);
-                    var ufoPos = Vector2.Lerp(ufo.Origin, ufo.Target, eased);
+                    // Retarget segments: ease-out (full speed at entry, decelerate to land)
+                    // Initial launches: smoothstep (accelerate from origin, decelerate to target)
+                    float eased = ufo.MomentumControl.HasValue
+                        ? 1f - (1f - moveT) * (1f - moveT)  // ease-out quadratic
+                        : moveT * moveT * (3f - 2f * moveT); // smoothstep
+
+                    Vector2 ufoPos;
+                    if (ufo.MomentumControl.HasValue)
+                    {
+                        // Quadratic Bezier: P0=Origin, P1=Control, P2=Target
+                        float inv = 1f - eased;
+                        ufoPos = inv * inv * ufo.Origin
+                               + 2f * inv * eased * ufo.MomentumControl.Value
+                               + eased * eased * ufo.Target;
+                    }
+                    else
+                    {
+                        ufoPos = Vector2.Lerp(ufo.Origin, ufo.Target, eased);
+                    }
                     _visualState.SetTilePosition(ufo.TileId, ufoPos);
                 }
                 break;
@@ -640,7 +656,18 @@ public sealed class Player
                     moveT = (t - stayFrac) / (arriveFrac - stayFrac);
 
                 float eased = moveT * moveT * (3f - 2f * moveT);
-                var currentPos = Vector2.Lerp(cmd.Origin, cmd.Target, eased);
+                Vector2 currentPos;
+                if (cmd.MomentumControl.HasValue)
+                {
+                    float inv = 1f - eased;
+                    currentPos = inv * inv * cmd.Origin
+                               + 2f * inv * eased * cmd.MomentumControl.Value
+                               + eased * eased * cmd.Target;
+                }
+                else
+                {
+                    currentPos = Vector2.Lerp(cmd.Origin, cmd.Target, eased);
+                }
 
                 // Release animation ref for old command
                 MarkTilesAnimating(activeUfo, false);
@@ -652,12 +679,25 @@ public sealed class Player
                     ? visualDistance / UfoConstants.FlightSpeed
                     : 0.01f;
 
+                // Momentum control point: extend old flight direction to create a curved path.
+                // Strength scales with how opposed the new direction is to the old.
+                var oldDirVec = cmd.Target - cmd.Origin;
+                float oldLen = oldDirVec.Length();
+                Vector2? momentum = null;
+                if (oldLen > 1e-4f && visualDistance > 1e-4f)
+                {
+                    var oldNorm = oldDirVec / oldLen;
+                    float strength = UfoConstants.MomentumStrength(oldDirVec, retarget.NewTarget - currentPos);
+                    momentum = currentPos + oldNorm * strength;
+                }
+
                 // Create new UfoLaunchCommand for the retarget segment
                 var newCmd = new UfoLaunchCommand
                 {
                     TileId = retarget.TileId,
                     Origin = currentPos,
                     Target = retarget.NewTarget,
+                    MomentumControl = momentum,
                     StayFraction = 0f, // No spin-up for retarget
                     StartTime = retargetTime,
                     Duration = newDuration

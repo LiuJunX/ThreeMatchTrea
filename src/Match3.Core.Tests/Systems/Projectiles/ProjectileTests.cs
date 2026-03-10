@@ -458,6 +458,64 @@ public class UfoProjectileTests
 
     #endregion
 
+    #region MomentumStrength Tests
+
+    [Fact]
+    public void MomentumStrength_SameDirection_ReturnsZero()
+    {
+        var dir = new Vector2(1, 0);
+        float strength = UfoConstants.MomentumStrength(dir, dir);
+        Assert.Equal(0f, strength, 0.001f);
+    }
+
+    [Fact]
+    public void MomentumStrength_OppositeDirection_ReturnsMaximum()
+    {
+        var oldDir = new Vector2(1, 0);
+        var newDir = new Vector2(-1, 0);
+        float strength = UfoConstants.MomentumStrength(oldDir, newDir);
+        // dot=-1 → MomentumBase * 1.0 + MomentumReverseBonus * 1.0
+        float expected = UfoConstants.MomentumBase + UfoConstants.MomentumReverseBonus;
+        Assert.Equal(expected, strength, 0.001f);
+    }
+
+    [Fact]
+    public void MomentumStrength_Perpendicular_ReturnsMidValue()
+    {
+        var oldDir = new Vector2(1, 0);
+        var newDir = new Vector2(0, 1);
+        float strength = UfoConstants.MomentumStrength(oldDir, newDir);
+        // dot=0 → MomentumBase * 0.5 + 0
+        float expected = UfoConstants.MomentumBase * 0.5f;
+        Assert.Equal(expected, strength, 0.001f);
+    }
+
+    [Fact]
+    public void MomentumStrength_ZeroVector_ReturnsZero()
+    {
+        Assert.Equal(0f, UfoConstants.MomentumStrength(Vector2.Zero, new Vector2(1, 0)));
+        Assert.Equal(0f, UfoConstants.MomentumStrength(new Vector2(1, 0), Vector2.Zero));
+    }
+
+    [Fact]
+    public void MomentumStrength_ScalesMonotonically_FromSameToOpposite()
+    {
+        var oldDir = new Vector2(1, 0);
+        // 0°, 45°, 90°, 135°, 180°
+        float s0 = UfoConstants.MomentumStrength(oldDir, new Vector2(1, 0));
+        float s45 = UfoConstants.MomentumStrength(oldDir, new Vector2(0.707f, 0.707f));
+        float s90 = UfoConstants.MomentumStrength(oldDir, new Vector2(0, 1));
+        float s135 = UfoConstants.MomentumStrength(oldDir, new Vector2(-0.707f, 0.707f));
+        float s180 = UfoConstants.MomentumStrength(oldDir, new Vector2(-1, 0));
+
+        Assert.True(s0 < s45, $"same < 45°: {s0} < {s45}");
+        Assert.True(s45 < s90, $"45° < 90°: {s45} < {s90}");
+        Assert.True(s90 < s135, $"90° < 135°: {s90} < {s135}");
+        Assert.True(s135 < s180, $"135° < 180°: {s135} < {s180}");
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private GameState CreateTestState()

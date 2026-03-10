@@ -234,8 +234,10 @@ UFO 的远程打击通过 `ProjectileSystem` 实现真正的延迟销毁：
 | 常量 | 值 | 含义 |
 |------|---|------|
 | `LaunchOverhead` | 0.6s | 起飞+着陆固定开销 |
-| `FlightSpeed` | 2 格/秒 | 巡航速度 |
+| `FlightSpeed` | 3.9 格/秒 | 巡航速度 |
 | `LockInTime` | 0.3s | 锁定窗口（见下文） |
+| `MomentumBase` | 0.8 格 | 变向时 Bezier 控制点基础距离 |
+| `MomentumReverseBonus` | 0.7 格 | 反向变向时额外控制点距离 |
 
 #### 动态重定向 (Dynamic Retargeting)
 
@@ -247,6 +249,11 @@ UFO 的远程打击通过 `ProjectileSystem` 实现真正的延迟销毁：
 **重定向后位置连续性**: `_phaseStartTime` 字段在重定向时重置，确保进度从 0 重新计算，
 避免从旧时间线计算出错误的 65%+ 进度导致位置跳变。
 
+**惯性弯弧 (Momentum Curve)**: 重定向段的视觉路径使用二次 Bezier 曲线，控制点沿旧飞行方向延伸。
+`MomentumStrength(oldDir, newDir)` 根据方向夹角计算控制点距离：
+同向→几乎直线（0 格），垂直→温和弯弧（0.4 格），反向→大弧 U 形转弯（1.5 格）。
+配合 ease-out 缓动（起点全速、终点减速），UFO 以当前速度自然弯入新航线，无顿感。
+
 #### UFO 视觉编排 (Choreography)
 
 | 事件 | RenderCommand | 说明 |
@@ -256,7 +263,8 @@ UFO 的远程打击通过 `ProjectileSystem` 实现真正的延迟销毁：
 | `ProjectileRetargetedEvent` | `UfoRetargetCommand` | Player 替换飞行段（StayFraction=0） |
 | `ProjectileImpactEvent` | `RemoveTileCommand` + `ShowEffectCommand` | 移除 UFO tile + 撞击特效 |
 
-Player 使用 smoothstep 插值飞行路径，重定向时从实际视觉位置重新计算飞行时长，
+Player 使用 smoothstep 插值初始飞行路径。重定向段改用 Bezier 曲线 + ease-out 缓动，
+`UfoLaunchCommand.MomentumControl` 携带控制点，Player 从实际视觉位置重新计算飞行时长，
 确保速度恒定（`UfoConstants.FlightSpeed`）。
 
 ---
