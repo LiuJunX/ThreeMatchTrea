@@ -16,7 +16,7 @@ namespace Match3.Core.Systems.PowerUps;
 /// - 方块炸弹 + 方块炸弹 = 9x9
 /// - 方块炸弹 + UFO = 起飞前小十字，落地后消除5x5
 /// - 方块炸弹 + 彩球 = 最多颜色全变3x3炸弹并爆炸
-/// - UFO + UFO = 两个原地小十字 + 飞出3个UFO
+/// - UFO + UFO = 两个原地小十字 + 飞出3个UFO飞弹（由ProjectileSystem处理）
 /// - UFO + 彩球 = 最多颜色全变UFO并起飞
 /// - 彩球 + 彩球 = 全屏消除
 /// </summary>
@@ -221,7 +221,8 @@ public class BombComboHandler
     }
 
     /// <summary>
-    /// UFO + UFO = 两个小十字 + 3个UFO
+    /// UFO + UFO = 两个小十字 + 飞出3个UFO飞弹
+    /// 远程目标由 PowerUpHandler 通过 ProjectileSystem 发射，不在此处即时消除。
     /// </summary>
     private void ApplyUfoPlusUfo(ref GameState state, Position p1, Position p2, HashSet<Position> affected)
     {
@@ -229,15 +230,7 @@ public class BombComboHandler
         ApplySmallCross(state, p1, affected);
         ApplySmallCross(state, p2, affected);
 
-        // 飞出3个UFO，各击中1个随机目标
-        for (int i = 0; i < 3; i++)
-        {
-            var target = GetRandomTarget(ref state, p1, affected);
-            if (target.HasValue)
-            {
-                affected.Add(target.Value);
-            }
-        }
+        // 远程目标由 ProjectileSystem 发射 UfoProjectile 处理（延迟命中 + 动态追踪）
     }
 
     /// <summary>
@@ -249,6 +242,8 @@ public class BombComboHandler
         {
             for (int x = 0; x < state.Width; x++)
             {
+                if (state.IsVoid(x, y)) continue;
+                if (state.GetTile(x, y).Type == ElementType.None) continue;
                 affected.Add(new Position(x, y));
             }
         }

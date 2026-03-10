@@ -103,12 +103,26 @@ public class PowerUpHandler : IPowerUpHandler
                 if (isDoubleColorBomb && _explosionSystem != null)
                 {
                     // Use p2 as origin (swap destination), slow wave for dramatic effect
-                    _explosionSystem.CreateTargetedExplosion(ref state, p2, affected, 0.08f, 0.85f);
+                    _explosionSystem.CreateTargetedExplosion(ref state, p2, affected,
+                        DoubleColorBombConstants.WipeInterval, DoubleColorBombConstants.WipeAcceleration);
                 }
                 else
                 {
+                    // NOTE: Without ExplosionSystem, tiles are destroyed instantly in one tick.
+                    // The Choreographer still emits 4-phase wipe animation from BombComboEvent,
+                    // causing a visual/logic desync. Production always has ExplosionSystem;
+                    // this path exists only for backward-compatible test fallback.
                     ClearAffectedTiles(ref state, affected, tick, simTime, events);
                 }
+
+                // UFO + UFO: launch projectiles for remote targets
+                // ClearBombAttribute preserved tile IDs (set to None), so Choreographer
+                // can animate the existing tile visuals flying to their targets.
+                if (t1.Type == ElementType.Ufo && t2.Type == ElementType.Ufo && _projectileSystem != null)
+                {
+                    LaunchUfoComboProjectiles(ref state, t1.Id, t2.Id, p1, p2, tick, simTime, events);
+                }
+
                 return;
             }
         }
@@ -132,8 +146,9 @@ public class PowerUpHandler : IPowerUpHandler
         var t = state.GetTile(p.X, p.Y);
         if (!t.Type.IsBomb()) return;
 
-        // ColorBomb with session manager: route to multi-tick session
-        if (t.Type == ElementType.ColorBomb && _colorBombSessionManager != null)
+        // ColorBomb with session manager: route to multi-tick session (player-initiated only).
+        // Chain reactions bypass the session to avoid conflicts with the active explosion.
+        if (t.Type == ElementType.ColorBomb && _colorBombSessionManager != null && !isChainReaction)
         {
             int bombTileId = t.Id;
             ClearBombAttribute(ref state, p);
@@ -240,6 +255,47 @@ public class PowerUpHandler : IPowerUpHandler
     public IPowerUpHandler WithProjectileSystem(IProjectileSystem? projectileSystem)
     {
         return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, projectileSystem, _colorBombSessionManager);
+    }
+
+    /// <summary>
+    /// Launch 3 UFO projectiles for UFO+UFO combo.
+    /// First 2 reuse the original UFO tile visuals; 3rd spawns a new visual.
+    /// </summary>
+    private void LaunchUfoComboProjectiles(
+        ref GameState state, int tileId1, int tileId2,
+        Position p1, Position p2,
+        int tick, float simTime, IEventCollector events)
+    {
+        // UFO 1: from p1 (reuses existing tile visual)
+        var target1 = UfoEffect.PickRemoteTarget(in state, p1);
+        if (target1.HasValue)
+        {
+            var proj = new UfoProjectile(
+                _projectileSystem!.GenerateProjectileId(), p1, target1.Value)
+            { SourceTileId = tileId1 };
+            _projectileSystem.Launch(proj, tick, simTime, events);
+        }
+
+        // UFO 2: from p2 (reuses existing tile visual)
+        var target2 = UfoEffect.PickRemoteTarget(in state, p2);
+        if (target2.HasValue)
+        {
+            var proj = new UfoProjectile(
+                _projectileSystem!.GenerateProjectileId(), p2, target2.Value)
+            { SourceTileId = tileId2 };
+            _projectileSystem.Launch(proj, tick, simTime, events);
+        }
+
+        // UFO 3: from p1 (spawns a new tile visual via Choreographer)
+        var target3 = UfoEffect.PickRemoteTarget(in state, p1);
+        if (target3.HasValue)
+        {
+            int syntheticTileId = state.NextTileId++;
+            var proj = new UfoProjectile(
+                _projectileSystem!.GenerateProjectileId(), p1, target3.Value)
+            { SourceTileId = syntheticTileId, SpawnVisual = true };
+            _projectileSystem.Launch(proj, tick, simTime, events);
+        }
     }
 
     /// <summary>
