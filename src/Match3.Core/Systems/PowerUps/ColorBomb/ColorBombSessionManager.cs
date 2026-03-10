@@ -20,6 +20,7 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
     private readonly ICoverSystem _coverSystem;
     private readonly IGroundSystem _groundSystem;
     private readonly ILevelObjectiveSystem? _objectiveSystem;
+    private readonly LockScheduler? _lockScheduler;
     private readonly List<ColorBombSession> _sessions = new();
     private readonly HashSet<ElementType> _reservedColors = new();
     private int _nextSessionId;
@@ -35,12 +36,14 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
     public ColorBombSessionManager(ColorBombConfig? config = null,
         ICoverSystem? coverSystem = null,
         IGroundSystem? groundSystem = null,
-        ILevelObjectiveSystem? objectiveSystem = null)
+        ILevelObjectiveSystem? objectiveSystem = null,
+        LockScheduler? lockScheduler = null)
     {
         _config = config ?? new ColorBombConfig();
         _coverSystem = coverSystem ?? new CoverSystem();
         _groundSystem = groundSystem ?? new GroundSystem();
         _objectiveSystem = objectiveSystem;
+        _lockScheduler = lockScheduler;
     }
 
     public bool HasActiveSessions => _sessions.Count > 0;
@@ -290,8 +293,16 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
         target.ElapsedTime = 0f;
 
         // Lock the target cell
-        var token = state.AcquireLock(target.Position.X, target.Position.Y, BeamTargetLock);
-        session.LockTokens.Add(token);
+        if (_lockScheduler != null)
+        {
+            var token = _lockScheduler.Acquire(ref state, target.Position, BeamTargetLock);
+            session.LockTokens.Add(token);
+        }
+        else
+        {
+            state.Lock(target.Position, BeamTargetLock);
+            session.LockedPositions.Add(target.Position);
+        }
 
         session.ActiveBeams.Add(target);
 
@@ -452,15 +463,18 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
         }
 
         // Release all remaining locks
-        foreach (var token in session.LockTokens)
+        if (_lockScheduler != null)
         {
-            // Only release if the lock is still held (check ref-count > 0)
-            if (CellLockOps.AllLockedAboveZero(state.CellLocks[token.CellIndex], token.Types))
-            {
-                state.ReleaseLock(token);
-            }
+            foreach (var token in session.LockTokens)
+                _lockScheduler.Release(ref state, token);
+            session.LockTokens.Clear();
         }
-        session.LockTokens.Clear();
+        else
+        {
+            foreach (var pos in session.LockedPositions)
+                state.Unlock(pos, BeamTargetLock);
+            session.LockedPositions.Clear();
+        }
         session.ArrivedTargets.Clear();
 
         // Release color if still reserved (shouldn't be, but safety)
@@ -478,19 +492,23 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
 
     private void ReleaseLockForPosition(ref GameState state, ColorBombSession session, Position pos)
     {
-        int cellIndex = pos.Y * state.Width + pos.X;
-        for (int i = session.LockTokens.Count - 1; i >= 0; i--)
+        if (_lockScheduler != null)
         {
-            if (session.LockTokens[i].CellIndex == cellIndex)
+            int cellIndex = state.Index(pos);
+            for (int i = session.LockTokens.Count - 1; i >= 0; i--)
             {
-                var token = session.LockTokens[i];
-                if (CellLockOps.AllLockedAboveZero(state.CellLocks[token.CellIndex], token.Types))
+                if (session.LockTokens[i].CellIndex == cellIndex)
                 {
-                    state.ReleaseLock(token);
+                    _lockScheduler.Release(ref state, session.LockTokens[i]);
+                    session.LockTokens.RemoveAt(i);
+                    break;
                 }
-                session.LockTokens.RemoveAt(i);
-                break;
             }
+        }
+        else
+        {
+            if (session.LockedPositions.Remove(pos))
+                state.Unlock(pos, BeamTargetLock);
         }
     }
 

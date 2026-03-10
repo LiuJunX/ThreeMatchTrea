@@ -1156,7 +1156,7 @@ public class ColorBombSessionManagerTests
 
     private ColorBombSessionManager CreateManager()
     {
-        return new ColorBombSessionManager(_config);
+        return new ColorBombSessionManager(_config, lockScheduler: new LockScheduler());
     }
 
     private static GameState CreateState(int width, int height)

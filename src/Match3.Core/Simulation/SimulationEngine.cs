@@ -629,7 +629,7 @@ public sealed class SimulationEngine : IDisposable
         var cloneGround = new GroundSystem(_objectiveSystem);
         var cloneExplosion = new ExplosionSystem(cloneCover, cloneGround, _objectiveSystem, cloneLocks);
         var cloneProjectile = new ProjectileSystem();
-        var cloneColorBomb = new ColorBombSessionManager(null, cloneCover, cloneGround, _objectiveSystem);
+        var cloneColorBomb = new ColorBombSessionManager(null, cloneCover, cloneGround, _objectiveSystem, cloneLocks);
         var clonePowerUp = _powerUpHandler.WithExplosionSystem(cloneExplosion).WithProjectileSystem(cloneProjectile);
 
         // Shared stateless systems: _matchFinder, _matchProcessor, _deadlockDetector,
