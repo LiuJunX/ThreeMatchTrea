@@ -19,7 +19,7 @@ namespace Match3.Core.Tests.Systems.PowerUps;
 /// - 方块炸弹 + 方块炸弹 = 9x9
 /// - 方块炸弹 + UFO = 起飞前小十字，落地后消除5x5
 /// - 方块炸弹 + 彩球 = 最多颜色全变3x3炸弹并爆炸
-/// - UFO + UFO = 两个原地小十字 + 飞出3个UFO
+/// - UFO + UFO = 两个原地小十字 + 飞出3个UFO飞弹（由ProjectileSystem处理）
 /// - UFO + 彩球 = 最多颜色全变UFO并起飞
 /// - 彩球 + 彩球 = 全屏消除
 /// </summary>
@@ -505,15 +505,13 @@ public class BombComboTests
 
     #endregion
 
-    #region UFO + UFO = 两个小十字 + 3个UFO
+    #region UFO + UFO = 两个小十字 + 3个UFO飞弹（远程目标由ProjectileSystem处理）
 
     [Fact]
-    public void UfoPlusUfo_CreatesTwoSmallCrossesAndThreeUfos()
+    public void UfoPlusUfo_CreatesTwoSmallCrosses_RemoteTargetsDeferredToProjectiles()
     {
         // Arrange
-        var rng = new StubRandom();
-        rng.EnqueueValues(10, 20, 30); // 3个UFO的随机目标
-        var state = CreateFilledState(rng: rng);
+        var state = CreateFilledState();
         var combo = new BombComboHandler();
         var p1 = new Position(2, 4);
         var p2 = new Position(5, 4);
@@ -525,18 +523,21 @@ public class BombComboTests
         var affected = new HashSet<Position>();
         combo.ApplyCombo(ref state, p1, p2, affected);
 
-        // Assert:
-        // 两个小十字: 最多10格（可能重叠）
-        // 3个UFO各击中1个随机目标: 3格
-        Assert.True(affected.Count >= 10); // 至少两个小十字
+        // Assert: 两个小十字 = 10格（p1和p2相距3格，无重叠）
+        // 远程目标不再在affected中（由ProjectileSystem发射）
+        Assert.Equal(10, affected.Count);
 
         // 验证两个UFO中心的小十字
         Assert.Contains(p1, affected);
         Assert.Contains(p2, affected);
         Assert.Contains(new Position(p1.X - 1, p1.Y), affected); // p1左
         Assert.Contains(new Position(p1.X + 1, p1.Y), affected); // p1右
+        Assert.Contains(new Position(p1.X, p1.Y - 1), affected); // p1上
+        Assert.Contains(new Position(p1.X, p1.Y + 1), affected); // p1下
         Assert.Contains(new Position(p2.X - 1, p2.Y), affected); // p2左
         Assert.Contains(new Position(p2.X + 1, p2.Y), affected); // p2右
+        Assert.Contains(new Position(p2.X, p2.Y - 1), affected); // p2上
+        Assert.Contains(new Position(p2.X, p2.Y + 1), affected); // p2下
     }
 
     #endregion

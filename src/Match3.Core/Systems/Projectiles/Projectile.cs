@@ -58,6 +58,12 @@ public abstract class Projectile
     public int? SourceTileId { get; set; }
 
     /// <summary>
+    /// When true, the Choreographer spawns a new tile visual for this projectile
+    /// (used for combo-spawned UFOs that have no pre-existing tile on the board).
+    /// </summary>
+    public bool SpawnVisual { get; set; }
+
+    /// <summary>
     /// Update projectile physics for one tick.
     /// </summary>
     /// <param name="state">Current game state.</param>

@@ -28,7 +28,6 @@ namespace Match3.Unity.Bridge
 
         /// <summary>
         /// Pending fly requests from the last Process() call.
-        /// Used by CellLockManager to adjust lock durations.
         /// </summary>
         public IReadOnlyList<Match3Bridge.FlyCollectionRequest> PendingFlies => _pendingFlies;
 

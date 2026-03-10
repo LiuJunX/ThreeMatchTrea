@@ -29,6 +29,9 @@ public sealed record ProjectileLaunchedEvent : GameEvent
     /// <summary>Source tile ID that spawned this projectile (for visual linking).</summary>
     public int? SourceTileId { get; init; }
 
+    /// <summary>When true, Choreographer spawns a new tile visual for this projectile.</summary>
+    public bool SpawnVisual { get; init; }
+
     /// <inheritdoc />
     public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }

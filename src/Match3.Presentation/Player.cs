@@ -425,6 +425,12 @@ public sealed class Player
                 _visualState.SetTileRotation(rotateCmd.TileId, angle);
                 break;
 
+            case ShakeTileCommand shake:
+                float elapsed = t * shake.Duration;
+                float s = 1f + shake.Amplitude * (float)Math.Sin(elapsed * shake.Frequency * Math.PI * 2);
+                _visualState.SetTileScale(shake.TileId, new Vector2(s, s));
+                break;
+
             case SpawnProjectileCommand spawnProj:
                 // Takeoff animation - arc upward
                 float arcProgress = (float)Math.Sin(t * Math.PI);
@@ -518,6 +524,10 @@ public sealed class Player
                 _visualState.SetTileRotation(rotateCmd.TileId, rotateCmd.ToAngle);
                 break;
 
+            case ShakeTileCommand shake:
+                _visualState.SetTileScale(shake.TileId, Vector2.One);
+                break;
+
             case ImpactProjectileCommand impact:
                 _visualState.SetProjectileVisible(impact.ProjectileId, false);
                 break;
@@ -604,6 +614,17 @@ public sealed class Player
                         rTile.AddAnimationRef();
                     else
                         rTile.ReleaseAnimationRef();
+                }
+                break;
+
+            case ShakeTileCommand shakeTile:
+                var shTile = _visualState.GetTile(shakeTile.TileId);
+                if (shTile != null)
+                {
+                    if (isStarting)
+                        shTile.AddAnimationRef();
+                    else
+                        shTile.ReleaseAnimationRef();
                 }
                 break;
 
