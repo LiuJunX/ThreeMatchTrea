@@ -28,11 +28,24 @@ public class Explosion
     /// </summary>
     public HashSet<Position> AffectedArea;
 
+    /// <summary>
+    /// Lock tokens acquired for suspended tiles. Released when wave processes the tile.
+    /// </summary>
+    public List<LockToken> LockTokens;
+
+    /// <summary>
+    /// Positions that were actually locked by this explosion (used for null-scheduler path).
+    /// Prevents spurious unlock of cells that were empty at creation time.
+    /// </summary>
+    public HashSet<Position> LockedPositions;
+
     public bool IsFinished => CurrentWaveRadius > MaxRadius;
 
     public Explosion()
     {
         AffectedArea = Pools.ObtainHashSet<Position>();
+        LockTokens = Pools.ObtainList<LockToken>();
+        LockedPositions = Pools.ObtainHashSet<Position>();
     }
 
     public void Initialize(Position origin, int radius, float interval, float acceleration = 1f)
@@ -44,15 +57,14 @@ public class Explosion
         CurrentWaveRadius = 0;
         Timer = 0f;
         AffectedArea.Clear();
+        LockTokens.Clear();
+        LockedPositions.Clear();
     }
 
     public void Release()
     {
         AffectedArea.Clear();
-        // We don't release the HashSet itself back to the pool here because the Explosion object itself 
-        // might be pooled or reused, and it keeps the reference.
-        // If Explosion is pooled, we just clear the set.
-        // If Explosion is NOT pooled (GC'd), we should release the set.
-        // For now, let's assume Explosion is reused or we release the set manually.
+        LockTokens.Clear();
+        LockedPositions.Clear();
     }
 }

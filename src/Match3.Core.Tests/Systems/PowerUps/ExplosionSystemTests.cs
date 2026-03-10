@@ -47,18 +47,17 @@ public class ExplosionSystemTests : IDisposable
         {
             for (int x = 0; x < 10; x++)
             {
-                var tile = state.GetTile(x, y);
                 // Chebyshev distance
                 int dist = Math.Max(Math.Abs(x - origin.X), Math.Abs(y - origin.Y));
                 bool inRange = dist <= radius;
-                
+
                 if (inRange)
                 {
-                    Assert.True(tile.IsSuspended, $"Tile at {x},{y} should be suspended");
+                    Assert.True(state.IsLocked(x, y, CellLockType.Drop), $"Tile at {x},{y} should be suspended");
                 }
                 else
                 {
-                    Assert.False(tile.IsSuspended, $"Tile at {x},{y} should NOT be suspended");
+                    Assert.False(state.IsLocked(x, y, CellLockType.Drop), $"Tile at {x},{y} should NOT be suspended");
                 }
             }
         }
@@ -97,7 +96,7 @@ public class ExplosionSystemTests : IDisposable
         // Wave 2 should still be suspended
         var wave2Pos = new Position(3, 5); // Distance 2
         Assert.NotEqual(ElementType.None, state.GetTile(wave2Pos.X, wave2Pos.Y).Type);
-        Assert.True(state.GetTile(wave2Pos.X, wave2Pos.Y).IsSuspended);
+        Assert.True(state.IsLocked(wave2Pos.X, wave2Pos.Y, CellLockType.Drop));
 
         // Act 3: Third Update (Wave 2)
         _sut.Update(ref state, deltaTime, tick + 2, simTime + 0.2f, _eventCollector, triggeredBombs);
@@ -131,7 +130,7 @@ public class ExplosionSystemTests : IDisposable
         Assert.Empty(triggeredBombs);
         var tileBefore = state.GetTile(bombPos.X, bombPos.Y);
         Assert.Equal(ElementType.HorizontalRocket, tileBefore.Type);
-        Assert.True(tileBefore.IsSuspended); // Should be suspended
+        Assert.True(state.IsLocked(bombPos.X, bombPos.Y, CellLockType.Drop)); // Should be suspended
 
         // Act 2: Wave 1 (Hits bomb)
         _sut.Update(ref state, 0.1f, 2, 1.1f, _eventCollector, triggeredBombs);
@@ -143,7 +142,7 @@ public class ExplosionSystemTests : IDisposable
         Assert.Equal(ElementType.HorizontalRocket, tileAfter.Type);
         Assert.NotEqual(ElementType.None, tileAfter.Type);
         // Suspended flag is cleared when bomb is triggered (BombActivationSystem will handle it)
-        Assert.False(tileAfter.IsSuspended);
+        Assert.False(state.IsLocked(bombPos.X, bombPos.Y, CellLockType.Drop));
     }
 
     [Fact]
@@ -155,7 +154,7 @@ public class ExplosionSystemTests : IDisposable
         _sut.CreateExplosion(ref state, origin, 1);
         
         // Verify suspended initially
-        Assert.True(state.GetTile(5, 5).IsSuspended);
+        Assert.True(state.IsLocked(5, 5, CellLockType.Drop));
 
         // Act
         _sut.Update(ref state, 0.1f, 1, 1f, _eventCollector, new List<Position>());
@@ -163,7 +162,7 @@ public class ExplosionSystemTests : IDisposable
         // Assert
         var tile = state.GetTile(5, 5);
         Assert.Equal(ElementType.None, tile.Type);
-        Assert.False(tile.IsSuspended); // Default Tile has IsSuspended = false
+        Assert.False(state.IsLocked(5, 5, CellLockType.Drop)); // Default cell has no Drop lock
     }
 
     private GameState CreateGameState(int width, int height)

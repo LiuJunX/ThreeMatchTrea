@@ -12,15 +12,6 @@ public struct Tile
     public int Id;
 
     /// <summary>
-    /// Whether tile is suspended (gravity ignored). Backward compatible property.
-    /// </summary>
-    public bool IsSuspended
-    {
-        get => (State & TileState.Suspended) != 0;
-        set => State = value ? State | TileState.Suspended : State & ~TileState.Suspended;
-    }
-
-    /// <summary>
     /// Whether tile is currently falling. Backward compatible property.
     /// </summary>
     public bool IsFalling

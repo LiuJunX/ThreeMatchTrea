@@ -1,0 +1,2071 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LockScheduler 机制可视化</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  background: #0f0f1a;
+  color: #e0e0e0;
+  overflow-x: hidden;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+h1 {
+  text-align: center;
+  font-size: 28px;
+  margin: 20px 0 10px;
+  color: #fff;
+}
+
+.subtitle {
+  text-align: center;
+  color: #888;
+  margin-bottom: 30px;
+  font-size: 14px;
+}
+
+/* Scene navigation */
+.scene-nav {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.scene-nav button {
+  padding: 10px 20px;
+  border: 2px solid #333;
+  background: #1a1a2e;
+  color: #aaa;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.scene-nav button:hover { border-color: #555; color: #fff; }
+.scene-nav button.active {
+  border-color: #4fc3f7;
+  color: #4fc3f7;
+  background: #1a2a3e;
+}
+
+/* Scene container */
+.scene {
+  display: none;
+  animation: fadeIn 0.4s ease;
+}
+
+.scene.active { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Layout */
+.scene-layout {
+  display: flex;
+  gap: 30px;
+  align-items: flex-start;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Board area */
+.board-area {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.board-label {
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.board {
+  position: relative;
+  background: #1a1a2e;
+  border-radius: 12px;
+  border: 2px solid #2a2a3e;
+  overflow: hidden;
+}
+
+.cell {
+  position: absolute;
+  border: 1px solid #2a2a3e;
+  border-radius: 4px;
+  transition: border-color 0.3s, box-shadow 0.3s, background 0.3s;
+  cursor: default;
+}
+
+.cell.locked {
+  background: rgba(255, 80, 80, 0.08);
+  border-color: #ff5050;
+  box-shadow: inset 0 0 8px rgba(255, 80, 80, 0.15);
+}
+
+.cell.locked-glow {
+  background: rgba(255, 80, 80, 0.15);
+  border-color: #ff5050;
+  box-shadow: inset 0 0 12px rgba(255, 80, 80, 0.3), 0 0 6px rgba(255, 80, 80, 0.2);
+}
+
+.cell .lock-icon {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-size: 10px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.cell.locked .lock-icon,
+.cell.locked-glow .lock-icon { opacity: 0.7; }
+
+.cell .ref-count {
+  position: absolute;
+  bottom: 2px;
+  left: 4px;
+  font-size: 11px;
+  font-family: 'Consolas', monospace;
+  color: #ff5050;
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-weight: bold;
+}
+
+.cell.locked .ref-count,
+.cell.locked-glow .ref-count { opacity: 1; }
+
+.cell.clickable {
+  cursor: pointer;
+}
+
+.cell.clickable:hover {
+  border-color: #4fc3f7;
+  box-shadow: inset 0 0 8px rgba(79, 195, 247, 0.15);
+}
+
+.tile {
+  position: absolute;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 18px;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  transition: none;
+  z-index: 2;
+}
+
+.tile.color-red { background: linear-gradient(135deg, #e53935, #c62828); box-shadow: 0 2px 8px rgba(229,57,53,0.4); }
+.tile.color-blue { background: linear-gradient(135deg, #42a5f5, #1565c0); box-shadow: 0 2px 8px rgba(66,165,245,0.4); }
+.tile.color-green { background: linear-gradient(135deg, #66bb6a, #2e7d32); box-shadow: 0 2px 8px rgba(102,187,106,0.4); }
+.tile.color-yellow { background: linear-gradient(135deg, #fdd835, #f9a825); box-shadow: 0 2px 8px rgba(253,216,53,0.4); }
+.tile.color-purple { background: linear-gradient(135deg, #ab47bc, #7b1fa2); box-shadow: 0 2px 8px rgba(171,71,188,0.4); }
+.tile.color-bomb {
+  background: linear-gradient(135deg, #37474f, #263238);
+  box-shadow: 0 2px 12px rgba(255,193,7,0.5);
+  border: 2px solid #ffc107;
+}
+
+/* Explanation panel */
+.explanation {
+  margin-top: 20px;
+  background: #1a1a2e;
+  border: 2px solid #2a2a3e;
+  border-radius: 12px;
+  padding: 20px;
+  min-height: 80px;
+}
+
+.explanation h3 {
+  font-size: 15px;
+  color: #4fc3f7;
+  margin-bottom: 8px;
+}
+
+.explanation p {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #ccc;
+}
+
+.explanation code {
+  background: #2a2a3e;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Consolas', monospace;
+  font-size: 13px;
+  color: #ffc107;
+}
+
+.explanation .highlight {
+  color: #4fc3f7;
+  font-weight: bold;
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.controls button {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: #4fc3f7;
+  color: #0f0f1a;
+  font-weight: bold;
+}
+.btn-primary:hover { background: #81d4fa; }
+.btn-primary:disabled { background: #333; color: #666; cursor: not-allowed; }
+
+.btn-secondary {
+  background: #2a2a3e;
+  color: #aaa;
+  border: 1px solid #333 !important;
+}
+.btn-secondary:hover { background: #333; color: #fff; }
+
+.btn-danger {
+  background: #e53935;
+  color: #fff;
+  font-weight: bold;
+}
+.btn-danger:hover { background: #ef5350; }
+
+/* Speed indicator */
+.speed-display {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #888;
+}
+
+.speed-display input[type="range"] {
+  width: 100px;
+  accent-color: #4fc3f7;
+}
+
+/* State panels */
+.state-panel {
+  margin-top: 12px;
+  background: #12121e;
+  border-radius: 8px;
+  padding: 12px;
+  font-family: 'Consolas', monospace;
+  font-size: 12px;
+}
+
+.state-panel .label { color: #888; }
+.state-panel .value { color: #ffc107; }
+.state-panel .dict-entry {
+  margin: 4px 0;
+  padding: 3px 8px;
+  border-radius: 4px;
+  transition: background 0.3s;
+}
+.state-panel .dict-entry.highlight-entry {
+  background: rgba(79, 195, 247, 0.15);
+}
+
+/* Side panel */
+.side-panel {
+  flex: 1;
+  min-width: 280px;
+  max-width: 400px;
+}
+
+.panel-section {
+  background: #1a1a2e;
+  border: 2px solid #2a2a3e;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.panel-section h4 {
+  font-size: 13px;
+  color: #4fc3f7;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #2a2a3e;
+  padding-bottom: 6px;
+}
+
+/* Released array strip */
+.released-strip {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.released-strip .token-cell {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-family: 'Consolas', monospace;
+  font-weight: bold;
+  transition: all 0.3s;
+}
+
+.released-strip .token-cell.active {
+  background: rgba(102, 187, 106, 0.3);
+  border: 1px solid #66bb6a;
+  color: #66bb6a;
+}
+
+.released-strip .token-cell.released {
+  background: rgba(100, 100, 100, 0.15);
+  border: 1px solid #444;
+  color: #666;
+}
+
+/* Token list */
+.token-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.token-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: 'Consolas', monospace;
+  margin-bottom: 3px;
+  transition: all 0.4s;
+}
+
+.token-item.active {
+  background: rgba(255, 80, 80, 0.15);
+  border: 1px solid rgba(255, 80, 80, 0.3);
+  color: #ff8a80;
+}
+
+.token-item.released {
+  background: rgba(100, 100, 100, 0.1);
+  border: 1px solid #333;
+  color: #666;
+  text-decoration: line-through;
+}
+
+/* Timeline area */
+.timeline-area {
+  flex: 1;
+  min-width: 280px;
+  max-width: 420px;
+}
+
+.timeline-title {
+  font-size: 14px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.timeline {
+  position: relative;
+  background: #1a1a2e;
+  border-radius: 12px;
+  border: 2px solid #2a2a3e;
+  padding: 16px;
+  min-height: 200px;
+}
+
+.timeline-axis {
+  position: absolute;
+  left: 60px;
+  top: 16px;
+  bottom: 16px;
+  width: 2px;
+  background: #333;
+}
+
+.timeline-cursor {
+  position: absolute;
+  left: 50px;
+  width: 22px;
+  height: 3px;
+  background: #4fc3f7;
+  border-radius: 2px;
+  transition: top 0.05s linear;
+  z-index: 3;
+  box-shadow: 0 0 8px rgba(79, 195, 247, 0.5);
+}
+
+.tl-entry {
+  position: relative;
+  padding: 4px 0 4px 56px;
+  font-size: 12px;
+  min-height: 22px;
+  opacity: 0.3;
+  transition: opacity 0.3s;
+}
+
+.tl-entry.active { opacity: 1; }
+.tl-entry.done { opacity: 0.6; }
+
+.tl-time {
+  position: absolute;
+  left: 0;
+  width: 48px;
+  text-align: right;
+  color: #4fc3f7;
+  font-family: 'Consolas', monospace;
+  font-size: 11px;
+}
+
+.tl-dot {
+  position: absolute;
+  left: 52px;
+  top: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid #555;
+  background: #1a1a2e;
+  z-index: 2;
+}
+
+.tl-entry.active .tl-dot { border-color: #4fc3f7; background: #4fc3f7; }
+.tl-entry.done .tl-dot { border-color: #666; background: #444; }
+
+.tl-label {
+  margin-left: 16px;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+/* Comparison layout */
+.comparison {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.comparison-side {
+  flex: 1;
+  min-width: 380px;
+  max-width: 540px;
+  background: #1a1a2e;
+  border: 2px solid #2a2a3e;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.comparison-side.old-system { border-color: rgba(229, 57, 53, 0.3); }
+.comparison-side.new-system { border-color: rgba(102, 187, 106, 0.3); }
+
+.comparison-label {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.comparison-label.bad { color: #e53935; }
+.comparison-label.good { color: #66bb6a; }
+
+/* Flow diagram */
+.flow-diagram {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  align-items: center;
+  margin: 16px 0;
+}
+
+.flow-box {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 2px solid;
+  text-align: center;
+  font-size: 12px;
+  width: 90%;
+  max-width: 360px;
+  transition: all 0.4s;
+}
+
+.flow-arrow {
+  font-size: 18px;
+  color: #555;
+  padding: 2px 0;
+}
+
+.flow-box.active-step {
+  box-shadow: 0 0 12px rgba(79, 195, 247, 0.3);
+}
+
+.flow-box.core { border-color: #e53935; background: rgba(229,57,53,0.08); }
+.flow-box.choreo { border-color: #ab47bc; background: rgba(171,71,188,0.08); }
+.flow-box.bridge { border-color: #42a5f5; background: rgba(66,165,245,0.08); }
+.flow-box.physics { border-color: #66bb6a; background: rgba(102,187,106,0.08); }
+.flow-box.lock { border-color: #ff5050; background: rgba(255,80,80,0.08); }
+.flow-box.business { border-color: #ffc107; background: rgba(255,193,7,0.08); }
+
+.flow-box .step-label { font-weight: bold; }
+.flow-box .step-detail { font-size: 11px; color: #999; margin-top: 4px; }
+
+/* Error marker in comparison */
+.error-marker {
+  position: absolute;
+  font-size: 10px;
+  color: #e53935;
+  font-weight: bold;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Countdown timer */
+.countdown-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: #2a2a3e;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.countdown-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: #ff5050;
+  transition: width 0.05s linear;
+}
+
+/* Event log */
+.event-log {
+  font-family: 'Consolas', monospace;
+  font-size: 11px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding: 8px;
+  background: #12121e;
+  border-radius: 6px;
+  margin-top: 8px;
+}
+
+.event-log .log-entry {
+  padding: 2px 0;
+  border-bottom: 1px solid #1a1a2e;
+}
+
+.event-log .log-entry.log-acquire { color: #ff8a80; }
+.event-log .log-entry.log-release { color: #a5d6a7; }
+.event-log .log-entry.log-info { color: #90caf9; }
+.event-log .log-entry.log-noop { color: #666; }
+
+/* Explosion wave ring */
+.wave-ring {
+  position: absolute;
+  border: 2px solid #ff5050;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0.6;
+  transition: all 0.15s;
+}
+
+/* Comparison mini board */
+.mini-board {
+  position: relative;
+  background: #12121e;
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 12px auto;
+}
+
+.mini-cell {
+  position: absolute;
+  border: 1px solid #2a2a3e;
+  border-radius: 3px;
+}
+
+.mini-cell.locked {
+  background: rgba(255, 80, 80, 0.1);
+  border-color: #ff5050;
+}
+
+.mini-tile {
+  position: absolute;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 12px;
+  color: #fff;
+  z-index: 2;
+}
+
+.dict-viz {
+  font-family: 'Consolas', monospace;
+  font-size: 10px;
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: #0f0f1a;
+  border-radius: 4px;
+  min-height: 40px;
+}
+
+.dict-viz .dv-entry {
+  display: flex;
+  justify-content: space-between;
+  padding: 1px 0;
+  color: #888;
+}
+.dict-viz .dv-entry.active { color: #ffc107; }
+.dict-viz .dv-entry .dv-key { color: #888; }
+.dict-viz .dv-entry .dv-val { color: #ffc107; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>LockScheduler 机制可视化</h1>
+  <p class="subtitle">基于 Acquire/Release 引用计数的格子锁系统 -- 替代 Choreographer 时序预测</p>
+
+  <div class="scene-nav">
+    <button onclick="switchScene(0)" class="active">Scene 1: Acquire & Release 基础</button>
+    <button onclick="switchScene(1)">Scene 2: 定时锁自动释放</button>
+    <button onclick="switchScene(2)">Scene 3: 爆炸系统</button>
+    <button onclick="switchScene(3)">Scene 4: 旧 vs 新</button>
+  </div>
+
+  <div class="scene active" id="scene-0"></div>
+  <div class="scene" id="scene-1"></div>
+  <div class="scene" id="scene-2"></div>
+  <div class="scene" id="scene-3"></div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────
+// Shared constants
+// ──────────────────────────────────────────────
+const CELL = 64;
+const GAP = 4;
+const TILE_SIZE = CELL - GAP * 2;
+const COLORS = ['color-red', 'color-blue', 'color-green', 'color-yellow', 'color-purple'];
+const COLOR_NAMES = ['R', 'B', 'G', 'Y', 'P'];
+const COLOR_HEX = ['#e53935', '#42a5f5', '#66bb6a', '#fdd835', '#ab47bc'];
+
+let currentScene = -1;
+
+function switchScene(idx) {
+  document.querySelectorAll('.scene-nav button').forEach((b, i) => {
+    b.classList.toggle('active', i === idx);
+  });
+  document.querySelectorAll('.scene').forEach((s, i) => {
+    s.classList.toggle('active', i === idx);
+  });
+  if (currentScene !== idx) {
+    currentScene = idx;
+    initScene(idx);
+  }
+}
+
+function initScene(idx) {
+  switch (idx) {
+    case 0: buildScene1(); break;
+    case 1: buildScene2(); break;
+    case 2: buildScene3(); break;
+    case 3: buildScene4(); break;
+  }
+}
+
+// ──────────────────────────────────────────────
+// Helpers
+// ──────────────────────────────────────────────
+function lerp(a, b, t) { return a + (b - a) * t; }
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2; }
+function easeOutBack(t) {
+  const c1 = 1.70158, c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+// ──────────────────────────────────────────────
+// SCENE 1: Acquire & Release Basics
+// ──────────────────────────────────────────────
+function buildScene1() {
+  const el = document.getElementById('scene-0');
+  const cols = 3, rows = 5;
+  const W = cols * CELL, H = rows * CELL;
+
+  // State
+  const refCounts = {};   // "col,row" -> number
+  const tokenLog = [];    // {id, col, row, type, released}
+  let nextTokenId = 0;
+  const releasedArr = []; // {id, released: bool}
+
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      refCounts[`${c},${r}`] = 0;
+
+  el.innerHTML = `
+    <div class="scene-layout">
+      <div class="board-area">
+        <div class="board-label">点击格子 = Acquire(pos, Drop)</div>
+        <div class="board" style="width:${W}px;height:${H}px;" id="s1-board"></div>
+        <div style="margin-top:12px">
+          <button class="btn-danger" id="s1-release-btn" style="padding:8px 20px;font-size:13px;border:none;border-radius:6px;cursor:pointer;">Release 最新 Token</button>
+          <button class="btn-secondary" id="s1-release-again-btn" style="padding:8px 16px;font-size:13px;cursor:pointer;margin-left:8px;">Release 同一 Token (测试幂等)</button>
+          <button class="btn-secondary" id="s1-reset-btn" style="padding:8px 16px;font-size:13px;cursor:pointer;margin-left:8px;">重置</button>
+        </div>
+      </div>
+      <div class="side-panel">
+        <div class="panel-section">
+          <h4>CellLocks[] 引用计数 (uint, 4-bit nibble)</h4>
+          <div id="s1-ref-display" class="state-panel" style="margin-top:0;min-height:60px;"></div>
+        </div>
+        <div class="panel-section">
+          <h4>bool[] _released 数组</h4>
+          <div id="s1-released-strip" class="released-strip"></div>
+          <div style="font-size:11px;color:#666;margin-top:6px;">绿色 = 可用 (active), 灰色 = 已释放 (released)</div>
+        </div>
+        <div class="panel-section">
+          <h4>活跃 Token 列表</h4>
+          <div id="s1-token-list" class="token-list"></div>
+        </div>
+        <div class="panel-section">
+          <h4>操作日志</h4>
+          <div id="s1-event-log" class="event-log"></div>
+        </div>
+      </div>
+    </div>
+    <div class="explanation">
+      <h3>Acquire & Release -- 引用计数锁</h3>
+      <p>
+        每个格子的锁存储在 <code>uint[] CellLocks</code> 数组中。每种 <code>CellLockType</code> (Drop, Receive, Swap, Matching, Indestructible, Targeting) 占 4 bit, 支持 0~15 的引用计数。
+      </p>
+      <p style="margin-top:8px">
+        <code>AcquireLock(pos, type)</code> 递增计数, 返回一个 <code>LockToken</code> 句柄。
+        <code>ReleaseLock(token)</code> 递减计数。<span class="highlight">只有当计数归零时, 格子才真正解锁。</span>
+      </p>
+      <p style="margin-top:8px">
+        <code>bool[] _released</code> 数组防止同一个 token 被释放两次 (幂等释放)。已释放的 token 再次 Release 是 no-op。
+      </p>
+    </div>
+  `;
+
+  const board = document.getElementById('s1-board');
+  const cellMap = {};
+  let lastReleasedTokenId = -1;
+
+  // Create cells
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell clickable';
+      cell.style.left = (c * CELL) + 'px';
+      cell.style.top = (r * CELL) + 'px';
+      cell.style.width = CELL + 'px';
+      cell.style.height = CELL + 'px';
+      cell.innerHTML = '<span class="lock-icon"></span><span class="ref-count"></span>';
+      cell.dataset.col = c;
+      cell.dataset.row = r;
+      cell.addEventListener('click', () => onCellClick(c, r));
+      board.appendChild(cell);
+      cellMap[`${c},${r}`] = cell;
+    }
+  }
+
+  // Create some initial tiles for visual context
+  const initTiles = [
+    [0, 0, 0], [1, 0, 1], [2, 0, 2],
+    [0, 1, 3], [1, 1, 4], [2, 1, 0],
+    [0, 2, 1], [1, 2, 2], [2, 2, 3],
+    [0, 3, 4], [1, 3, 0], [2, 3, 1],
+    [0, 4, 2], [1, 4, 3], [2, 4, 4],
+  ];
+  initTiles.forEach(([c, r, ci]) => {
+    const tile = document.createElement('div');
+    tile.className = `tile ${COLORS[ci]}`;
+    tile.style.left = (c * CELL + GAP) + 'px';
+    tile.style.top = (r * CELL + GAP) + 'px';
+    tile.style.width = TILE_SIZE + 'px';
+    tile.style.height = TILE_SIZE + 'px';
+    tile.style.pointerEvents = 'none';
+    tile.style.opacity = '0.5';
+    board.appendChild(tile);
+  });
+
+  function onCellClick(c, r) {
+    const key = `${c},${r}`;
+    refCounts[key]++;
+    const tId = nextTokenId++;
+    const token = { id: tId, col: c, row: r, type: 'Drop', released: false };
+    tokenLog.push(token);
+    releasedArr.push({ id: tId, released: false });
+    addLog(`Acquire(${c},${r}, Drop) => Token #${tId}`, 'log-acquire');
+    updateDisplay();
+  }
+
+  document.getElementById('s1-release-btn').addEventListener('click', () => {
+    // Find the last unreleased token
+    let found = null;
+    for (let i = tokenLog.length - 1; i >= 0; i--) {
+      if (!tokenLog[i].released) {
+        found = tokenLog[i];
+        break;
+      }
+    }
+    if (!found) {
+      addLog('No active tokens to release', 'log-noop');
+      return;
+    }
+    found.released = true;
+    releasedArr.find(r => r.id === found.id).released = true;
+    const key = `${found.col},${found.row}`;
+    refCounts[key] = Math.max(0, refCounts[key] - 1);
+    lastReleasedTokenId = found.id;
+    addLog(`Release(Token #${found.id}) => (${found.col},${found.row}) Drop refcount = ${refCounts[key]}`, 'log-release');
+    updateDisplay();
+  });
+
+  document.getElementById('s1-release-again-btn').addEventListener('click', () => {
+    if (lastReleasedTokenId < 0) {
+      addLog('No token to re-release', 'log-noop');
+      return;
+    }
+    const token = tokenLog.find(t => t.id === lastReleasedTokenId);
+    if (!token) return;
+    if (token.released) {
+      addLog(`Release(Token #${token.id}) => _released[${token.id}] = true, NO-OP (idempotent)`, 'log-noop');
+    }
+  });
+
+  document.getElementById('s1-reset-btn').addEventListener('click', () => {
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < cols; c++)
+        refCounts[`${c},${r}`] = 0;
+    tokenLog.length = 0;
+    releasedArr.length = 0;
+    nextTokenId = 0;
+    lastReleasedTokenId = -1;
+    document.getElementById('s1-event-log').innerHTML = '';
+    addLog('Reset - all locks cleared', 'log-info');
+    updateDisplay();
+  });
+
+  function addLog(msg, cls) {
+    const logEl = document.getElementById('s1-event-log');
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${cls}`;
+    entry.textContent = msg;
+    logEl.appendChild(entry);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function updateDisplay() {
+    // Update cell visuals
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const key = `${c},${r}`;
+        const cell = cellMap[key];
+        const rc = refCounts[key];
+        if (rc > 0) {
+          cell.classList.add('locked');
+          cell.querySelector('.lock-icon').textContent = '🔒';
+          cell.querySelector('.ref-count').textContent = `rc:${rc}`;
+        } else {
+          cell.classList.remove('locked');
+          cell.querySelector('.lock-icon').textContent = '';
+          cell.querySelector('.ref-count').textContent = '';
+        }
+      }
+    }
+
+    // Update ref-count display
+    const refDisp = document.getElementById('s1-ref-display');
+    let refHTML = '';
+    const activeKeys = Object.entries(refCounts).filter(([k, v]) => v > 0);
+    if (activeKeys.length === 0) {
+      refHTML = '<div class="dict-entry"><span class="label">  (no locks)</span></div>';
+    } else {
+      activeKeys.forEach(([key, count]) => {
+        refHTML += `<div class="dict-entry highlight-entry"><span class="label">  CellLocks[${key}].Drop = </span><span class="value">${count}</span></div>`;
+      });
+    }
+    refDisp.innerHTML = refHTML;
+
+    // Update released array strip
+    const stripEl = document.getElementById('s1-released-strip');
+    stripEl.innerHTML = '';
+    releasedArr.forEach(item => {
+      const tc = document.createElement('div');
+      tc.className = `token-cell ${item.released ? 'released' : 'active'}`;
+      tc.textContent = `#${item.id}`;
+      tc.title = item.released ? `Token #${item.id}: released` : `Token #${item.id}: active`;
+      stripEl.appendChild(tc);
+    });
+
+    // Update token list
+    const tokenListEl = document.getElementById('s1-token-list');
+    tokenListEl.innerHTML = '';
+    // Show in reverse order (newest first)
+    for (let i = tokenLog.length - 1; i >= 0; i--) {
+      const t = tokenLog[i];
+      const item = document.createElement('div');
+      item.className = `token-item ${t.released ? 'released' : 'active'}`;
+      item.innerHTML = `<span>Token #${t.id}</span> <span>(${t.col},${t.row}) ${t.type}</span> <span>${t.released ? 'RELEASED' : 'ACTIVE'}</span>`;
+      tokenListEl.appendChild(item);
+    }
+  }
+
+  updateDisplay();
+  addLog('点击棋盘上的任意格子来 Acquire 一个 Drop 锁', 'log-info');
+}
+
+
+// ──────────────────────────────────────────────
+// SCENE 2: Timed Lock Auto-Release
+// ──────────────────────────────────────────────
+function buildScene2() {
+  const el = document.getElementById('scene-1');
+  const cols = 3, rows = 5;
+  const W = cols * CELL, H = rows * CELL;
+
+  let state = {
+    playing: false,
+    time: 0,
+    lastTs: 0,
+    animFrame: null,
+    timedLocks: [],   // {id, col, row, type, duration, remaining, released, manuallyReleased}
+    nextId: 0,
+    log: [],
+    refCounts: {},
+    phase: 'idle', // idle, demo1, demo2
+    demoStep: 0,
+  };
+
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      state.refCounts[`${c},${r}`] = 0;
+
+  el.innerHTML = `
+    <div class="scene-layout">
+      <div class="board-area">
+        <div class="board-label">定时锁 -- Acquire + 自动倒计时释放</div>
+        <div class="board" style="width:${W}px;height:${H}px;" id="s2-board"></div>
+        <div class="state-panel" style="margin-top:12px;">
+          <span class="label">活跃定时锁:</span>
+          <div id="s2-lock-status"></div>
+        </div>
+      </div>
+      <div class="side-panel">
+        <div class="panel-section">
+          <h4>倒计时时间线</h4>
+          <div id="s2-timers"></div>
+        </div>
+        <div class="panel-section">
+          <h4>bool[] _released</h4>
+          <div id="s2-released" class="released-strip"></div>
+        </div>
+        <div class="panel-section">
+          <h4>操作日志</h4>
+          <div id="s2-log" class="event-log"></div>
+        </div>
+      </div>
+    </div>
+    <div class="explanation" id="s2-expl">
+      <h3>定时锁 -- CellLockManager.Tick()</h3>
+      <p>
+        桥接层 (<code>CellLockManager</code>) 从 Choreographer 的调度表获取锁条目, 每条包含一个 <code>Duration</code>。
+        每帧 <code>Tick(dt)</code> 倒计时, 到期自动调用 <code>ReleaseLock(token)</code>。
+      </p>
+      <p style="margin-top:8px">
+        关键: 如果手动提前释放了锁, 倒计时到期后的 Release 会发现 <code>_released[tokenId] = true</code>, 变成 no-op。<span class="highlight">这就是幂等释放的实际价值</span>。
+      </p>
+    </div>
+    <div class="controls">
+      <button class="btn-primary" id="s2-demo1-btn">演示 1: 自动过期释放</button>
+      <button class="btn-primary" id="s2-demo2-btn">演示 2: 手动提前释放</button>
+      <button class="btn-secondary" id="s2-reset-btn">重置</button>
+      <div class="speed-display">
+        <span>速度:</span>
+        <input type="range" min="0.2" max="2" step="0.1" value="0.5" id="s2-speed">
+        <span id="s2-speed-val">0.5x</span>
+      </div>
+    </div>
+  `;
+
+  const board = document.getElementById('s2-board');
+  const cellMap = {};
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.style.left = (c * CELL) + 'px';
+      cell.style.top = (r * CELL) + 'px';
+      cell.style.width = CELL + 'px';
+      cell.style.height = CELL + 'px';
+      cell.innerHTML = '<span class="lock-icon"></span><span class="ref-count"></span>';
+      board.appendChild(cell);
+      cellMap[`${c},${r}`] = cell;
+    }
+  }
+
+  // Background tiles
+  [[0,0,0],[1,0,1],[2,0,2],[0,1,3],[1,1,4],[2,1,0],[0,2,1],[1,2,2],[2,2,3],[0,3,4],[1,3,0],[2,3,1],[0,4,2],[1,4,3],[2,4,4]].forEach(([c,r,ci]) => {
+    const tile = document.createElement('div');
+    tile.className = `tile ${COLORS[ci]}`;
+    tile.style.left = (c * CELL + GAP) + 'px';
+    tile.style.top = (r * CELL + GAP) + 'px';
+    tile.style.width = TILE_SIZE + 'px';
+    tile.style.height = TILE_SIZE + 'px';
+    tile.style.pointerEvents = 'none';
+    tile.style.opacity = '0.5';
+    board.appendChild(tile);
+  });
+
+  document.getElementById('s2-speed').addEventListener('input', function() {
+    document.getElementById('s2-speed-val').textContent = this.value + 'x';
+  });
+
+  function addLog2(msg, cls) {
+    state.log.push({ msg, cls });
+    const logEl = document.getElementById('s2-log');
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${cls}`;
+    entry.textContent = msg;
+    logEl.appendChild(entry);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function acquireTimed(c, r, type, dur) {
+    const id = state.nextId++;
+    const key = `${c},${r}`;
+    state.refCounts[key] = (state.refCounts[key] || 0) + 1;
+    const lock = { id, col: c, row: r, type, duration: dur, remaining: dur, released: false, manuallyReleased: false };
+    state.timedLocks.push(lock);
+    addLog2(`Acquire(${c},${r}, ${type}, ${dur}s) => Token #${id}`, 'log-acquire');
+    return lock;
+  }
+
+  function releaseLock(lock) {
+    if (lock.released) {
+      addLog2(`Release(Token #${lock.id}) => _released[${lock.id}]=true, NO-OP`, 'log-noop');
+      return;
+    }
+    lock.released = true;
+    const key = `${lock.col},${lock.row}`;
+    state.refCounts[key] = Math.max(0, (state.refCounts[key] || 0) - 1);
+    addLog2(`Release(Token #${lock.id}) => (${lock.col},${lock.row}) ${lock.type} refcount=${state.refCounts[key]}`, 'log-release');
+  }
+
+  function resetS2() {
+    if (state.animFrame) cancelAnimationFrame(state.animFrame);
+    state.playing = false;
+    state.time = 0;
+    state.timedLocks = [];
+    state.nextId = 0;
+    state.log = [];
+    state.phase = 'idle';
+    state.demoStep = 0;
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < cols; c++)
+        state.refCounts[`${c},${r}`] = 0;
+    Object.values(cellMap).forEach(cell => {
+      cell.classList.remove('locked', 'locked-glow');
+      cell.querySelector('.lock-icon').textContent = '';
+      cell.querySelector('.ref-count').textContent = '';
+    });
+    document.getElementById('s2-log').innerHTML = '';
+    document.getElementById('s2-timers').innerHTML = '';
+    document.getElementById('s2-released').innerHTML = '';
+    document.getElementById('s2-lock-status').innerHTML = '<div class="dict-entry"><span class="label">  (none)</span></div>';
+  }
+
+  document.getElementById('s2-reset-btn').addEventListener('click', resetS2);
+
+  document.getElementById('s2-demo1-btn').addEventListener('click', () => {
+    resetS2();
+    state.phase = 'demo1';
+    acquireTimed(1, 2, 'Receive', 0.5);
+    startS2Loop();
+  });
+
+  document.getElementById('s2-demo2-btn').addEventListener('click', () => {
+    resetS2();
+    state.phase = 'demo2';
+    state.demo2Lock = acquireTimed(1, 3, 'Receive', 0.5);
+    state.demo2ManualAt = 0.2;
+    state.demo2ManualDone = false;
+    startS2Loop();
+  });
+
+  function startS2Loop() {
+    state.playing = true;
+    state.time = 0;
+    state.lastTs = performance.now();
+    function loop(ts) {
+      if (!state.playing) return;
+      const speed = parseFloat(document.getElementById('s2-speed').value);
+      const dt = (ts - state.lastTs) / 1000 * speed;
+      state.lastTs = ts;
+      state.time += dt;
+
+      // Tick all timed locks
+      state.timedLocks.forEach(lock => {
+        if (lock.released) return;
+        lock.remaining -= dt;
+        if (lock.remaining <= 0) {
+          lock.remaining = 0;
+          addLog2(`Timer expired for Token #${lock.id}`, 'log-info');
+          releaseLock(lock);
+        }
+      });
+
+      // Demo 2: manual early release
+      if (state.phase === 'demo2' && !state.demo2ManualDone && state.time >= state.demo2ManualAt) {
+        state.demo2ManualDone = true;
+        addLog2(`--- Manual early release ---`, 'log-info');
+        state.demo2Lock.manuallyReleased = true;
+        releaseLock(state.demo2Lock);
+      }
+
+      updateS2Display();
+
+      // Check if all done
+      const allDone = state.timedLocks.every(l => l.released);
+      if (allDone && state.time > 0.6) {
+        state.playing = false;
+        addLog2(`All locks released. Done.`, 'log-info');
+        return;
+      }
+
+      state.animFrame = requestAnimationFrame(loop);
+    }
+    state.animFrame = requestAnimationFrame(loop);
+  }
+
+  function updateS2Display() {
+    // Update cells
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const key = `${c},${r}`;
+        const cell = cellMap[key];
+        const rc = state.refCounts[key] || 0;
+        if (rc > 0) {
+          cell.classList.add('locked-glow');
+          cell.querySelector('.lock-icon').textContent = '🔒';
+          cell.querySelector('.ref-count').textContent = `rc:${rc}`;
+        } else {
+          cell.classList.remove('locked', 'locked-glow');
+          cell.querySelector('.lock-icon').textContent = '';
+          cell.querySelector('.ref-count').textContent = '';
+        }
+      }
+    }
+
+    // Timer display
+    const timerEl = document.getElementById('s2-timers');
+    timerEl.innerHTML = '';
+    state.timedLocks.forEach(lock => {
+      const pct = lock.released ? 0 : clamp(lock.remaining / lock.duration, 0, 1);
+      const div = document.createElement('div');
+      div.style.marginBottom = '10px';
+      div.innerHTML = `
+        <div style="font-size:12px;font-family:Consolas,monospace;color:${lock.released ? '#666' : '#ff8a80'}">
+          Token #${lock.id} (${lock.col},${lock.row}) ${lock.type}
+          ${lock.released ? (lock.manuallyReleased ? '-- MANUAL RELEASE' : '-- EXPIRED') : `-- ${lock.remaining.toFixed(2)}s`}
+        </div>
+        <div class="countdown-bar">
+          <div class="countdown-bar-fill" style="width:${pct * 100}%;background:${lock.released ? '#666' : '#ff5050'}"></div>
+        </div>
+      `;
+      timerEl.appendChild(div);
+    });
+
+    // Released strip
+    const relEl = document.getElementById('s2-released');
+    relEl.innerHTML = '';
+    state.timedLocks.forEach(lock => {
+      const tc = document.createElement('div');
+      tc.className = `token-cell ${lock.released ? 'released' : 'active'}`;
+      tc.textContent = `#${lock.id}`;
+      relEl.appendChild(tc);
+    });
+
+    // Lock status
+    const statusEl = document.getElementById('s2-lock-status');
+    const actives = state.timedLocks.filter(l => !l.released);
+    if (actives.length === 0) {
+      statusEl.innerHTML = '<div class="dict-entry"><span class="label">  (none)</span></div>';
+    } else {
+      statusEl.innerHTML = actives.map(l =>
+        `<div class="dict-entry highlight-entry"><span class="label">  (${l.col},${l.row}) ${l.type} = </span><span class="value">${l.remaining.toFixed(2)}s remaining</span></div>`
+      ).join('');
+    }
+  }
+}
+
+
+// ──────────────────────────────────────────────
+// SCENE 3: Explosion System
+// ──────────────────────────────────────────────
+function buildScene3() {
+  const el = document.getElementById('scene-2');
+  const cols = 5, rows = 6;
+  const W = cols * CELL, H = rows * CELL;
+
+  const COLORS_MAP = [
+    [0,1,2,3,4],
+    [4,3,1,0,2],
+    [2,0,3,4,1],
+    [1,4,0,2,3],
+    [3,2,4,1,0],
+    [0,1,3,4,2],
+  ];
+
+  let s3state = {
+    playing: false,
+    time: 0,
+    lastTs: 0,
+    animFrame: null,
+    tokens: [],     // {id, col, row, released, wave}
+    nextTokenId: 0,
+    explSteps: [],
+    tileStates: {}, // "col,row" -> {alive, opacity, scale, suspended}
+    refCounts: {},
+    phase: 'init',
+  };
+
+  // Explosion at (2,3), radius 2
+  const bombPos = {x:2, y:3};
+  const radius = 2;
+
+  // Calculate blast area
+  const blastArea = [];
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      const x = bombPos.x + dx, y = bombPos.y + dy;
+      if (x >= 0 && x < cols && y >= 0 && y < rows) {
+        const dist = Math.max(Math.abs(dx), Math.abs(dy));
+        blastArea.push({x, y, dist});
+      }
+    }
+  }
+
+  function resetS3() {
+    if (s3state.animFrame) cancelAnimationFrame(s3state.animFrame);
+    s3state.playing = false;
+    s3state.time = 0;
+    s3state.tokens = [];
+    s3state.nextTokenId = 0;
+    s3state.phase = 'init';
+    s3state.refCounts = {};
+
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < cols; c++) {
+        s3state.tileStates[`${c},${r}`] = {alive: true, opacity: 1, scale: 1, suspended: false, fallY: r};
+        s3state.refCounts[`${c},${r}`] = 0;
+      }
+
+    // Bomb tile special
+    s3state.tileStates[`${bombPos.x},${bombPos.y}`].isBomb = true;
+  }
+
+  resetS3();
+
+  el.innerHTML = `
+    <div class="scene-layout">
+      <div class="board-area">
+        <div class="board-label">爆炸系统 -- Acquire on blast, Release per wave</div>
+        <div class="board" style="width:${W}px;height:${H}px;" id="s3-board"></div>
+        <div class="state-panel" style="margin-top:12px">
+          <span class="label">爆炸进度:</span>
+          <div id="s3-status"></div>
+        </div>
+      </div>
+      <div class="side-panel">
+        <div class="panel-section">
+          <h4>活跃 Lock Tokens</h4>
+          <div id="s3-token-list" class="token-list" style="max-height:250px;"></div>
+        </div>
+        <div class="panel-section">
+          <h4>操作日志</h4>
+          <div id="s3-log" class="event-log" style="max-height:200px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="explanation" id="s3-expl">
+      <h3>爆炸系统 -- IsSuspended 的 LockScheduler 替代</h3>
+      <p>
+        旧方案: 爆炸开始时对所有受影响区域设置 <code>tile.IsSuspended = true</code>, 逐波消除后再设 <code>IsSuspended = false</code>。
+        问题: <code>IsSuspended</code> 是布尔值, 不支持多爆炸重叠; 且分散在 tile 上, 物理系统需要特判。
+      </p>
+      <p style="margin-top:8px">
+        新方案: 爆炸开始时对所有受影响格子 <code>Acquire(pos, Drop)</code>。每波消除完成后, 对该波的格子 <code>Release(token)</code>。
+        <span class="highlight">引用计数天然支持多爆炸重叠, 物理系统只需检查 IsLocked</span>。
+      </p>
+    </div>
+    <div class="controls">
+      <button class="btn-primary" id="s3-play-btn">播放爆炸</button>
+      <button class="btn-secondary" id="s3-step-btn">逐步</button>
+      <button class="btn-secondary" id="s3-reset-btn">重置</button>
+      <div class="speed-display">
+        <span>速度:</span>
+        <input type="range" min="0.2" max="2" step="0.1" value="0.4" id="s3-speed">
+        <span id="s3-speed-val">0.4x</span>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('s3-speed').addEventListener('input', function() {
+    document.getElementById('s3-speed-val').textContent = this.value + 'x';
+  });
+
+  const board = document.getElementById('s3-board');
+  const cellMap3 = {};
+  const tileEls = {};
+
+  // Create cells
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.style.left = (c * CELL) + 'px';
+      cell.style.top = (r * CELL) + 'px';
+      cell.style.width = CELL + 'px';
+      cell.style.height = CELL + 'px';
+      cell.innerHTML = '<span class="lock-icon"></span><span class="ref-count"></span>';
+      board.appendChild(cell);
+      cellMap3[`${c},${r}`] = cell;
+    }
+  }
+
+  function createTiles() {
+    // Clear existing
+    Object.values(tileEls).forEach(t => t.remove());
+    for (const k in tileEls) delete tileEls[k];
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const key = `${c},${r}`;
+        const ts = s3state.tileStates[key];
+        const tile = document.createElement('div');
+        const ci = (key === `${bombPos.x},${bombPos.y}`) ? -1 : COLORS_MAP[r][c];
+        tile.className = `tile ${ci >= 0 ? COLORS[ci] : 'color-bomb'}`;
+        tile.style.left = (c * CELL + GAP) + 'px';
+        tile.style.top = (r * CELL + GAP) + 'px';
+        tile.style.width = TILE_SIZE + 'px';
+        tile.style.height = TILE_SIZE + 'px';
+        tile.style.pointerEvents = 'none';
+        if (ci < 0) tile.textContent = '💣';
+        board.appendChild(tile);
+        tileEls[key] = tile;
+      }
+    }
+  }
+
+  createTiles();
+
+  function addLog3(msg, cls) {
+    const logEl = document.getElementById('s3-log');
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${cls}`;
+    entry.textContent = msg;
+    logEl.appendChild(entry);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // Animation timeline:
+  // 0.0s  - Bomb activates, Acquire(Drop) on all blast cells
+  // 0.1s  - Wave 0 (distance 0) destroys bomb origin
+  // 0.3s  - Wave 1 (distance 1) destroys ring 1
+  // 0.5s  - Wave 2 (distance 2) destroys ring 2
+  // 0.7s  - All released, gravity resumes
+  const WAVE_INTERVAL = 0.2;
+  const ACQUIRE_TIME = 0.0;
+  const WAVE_TIMES = [0.1, 0.1 + WAVE_INTERVAL, 0.1 + WAVE_INTERVAL * 2];
+  const TOTAL_DUR = WAVE_TIMES[2] + 0.4; // Extra time for gravity
+
+  let acquireDone = false;
+  let wavesProcessed = [false, false, false];
+  let gravityStarted = false;
+
+  document.getElementById('s3-reset-btn').addEventListener('click', () => {
+    resetS3();
+    createTiles();
+    acquireDone = false;
+    wavesProcessed = [false, false, false];
+    gravityStarted = false;
+    document.getElementById('s3-log').innerHTML = '';
+    updateS3Display();
+    addLog3('Reset. Press Play or Step.', 'log-info');
+  });
+
+  document.getElementById('s3-play-btn').addEventListener('click', () => {
+    if (s3state.playing) {
+      s3state.playing = false;
+      document.getElementById('s3-play-btn').textContent = '继续';
+      return;
+    }
+    if (s3state.phase === 'done') {
+      document.getElementById('s3-reset-btn').click();
+    }
+    s3state.playing = true;
+    s3state.lastTs = performance.now();
+    document.getElementById('s3-play-btn').textContent = '暂停';
+    function loop(ts) {
+      if (!s3state.playing) return;
+      const speed = parseFloat(document.getElementById('s3-speed').value);
+      const dt = (ts - s3state.lastTs) / 1000 * speed;
+      s3state.lastTs = ts;
+      s3state.time += dt;
+      tickS3(s3state.time);
+      updateS3Display();
+      if (s3state.time >= TOTAL_DUR) {
+        s3state.playing = false;
+        s3state.phase = 'done';
+        document.getElementById('s3-play-btn').textContent = '重播';
+        return;
+      }
+      s3state.animFrame = requestAnimationFrame(loop);
+    }
+    s3state.animFrame = requestAnimationFrame(loop);
+  });
+
+  document.getElementById('s3-step-btn').addEventListener('click', () => {
+    s3state.playing = false;
+    document.getElementById('s3-play-btn').textContent = '播放爆炸';
+    // Jump to next event
+    const events = [0.01, WAVE_TIMES[0]+0.01, WAVE_TIMES[1]+0.01, WAVE_TIMES[2]+0.01, TOTAL_DUR];
+    const nextEvent = events.find(e => e > s3state.time + 0.001) || TOTAL_DUR;
+    s3state.time = nextEvent;
+    tickS3(s3state.time);
+    updateS3Display();
+    if (s3state.time >= TOTAL_DUR) {
+      s3state.phase = 'done';
+    }
+  });
+
+  function tickS3(t) {
+    // 1. Acquire all blast cells
+    if (!acquireDone && t >= ACQUIRE_TIME) {
+      acquireDone = true;
+      addLog3(`--- Bomb at (${bombPos.x},${bombPos.y}) activates ---`, 'log-info');
+      blastArea.forEach(({x, y, dist}) => {
+        const id = s3state.nextTokenId++;
+        const key = `${x},${y}`;
+        s3state.refCounts[key] = (s3state.refCounts[key] || 0) + 1;
+        s3state.tokens.push({id, col: x, row: y, released: false, wave: dist});
+        s3state.tileStates[key].suspended = true;
+      });
+      addLog3(`Acquire(Drop) on ${blastArea.length} cells`, 'log-acquire');
+    }
+
+    // 2. Process waves
+    for (let w = 0; w <= radius; w++) {
+      if (!wavesProcessed[w] && t >= WAVE_TIMES[w]) {
+        wavesProcessed[w] = true;
+        addLog3(`--- Wave ${w} (dist=${w}) ---`, 'log-info');
+        const waveCells = blastArea.filter(c => c.dist === w);
+        waveCells.forEach(({x, y}) => {
+          const key = `${x},${y}`;
+          s3state.tileStates[key].alive = false;
+          // Release token for this cell
+          const token = s3state.tokens.find(t => t.col === x && t.row === y && !t.released);
+          if (token) {
+            token.released = true;
+            s3state.refCounts[key] = Math.max(0, s3state.refCounts[key] - 1);
+            addLog3(`Destroy(${x},${y}) + Release(Token #${token.id})`, 'log-release');
+          }
+        });
+      }
+    }
+
+    // 3. Gravity after all waves
+    if (!gravityStarted && t >= WAVE_TIMES[2] + 0.1) {
+      gravityStarted = true;
+      addLog3('--- All locks released, gravity resumes ---', 'log-info');
+    }
+
+    // Update tile visuals
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const key = `${c},${r}`;
+        const ts2 = s3state.tileStates[key];
+        const tileEl = tileEls[key];
+        if (!tileEl) continue;
+
+        if (!ts2.alive) {
+          // Destroy animation
+          const waveCell = blastArea.find(bc => bc.x === c && bc.y === r);
+          if (waveCell) {
+            const waveTime = WAVE_TIMES[waveCell.dist];
+            const destroyProgress = clamp((t - waveTime) / 0.15, 0, 1);
+            tileEl.style.opacity = 1 - destroyProgress;
+            tileEl.style.transform = `scale(${1 - destroyProgress})`;
+            if (destroyProgress >= 1) tileEl.style.display = 'none';
+          }
+        } else if (ts2.suspended && acquireDone) {
+          // Suspended tiles shake slightly
+          const shake = Math.sin(t * 20) * 1.5;
+          tileEl.style.transform = `translateX(${shake}px)`;
+        } else if (gravityStarted) {
+          // Gravity: tiles outside blast area that have empty cells below them fall
+          tileEl.style.transform = '';
+        }
+      }
+    }
+
+    // Simple gravity after all waves: tiles above blast area fall down
+    if (gravityStarted) {
+      const gravityT = t - (WAVE_TIMES[2] + 0.1);
+      for (let c = 0; c < cols; c++) {
+        // Count empty cells below each tile in this column
+        let emptyBelow = 0;
+        for (let r = rows - 1; r >= 0; r--) {
+          const key = `${c},${r}`;
+          const ts2 = s3state.tileStates[key];
+          if (!ts2.alive) {
+            emptyBelow++;
+          } else if (emptyBelow > 0) {
+            // This tile needs to fall
+            const tileEl = tileEls[key];
+            if (tileEl) {
+              const fallDist = emptyBelow;
+              const fallProgress = clamp(gravityT / (0.15 * fallDist), 0, 1);
+              const easedProgress = easeOutCubic(fallProgress);
+              const newY = r + fallDist * easedProgress;
+              tileEl.style.top = (newY * CELL + GAP) + 'px';
+              tileEl.style.transform = '';
+            }
+          }
+        }
+      }
+    }
+  }
+
+  function updateS3Display() {
+    // Update cell lock visuals
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const key = `${c},${r}`;
+        const cell = cellMap3[key];
+        const rc = s3state.refCounts[key] || 0;
+        if (rc > 0) {
+          cell.classList.add('locked');
+          cell.querySelector('.lock-icon').textContent = '🔒';
+          cell.querySelector('.ref-count').textContent = `rc:${rc}`;
+        } else {
+          cell.classList.remove('locked');
+          cell.querySelector('.lock-icon').textContent = '';
+          cell.querySelector('.ref-count').textContent = '';
+        }
+      }
+    }
+
+    // Status
+    const statusEl = document.getElementById('s3-status');
+    const activeCount = s3state.tokens.filter(t => !t.released).length;
+    const totalCount = s3state.tokens.length;
+    if (totalCount === 0) {
+      statusEl.innerHTML = '<div class="dict-entry"><span class="label">  等待开始...</span></div>';
+    } else {
+      let html = `<div class="dict-entry highlight-entry"><span class="label">  Active tokens: </span><span class="value">${activeCount} / ${totalCount}</span></div>`;
+      for (let w = 0; w <= radius; w++) {
+        const waveTokens = s3state.tokens.filter(t => t.wave === w);
+        const waveReleased = waveTokens.filter(t => t.released).length;
+        html += `<div class="dict-entry${waveReleased < waveTokens.length ? ' highlight-entry' : ''}"><span class="label">  Wave ${w}: </span><span class="value">${waveReleased}/${waveTokens.length} released</span></div>`;
+      }
+      statusEl.innerHTML = html;
+    }
+
+    // Token list
+    const tokenListEl = document.getElementById('s3-token-list');
+    tokenListEl.innerHTML = '';
+    s3state.tokens.forEach(token => {
+      const item = document.createElement('div');
+      item.className = `token-item ${token.released ? 'released' : 'active'}`;
+      item.innerHTML = `#${token.id} (${token.col},${token.row}) W${token.wave} ${token.released ? 'RELEASED' : 'LOCKED'}`;
+      tokenListEl.appendChild(item);
+    });
+  }
+
+  updateS3Display();
+  addLog3('Press Play or Step to begin explosion demo.', 'log-info');
+}
+
+// ──────────────────────────────────────────────
+// SCENE 4: Old vs New Comparison
+// ──────────────────────────────────────────────
+function buildScene4() {
+  const el = document.getElementById('scene-3');
+
+  let s4state = {
+    playing: false,
+    time: 0,
+    lastTs: 0,
+    animFrame: null,
+    phase: 'init',
+  };
+
+  const TOTAL_DUR = 1.2;
+
+  el.innerHTML = `
+    <div class="comparison">
+      <!-- Old System -->
+      <div class="comparison-side old-system">
+        <div class="comparison-label bad">旧方案: Choreographer 预测时长</div>
+        <div class="flow-diagram" id="s4-old-flow">
+          <div class="flow-box core" data-step="0">
+            <div class="step-label">Core Tick</div>
+            <div class="step-detail">瞬时产出 GameEvent</div>
+          </div>
+          <div class="flow-arrow">|</div>
+          <div class="flow-box choreo" data-step="1">
+            <div class="step-label">Choreographer 预测时长</div>
+            <div class="step-detail">_columnDestroyEndTimes / _columnMoves / _lockEntries</div>
+            <div class="step-detail" style="color:#e53935;">5 个字典 + 复杂时序计算</div>
+          </div>
+          <div class="flow-arrow">|</div>
+          <div class="flow-box bridge" data-step="2">
+            <div class="step-label">CellLockEntry(pos, duration)</div>
+            <div class="step-detail">预测的锁定时长, 可能不准</div>
+          </div>
+          <div class="flow-arrow">|</div>
+          <div class="flow-box lock" data-step="3">
+            <div class="step-label">CellLockManager 倒计时</div>
+            <div class="step-detail">Tick(dt) => 到期 ReleaseLock</div>
+            <div class="step-detail" style="color:#e53935;">时长预测 != 实际播放 => 时序偏差</div>
+          </div>
+          <div class="flow-arrow">|</div>
+          <div class="flow-box physics" data-step="4">
+            <div class="step-label">Physics 恢复下落</div>
+            <div class="step-detail">可能过早或过晚</div>
+          </div>
+        </div>
+        <div id="s4-old-board-area" style="margin-top:12px;">
+          <div style="text-align:center;font-size:12px;color:#666;margin-bottom:4px;">模拟棋盘</div>
+          <div class="mini-board" id="s4-old-board" style="width:192px;height:230px;"></div>
+          <div class="dict-viz" id="s4-old-dict"></div>
+        </div>
+      </div>
+
+      <!-- New System -->
+      <div class="comparison-side new-system">
+        <div class="comparison-label good">新方案: LockScheduler Acquire/Release</div>
+        <div class="flow-diagram" id="s4-new-flow">
+          <div class="flow-box business" data-step="0">
+            <div class="step-label">业务系统 (Explosion/Merge/...)</div>
+            <div class="step-detail">知道自己何时开始</div>
+          </div>
+          <div class="flow-arrow">|</div>
+          <div class="flow-box lock" data-step="1">
+            <div class="step-label">Acquire(pos, Drop)</div>
+            <div class="step-detail">立即锁定, 引用计数 +1</div>
+          </div>
+          <div class="flow-arrow">|</div>
+          <div class="flow-box business" data-step="2">
+            <div class="step-label">做完了 (消除/合并/飞行...)</div>
+            <div class="step-detail">业务系统自己知道何时完成</div>
+          </div>
+          <div class="flow-arrow">|</div>
+          <div class="flow-box lock" data-step="3">
+            <div class="step-label">Release(token)</div>
+            <div class="step-detail">引用计数 -1, 归零时解锁</div>
+            <div class="step-detail" style="color:#66bb6a;">无预测, 无时序偏差</div>
+          </div>
+          <div class="flow-arrow">|</div>
+          <div class="flow-box physics" data-step="4">
+            <div class="step-label">Physics 自动恢复下落</div>
+            <div class="step-detail">检查 IsLocked(pos, Drop) => false</div>
+          </div>
+        </div>
+        <div id="s4-new-board-area" style="margin-top:12px;">
+          <div style="text-align:center;font-size:12px;color:#666;margin-bottom:4px;">模拟棋盘</div>
+          <div class="mini-board" id="s4-new-board" style="width:192px;height:230px;"></div>
+          <div class="dict-viz" id="s4-new-dict"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="explanation" id="s4-expl">
+      <h3>核心区别</h3>
+      <p>
+        <strong>旧方案</strong>: Choreographer <span class="highlight">预测</span>每种动画的时长, 把预测值传给 CellLockManager 做倒计时。
+        问题: 预测不准 (动画可能被加速/打断/提前完成), 导致锁定时间偏差 => 物理过早或过晚恢复。
+        需要 5 个字典 (<code>_columnDestroyEndTimes</code>, <code>_columnMoves</code>, <code>_mergeEndTimes</code>, ...) 维护复杂状态。
+      </p>
+      <p style="margin-top:8px">
+        <strong>新方案</strong>: 业务系统<span class="highlight">自己</span>在开始时 Acquire, 完成时 Release。
+        没有预测 => 没有偏差。引用计数支持多系统重叠。物理层只需检查 <code>IsLocked</code>, 无需任何特判。
+      </p>
+    </div>
+
+    <div class="controls">
+      <button class="btn-primary" id="s4-play-btn">同步演示两种方案</button>
+      <button class="btn-secondary" id="s4-reset-btn">重置</button>
+      <div class="speed-display">
+        <span>速度:</span>
+        <input type="range" min="0.2" max="2" step="0.1" value="0.4" id="s4-speed">
+        <span id="s4-speed-val">0.4x</span>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('s4-speed').addEventListener('input', function() {
+    document.getElementById('s4-speed-val').textContent = this.value + 'x';
+  });
+
+  // Create mini boards
+  const MINI_CELL = 38;
+  const MINI_GAP = 3;
+  const MINI_TILE = MINI_CELL - MINI_GAP * 2;
+  const miniCols = 5, miniRows = 6;
+
+  function createMiniBoard(containerId) {
+    const container = document.getElementById(containerId);
+    container.style.width = (miniCols * MINI_CELL) + 'px';
+    container.style.height = (miniRows * MINI_CELL) + 'px';
+    const cells = {};
+    const tiles = {};
+
+    for (let r = 0; r < miniRows; r++) {
+      for (let c = 0; c < miniCols; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'mini-cell';
+        cell.style.left = (c * MINI_CELL) + 'px';
+        cell.style.top = (r * MINI_CELL) + 'px';
+        cell.style.width = MINI_CELL + 'px';
+        cell.style.height = MINI_CELL + 'px';
+        container.appendChild(cell);
+        cells[`${c},${r}`] = cell;
+      }
+    }
+
+    // Tiles
+    const tileLayout = [
+      [0,1,2,3,4],
+      [4,3,1,0,2],
+      [2,0,-1,4,1],  // -1 = bomb at (2,2)
+      [1,4,0,2,3],
+      [3,2,0,0,0],   // Row 4: three matching tiles at col 2,3,4
+      [0,1,3,4,2],
+    ];
+
+    for (let r = 0; r < miniRows; r++) {
+      for (let c = 0; c < miniCols; c++) {
+        const ci = tileLayout[r][c];
+        const tile = document.createElement('div');
+        tile.className = `mini-tile ${ci >= 0 ? COLORS[ci] : 'color-bomb'}`;
+        tile.style.left = (c * MINI_CELL + MINI_GAP) + 'px';
+        tile.style.top = (r * MINI_CELL + MINI_GAP) + 'px';
+        tile.style.width = MINI_TILE + 'px';
+        tile.style.height = MINI_TILE + 'px';
+        tile.style.fontSize = '9px';
+        if (ci < 0) tile.textContent = '💣';
+        container.appendChild(tile);
+        tiles[`${c},${r}`] = tile;
+      }
+    }
+
+    return { cells, tiles };
+  }
+
+  const oldBoard = createMiniBoard('s4-old-board');
+  const newBoard = createMiniBoard('s4-new-board');
+
+  // Animation: explosion at (2,2) + match at row 4
+
+  // Timeline:
+  // 0.0s  -- Match detected at (2,4), (3,4), (4,4)
+  // 0.0s  -- Bomb activates at (2,2)
+  // 0.15s -- Match tiles destroyed
+  // 0.2s  -- Explosion wave 0 (bomb itself)
+  // 0.4s  -- Explosion wave 1
+  // 0.6s  -- All explosion done
+  // 0.7s  -- Gravity
+  // OLD: lock might expire too early at 0.55s (prediction error)
+  // NEW: lock releases exactly when wave completes
+
+  const matchCells = [[2,4],[3,4],[4,4]];
+  const explCells0 = [[2,2]];
+  const explCells1 = [[1,1],[2,1],[3,1],[1,2],[3,2],[1,3],[2,3],[3,3]];
+
+  // Highlight flow steps
+  function highlightStep(containerId, stepIdx) {
+    const flow = document.getElementById(containerId);
+    flow.querySelectorAll('.flow-box').forEach((box, i) => {
+      box.classList.toggle('active-step', i === stepIdx);
+    });
+  }
+
+  function animateBoards(t) {
+    // Match destruction: 0.0 - 0.15
+    matchCells.forEach(([c, r]) => {
+      const p = clamp(t / 0.15, 0, 1);
+      [oldBoard, newBoard].forEach(b => {
+        const tile = b.tiles[`${c},${r}`];
+        if (tile) {
+          tile.style.opacity = 1 - p;
+          tile.style.transform = `scale(${1 - p})`;
+        }
+        if (p > 0) b.cells[`${c},${r}`].classList.add('locked');
+        if (p >= 1) b.cells[`${c},${r}`].classList.remove('locked');
+      });
+    });
+
+    // Explosion wave 0: 0.2 - 0.35
+    explCells0.forEach(([c, r]) => {
+      if (t >= 0.2) {
+        const p = clamp((t - 0.2) / 0.15, 0, 1);
+        [oldBoard, newBoard].forEach(b => {
+          const tile = b.tiles[`${c},${r}`];
+          if (tile) {
+            tile.style.opacity = 1 - p;
+            tile.style.transform = `scale(${1 - p})`;
+          }
+        });
+      }
+      [oldBoard, newBoard].forEach(b => {
+        if (t >= 0.0 && t < 0.6) b.cells[`${c},${r}`].classList.add('locked');
+        else b.cells[`${c},${r}`].classList.remove('locked');
+      });
+    });
+
+    // All explosion area locked
+    explCells1.forEach(([c, r]) => {
+      [oldBoard, newBoard].forEach(b => {
+        if (t >= 0.0 && t < 0.6) b.cells[`${c},${r}`].classList.add('locked');
+        else b.cells[`${c},${r}`].classList.remove('locked');
+      });
+    });
+
+    // Explosion wave 1: 0.4 - 0.55
+    explCells1.forEach(([c, r]) => {
+      if (t >= 0.4) {
+        const p = clamp((t - 0.4) / 0.15, 0, 1);
+        [oldBoard, newBoard].forEach(b => {
+          const tile = b.tiles[`${c},${r}`];
+          if (tile) {
+            tile.style.opacity = 1 - p;
+            tile.style.transform = `scale(${1 - p})`;
+          }
+        });
+      }
+    });
+
+    // Suspended tiles in explosion area shake
+    explCells1.forEach(([c, r]) => {
+      if (t >= 0.0 && t < 0.4) {
+        const shake = Math.sin(t * 25) * 1.5;
+        [oldBoard, newBoard].forEach(b => {
+          const tile = b.tiles[`${c},${r}`];
+          if (tile) tile.style.transform = `translateX(${shake}px)`;
+        });
+      }
+    });
+
+    // OLD system: timing error -- lock expires too early at 0.5s (predicted 0.5s but actual needs 0.6s)
+    // A tile falls prematurely into the blast zone
+    const oldErrorTime = 0.5;
+    const oldTileAbove = oldBoard.tiles['2,0']; // tile above explosion area
+    if (oldTileAbove) {
+      if (t >= oldErrorTime && t < 0.6) {
+        // Premature fall into still-exploding area
+        const fallP = clamp((t - oldErrorTime) / 0.15, 0, 1);
+        const y = lerp(0, 1, easeOutCubic(fallP));
+        oldTileAbove.style.top = (y * MINI_CELL + MINI_GAP) + 'px';
+        oldTileAbove.style.boxShadow = '0 0 8px rgba(229, 57, 53, 0.8)';
+      } else if (t >= 0.6) {
+        // After explosion ends, stays at wrong position
+        oldTileAbove.style.top = (1 * MINI_CELL + MINI_GAP) + 'px';
+        oldTileAbove.style.boxShadow = '';
+      }
+    }
+
+    // NEW system: correct timing -- lock released exactly when wave completes at 0.6s
+    const newTileAbove = newBoard.tiles['2,0'];
+    if (newTileAbove) {
+      if (t >= 0.65) {
+        const fallP = clamp((t - 0.65) / 0.2, 0, 1);
+        const y = lerp(0, 2, easeOutCubic(fallP)); // Falls further since more cells are empty
+        newTileAbove.style.top = (y * MINI_CELL + MINI_GAP) + 'px';
+      }
+    }
+
+    // Flow step highlighting
+    if (t < 0.05) {
+      highlightStep('s4-old-flow', 0);
+      highlightStep('s4-new-flow', 0);
+    } else if (t < 0.2) {
+      highlightStep('s4-old-flow', 1);
+      highlightStep('s4-new-flow', 1);
+    } else if (t < 0.5) {
+      highlightStep('s4-old-flow', 2);
+      highlightStep('s4-new-flow', 2);
+    } else if (t < 0.65) {
+      highlightStep('s4-old-flow', 3);
+      highlightStep('s4-new-flow', 3);
+    } else {
+      highlightStep('s4-old-flow', 4);
+      highlightStep('s4-new-flow', 4);
+    }
+
+    // Dict displays
+    const oldDict = document.getElementById('s4-old-dict');
+    const newDict = document.getElementById('s4-new-dict');
+
+    if (t < 0.05) {
+      oldDict.innerHTML = '<div class="dv-entry"><span class="dv-key">Waiting for events...</span></div>';
+      newDict.innerHTML = '<div class="dv-entry"><span class="dv-key">Waiting for events...</span></div>';
+    } else if (t < 0.5) {
+      oldDict.innerHTML = `
+        <div class="dv-entry active"><span class="dv-key">_columnDestroyEndTimes[2]</span><span class="dv-val">= 0.15</span></div>
+        <div class="dv-entry active"><span class="dv-key">_lockEntries[] duration</span><span class="dv-val">= 0.50 (predicted)</span></div>
+        <div class="dv-entry"><span class="dv-key" style="color:#e53935">actual needs: 0.60s</span></div>
+      `;
+      const activeNew = [...explCells0, ...explCells1].filter(([c,r]) => {
+        const waveTime = (c===2 && r===2) ? 0.2 : 0.4;
+        return t < waveTime + 0.15;
+      }).length;
+      newDict.innerHTML = `
+        <div class="dv-entry active"><span class="dv-key">Active locks</span><span class="dv-val">= ${activeNew + matchCells.filter(()=>t<0.15).length}</span></div>
+        <div class="dv-entry"><span class="dv-key" style="color:#66bb6a">Release when wave completes</span></div>
+      `;
+    } else if (t < 0.65) {
+      oldDict.innerHTML = `
+        <div class="dv-entry"><span class="dv-key" style="color:#e53935">Lock expired early at 0.50s!</span></div>
+        <div class="dv-entry"><span class="dv-key" style="color:#e53935">Tile fell into blast zone</span></div>
+      `;
+      newDict.innerHTML = `
+        <div class="dv-entry active"><span class="dv-key">Releasing wave 1 tokens...</span></div>
+        <div class="dv-entry"><span class="dv-key" style="color:#66bb6a">Physics blocked until done</span></div>
+      `;
+    } else {
+      oldDict.innerHTML = `
+        <div class="dv-entry"><span class="dv-key" style="color:#e53935">Timing mismatch caused glitch</span></div>
+      `;
+      newDict.innerHTML = `
+        <div class="dv-entry"><span class="dv-key" style="color:#66bb6a">All locks released at correct time</span></div>
+        <div class="dv-entry"><span class="dv-key" style="color:#66bb6a">Gravity resumes cleanly</span></div>
+      `;
+    }
+
+    // Update explanation
+    const explEl = document.getElementById('s4-expl');
+    if (t < 0.05) {
+      explEl.querySelector('h3').textContent = '初始状态';
+      explEl.querySelector('p').innerHTML = '两侧都发生相同的游戏事件: 三消匹配 + 炸弹激活。观察两种系统如何处理锁的时序。';
+    } else if (t < 0.2) {
+      explEl.querySelector('h3').textContent = '事件处理';
+      explEl.querySelector('p').innerHTML = '<strong>旧方案</strong>: Choreographer 分析所有事件, 计算每个动画的时长, 组装 CellLockEntry 列表。需要预测爆炸总时长 = waveInterval * radius。<br><strong>新方案</strong>: 爆炸系统启动时立即 <code>Acquire(pos, Drop)</code> 锁定所有受影响格子。无需预测。';
+    } else if (t < 0.5) {
+      explEl.querySelector('h3').textContent = '爆炸进行中';
+      explEl.querySelector('p').innerHTML = '逐波消除进行中。<strong>旧方案</strong>的锁有固定倒计时 (预测值 0.50s)。<strong>新方案</strong>的锁由业务系统按实际波次完成时释放, 天然准确。';
+    } else if (t < 0.65) {
+      explEl.querySelector('h3').textContent = '时序偏差暴露!';
+      explEl.querySelector('p').innerHTML = '<span class="highlight" style="color:#e53935">左侧 (旧方案)</span>: 预测的 0.50s 到期, 锁提前释放, 但实际上 wave 1 还在进行 (0.55s 才完成)。上方的方块过早落入爆炸区域!<br><span class="highlight" style="color:#66bb6a">右侧 (新方案)</span>: 锁还没释放, 因为 wave 1 的 Release 还没调用。方块被正确阻止。';
+    } else {
+      explEl.querySelector('h3').textContent = '结果对比';
+      explEl.querySelector('p').innerHTML = '<span class="highlight" style="color:#e53935">旧方案</span>: 由于时序预测误差, 方块提前落入了爆炸区域, 造成视觉 glitch。要修复需要在 Choreographer 中精确调参 (脆弱)。<br><span class="highlight" style="color:#66bb6a">新方案</span>: 业务系统自己控制生命周期, 不存在预测误差。物理层只看 <code>IsLocked</code> 标志, 简单可靠。';
+    }
+  }
+
+  function resetS4() {
+    if (s4state.animFrame) cancelAnimationFrame(s4state.animFrame);
+    s4state.playing = false;
+    s4state.time = 0;
+
+    // Rebuild boards
+    document.getElementById('s4-old-board').innerHTML = '';
+    document.getElementById('s4-new-board').innerHTML = '';
+    const ob = createMiniBoard('s4-old-board');
+    const nb = createMiniBoard('s4-new-board');
+    oldBoard.cells = ob.cells; oldBoard.tiles = ob.tiles;
+    newBoard.cells = nb.cells; newBoard.tiles = nb.tiles;
+
+    highlightStep('s4-old-flow', -1);
+    highlightStep('s4-new-flow', -1);
+
+    document.getElementById('s4-old-dict').innerHTML = '';
+    document.getElementById('s4-new-dict').innerHTML = '';
+    document.getElementById('s4-play-btn').textContent = '同步演示两种方案';
+  }
+
+  document.getElementById('s4-reset-btn').addEventListener('click', () => {
+    resetS4();
+    animateBoards(0);
+  });
+
+  document.getElementById('s4-play-btn').addEventListener('click', () => {
+    if (s4state.playing) {
+      s4state.playing = false;
+      document.getElementById('s4-play-btn').textContent = '继续';
+      return;
+    }
+    if (s4state.time >= TOTAL_DUR) resetS4();
+    s4state.playing = true;
+    s4state.lastTs = performance.now();
+    document.getElementById('s4-play-btn').textContent = '暂停';
+
+    function loop(ts) {
+      if (!s4state.playing) return;
+      const speed = parseFloat(document.getElementById('s4-speed').value);
+      const dt = (ts - s4state.lastTs) / 1000 * speed;
+      s4state.lastTs = ts;
+      s4state.time += dt;
+      animateBoards(s4state.time);
+      if (s4state.time >= TOTAL_DUR) {
+        s4state.playing = false;
+        document.getElementById('s4-play-btn').textContent = '重播';
+        return;
+      }
+      s4state.animFrame = requestAnimationFrame(loop);
+    }
+    s4state.animFrame = requestAnimationFrame(loop);
+  });
+}
+
+// ──────────────────────────────────────────────
+// Init
+// ──────────────────────────────────────────────
+switchScene(0);
+</script>
+</body>
+</html>

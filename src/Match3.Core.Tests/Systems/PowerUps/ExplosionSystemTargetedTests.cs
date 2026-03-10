@@ -50,12 +50,12 @@ public class ExplosionSystemTargetedTests : IDisposable
         // Verify targets are suspended
         foreach (var pos in targets)
         {
-            Assert.True(state.GetTile(pos.X, pos.Y).IsSuspended, $"Target at {pos} should be suspended");
+            Assert.True(state.IsLocked(pos.X, pos.Y, CellLockType.Drop), $"Target at {pos} should be suspended");
         }
 
         // Verify others are NOT suspended
-        Assert.False(state.GetTile(5, 5).IsSuspended, "Origin should not be suspended unless in targets");
-        Assert.False(state.GetTile(0, 0).IsSuspended, "Random tile should not be suspended");
+        Assert.False(state.IsLocked(5, 5, CellLockType.Drop), "Origin should not be suspended unless in targets");
+        Assert.False(state.IsLocked(0, 0, CellLockType.Drop), "Random tile should not be suspended");
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public class ExplosionSystemTargetedTests : IDisposable
         
         // Assert 1: Nothing cleared yet (targets start at Distance 1)
         Assert.NotEqual(ElementType.None, state.GetTile(5, 6).Type);
-        Assert.True(state.GetTile(5, 6).IsSuspended);
+        Assert.True(state.IsLocked(5, 6, CellLockType.Drop));
 
         // Act 2: Wave 1 (Distance 1)
         _sut.Update(ref state, deltaTime, 2, 1.1f, _eventCollector, triggeredBombs);

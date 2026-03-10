@@ -30,6 +30,7 @@ public sealed class SimulationEngine : IDisposable
     private readonly IDeadlockDetectionSystem? _deadlockDetector;
     private readonly IBoardShuffleSystem? _shuffleSystem;
     private readonly ILevelObjectiveSystem? _objectiveSystem;
+    private readonly LockScheduler _lockScheduler;
 
     private IEventCollector _eventCollector;
     private int _currentTick;
@@ -81,6 +82,11 @@ public sealed class SimulationEngine : IDisposable
     public IEventCollector EventCollector => _eventCollector;
 
     /// <summary>
+    /// Central lock scheduler for cell lock lifecycle management.
+    /// </summary>
+    public LockScheduler Locks => _lockScheduler;
+
+    /// <summary>
     /// Creates a new simulation engine.
     /// </summary>
     public SimulationEngine(
@@ -97,7 +103,8 @@ public sealed class SimulationEngine : IDisposable
         IDeadlockDetectionSystem? deadlockDetector = null,
         IBoardShuffleSystem? shuffleSystem = null,
         ILevelObjectiveSystem? objectiveSystem = null,
-        IColorBombSessionManager? colorBombSessionManager = null)
+        IColorBombSessionManager? colorBombSessionManager = null,
+        LockScheduler? lockScheduler = null)
     {
         State = initialState;
         _config = config ?? new SimulationConfig();
@@ -108,6 +115,7 @@ public sealed class SimulationEngine : IDisposable
         _powerUpHandler = powerUpHandler ?? throw new ArgumentNullException(nameof(powerUpHandler));
         _eventCollector = eventCollector ?? NullEventCollector.Instance;
         _objectiveSystem = objectiveSystem;
+        _lockScheduler = lockScheduler ?? new LockScheduler();
         _pendingMoveState = PendingMoveState.None;
 
         // Create orchestrator to coordinate subsystems
@@ -221,6 +229,9 @@ public sealed class SimulationEngine : IDisposable
             _currentTick,
             _elapsedTime,
             _eventCollector);
+
+        // 3.6. Tick timed locks (auto-release expired)
+        _lockScheduler.Tick(ref state, deltaTime);
 
         // 4. Physics (gravity)
         _orchestrator.UpdatePhysics(ref state, deltaTime);
@@ -588,7 +599,17 @@ public sealed class SimulationEngine : IDisposable
     }
 
     /// <summary>
-    /// Clone the engine for parallel simulation (AI branching).
+    /// Clone the engine for parallel simulation (AI branching / DryRun).
+    /// <para>
+    /// Thread-safety: when <paramref name="newRandom"/> is provided, the returned engine
+    /// has fully independent mutable state (GameState, Physics, Config, frame buffers)
+    /// and can run on a background thread concurrently with the original.
+    /// </para>
+    /// <para>
+    /// Stateless systems (MatchFinder, MatchProcessor, DeadlockDetector, ShuffleSystem,
+    /// ObjectiveSystem) are safely shared — they have no mutable instance fields and use
+    /// ThreadLocal pools.
+    /// </para>
     /// </summary>
     public SimulationEngine Clone(Match3.Random.IRandom? newRandom = null)
     {
@@ -598,29 +619,38 @@ public sealed class SimulationEngine : IDisposable
             clonedState.Random = newRandom;
         }
 
-        // Each clone gets its own explosion system, projectile system, and session manager
+        // Clone mutable systems — each clone needs independent frame buffers and RNG
+        var cloneRandom = newRandom ?? clonedState.Random;
+        var cloneConfig = _config.Clone();
+        var clonePhysics = _physics.CloneForSimulation(cloneRandom);
+
+        var cloneLocks = _lockScheduler.Clone();
         var cloneCover = new CoverSystem(_objectiveSystem);
         var cloneGround = new GroundSystem(_objectiveSystem);
-        var cloneExplosion = new ExplosionSystem(cloneCover, cloneGround, _objectiveSystem);
+        var cloneExplosion = new ExplosionSystem(cloneCover, cloneGround, _objectiveSystem, cloneLocks);
         var cloneProjectile = new ProjectileSystem();
         var cloneColorBomb = new ColorBombSessionManager(null, cloneCover, cloneGround, _objectiveSystem);
         var clonePowerUp = _powerUpHandler.WithExplosionSystem(cloneExplosion).WithProjectileSystem(cloneProjectile);
 
+        // Shared stateless systems: _matchFinder, _matchProcessor, _deadlockDetector,
+        // _shuffleSystem, _objectiveSystem — safe to share (no mutable instance fields).
+        // _refill is safe when SpawnModel uses state.Random (per-clone) instead of a stored IRandom.
         return new SimulationEngine(
             clonedState,
-            _config,
-            _physics,
+            cloneConfig,
+            clonePhysics,
             _refill,
             _matchFinder,
             _matchProcessor,
             clonePowerUp,
             cloneProjectile,
-            NullEventCollector.Instance, // Clones always use null collector
+            NullEventCollector.Instance,
             cloneExplosion,
             _deadlockDetector,
             _shuffleSystem,
             _objectiveSystem,
-            cloneColorBomb
+            cloneColorBomb,
+            cloneLocks
         );
     }
 
@@ -665,22 +695,22 @@ public sealed class SimulationEngine : IDisposable
     }
 
     /// <summary>
-    /// Acquire a cell lock on the engine's state.
+    /// Acquire a cell lock via the central LockScheduler.
     /// Safe because CellLocks is a reference-type array shared between struct copies.
     /// </summary>
     public LockToken AcquireLock(Position pos, CellLockType types)
     {
         var state = State;
-        return state.AcquireLock(pos.X, pos.Y, types);
+        return _lockScheduler.Acquire(ref state, pos, types);
     }
 
     /// <summary>
-    /// Release a previously acquired cell lock.
+    /// Release a previously acquired cell lock via the central LockScheduler (idempotent).
     /// </summary>
     public void ReleaseLock(LockToken token)
     {
         var state = State;
-        state.ReleaseLock(token);
+        _lockScheduler.Release(ref state, token);
     }
 
     public void Dispose()

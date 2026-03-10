@@ -88,7 +88,7 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
             }
 
             // 3. Try Diagonal Slide
-            if (tileBelow.IsSuspended)
+            if (state.IsLocked(x, checkY, CellLockType.Drop))
             {
                 return GuardHoleTransit(
                     FindDiagonalTarget(ref state, x, checkY, y),

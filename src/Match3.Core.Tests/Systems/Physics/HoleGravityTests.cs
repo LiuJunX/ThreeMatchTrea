@@ -279,9 +279,8 @@ public class HoleGravityTests
 
         state.SetTile(1, 0, new Tile(100, ElementType.Item1, 1, 0));
 
-        var obstacle = new Tile(9, ElementType.Item2, 1, 1);
-        obstacle.IsSuspended = true;
-        state.SetTile(1, 1, obstacle);
+        state.SetTile(1, 1, new Tile(9, ElementType.Item2, 1, 1));
+        state.Lock(1, 1, CellLockType.Drop);
 
         // Mark (0,1) as hole — diagonal slide should avoid it
         state.Cells[1 * 3 + 0] = CellKind.Void;

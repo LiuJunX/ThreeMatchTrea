@@ -1,0 +1,150 @@
+using System;
+using Match3.Core.Models.Enums;
+
+namespace Match3.Core.Models.Grid;
+
+/// <summary>
+/// Centralized lock lifecycle manager. Provides idempotent release and timed auto-release.
+/// All cell lock acquisition in the simulation should go through this class.
+/// </summary>
+public sealed class LockScheduler
+{
+    private int _nextId;
+
+    private bool[] _released;
+    private int _releasedCapacity;
+
+    private int _timedCount;
+    private LockToken[] _timedTokens;
+    private float[] _timedRemaining;
+
+    private const int InitialTimedCapacity = 32;
+    private const int InitialReleasedCapacity = 64;
+
+    public LockScheduler()
+    {
+        _released = new bool[InitialReleasedCapacity];
+        _releasedCapacity = InitialReleasedCapacity;
+        _timedTokens = new LockToken[InitialTimedCapacity];
+        _timedRemaining = new float[InitialTimedCapacity];
+    }
+
+    /// <summary>
+    /// Acquire a manual lock on a cell. Caller is responsible for calling Release.
+    /// </summary>
+    public LockToken Acquire(ref GameState state, Position pos, CellLockType types)
+    {
+        int id = ++_nextId;
+        int idx = state.Index(pos);
+        state.CellLocks[idx] = CellLockOps.Lock(state.CellLocks[idx], types);
+        return new LockToken(id, idx, types);
+    }
+
+    /// <summary>
+    /// Acquire a timed lock on a cell. Automatically released after duration expires.
+    /// </summary>
+    public LockToken Acquire(ref GameState state, Position pos, CellLockType types, float duration)
+    {
+        var token = Acquire(ref state, pos, types);
+        EnsureTimedCapacity();
+        _timedTokens[_timedCount] = token;
+        _timedRemaining[_timedCount] = duration;
+        _timedCount++;
+        return token;
+    }
+
+    /// <summary>
+    /// Idempotent release. Safe to call multiple times with the same token.
+    /// </summary>
+    public void Release(ref GameState state, LockToken token)
+    {
+        if (!token.IsValid) return;
+        EnsureReleasedCapacity(token.Id);
+        if (_released[token.Id]) return;
+        _released[token.Id] = true;
+        state.CellLocks[token.CellIndex] = CellLockOps.Unlock(state.CellLocks[token.CellIndex], token.Types);
+    }
+
+    /// <summary>
+    /// Process timed lock expiry. Call once per simulation tick.
+    /// </summary>
+    public void Tick(ref GameState state, float dt)
+    {
+        for (int i = _timedCount - 1; i >= 0; i--)
+        {
+            _timedRemaining[i] -= dt;
+            if (_timedRemaining[i] <= 0f)
+            {
+                Release(ref state, _timedTokens[i]);
+
+                int last = _timedCount - 1;
+                if (i < last)
+                {
+                    _timedTokens[i] = _timedTokens[last];
+                    _timedRemaining[i] = _timedRemaining[last];
+                }
+                _timedTokens[last] = default;
+                _timedCount--;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Clone the scheduler for AI simulation branching.
+    /// </summary>
+    public LockScheduler Clone()
+    {
+        var clone = new LockScheduler
+        {
+            _nextId = _nextId,
+            _releasedCapacity = _releasedCapacity,
+            _timedCount = _timedCount
+        };
+
+        clone._released = new bool[_releasedCapacity];
+        Array.Copy(_released, clone._released, _releasedCapacity);
+
+        clone._timedTokens = new LockToken[_timedTokens.Length];
+        clone._timedRemaining = new float[_timedRemaining.Length];
+        Array.Copy(_timedTokens, clone._timedTokens, _timedCount);
+        Array.Copy(_timedRemaining, clone._timedRemaining, _timedCount);
+
+        return clone;
+    }
+
+    /// <summary>
+    /// Reset all state for level restart. Clears all locks from the game state.
+    /// </summary>
+    public void Reset(ref GameState state)
+    {
+        Array.Clear(state.CellLocks, 0, state.CellLocks.Length);
+        _nextId = 0;
+        _timedCount = 0;
+        Array.Clear(_released, 0, _releasedCapacity);
+        Array.Clear(_timedTokens, 0, _timedTokens.Length);
+    }
+
+    private void EnsureReleasedCapacity(int id)
+    {
+        if (id < _releasedCapacity) return;
+        int newCapacity = _releasedCapacity;
+        while (newCapacity <= id)
+            newCapacity *= 2;
+        var newArray = new bool[newCapacity];
+        Array.Copy(_released, newArray, _releasedCapacity);
+        _released = newArray;
+        _releasedCapacity = newCapacity;
+    }
+
+    private void EnsureTimedCapacity()
+    {
+        if (_timedCount < _timedTokens.Length) return;
+        int newCapacity = _timedTokens.Length * 2;
+        var newTokens = new LockToken[newCapacity];
+        var newRemaining = new float[newCapacity];
+        Array.Copy(_timedTokens, newTokens, _timedCount);
+        Array.Copy(_timedRemaining, newRemaining, _timedCount);
+        _timedTokens = newTokens;
+        _timedRemaining = newRemaining;
+    }
+}

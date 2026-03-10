@@ -133,10 +133,12 @@ public class RaceConditionTests
         var gravity = new RealtimeGravitySystem(new Match3Config { GravitySpeed = 10f, InitialFallSpeed = 0f }, rng);
         
         // Setup stable column 0
-        var blockFloor = new Tile(1, ElementType.Item1, 0, 4) { IsSuspended = true };
+        var blockFloor = new Tile(1, ElementType.Item1, 0, 4);
         state.SetTile(0, 4, blockFloor); // Floor Block
-        var blockStack = new Tile(2, ElementType.Item1, 0, 3) { IsSuspended = true };
+        state.Lock(new Position(0, 4), CellLockType.Drop);
+        var blockStack = new Tile(2, ElementType.Item1, 0, 3);
         state.SetTile(0, 3, blockStack); // Stacked Block
+        state.Lock(new Position(0, 3), CellLockType.Drop);
         
         // Tile A at (0, 2)
         var tileA = new Tile(3, ElementType.Item1, 0, 2);

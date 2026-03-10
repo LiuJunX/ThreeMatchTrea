@@ -94,10 +94,9 @@ public class RealtimeGravityTests
         // (2,1) = Obstacle
         var state = new GameState(3, 3, 5, new StubRandom(0));
         
-        // Setup Suspended Tile at (1,1) to force slide
-        var obstacle = new Tile(9, ElementType.Item2, 1, 1);
-        obstacle.IsSuspended = true; 
-        state.SetTile(1, 1, obstacle);
+        // Setup locked tile at (1,1) to force slide
+        state.SetTile(1, 1, new Tile(9, ElementType.Item2, 1, 1));
+        state.Lock(1, 1, CellLockType.Drop);
         
         // Target at (0,1) is empty
         state.SetTile(0, 1, new Tile(0, ElementType.None, 0, 1));

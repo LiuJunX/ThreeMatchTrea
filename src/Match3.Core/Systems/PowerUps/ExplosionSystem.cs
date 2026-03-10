@@ -17,20 +17,27 @@ public class ExplosionSystem : IExplosionSystem
     private readonly ICoverSystem _coverSystem;
     private readonly IGroundSystem _groundSystem;
     private readonly ILevelObjectiveSystem? _objectiveSystem;
+    private readonly LockScheduler? _lockScheduler;
 
     // Config
     private const float WaveInterval = 0.1f; // 100ms per wave
 
     public ExplosionSystem()
-        : this(new CoverSystem(), new GroundSystem(), null)
+        : this(new CoverSystem(), new GroundSystem(), null, null)
     {
     }
 
     public ExplosionSystem(ICoverSystem coverSystem, IGroundSystem groundSystem, ILevelObjectiveSystem? objectiveSystem = null)
+        : this(coverSystem, groundSystem, objectiveSystem, null)
+    {
+    }
+
+    public ExplosionSystem(ICoverSystem coverSystem, IGroundSystem groundSystem, ILevelObjectiveSystem? objectiveSystem, LockScheduler? lockScheduler)
     {
         _coverSystem = coverSystem;
         _groundSystem = groundSystem;
         _objectiveSystem = objectiveSystem;
+        _lockScheduler = lockScheduler;
     }
 
     public bool HasActiveExplosions => _activeExplosions.Count > 0;
@@ -40,7 +47,7 @@ public class ExplosionSystem : IExplosionSystem
         var explosion = Pools.Obtain<Explosion>();
         explosion.Initialize(origin, radius, WaveInterval);
 
-        // Calculate affected area and suspend tiles
+        // Calculate affected area and lock tiles
         int width = state.Width;
         int height = state.Height;
 
@@ -53,12 +60,19 @@ public class ExplosionSystem : IExplosionSystem
                     var pos = new Position(x, y);
                     explosion.AffectedArea.Add(pos);
 
-                    // Suspend the tile immediately to block falling
                     var tile = state.GetTile(x, y);
                     if (tile.Type != ElementType.None)
                     {
-                        tile.IsSuspended = true;
-                        state.SetTile(x, y, tile);
+                        if (_lockScheduler != null)
+                        {
+                            var token = _lockScheduler.Acquire(ref state, pos, CellLockType.Drop);
+                            explosion.LockTokens.Add(token);
+                        }
+                        else
+                        {
+                            state.Lock(pos, CellLockType.Drop);
+                            explosion.LockedPositions.Add(pos);
+                        }
                     }
                 }
             }
@@ -90,7 +104,7 @@ public class ExplosionSystem : IExplosionSystem
         var explosion = Pools.Obtain<Explosion>();
         explosion.Initialize(origin, maxRadius, waveInterval, acceleration);
 
-        // 3. Populate AffectedArea and Suspend
+        // 3. Populate AffectedArea and lock tiles
         foreach (var pos in targets)
         {
             explosion.AffectedArea.Add(pos);
@@ -100,8 +114,16 @@ public class ExplosionSystem : IExplosionSystem
                 var tile = state.GetTile(pos.X, pos.Y);
                 if (tile.Type != ElementType.None)
                 {
-                    tile.IsSuspended = true;
-                    state.SetTile(pos.X, pos.Y, tile);
+                    if (_lockScheduler != null)
+                    {
+                        var token = _lockScheduler.Acquire(ref state, pos, CellLockType.Drop);
+                        explosion.LockTokens.Add(token);
+                    }
+                    else
+                    {
+                        state.Lock(pos, CellLockType.Drop);
+                        explosion.LockedPositions.Add(pos);
+                    }
                 }
             }
         }
@@ -175,13 +197,15 @@ public class ExplosionSystem : IExplosionSystem
                     // Damage the cover, tile is protected this round
                     _coverSystem.TryDamageCover(ref state, pos, tick, simTime, eventCollector);
 
-                    // Clear suspended flag on the tile (cover absorbed the hit)
-                    var suspendedTile = state.GetTile(pos.X, pos.Y);
-                    if (suspendedTile.Type != ElementType.None)
-                    {
-                        suspendedTile.IsSuspended = false;
-                        state.SetTile(pos.X, pos.Y, suspendedTile);
-                    }
+                    // Release lock for this cell (cover absorbed the hit)
+                    ReleaseLockForCell(ref state, explosion, pos);
+                    continue;
+                }
+
+                // Check Indestructible lock — tile survives the wave
+                if (!state.CanDestroy(pos))
+                {
+                    ReleaseLockForCell(ref state, explosion, pos);
                     continue;
                 }
 
@@ -195,9 +219,8 @@ public class ExplosionSystem : IExplosionSystem
                     if (tile.Type.IsBomb() && !(pos.X == explosion.Origin.X && pos.Y == explosion.Origin.Y))
                     {
                         triggeredBombs.Add(pos);
-                        // Clear suspended flag but don't destroy - let triggered activation handle it
-                        tile.IsSuspended = false;
-                        state.SetTile(pos.X, pos.Y, tile);
+                        // Release lock but don't destroy - let triggered activation handle it
+                        ReleaseLockForCell(ref state, explosion, pos);
                         continue;
                     }
 
@@ -219,22 +242,50 @@ public class ExplosionSystem : IExplosionSystem
                     // Track objective progress before destroying
                     _objectiveSystem?.OnTileDestroyed(ref state, tile.Type, tick, simTime, eventCollector);
 
-                    // Destroy (Set to None, clears IsSuspended)
+                    // Destroy (Set to None) — lock is released since tile is gone
                     state.SetTile(pos.X, pos.Y, new Tile(0, ElementType.None, pos.X, pos.Y));
+                    ReleaseLockForCell(ref state, explosion, pos);
 
                     // Notify ground layer
                     _groundSystem.OnTileDestroyed(ref state, pos, tick, simTime, eventCollector);
                 }
                 else
                 {
-                    // If it was somehow suspended (e.g. from a previous overlapping explosion?), clear it
-                    // Creating a new Tile clears flags.
-                    state.SetTile(pos.X, pos.Y, new Tile(0, ElementType.None, pos.X, pos.Y));
+                    // Empty cell — release any lock that may have been acquired
+                    ReleaseLockForCell(ref state, explosion, pos);
                 }
             }
         }
 
         explosion.CurrentWaveRadius++;
+    }
+
+    /// <summary>
+    /// Find and release the lock token for a specific cell position.
+    /// </summary>
+    private void ReleaseLockForCell(ref GameState state, Explosion explosion, Position pos)
+    {
+        if (_lockScheduler != null)
+        {
+            int cellIndex = state.Index(pos);
+            for (int i = explosion.LockTokens.Count - 1; i >= 0; i--)
+            {
+                if (explosion.LockTokens[i].CellIndex == cellIndex)
+                {
+                    _lockScheduler.Release(ref state, explosion.LockTokens[i]);
+                    explosion.LockTokens.RemoveAt(i);
+                    break;
+                }
+            }
+        }
+        else
+        {
+            // Only unlock if this explosion actually locked the cell
+            if (explosion.LockedPositions.Remove(pos))
+            {
+                state.Unlock(pos, CellLockType.Drop);
+            }
+        }
     }
 
     public void Reset()

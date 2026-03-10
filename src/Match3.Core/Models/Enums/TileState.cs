@@ -20,11 +20,6 @@ namespace Match3.Core.Models.Enums
         Falling = 1 << 0,
 
         /// <summary>
-        /// Tile is suspended (gravity ignored), e.g., during explosion.
-        /// </summary>
-        Suspended = 1 << 1,
-
-        /// <summary>
         /// Tile is being destroyed (for future animation sync).
         /// </summary>
         Destroying = 1 << 2,

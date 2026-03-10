@@ -206,7 +206,7 @@ public struct GameState
 
         var tile = GetTile(x, y);
         if (tile.Type == ElementType.None) return false;
-        if (tile.IsFalling || tile.IsSuspended) return false;
+        if (tile.IsFalling) return false;
 
         return true;
     }
@@ -280,7 +280,7 @@ public struct GameState
     {
         var idx = y * Width + x;
         CellLocks[idx] = CellLockOps.Lock(CellLocks[idx], types);
-        return new LockToken(idx, types);
+        return new LockToken(0, idx, types);
     }
 
     public void ReleaseLock(LockToken token)

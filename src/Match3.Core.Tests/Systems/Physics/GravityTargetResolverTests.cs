@@ -196,9 +196,9 @@ public class GravityTargetResolverTests
         // Tile at (1, 0)
         state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
 
-        // Suspended tile at (1, 1) - blocks direct fall
-        var suspended = new Tile(2, ElementType.Item3, 1, 1) { IsSuspended = true };
-        state.SetTile(1, 1, suspended);
+        // Locked tile at (1, 1) - blocks direct fall
+        state.SetTile(1, 1, new Tile(2, ElementType.Item3, 1, 1));
+        state.Lock(1, 1, CellLockType.Drop);
 
         // Left diagonal open: (0, 1) empty, (0, 0) empty (overhead clear)
         // Right diagonal blocked: (2, 1) has tile
@@ -225,9 +225,9 @@ public class GravityTargetResolverTests
         // Tile at (1, 0)
         state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
 
-        // Suspended tile at (1, 1)
-        var suspended = new Tile(2, ElementType.Item3, 1, 1) { IsSuspended = true };
-        state.SetTile(1, 1, suspended);
+        // Locked tile at (1, 1)
+        state.SetTile(1, 1, new Tile(2, ElementType.Item3, 1, 1));
+        state.Lock(1, 1, CellLockType.Drop);
 
         // Left diagonal blocked: (0, 1) has tile
         state.SetTile(0, 1, new Tile(3, ElementType.Item2, 0, 1));
@@ -255,9 +255,9 @@ public class GravityTargetResolverTests
         // Tile at (1, 0)
         state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
 
-        // Suspended tile at (1, 1)
-        var suspended = new Tile(2, ElementType.Item3, 1, 1) { IsSuspended = true };
-        state.SetTile(1, 1, suspended);
+        // Locked tile at (1, 1)
+        state.SetTile(1, 1, new Tile(2, ElementType.Item3, 1, 1));
+        state.Lock(1, 1, CellLockType.Drop);
 
         // Both diagonals open
 
@@ -287,9 +287,9 @@ public class GravityTargetResolverTests
         // Tile at (1, 0)
         state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
 
-        // Suspended tile at (1, 1)
-        var suspended = new Tile(2, ElementType.Item3, 1, 1) { IsSuspended = true };
-        state.SetTile(1, 1, suspended);
+        // Locked tile at (1, 1)
+        state.SetTile(1, 1, new Tile(2, ElementType.Item3, 1, 1));
+        state.Lock(1, 1, CellLockType.Drop);
 
         // Left diagonal target (0, 1) is open, but overhead (0, 0) is blocked
         state.SetTile(0, 0, new Tile(3, ElementType.Item2, 0, 0));
@@ -318,9 +318,9 @@ public class GravityTargetResolverTests
         // Tile at (0, 0) - left edge
         state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
 
-        // Suspended tile at (0, 1)
-        var suspended = new Tile(2, ElementType.Item3, 0, 1) { IsSuspended = true };
-        state.SetTile(0, 1, suspended);
+        // Locked tile at (0, 1)
+        state.SetTile(0, 1, new Tile(2, ElementType.Item3, 0, 1));
+        state.Lock(0, 1, CellLockType.Drop);
 
         // Right diagonal open
 
@@ -345,9 +345,9 @@ public class GravityTargetResolverTests
         // Tile at (2, 0) - right edge
         state.SetTile(2, 0, new Tile(1, ElementType.Item1, 2, 0));
 
-        // Suspended tile at (2, 1)
-        var suspended = new Tile(2, ElementType.Item3, 2, 1) { IsSuspended = true };
-        state.SetTile(2, 1, suspended);
+        // Locked tile at (2, 1)
+        state.SetTile(2, 1, new Tile(2, ElementType.Item3, 2, 1));
+        state.Lock(2, 1, CellLockType.Drop);
 
         // Left diagonal open
 
@@ -523,9 +523,9 @@ public class GravityTargetResolverTests
         // Tile at (1,0)
         state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
 
-        // Suspended tile at (1,1) — blocks direct fall
-        var suspended = new Tile(2, ElementType.Item3, 1, 1) { IsSuspended = true };
-        state.SetTile(1, 1, suspended);
+        // Locked tile at (1,1) — blocks direct fall
+        state.SetTile(1, 1, new Tile(2, ElementType.Item3, 1, 1));
+        state.Lock(1, 1, CellLockType.Drop);
 
         // Both diagonal targets occupied
         state.SetTile(0, 1, new Tile(3, ElementType.Item2, 0, 1));

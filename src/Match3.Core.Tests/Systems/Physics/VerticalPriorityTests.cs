@@ -45,9 +45,11 @@ namespace Match3.Core.Tests.Systems.Physics
             state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0)); // The falling tile
             state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
 
-            state.SetTile(0, 1, new Tile(4, ElementType.Item1, 0, 1) { IsSuspended = true }); // Block
+            state.SetTile(0, 1, new Tile(4, ElementType.Item1, 0, 1)); // Block
+            state.Lock(0, 1, CellLockType.Drop);
             state.SetTile(1, 1, new Tile(0, ElementType.None, 1, 1)); // Empty Target
-            state.SetTile(2, 1, new Tile(5, ElementType.Item1, 2, 1) { IsSuspended = true }); // Block
+            state.SetTile(2, 1, new Tile(5, ElementType.Item1, 2, 1)); // Block
+            state.Lock(2, 1, CellLockType.Drop);
 
             // Force Shuffle Order: 0, 1, 2
             // Shuffle Logic: 

@@ -421,12 +421,10 @@ public class CoverSystemTests
     }
 
     [Fact]
-    public void CanInteract_SuspendedTile_ReturnsFalse()
+    public void CanInteract_SwapLockedTile_ReturnsFalse()
     {
         var state = CreateState();
-        var tile = state.GetTile(3, 3);
-        tile.IsSuspended = true;
-        state.SetTile(3, 3, tile);
+        state.Lock(new Position(3, 3), CellLockType.Swap);
 
         Assert.False(state.CanInteract(3, 3));
     }

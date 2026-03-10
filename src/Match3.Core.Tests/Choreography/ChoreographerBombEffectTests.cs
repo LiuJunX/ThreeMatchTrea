@@ -40,89 +40,7 @@ public class ChoreographerBombEffectTests
         Assert.Single(startTimes);
     }
 
-    [Fact]
-    public void BombEffect_WaveDelay_CellLockDurationIncludesDelay()
-    {
-        // Wave 0 destroy at simTime=1.0, Wave 1 destroy at simTime=1.1
-        var events = new GameEvent[]
-        {
-            new TileDestroyedEvent
-            {
-                TileId = 1,
-                GridPosition = new Position(4, 4),
-                Type = ElementType.Item1,
-                Reason = DestroyReason.BombEffect,
-                SimulationTime = 1.0f
-            },
-            new TileDestroyedEvent
-            {
-                TileId = 2,
-                GridPosition = new Position(5, 4),
-                Type = ElementType.Item2,
-                Reason = DestroyReason.BombEffect,
-                SimulationTime = 1.1f
-            }
-        };
 
-        var commands = _choreographer.Choreograph(events);
-        var locks = _choreographer.LockEntries;
-
-        Assert.Equal(2, locks.Count);
-
-        // Wave 0 lock: waveDelay=0 + BombDropDelay (BombEffect uses BombDropDelay)
-        var lock0 = locks.First(l => l.Position.Equals(new Position(4, 4)));
-        Assert.Equal(_choreographer.Config.BombDropDelay, lock0.Duration, 0.001f);
-
-        // Wave 1 lock: waveDelay=0.1 + BombDropDelay
-        var lock1 = locks.First(l => l.Position.Equals(new Position(5, 4)));
-        Assert.Equal(0.1f + _choreographer.Config.BombDropDelay, lock1.Duration, 0.001f);
-    }
-
-    [Fact]
-    public void BombEffect_ColumnDestroyEndTimes_TracksLatestWave()
-    {
-        // Two destroys in the same column at different wave times
-        // A subsequent move should wait for the latest one
-        var events = new GameEvent[]
-        {
-            new TileDestroyedEvent
-            {
-                TileId = 1,
-                GridPosition = new Position(3, 4),
-                Type = ElementType.Item1,
-                Reason = DestroyReason.BombEffect,
-                SimulationTime = 0f
-            },
-            new TileDestroyedEvent
-            {
-                TileId = 2,
-                GridPosition = new Position(3, 5),
-                Type = ElementType.Item2,
-                Reason = DestroyReason.BombEffect,
-                SimulationTime = 0.1f // Wave 1 (0.1s later)
-            },
-            new TileMovedEvent
-            {
-                TileId = 3,
-                FromPosition = new Vector2(3, 2),
-                ToPosition = new Vector2(3, 6),
-                Reason = MoveReason.Gravity,
-                SimulationTime = 0.2f
-            }
-        };
-
-        var commands = _choreographer.Choreograph(events);
-
-        var destroyCmds = commands.OfType<DestroyTileCommand>().OrderBy(c => c.StartTime).ToList();
-        var moveCmd = commands.OfType<MoveTileCommand>().First(c => c.From != c.To);
-
-        // The later destroy (wave 1) ends later
-        var latestDestroyEnd = destroyCmds.Max(c => c.StartTime + c.Duration);
-
-        // Move must wait for latest destroy
-        Assert.True(moveCmd.StartTime >= latestDestroyEnd,
-            $"Move start {moveCmd.StartTime} should be >= latest destroy end {latestDestroyEnd}");
-    }
 
     #region ColorBomb Session Events (multi-tick)
 
@@ -161,11 +79,6 @@ public class ChoreographerBombEffectTests
         // Glow effect
         var effects = commands.OfType<ShowEffectCommand>().ToList();
         Assert.Contains(effects, e => e.EffectType == "bomb_flash");
-
-        // Cell lock entry
-        var locks = _choreographer.LockEntries;
-        Assert.Contains(locks, l => l.Position.Equals(new Position(3, 3))
-                                    && l.LockType == CellLockType.Receive);
     }
 
     [Fact]
@@ -221,6 +134,13 @@ public class ChoreographerBombEffectTests
         // Remove projectile after impact
         var remove = commands.OfType<RemoveProjectileCommand>().Single();
         Assert.True(remove.StartTime >= impact.StartTime);
+
+        // Continuous shake on target tile from beam impact
+        var shake = commands.OfType<ShakeTileCommand>().Single(c => c.TileId == 10);
+        Assert.Equal(_choreographer.Config.ColorBombHitShakeAmplitude, shake.Amplitude, 0.01f);
+        Assert.Equal(_choreographer.Config.ColorBombHitShakeFrequency, shake.Frequency, 0.01f);
+        Assert.Equal(impact.StartTime, shake.StartTime, 0.01f);
+        Assert.True(shake.Duration > 0);
     }
 
     [Fact]
@@ -400,6 +320,45 @@ public class ChoreographerBombEffectTests
         // No ScaleTileCommand since session info was cleared
         var scale = commands.OfType<ScaleTileCommand>().Where(c => c.TileId == 42).ToList();
         Assert.Empty(scale);
+    }
+
+    [Fact]
+    public void BeamTarget_ShakeCoversBetweenHitAndDestroy()
+    {
+        // Single-tick: BombActivated + TileDestroyed in same batch
+        // The beam target should get a ShakeTileCommand spanning the hitPause gap
+        var events = new GameEvent[]
+        {
+            new BombActivatedEvent
+            {
+                TileId = 42,
+                Position = new Position(3, 3),
+                BombType = ElementType.ColorBomb,
+                AffectedPositions = new List<Position> { new(3, 3), new(5, 3) },
+                SimulationTime = 0f
+            },
+            new TileDestroyedEvent
+            {
+                TileId = 10,
+                GridPosition = new Position(5, 3),
+                Type = ElementType.Item1,
+                Reason = DestroyReason.BombEffect,
+                SimulationTime = 0f
+            }
+        };
+
+        var commands = _choreographer.Choreograph(events);
+
+        // Shake on the target tile
+        var shake = commands.OfType<ShakeTileCommand>().Single(c => c.TileId == 10);
+        Assert.Equal(_choreographer.Config.ColorBombHitShakeAmplitude, shake.Amplitude, 0.01f);
+        Assert.Equal(_choreographer.Config.ColorBombHitShakeFrequency, shake.Frequency, 0.01f);
+        Assert.True(shake.Duration > 0);
+
+        // Destroy starts after shake ends
+        var destroy = commands.OfType<DestroyTileCommand>().Single(c => c.TileId == 10);
+        Assert.True(destroy.StartTime >= shake.StartTime + shake.Duration - 0.001f,
+            $"Destroy start {destroy.StartTime} should be >= shake end {shake.StartTime + shake.Duration}");
     }
 
     #endregion

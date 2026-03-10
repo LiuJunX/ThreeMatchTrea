@@ -7,6 +7,7 @@ using System.Text;
 using Xunit;
 using Xunit.Abstractions;
 
+
 namespace Match3.Core.Tests.Systems.Physics
 {
     public class DiagonalFallTest
@@ -44,7 +45,8 @@ namespace Match3.Core.Tests.Systems.Physics
             // Col 1: Empty
             
             state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
-            state.SetTile(0, 1, new Tile(2, ElementType.Item1, 0, 1) { IsSuspended = true });
+            state.SetTile(0, 1, new Tile(2, ElementType.Item1, 0, 1));
+            state.Lock(0, 1, CellLockType.Drop);
             
             // Log positions frame by frame
             StringBuilder log = new StringBuilder();

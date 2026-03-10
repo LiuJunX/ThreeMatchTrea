@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Match3 级联时序可视化</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  background: #0f0f1a;
+  color: #e0e0e0;
+  overflow-x: hidden;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+h1 {
+  text-align: center;
+  font-size: 28px;
+  margin: 20px 0 10px;
+  color: #fff;
+}
+
+.subtitle {
+  text-align: center;
+  color: #888;
+  margin-bottom: 30px;
+  font-size: 14px;
+}
+
+/* Scene navigation */
+.scene-nav {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.scene-nav button {
+  padding: 10px 20px;
+  border: 2px solid #333;
+  background: #1a1a2e;
+  color: #aaa;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.scene-nav button:hover { border-color: #555; color: #fff; }
+.scene-nav button.active {
+  border-color: #4fc3f7;
+  color: #4fc3f7;
+  background: #1a2a3e;
+}
+
+/* Scene container */
+.scene {
+  display: none;
+  animation: fadeIn 0.4s ease;
+}
+
+.scene.active { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Layout */
+.scene-layout {
+  display: flex;
+  gap: 30px;
+  align-items: flex-start;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Board area */
+.board-area {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.board-label {
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.board {
+  position: relative;
+  background: #1a1a2e;
+  border-radius: 12px;
+  border: 2px solid #2a2a3e;
+  overflow: hidden;
+}
+
+.cell {
+  position: absolute;
+  border: 1px solid #2a2a3e;
+  border-radius: 4px;
+}
+
+.cell.locked {
+  background: rgba(255, 80, 80, 0.08);
+  border-color: #ff5050;
+  box-shadow: inset 0 0 8px rgba(255, 80, 80, 0.15);
+}
+
+.cell .lock-icon {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-size: 10px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.cell.locked .lock-icon { opacity: 0.7; }
+
+.tile {
+  position: absolute;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 18px;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  transition: none;
+  z-index: 2;
+}
+
+.tile.color-red { background: linear-gradient(135deg, #e53935, #c62828); box-shadow: 0 2px 8px rgba(229,57,53,0.4); }
+.tile.color-blue { background: linear-gradient(135deg, #42a5f5, #1565c0); box-shadow: 0 2px 8px rgba(66,165,245,0.4); }
+.tile.color-green { background: linear-gradient(135deg, #66bb6a, #2e7d32); box-shadow: 0 2px 8px rgba(102,187,106,0.4); }
+.tile.color-yellow { background: linear-gradient(135deg, #fdd835, #f9a825); box-shadow: 0 2px 8px rgba(253,216,53,0.4); }
+.tile.color-purple { background: linear-gradient(135deg, #ab47bc, #7b1fa2); box-shadow: 0 2px 8px rgba(171,71,188,0.4); }
+.tile.color-bomb {
+  background: linear-gradient(135deg, #37474f, #263238);
+  box-shadow: 0 2px 12px rgba(255,193,7,0.5);
+  border: 2px solid #ffc107;
+}
+
+/* Particle burst effect */
+.particle-burst {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Timeline area */
+.timeline-area {
+  flex: 1;
+  min-width: 320px;
+  max-width: 480px;
+}
+
+.timeline-title {
+  font-size: 14px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.timeline {
+  position: relative;
+  background: #1a1a2e;
+  border-radius: 12px;
+  border: 2px solid #2a2a3e;
+  padding: 16px;
+  min-height: 300px;
+}
+
+.timeline-axis {
+  position: absolute;
+  left: 60px;
+  top: 16px;
+  bottom: 16px;
+  width: 2px;
+  background: #333;
+}
+
+.timeline-cursor {
+  position: absolute;
+  left: 50px;
+  width: 22px;
+  height: 3px;
+  background: #4fc3f7;
+  border-radius: 2px;
+  transition: top 0.05s linear;
+  z-index: 3;
+  box-shadow: 0 0 8px rgba(79, 195, 247, 0.5);
+}
+
+.tl-entry {
+  position: relative;
+  padding: 4px 0 4px 56px;
+  font-size: 12px;
+  min-height: 22px;
+  opacity: 0.3;
+  transition: opacity 0.3s;
+}
+
+.tl-entry.active { opacity: 1; }
+.tl-entry.done { opacity: 0.6; }
+
+.tl-time {
+  position: absolute;
+  left: 0;
+  width: 48px;
+  text-align: right;
+  color: #4fc3f7;
+  font-family: 'Consolas', monospace;
+  font-size: 11px;
+}
+
+.tl-dot {
+  position: absolute;
+  left: 52px;
+  top: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid #555;
+  background: #1a1a2e;
+  z-index: 2;
+}
+
+.tl-entry.active .tl-dot { border-color: #4fc3f7; background: #4fc3f7; }
+.tl-entry.done .tl-dot { border-color: #666; background: #444; }
+
+.tl-bar {
+  position: absolute;
+  left: 70px;
+  right: 8px;
+  top: 6px;
+  height: 14px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.tl-bar-bg {
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+  opacity: 0.3;
+}
+
+.tl-bar-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.05s linear;
+}
+
+.tl-label {
+  margin-left: 16px;
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.tl-bar-bg.destroy { background: #e53935; }
+.tl-bar-fill.destroy { background: #e53935; }
+.tl-bar-bg.move { background: #42a5f5; }
+.tl-bar-fill.move { background: #42a5f5; }
+.tl-bar-bg.merge { background: #ab47bc; }
+.tl-bar-fill.merge { background: #ab47bc; }
+.tl-bar-bg.spawn { background: #66bb6a; }
+.tl-bar-fill.spawn { background: #66bb6a; }
+.tl-bar-bg.scale { background: #ffc107; }
+.tl-bar-fill.scale { background: #ffc107; }
+.tl-bar-bg.lock { background: #ff5050; }
+.tl-bar-fill.lock { background: #ff5050; }
+.tl-bar-bg.hold { background: #78909c; }
+.tl-bar-fill.hold { background: #78909c; }
+
+/* Explanation panel */
+.explanation {
+  margin-top: 20px;
+  background: #1a1a2e;
+  border: 2px solid #2a2a3e;
+  border-radius: 12px;
+  padding: 20px;
+  min-height: 80px;
+}
+
+.explanation h3 {
+  font-size: 15px;
+  color: #4fc3f7;
+  margin-bottom: 8px;
+}
+
+.explanation p {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #ccc;
+}
+
+.explanation code {
+  background: #2a2a3e;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Consolas', monospace;
+  font-size: 13px;
+  color: #ffc107;
+}
+
+.explanation .highlight {
+  color: #4fc3f7;
+  font-weight: bold;
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.controls button {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: #4fc3f7;
+  color: #0f0f1a;
+  font-weight: bold;
+}
+.btn-primary:hover { background: #81d4fa; }
+.btn-primary:disabled { background: #333; color: #666; cursor: not-allowed; }
+
+.btn-secondary {
+  background: #2a2a3e;
+  color: #aaa;
+  border: 1px solid #333 !important;
+}
+.btn-secondary:hover { background: #333; color: #fff; }
+
+/* Speed indicator */
+.speed-display {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #888;
+}
+
+.speed-display input[type="range"] {
+  width: 100px;
+  accent-color: #4fc3f7;
+}
+
+/* columnDestroyEndTimes visualization */
+.state-panel {
+  margin-top: 12px;
+  background: #12121e;
+  border-radius: 8px;
+  padding: 12px;
+  font-family: 'Consolas', monospace;
+  font-size: 12px;
+}
+
+.state-panel .label { color: #888; }
+.state-panel .value { color: #ffc107; }
+.state-panel .dict-entry {
+  margin: 4px 0;
+  padding: 3px 8px;
+  border-radius: 4px;
+  transition: background 0.3s;
+}
+.state-panel .dict-entry.highlight-entry {
+  background: rgba(79, 195, 247, 0.15);
+}
+
+/* Overview diagram */
+.overview-diagram {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+
+.overview-box {
+  padding: 12px 18px;
+  border-radius: 8px;
+  border: 2px solid;
+  text-align: center;
+  font-size: 13px;
+  min-width: 120px;
+}
+
+.overview-arrow {
+  font-size: 20px;
+  color: #555;
+  padding: 0 8px;
+}
+
+.overview-box.core { border-color: #e53935; background: rgba(229,57,53,0.1); }
+.overview-box.choreo { border-color: #ab47bc; background: rgba(171,71,188,0.1); }
+.overview-box.player { border-color: #42a5f5; background: rgba(66,165,245,0.1); }
+.overview-box.view { border-color: #66bb6a; background: rgba(102,187,106,0.1); }
+.overview-box.lock { border-color: #ff5050; background: rgba(255,80,80,0.1); }
+
+/* Comparison side-by-side */
+.comparison {
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.comparison .board-area { text-align: center; }
+
+.comparison-label {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.comparison-label.bad { color: #e53935; }
+.comparison-label.good { color: #66bb6a; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Match3 级联时序可视化</h1>
+  <p class="subtitle">Choreographer 如何把瞬时的逻辑事件编排成有节奏的动画</p>
+
+  <div class="scene-nav">
+    <button onclick="switchScene(0)" class="active">概览</button>
+    <button onclick="switchScene(1)">场景1: 消除→下落</button>
+    <button onclick="switchScene(2)">场景2: 瀑布追尾</button>
+    <button onclick="switchScene(3)">场景3: 合并生成炸弹</button>
+    <button onclick="switchScene(4)">场景4: CellLock 反馈</button>
+  </div>
+
+  <!-- Scene 0: Overview -->
+  <div class="scene active" id="scene-0">
+    <div class="overview-diagram">
+      <div class="overview-box core">
+        <div style="font-weight:bold;color:#e53935">Core Tick</div>
+        <div style="font-size:11px;color:#999;margin-top:4px">瞬时逻辑</div>
+        <div style="font-size:11px;color:#999">事件同时产出</div>
+      </div>
+      <div class="overview-arrow">→</div>
+      <div class="overview-box choreo">
+        <div style="font-weight:bold;color:#ab47bc">Choreographer</div>
+        <div style="font-size:11px;color:#999;margin-top:4px">时序编排</div>
+        <div style="font-size:11px;color:#999">错开时间线</div>
+      </div>
+      <div class="overview-arrow">→</div>
+      <div class="overview-box player">
+        <div style="font-weight:bold;color:#42a5f5">Player</div>
+        <div style="font-size:11px;color:#999;margin-top:4px">逐帧插值</div>
+        <div style="font-size:11px;color:#999">播放动画</div>
+      </div>
+      <div class="overview-arrow">→</div>
+      <div class="overview-box view">
+        <div style="font-weight:bold;color:#66bb6a">BoardView</div>
+        <div style="font-size:11px;color:#999;margin-top:4px">渲染画面</div>
+        <div style="font-size:11px;color:#999">屏幕输出</div>
+      </div>
+    </div>
+
+    <div class="explanation">
+      <h3>核心问题</h3>
+      <p>
+        Core 引擎的一次 <code>Tick()</code> 里，匹配、消除、下落、补充<span class="highlight">瞬间同时完成</span>。
+        但玩家期望看到：消除播完 → 方块下落 → 新方块补充 → 触发连锁。
+      </p>
+      <p style="margin-top:12px">
+        Choreographer 的级联时序系统通过<span class="highlight">三层机制</span>解决这个问题：
+      </p>
+      <p style="margin-top:8px">
+        <strong>1. <code>_columnDestroyEndTimes</code></strong> — 每列消除结束时间字典，让下落等消除播完<br>
+        <strong>2. <code>_columnMoves</code> 追尾计算</strong> — 让同列多个方块瀑布式依次启动<br>
+        <strong>3. <code>CellLock</code> 反馈</strong> — 把动画时序反写回物理层，阻止过早下落
+      </p>
+      <p style="margin-top:12px;color:#888">点击上方的场景按钮，逐个观看动画演示 →</p>
+    </div>
+  </div>
+
+  <!-- Scene 1: Basic Destroy → Fall -->
+  <div class="scene" id="scene-1"></div>
+
+  <!-- Scene 2: Waterfall Chase -->
+  <div class="scene" id="scene-2"></div>
+
+  <!-- Scene 3: Merge to Bomb -->
+  <div class="scene" id="scene-3"></div>
+
+  <!-- Scene 4: CellLock Feedback -->
+  <div class="scene" id="scene-4"></div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────
+// Shared constants
+// ──────────────────────────────────────────────
+const CELL = 64;
+const GAP = 4;
+const TILE_SIZE = CELL - GAP * 2;
+const COLORS = ['color-red', 'color-blue', 'color-green', 'color-yellow', 'color-purple'];
+const COLOR_NAMES = ['R', 'B', 'G', 'Y', 'P'];
+const COLOR_HEX = ['#e53935', '#42a5f5', '#66bb6a', '#fdd835', '#ab47bc'];
+
+let currentScene = 0;
+let animFrame = null;
+let sceneState = {};
+
+function switchScene(idx) {
+  document.querySelectorAll('.scene-nav button').forEach((b, i) => {
+    b.classList.toggle('active', i === idx);
+  });
+  document.querySelectorAll('.scene').forEach((s, i) => {
+    s.classList.toggle('active', i === idx);
+  });
+  currentScene = idx;
+  if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+  if (idx > 0) initScene(idx);
+}
+
+// ──────────────────────────────────────────────
+// Scene builders
+// ──────────────────────────────────────────────
+function initScene(idx) {
+  const el = document.getElementById(`scene-${idx}`);
+  switch (idx) {
+    case 1: buildScene1(el); break;
+    case 2: buildScene2(el); break;
+    case 3: buildScene3(el); break;
+    case 4: buildScene4(el); break;
+  }
+}
+
+// ──────────────────────────────────────────────
+// SCENE 1: Basic Destroy → Fall
+// ──────────────────────────────────────────────
+function buildScene1(el) {
+  const cols = 5, rows = 6;
+  const W = cols * CELL, H = rows * CELL;
+
+  // Timeline entries
+  const tlEntries = [
+    { time: 0.00, label: 'DestroyTile C (2,3)', type: 'destroy', dur: 0.15 },
+    { time: 0.00, label: 'DestroyTile D (3,3)', type: 'destroy', dur: 0.15 },
+    { time: 0.00, label: 'DestroyTile E (4,3)', type: 'destroy', dur: 0.15 },
+    { time: 0.00, label: 'columnDestroyEnd[col 2..4] = 0.15', type: 'lock', dur: 0.15 },
+    { time: 0.15, label: 'MoveTile B (2,2)→(2,3)', type: 'move', dur: 0.15 },
+    { time: 0.15, label: 'MoveTile A (2,1)→(2,2)', type: 'move', dur: 0.15 },
+    { time: 0.15, label: 'SpawnTile F (2,0)', type: 'spawn', dur: 0 },
+    { time: 0.30, label: 'MoveTile F (2,0)→(2,1)', type: 'move', dur: 0.15 },
+  ];
+
+  const explanations = [
+    { step: 'init', title: '初始状态',
+      text: '棋盘上 C、D、E 三颗方块形成一行匹配（Row 3）。Core 的 Tick 瞬时完成消除和下落。现在 Choreographer 要给它们安排动画时序。' },
+    { step: 'destroy', title: '第一步：消除动画 (0.00s ~ 0.15s)',
+      text: 'C、D、E 同时开始 <code>DestroyTileCommand</code>（0.15s 渐隐 + 缩小）。同时 Choreographer 记录：<code>_columnDestroyEndTimes[2] = 0.15s</code>。这意味着第 2 列在 0.15s 之前不能开始下落。' },
+    { step: 'fall', title: '第二步：下落动画 (0.15s ~ 0.30s)',
+      text: '<code>CalculateMoveStartTime()</code> 查到第 2 列 destroyEndTime = 0.15s，于是 B 的下落被推迟到 0.15s 才开始。A 紧跟其后。新方块 F 在顶部生成。' },
+    { step: 'done', title: '完成',
+      text: '消除播完 → 下落才开始。这就是 <code>_columnDestroyEndTimes</code> 的作用：<span class="highlight">让同一列的下落等待消除动画结束</span>。' },
+  ];
+
+  // Initial tile positions: [id, name, colorIdx, col, row]
+  const initTiles = [
+    ['A', 'A', 0, 2, 1],
+    ['B', 'B', 1, 2, 2],
+    ['C', 'C', 2, 2, 3],
+    ['D', 'D', 2, 3, 3],
+    ['E', 'E', 2, 4, 3],
+  ];
+
+  buildGenericScene(el, {
+    cols, rows, W, H, tlEntries, explanations, initTiles,
+    totalDuration: 0.50,
+    stateVars: () => `<span class="label">_columnDestroyEndTimes:</span>`,
+    animate: (t, tiles, cells, stateEl) => {
+      // Destroy C, D, E: 0.00 - 0.15
+      if (t >= 0) {
+        ['C', 'D', 'E'].forEach(id => {
+          let p = Math.min(1, Math.max(0, t / 0.15));
+          let tile = tiles[id];
+          if (tile) {
+            tile.style.opacity = 1 - p;
+            let s = 1 - p;
+            tile.style.transform = `scale(${s})`;
+            if (p >= 1) tile.style.display = 'none';
+          }
+        });
+      }
+
+      // Lock cells 0.00 - 0.15
+      if (t >= 0 && t < 0.15) {
+        [[2,3],[3,3],[4,3]].forEach(([c,r]) => {
+          cells[`${c},${r}`]?.classList.add('locked');
+        });
+      } else {
+        [[2,3],[3,3],[4,3]].forEach(([c,r]) => {
+          cells[`${c},${r}`]?.classList.remove('locked');
+        });
+      }
+
+      // State display
+      if (t < 0.15) {
+        stateEl.innerHTML = `<div class="dict-entry highlight-entry"><span class="label">  [col 2] = </span><span class="value">0.15s</span></div>
+<div class="dict-entry highlight-entry"><span class="label">  [col 3] = </span><span class="value">0.15s</span></div>
+<div class="dict-entry highlight-entry"><span class="label">  [col 4] = </span><span class="value">0.15s</span></div>`;
+      } else {
+        stateEl.innerHTML = `<div class="dict-entry"><span class="label">  (cleared)</span></div>`;
+      }
+
+      // Fall B: (2,2) → (2,3), 0.15 - 0.30
+      if (t >= 0.15) {
+        let p = Math.min(1, Math.max(0, (t - 0.15) / 0.15));
+        p = easeOutCubic(p);
+        let tile = tiles['B'];
+        if (tile) {
+          let y = lerp(2, 3, p);
+          tile.style.top = (y * CELL + GAP) + 'px';
+        }
+      }
+
+      // Fall A: (2,1) → (2,2), 0.15 - 0.30
+      if (t >= 0.15) {
+        let p = Math.min(1, Math.max(0, (t - 0.15) / 0.15));
+        p = easeOutCubic(p);
+        let tile = tiles['A'];
+        if (tile) {
+          let y = lerp(1, 2, p);
+          tile.style.top = (y * CELL + GAP) + 'px';
+        }
+      }
+
+      // Spawn F at (2,0) at 0.15
+      if (t >= 0.15) {
+        let tile = tiles['F'];
+        if (!tile) {
+          tile = createTile('F', 'F', 3, 2, 0, tiles, document.querySelector('#scene-1 .board'));
+        }
+        // Fall F: 0.30 - 0.45
+        if (t >= 0.30) {
+          let p = Math.min(1, Math.max(0, (t - 0.30) / 0.15));
+          p = easeOutCubic(p);
+          let y = lerp(0, 1, p);
+          tile.style.top = (y * CELL + GAP) + 'px';
+        }
+      }
+    },
+    getStep: (t) => {
+      if (t < 0.001) return 'init';
+      if (t < 0.15) return 'destroy';
+      if (t < 0.35) return 'fall';
+      return 'done';
+    }
+  });
+}
+
+// ──────────────────────────────────────────────
+// SCENE 2: Waterfall Chase
+// ──────────────────────────────────────────────
+function buildScene2(el) {
+  const cols = 3, rows = 7;
+  const W = cols * CELL, H = rows * CELL;
+
+  const tlEntries = [
+    { time: 0.00, label: 'DestroyTile X (1,5)', type: 'destroy', dur: 0.15 },
+    { time: 0.00, label: 'columnDestroyEnd[1] = 0.15', type: 'lock', dur: 0.15 },
+    { time: 0.15, label: 'MoveTile D (1,4)→(1,5)', type: 'move', dur: 0.15 },
+    { time: 0.19, label: 'MoveTile C (1,3)→(1,4) ← 追尾', type: 'move', dur: 0.15 },
+    { time: 0.23, label: 'MoveTile B (1,2)→(1,3) ← 追尾', type: 'move', dur: 0.15 },
+    { time: 0.27, label: 'MoveTile A (1,1)→(1,2) ← 追尾', type: 'move', dur: 0.15 },
+  ];
+
+  const explanations = [
+    { step: 'init', title: '初始状态',
+      text: '第 1 列中，X 被消除后，上方 A、B、C、D 四颗方块都需要下落。如果同时启动，会像电梯一样整体平移，非常机械。' },
+    { step: 'destroy', title: '消除 X (0.00s ~ 0.15s)',
+      text: 'X 播放消除动画。<code>_columnDestroyEndTimes[1] = 0.15s</code>，所有下落被推迟到 0.15s 之后。' },
+    { step: 'chase', title: '追尾下落 — 核心机制',
+      text: 'D 最先在 0.15s 启动。当 D 走过<span class="highlight">半格</span>（约 0.04s 后），C 才启动；C 走半格后，B 启动……这就是 <code>CalculateMoveStartTime</code> 的追尾逻辑：<br><br><code>halfCellRatio = 0.5 / totalDistance</code><br><code>halfCellTime = moveStart + duration × halfCellRatio</code><br><br>效果：方块像水滴一样依次流下，有弹性的节奏感。' },
+    { step: 'done', title: '完成',
+      text: '对比看：没有追尾 = 整体平移（机械）；有追尾 = 瀑布流动（自然）。间距 0.04s 虽小，视觉差异非常显著。' },
+  ];
+
+  const initTiles = [
+    ['A', 'A', 0, 1, 1],
+    ['B', 'B', 1, 1, 2],
+    ['C', 'C', 2, 1, 3],
+    ['D', 'D', 3, 1, 4],
+    ['X', 'X', 4, 1, 5],
+  ];
+
+  const chaseDelay = 0.04; // half-cell delay
+
+  buildGenericScene(el, {
+    cols, rows, W, H, tlEntries, explanations, initTiles,
+    totalDuration: 0.55,
+    stateVars: () => `<span class="label">_columnMoves 追尾计算:</span>`,
+    animate: (t, tiles, cells, stateEl) => {
+      // Destroy X: 0.00 - 0.15
+      let xTile = tiles['X'];
+      if (xTile) {
+        let p = Math.min(1, Math.max(0, t / 0.15));
+        xTile.style.opacity = 1 - p;
+        xTile.style.transform = `scale(${1 - p})`;
+        if (p >= 1) xTile.style.display = 'none';
+      }
+
+      // Lock
+      if (t >= 0 && t < 0.15) {
+        cells['1,5']?.classList.add('locked');
+      } else {
+        cells['1,5']?.classList.remove('locked');
+      }
+
+      // Chase falls
+      const falls = [
+        { id: 'D', from: 4, to: 5, start: 0.15 },
+        { id: 'C', from: 3, to: 4, start: 0.15 + chaseDelay },
+        { id: 'B', from: 2, to: 3, start: 0.15 + chaseDelay * 2 },
+        { id: 'A', from: 1, to: 2, start: 0.15 + chaseDelay * 3 },
+      ];
+
+      let stateHTML = '';
+      falls.forEach((f, i) => {
+        if (t >= f.start) {
+          let p = Math.min(1, Math.max(0, (t - f.start) / 0.15));
+          p = easeOutCubic(p);
+          let y = lerp(f.from, f.to, p);
+          tiles[f.id].style.top = (y * CELL + GAP) + 'px';
+        }
+        if (i > 0 && t >= falls[i-1].start && t < f.start + 0.15) {
+          stateHTML += `<div class="dict-entry highlight-entry"><span class="label">  ${f.id}: wait for ${falls[i-1].id} half-cell → </span><span class="value">${f.start.toFixed(2)}s</span></div>`;
+        }
+      });
+      stateEl.innerHTML = stateHTML || `<div class="dict-entry"><span class="label">  (idle)</span></div>`;
+    },
+    getStep: (t) => {
+      if (t < 0.001) return 'init';
+      if (t < 0.15) return 'destroy';
+      if (t < 0.42) return 'chase';
+      return 'done';
+    }
+  });
+}
+
+// ──────────────────────────────────────────────
+// SCENE 3: Merge to Bomb
+// ──────────────────────────────────────────────
+function buildScene3(el) {
+  const cols = 5, rows = 6;
+  const W = cols * CELL, H = rows * CELL;
+
+  const tlEntries = [
+    { time: 0.00, label: 'MoveTile B→(2,3) merge', type: 'merge', dur: 0.30 },
+    { time: 0.00, label: 'ScaleTile B 1→0', type: 'merge', dur: 0.30 },
+    { time: 0.00, label: 'MoveTile D→(2,3) merge', type: 'merge', dur: 0.30 },
+    { time: 0.00, label: 'ScaleTile D 1→0', type: 'merge', dur: 0.30 },
+    { time: 0.00, label: 'SpawnTile Bomb at (2,3) scale=0', type: 'spawn', dur: 0 },
+    { time: 0.00, label: 'CellLock (2,3) Receive+Drop 0.45s', type: 'lock', dur: 0.45 },
+    { time: 0.00, label: 'Hold A at (2,2) 原地等待', type: 'hold', dur: 0.30 },
+    { time: 0.30, label: 'RemoveTile B, D', type: 'destroy', dur: 0 },
+    { time: 0.30, label: 'ScaleTile Bomb 0→1 (OutBack)', type: 'scale', dur: 0.15 },
+    { time: 0.45, label: 'MoveTile A (2,2)→(2,3) 延迟下落 ← 等锁释放', type: 'move', dur: 0.15 },
+  ];
+
+  const explanations = [
+    { step: 'init', title: '初始状态',
+      text: 'B(2,2)、C(2,3)、D(2,4) 形成 L 型匹配，将在 C 的位置生成炸弹。A 在上方等待下落。' },
+    { step: 'merge', title: '合并阶段 (0.00s ~ 0.30s)',
+      text: 'B 和 D 同时向 C(2,3) 滑动 + 缩小。炸弹 tile 已经创建但 scale=0 不可见。<br>同时 A 被 <code>MoveTileCommand(From=To)</code> 锁在原地——这个"原地移动"的目的是设置 <code>IsBeingAnimated=true</code>，阻止物理同步干扰它的位置。<br><br>CellLock <code>Receive+Drop</code> 锁住 (2,3)，防止重力提前送方块进来。' },
+    { step: 'pop', title: '炸弹弹出 (0.30s ~ 0.45s)',
+      text: 'B、D 的残影被 <code>RemoveTileCommand</code> 清除。炸弹从 scale 0 弹到 1，用 <code>OutBack</code> 缓动（先超过 1 再弹回，有"弹跳感"）。<br><br>注意 A <span class="highlight">仍然在等待</span>，因为 CellLock 还没释放。' },
+    { step: 'fall', title: '延迟下落 (0.45s ~ 0.60s)',
+      text: 'CellLock 到期释放，A 终于开始下落到炸弹上方的空位。<br><br>整个过程：合并 0.3s → 弹出 0.15s → 下落 0.15s = 总计 0.6s。如果没有级联时序，这一切会在 0s 瞬间完成。' },
+    { step: 'done', title: '完成',
+      text: '这就是 <code>_columnDestroyEndTimes</code> + <code>CellLock</code> 的完整协作：Choreographer 计算动画时序 → CellLockEntry 反馈到物理层 → 物理不会提前送方块下来。' },
+  ];
+
+  const initTiles = [
+    ['A', 'A', 0, 2, 1],  // will fall later
+    ['B', 'B', 2, 2, 2],  // merge up-left
+    ['C', 'C', 2, 2, 3],  // center - bomb origin
+    ['D', 'D', 2, 2, 4],  // merge down
+  ];
+
+  buildGenericScene(el, {
+    cols, rows, W, H, tlEntries, explanations, initTiles,
+    totalDuration: 0.70,
+    stateVars: () => `<span class="label">_columnDestroyEndTimes + CellLock:</span>`,
+    animate: (t, tiles, cells, stateEl) => {
+      const bombOrigin = { col: 2, row: 3 };
+
+      // Merge B (2,2) → (2,3): 0.00 - 0.30
+      if (tiles['B']) {
+        let p = Math.min(1, Math.max(0, t / 0.30));
+        let ep = easeInOutCubic(p);
+        let y = lerp(2, 3, ep);
+        let s = 1 - ep;
+        tiles['B'].style.top = (y * CELL + GAP) + 'px';
+        tiles['B'].style.transform = `scale(${s})`;
+        tiles['B'].style.opacity = Math.max(0, 1 - p);
+        if (p >= 1) tiles['B'].style.display = 'none';
+      }
+
+      // C stays, then hide at 0.00 (it's the origin, replaced by bomb)
+      if (tiles['C']) {
+        let p = Math.min(1, Math.max(0, t / 0.30));
+        let s = 1 - easeInOutCubic(p);
+        tiles['C'].style.transform = `scale(${s})`;
+        tiles['C'].style.opacity = Math.max(0, 1 - p);
+        if (p >= 1) tiles['C'].style.display = 'none';
+      }
+
+      // Merge D (2,4) → (2,3): 0.00 - 0.30
+      if (tiles['D']) {
+        let p = Math.min(1, Math.max(0, t / 0.30));
+        let ep = easeInOutCubic(p);
+        let y = lerp(4, 3, ep);
+        let s = 1 - ep;
+        tiles['D'].style.top = (y * CELL + GAP) + 'px';
+        tiles['D'].style.transform = `scale(${s})`;
+        tiles['D'].style.opacity = Math.max(0, 1 - p);
+        if (p >= 1) tiles['D'].style.display = 'none';
+      }
+
+      // Bomb spawn at 0.00, invisible. Pop-in 0.30-0.45
+      let bomb = tiles['BOMB'];
+      if (!bomb && t >= 0) {
+        bomb = createTile('BOMB', '💣', -1, 2, 3, tiles, el.querySelector('.board'));
+        bomb.className = 'tile color-bomb';
+        bomb.style.transform = 'scale(0)';
+      }
+      if (bomb) {
+        if (t < 0.30) {
+          bomb.style.transform = 'scale(0)';
+        } else if (t < 0.45) {
+          let p = Math.min(1, (t - 0.30) / 0.15);
+          let s = easeOutBack(p);
+          bomb.style.transform = `scale(${s})`;
+        } else {
+          bomb.style.transform = 'scale(1)';
+        }
+      }
+
+      // Hold A at (2,1): 0.00-0.45, then fall to (2,2): 0.45-0.60
+      if (tiles['A']) {
+        if (t < 0.45) {
+          tiles['A'].style.top = (1 * CELL + GAP) + 'px';
+        } else {
+          let p = Math.min(1, (t - 0.45) / 0.15);
+          p = easeOutCubic(p);
+          let y = lerp(1, 2, p);
+          tiles['A'].style.top = (y * CELL + GAP) + 'px';
+        }
+      }
+
+      // CellLock on (2,3)
+      let c23 = cells['2,3'];
+      if (c23) {
+        if (t >= 0 && t < 0.45) c23.classList.add('locked');
+        else c23.classList.remove('locked');
+      }
+
+      // State display
+      let html = '';
+      if (t < 0.45) {
+        html += `<div class="dict-entry highlight-entry"><span class="label">  [col 2] = </span><span class="value">${Math.max(0, 0.45 - t).toFixed(2)}s remaining</span></div>`;
+        html += `<div class="dict-entry highlight-entry"><span class="label">  CellLock (2,3) = </span><span class="value">Receive+Drop 🔒</span></div>`;
+      } else {
+        html += `<div class="dict-entry"><span class="label">  (all released ✓)</span></div>`;
+      }
+      stateEl.innerHTML = html;
+    },
+    getStep: (t) => {
+      if (t < 0.001) return 'init';
+      if (t < 0.30) return 'merge';
+      if (t < 0.45) return 'pop';
+      if (t < 0.62) return 'fall';
+      return 'done';
+    }
+  });
+}
+
+// ──────────────────────────────────────────────
+// SCENE 4: CellLock Feedback Loop
+// ──────────────────────────────────────────────
+function buildScene4(el) {
+  const cols = 5, rows = 6;
+  const W = cols * CELL, H = rows * CELL;
+
+  const tlEntries = [
+    { time: 0.00, label: 'DestroyTile X (2,4)', type: 'destroy', dur: 0.15 },
+    { time: 0.00, label: 'CellLock (2,4) Receive 0.15s', type: 'lock', dur: 0.15 },
+    { time: 0.00, label: 'Core Tick: 物理想让 C 下落…', type: 'hold', dur: 0.15 },
+    { time: 0.05, label: 'Core: CanReceive(2,4)? → false (locked!)', type: 'lock', dur: 0.10 },
+    { time: 0.15, label: 'CellLock released → CanReceive = true', type: 'spawn', dur: 0 },
+    { time: 0.15, label: 'MoveTile C (2,3)→(2,4)', type: 'move', dur: 0.15 },
+    { time: 0.19, label: 'MoveTile B (2,2)→(2,3) ← 追尾', type: 'move', dur: 0.15 },
+    { time: 0.23, label: 'MoveTile A (2,1)→(2,2) ← 追尾', type: 'move', dur: 0.15 },
+  ];
+
+  const explanations = [
+    { step: 'init', title: 'CellLock 存在的意义',
+      text: 'Choreographer 只管"视觉上的时间排布"。但 Core 的物理引擎每帧都在 Tick，它不知道动画在播。如果不加限制，<span class="highlight">物理会在消除动画还没播完时就让方块落下来</span>，导致视觉和逻辑不同步。' },
+    { step: 'locked', title: '锁定中 (0.00s ~ 0.15s)',
+      text: 'X 正在播放消除动画。同时 Bridge 层调用 <code>engine.AcquireLock((2,4), Receive)</code>。<br><br>Core 物理引擎每帧检查 <code>CanReceive(2,4)</code> → <code>false</code>（被锁了！）→ C 无法下落。<br><br>这就是 <span class="highlight">CellLock 的反馈闭环</span>：动画层告诉物理层"这个格子正在播动画，你别动"。' },
+    { step: 'unlock', title: '解锁后下落 (0.15s ~ 0.38s)',
+      text: '<code>CellLockManager.Tick(dt)</code> 倒计时到期 → 调用 <code>engine.ReleaseLock(token)</code> → <code>CanReceive(2,4) = true</code>。<br><br>物理引擎终于可以让 C 下落。追尾逻辑让 B、A 依次跟上。' },
+    { step: 'done', title: '完整闭环',
+      text: '数据流：<br>Core Tick → GameEvent → <strong>Choreographer</strong> → RenderCommand + <strong>CellLockEntry</strong><br>→ Bridge: <strong>AcquireLock</strong> → Core 物理检查 <strong>IsLocked</strong> → 阻止下落<br>→ Bridge: <strong>ReleaseLock</strong> (定时) → 允许下落<br><br>Choreographer 输出的不仅是动画指令，还有<span class="highlight">反向约束物理的锁定计划</span>。' },
+  ];
+
+  const initTiles = [
+    ['A', 'A', 0, 2, 1],
+    ['B', 'B', 1, 2, 2],
+    ['C', 'C', 3, 2, 3],
+    ['X', 'X', 4, 2, 4],
+  ];
+
+  const chaseDelay = 0.04;
+
+  buildGenericScene(el, {
+    cols, rows, W, H, tlEntries, explanations, initTiles,
+    totalDuration: 0.50,
+    stateVars: () => `<span class="label">CellLock 状态:</span>`,
+    animate: (t, tiles, cells, stateEl) => {
+      // Destroy X: 0.00 - 0.15
+      let xTile = tiles['X'];
+      if (xTile) {
+        let p = Math.min(1, Math.max(0, t / 0.15));
+        xTile.style.opacity = 1 - p;
+        xTile.style.transform = `scale(${1 - p})`;
+        if (p >= 1) xTile.style.display = 'none';
+      }
+
+      // CellLock on (2,4)
+      let c24 = cells['2,4'];
+      if (c24) {
+        if (t >= 0 && t < 0.15) c24.classList.add('locked');
+        else c24.classList.remove('locked');
+      }
+
+      // Falls with chase
+      const falls = [
+        { id: 'C', from: 3, to: 4, start: 0.15 },
+        { id: 'B', from: 2, to: 3, start: 0.15 + chaseDelay },
+        { id: 'A', from: 1, to: 2, start: 0.15 + chaseDelay * 2 },
+      ];
+
+      falls.forEach(f => {
+        if (t >= f.start) {
+          let p = Math.min(1, (t - f.start) / 0.15);
+          p = easeOutCubic(p);
+          tiles[f.id].style.top = (lerp(f.from, f.to, p) * CELL + GAP) + 'px';
+        }
+      });
+
+      // State
+      let html = '';
+      if (t < 0.15) {
+        let remaining = Math.max(0, 0.15 - t).toFixed(2);
+        html += `<div class="dict-entry highlight-entry"><span class="label">  (2,4) Receive = </span><span class="value">LOCKED 🔒 ${remaining}s</span></div>`;
+        html += `<div class="dict-entry"><span class="label">  CanReceive(2,4) → </span><span class="value" style="color:#e53935">false</span></div>`;
+        html += `<div class="dict-entry"><span class="label">  Physics: C cannot fall</span></div>`;
+      } else {
+        html += `<div class="dict-entry"><span class="label">  (2,4) Receive = </span><span class="value" style="color:#66bb6a">UNLOCKED ✓</span></div>`;
+        html += `<div class="dict-entry"><span class="label">  CanReceive(2,4) → </span><span class="value" style="color:#66bb6a">true</span></div>`;
+      }
+      stateEl.innerHTML = html;
+    },
+    getStep: (t) => {
+      if (t < 0.001) return 'init';
+      if (t < 0.15) return 'locked';
+      if (t < 0.38) return 'unlock';
+      return 'done';
+    }
+  });
+}
+
+// ──────────────────────────────────────────────
+// Generic scene builder
+// ──────────────────────────────────────────────
+function buildGenericScene(el, cfg) {
+  const { cols, rows, W, H, tlEntries, explanations, initTiles, totalDuration, animate, getStep, stateVars } = cfg;
+
+  // Build HTML
+  el.innerHTML = `
+    <div class="scene-layout">
+      <div class="board-area">
+        <div class="board-label">棋盘 (列×行: ${cols}×${rows})</div>
+        <div class="board" style="width:${W}px;height:${H}px;"></div>
+        <div class="state-panel">
+          ${stateVars()}
+          <div class="state-content"></div>
+        </div>
+      </div>
+      <div class="timeline-area">
+        <div class="timeline-title">时间轴 (RenderCommands)</div>
+        <div class="timeline">
+          <div class="timeline-axis"></div>
+          <div class="timeline-cursor"></div>
+          ${tlEntries.map((e, i) => `
+            <div class="tl-entry" data-idx="${i}">
+              <span class="tl-time">${e.time.toFixed(2)}s</span>
+              <span class="tl-dot"></span>
+              <div class="tl-bar">
+                <div class="tl-bar-bg ${e.type}" style="width:${Math.max(e.dur * 800, e.dur > 0 ? 30 : 0)}px"></div>
+                <div class="tl-bar-fill ${e.type}" style="width:0"></div>
+              </div>
+              <div class="tl-label">${e.label}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="explanation">
+      <h3 class="expl-title"></h3>
+      <p class="expl-text"></p>
+    </div>
+    <div class="controls">
+      <button class="btn-secondary" onclick="sceneAction('${el.id}','reset')">⟲ 重置</button>
+      <button class="btn-primary play-btn" onclick="sceneAction('${el.id}','play')">▶ 播放</button>
+      <button class="btn-secondary" onclick="sceneAction('${el.id}','step')">⏭ 下一步</button>
+      <div class="speed-display">
+        <span>速度:</span>
+        <input type="range" min="0.1" max="2" step="0.1" value="0.5" class="speed-slider">
+        <span class="speed-val">0.5x</span>
+      </div>
+    </div>
+  `;
+
+  // Create cells
+  const board = el.querySelector('.board');
+  const cellMap = {};
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.style.left = (c * CELL) + 'px';
+      cell.style.top = (r * CELL) + 'px';
+      cell.style.width = CELL + 'px';
+      cell.style.height = CELL + 'px';
+      cell.innerHTML = '<span class="lock-icon">🔒</span>';
+      board.appendChild(cell);
+      cellMap[`${c},${r}`] = cell;
+    }
+  }
+
+  // Create initial tiles
+  const tileMap = {};
+  initTiles.forEach(([id, label, colorIdx, c, r]) => {
+    createTile(id, label, colorIdx, c, r, tileMap, board);
+  });
+
+  // Speed slider
+  const slider = el.querySelector('.speed-slider');
+  const speedVal = el.querySelector('.speed-val');
+  slider.addEventListener('input', () => {
+    speedVal.textContent = slider.value + 'x';
+  });
+
+  // State
+  const state = {
+    time: 0,
+    playing: false,
+    stepTargets: [...new Set(explanations.map(e => e.step))],
+    currentStepIdx: 0,
+    lastTimestamp: 0,
+  };
+  sceneState[el.id] = { state, cfg, tileMap, cellMap };
+
+  // Initial explanation
+  updateExplanation(el, explanations, 'init');
+  updateTimeline(el, tlEntries, 0);
+
+  // Wire actions
+  window[`_scene_${el.id}`] = { state, cfg, tileMap, cellMap, board };
+}
+
+function sceneAction(sceneId, action) {
+  const el = document.getElementById(sceneId);
+  const data = window[`_scene_${sceneId}`];
+  if (!data) return;
+  const { state, cfg, tileMap, cellMap, board } = data;
+
+  if (action === 'reset') {
+    state.playing = false;
+    state.time = 0;
+    state.currentStepIdx = 0;
+    if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+
+    // Rebuild tiles
+    Object.keys(tileMap).forEach(k => {
+      tileMap[k]?.remove();
+      delete tileMap[k];
+    });
+    cfg.initTiles.forEach(([id, label, colorIdx, c, r]) => {
+      createTile(id, label, colorIdx, c, r, tileMap, board);
+    });
+
+    // Reset cells
+    Object.values(cellMap).forEach(c => c.classList.remove('locked'));
+
+    updateExplanation(el, cfg.explanations, 'init');
+    updateTimeline(el, cfg.tlEntries, 0);
+    el.querySelector('.play-btn').textContent = '▶ 播放';
+    el.querySelector('.state-content').innerHTML = '';
+    return;
+  }
+
+  if (action === 'play') {
+    if (state.playing) {
+      state.playing = false;
+      el.querySelector('.play-btn').textContent = '▶ 播放';
+      return;
+    }
+
+    // If at end, reset first
+    if (state.time >= cfg.totalDuration) {
+      sceneAction(sceneId, 'reset');
+    }
+
+    state.playing = true;
+    state.lastTimestamp = performance.now();
+    el.querySelector('.play-btn').textContent = '⏸ 暂停';
+
+    function tick(ts) {
+      if (!state.playing) return;
+      const speed = parseFloat(el.querySelector('.speed-slider').value);
+      const dt = (ts - state.lastTimestamp) / 1000 * speed;
+      state.lastTimestamp = ts;
+      state.time = Math.min(state.time + dt, cfg.totalDuration);
+
+      runFrame(el, state, cfg, tileMap, cellMap);
+
+      if (state.time >= cfg.totalDuration) {
+        state.playing = false;
+        el.querySelector('.play-btn').textContent = '▶ 重播';
+      } else {
+        animFrame = requestAnimationFrame(tick);
+      }
+    }
+    animFrame = requestAnimationFrame(tick);
+    return;
+  }
+
+  if (action === 'step') {
+    state.playing = false;
+    el.querySelector('.play-btn').textContent = '▶ 播放';
+    if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+
+    // If at end, reset
+    if (state.time >= cfg.totalDuration) {
+      sceneAction(sceneId, 'reset');
+      return;
+    }
+
+    // Find next step boundary
+    const currentStep = cfg.getStep(state.time);
+    const stepList = cfg.explanations.map(e => e.step);
+    let currentIdx = stepList.indexOf(currentStep);
+    let nextIdx = Math.min(currentIdx + 1, stepList.length - 1);
+    if (nextIdx === currentIdx && state.time < 0.001) nextIdx = 1;
+
+    // Find the time that would trigger nextStep
+    // Animate smoothly to it
+    const targetStep = stepList[nextIdx];
+    const targetTime = findStepTime(cfg, targetStep);
+
+    // Animate to target
+    const startTime = state.time;
+    const animDuration = 600; // ms
+    const startTs = performance.now();
+
+    function stepAnim(ts) {
+      const p = Math.min(1, (ts - startTs) / animDuration);
+      state.time = startTime + (targetTime - startTime) * easeOutCubic(p);
+      runFrame(el, state, cfg, tileMap, cellMap);
+      if (p < 1) {
+        animFrame = requestAnimationFrame(stepAnim);
+      }
+    }
+    animFrame = requestAnimationFrame(stepAnim);
+  }
+}
+
+function findStepTime(cfg, step) {
+  // Binary search for time that triggers the step
+  for (let t = 0; t <= cfg.totalDuration; t += 0.001) {
+    if (cfg.getStep(t) === step) return t;
+  }
+  return cfg.totalDuration;
+}
+
+function runFrame(el, state, cfg, tileMap, cellMap) {
+  cfg.animate(state.time, tileMap, cellMap, el.querySelector('.state-content'));
+  const step = cfg.getStep(state.time);
+  updateExplanation(el, cfg.explanations, step);
+  updateTimeline(el, cfg.tlEntries, state.time);
+}
+
+// ──────────────────────────────────────────────
+// Helpers
+// ──────────────────────────────────────────────
+function createTile(id, label, colorIdx, col, row, tileMap, board) {
+  const tile = document.createElement('div');
+  tile.className = `tile ${colorIdx >= 0 ? COLORS[colorIdx % COLORS.length] : 'color-bomb'}`;
+  tile.style.left = (col * CELL + GAP) + 'px';
+  tile.style.top = (row * CELL + GAP) + 'px';
+  tile.style.width = TILE_SIZE + 'px';
+  tile.style.height = TILE_SIZE + 'px';
+  tile.textContent = label;
+  board.appendChild(tile);
+  tileMap[id] = tile;
+  return tile;
+}
+
+function updateExplanation(el, explanations, step) {
+  const e = explanations.find(x => x.step === step);
+  if (!e) return;
+  el.querySelector('.expl-title').textContent = e.title;
+  el.querySelector('.expl-text').innerHTML = e.text;
+}
+
+function updateTimeline(el, entries, t) {
+  const tlEntries = el.querySelectorAll('.tl-entry');
+  const cursor = el.querySelector('.timeline-cursor');
+
+  tlEntries.forEach((tlEl, i) => {
+    const entry = entries[i];
+    const isActive = t >= entry.time && t < entry.time + Math.max(entry.dur, 0.02);
+    const isDone = t >= entry.time + entry.dur;
+    tlEl.classList.toggle('active', isActive);
+    tlEl.classList.toggle('done', isDone && !isActive);
+
+    // Update bar fill
+    const fill = tlEl.querySelector('.tl-bar-fill');
+    if (fill && entry.dur > 0) {
+      let p = Math.max(0, Math.min(1, (t - entry.time) / entry.dur));
+      let barWidth = Math.max(entry.dur * 800, 30);
+      fill.style.width = (p * barWidth) + 'px';
+    }
+  });
+
+  // Move cursor proportionally
+  if (cursor && entries.length > 0) {
+    const maxTime = entries[entries.length - 1].time + entries[entries.length - 1].dur;
+    const tlHeight = el.querySelector('.timeline').offsetHeight - 32;
+    const ratio = maxTime > 0 ? Math.min(1, t / maxTime) : 0;
+    cursor.style.top = (16 + ratio * tlHeight) + 'px';
+  }
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2; }
+function easeOutBack(t) {
+  const c1 = 1.70158, c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+</script>
+</body>
+</html>

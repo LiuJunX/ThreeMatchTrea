@@ -29,12 +29,6 @@ public sealed class ChoreographyConfig
     /// <summary>Duration for bomb pop-in scale animation after merge.</summary>
     public float BombPopDuration { get; set; } = 0.15f;
 
-    /// <summary>Duration for drop acceptance delay after match destroy (cell lock).</summary>
-    public float DropDelay { get; set; } = 0f;
-
-    /// <summary>Duration for drop acceptance delay after bomb destroy (cell lock). Longer than match to let the explosion settle.</summary>
-    public float BombDropDelay { get; set; } = 0f;
-
     /// <summary>Delay per cell for rocket trail effect staggering.</summary>
     public float RocketTrailInterval { get; set; } = 0.015f;
 
@@ -68,6 +62,12 @@ public sealed class ChoreographyConfig
     /// Prevents near-instant teleportation of close-range beams.</summary>
     public float ColorBombMinFlightDuration { get; set; } = 0.08f;
 
+    /// <summary>Scale oscillation amplitude for beam-hit shake (0.08 = ±8%).</summary>
+    public float ColorBombHitShakeAmplitude { get; set; } = 0.08f;
+
+    /// <summary>Oscillation frequency for beam-hit shake (Hz).</summary>
+    public float ColorBombHitShakeFrequency { get; set; } = 4f;
+
     /// <summary>Fixed overhead for UFO launch sequence: spin-up + launch + landing (seconds).</summary>
     public float UfoLaunchOverhead { get; set; } = UfoConstants.LaunchOverhead;
 
@@ -83,8 +83,8 @@ public sealed class ChoreographyConfig
     public float DoubleColorFusionDuration { get; set; } = 0.2f;
 
     /// <summary>Base interval per Chebyshev distance ring during the wipe wave.</summary>
-    public float DoubleColorWipeInterval { get; set; } = 0.04f;
+    public float DoubleColorWipeInterval { get; set; } = DoubleColorBombConstants.WipeInterval;
 
     /// <summary>Acceleration for wipe wave (each ring faster than the last).</summary>
-    public float DoubleColorWipeAccel { get; set; } = 0.85f;
+    public float DoubleColorWipeAccel { get; set; } = DoubleColorBombConstants.WipeAcceleration;
 }

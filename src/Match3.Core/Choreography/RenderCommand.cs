@@ -139,6 +139,22 @@ public sealed record RotateTileCommand : RenderCommand
 }
 
 /// <summary>
+/// Continuous scale oscillation on a tile (tremor / shake effect).
+/// Player drives scale = 1 + Amplitude * sin(elapsed * Frequency * 2π).
+/// </summary>
+public sealed record ShakeTileCommand : RenderCommand
+{
+    /// <summary>Unique identifier of the tile.</summary>
+    public int TileId { get; init; }
+
+    /// <summary>Peak deviation from scale 1.0 (e.g. 0.08 = oscillates between 0.92 and 1.08).</summary>
+    public float Amplitude { get; init; }
+
+    /// <summary>Oscillations per second.</summary>
+    public float Frequency { get; init; }
+}
+
+/// <summary>
 /// Remove a tile from visual state (after destruction animation completes).
 /// </summary>
 public sealed record RemoveTileCommand : RenderCommand
@@ -326,25 +342,3 @@ public sealed record DestroyGroundCommand : RenderCommand
 
 #endregion
 
-#region Cell Lock Schedule
-
-/// <summary>
-/// Per-cell lock schedule entry emitted by Choreographer.
-/// Bridge should acquire a CellLock and release it after Duration expires.
-/// </summary>
-public struct CellLockEntry
-{
-    /// <summary>Grid position to lock.</summary>
-    public Position Position;
-
-    /// <summary>Lock type to apply.</summary>
-    public CellLockType LockType;
-
-    /// <summary>How long the lock should be held (seconds).</summary>
-    public float Duration;
-
-    /// <summary>True if this lock is for a merge animation, false for match destroy.</summary>
-    public bool IsMerge;
-}
-
-#endregion

@@ -258,40 +258,6 @@ public class ChoreographerTests
 
     #region Cascade Timing Tests
 
-    [Fact]
-    public void Choreograph_MoveAfterDestroy_WaitsForDestroyToComplete()
-    {
-        // Destroy at (3,4), then move to (3,4) should wait for destroy to finish
-        var events = new GameEvent[]
-        {
-            new TileDestroyedEvent
-            {
-                TileId = 1,
-                GridPosition = new Position(3, 4),
-                Type = ElementType.Item1,
-                Reason = DestroyReason.Match,
-                SimulationTime = 0f
-            },
-            new TileMovedEvent
-            {
-                TileId = 2,
-                FromPosition = new Vector2(3, 3),
-                ToPosition = new Vector2(3, 4),
-                Reason = MoveReason.Gravity,
-                SimulationTime = 0f
-            }
-        };
-
-        var commands = _choreographer.Choreograph(events);
-
-        var destroyCmd = commands.OfType<DestroyTileCommand>().First();
-        // Filter out hold commands (From == To) to get the actual move
-        var moveCmd = commands.OfType<MoveTileCommand>().First(c => c.From != c.To);
-
-        // Move should start after destroy ends
-        Assert.True(moveCmd.StartTime >= destroyCmd.StartTime + destroyCmd.Duration,
-            $"Move start {moveCmd.StartTime} should be >= destroy end {destroyCmd.StartTime + destroyCmd.Duration}");
-    }
 
     [Fact]
     public void Choreograph_SpawnUsesSimulationTime_PhysicsHandlesCascade()
@@ -322,8 +288,8 @@ public class ChoreographerTests
 
         var spawnCmd = commands.OfType<SpawnTileCommand>().First();
 
-        // Spawn is delayed until after destroy animation in the same column
-        Assert.Equal(_choreographer.Config.DestroyDuration, spawnCmd.StartTime, 0.001f);
+        // Spawn uses simulation time directly — no cascade delay prediction
+        Assert.Equal(0f, spawnCmd.StartTime, 0.001f);
     }
 
     [Fact]
@@ -434,10 +400,9 @@ public class ChoreographerTests
 
         var spawnCmd = commands.OfType<SpawnTileCommand>().First();
 
-        // Spawn is delayed until after destroy animation in the same column.
-        // Destroy at simTime=0 ends at DestroyDuration, spawn simTime=0.1 is
-        // earlier than that, so spawn is clamped to DestroyDuration.
-        Assert.Equal(_choreographer.Config.DestroyDuration, spawnCmd.StartTime, 0.001f);
+        // Spawn uses simulation time directly — relative offset from first event.
+        // simTime=0.1, minSimTime=0 → startTime = 0.1
+        Assert.Equal(0.1f, spawnCmd.StartTime, 0.001f);
     }
 
     #endregion
@@ -1261,44 +1226,6 @@ public class ChoreographerTests
         // RemoveTileCommand must not fire before UfoLaunchCommand ends
         Assert.True(removeCmd.StartTime >= flightEndTime,
             $"RemoveTile at {removeCmd.StartTime} fires before flight end {flightEndTime}");
-    }
-
-    [Fact]
-    public void Choreograph_UfoImpact_CellLockDuration_IsRelative()
-    {
-        // Launch
-        _choreographer.Choreograph(new GameEvent[]
-        {
-            new ProjectileLaunchedEvent
-            {
-                ProjectileId = 1,
-                Type = ProjectileType.Ufo,
-                Origin = new Vector2(0, 0),
-                TargetPosition = new Position(6, 0),
-                SourceTileId = 10,
-                SimulationTime = 0f
-            }
-        }, baseTime: 0f);
-
-        // Impact at a late baseTime (simulates UFO that flew for several seconds)
-        float lateBaseTime = 5.0f;
-        _choreographer.Choreograph(new GameEvent[]
-        {
-            new ProjectileImpactEvent
-            {
-                ProjectileId = 1,
-                ImpactPosition = new Position(6, 0),
-                SimulationTime = 2f
-            }
-        }, lateBaseTime);
-
-        // CellLock duration should be a short relative time, not startTime + 0.1
-        var lockEntries = _choreographer.LockEntries;
-        Assert.NotEmpty(lockEntries);
-
-        var impactLock = lockEntries[lockEntries.Count - 1]; // Last entry is from impact
-        Assert.True(impactLock.Duration < 1f,
-            $"CellLock duration {impactLock.Duration} looks like absolute time, should be relative (~0.1s)");
     }
 
     #endregion

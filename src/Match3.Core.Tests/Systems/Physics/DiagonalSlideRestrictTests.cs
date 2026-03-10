@@ -77,7 +77,8 @@ namespace Match3.Core.Tests.Systems.Physics
             state.SetTile(0, 1, new Tile(0, ElementType.None, 0, 1));
             
             state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0)); // TileA
-            state.SetTile(1, 1, new Tile(2, ElementType.Item1, 1, 1) { IsSuspended = true }); // Obstacle
+            state.SetTile(1, 1, new Tile(2, ElementType.Item1, 1, 1)); // Obstacle
+            state.Lock(1, 1, CellLockType.Drop);
 
             // Act
             gravity.Update(ref state, 0.02f);

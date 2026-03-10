@@ -122,10 +122,9 @@ public class RealtimeGravitySystem : IPhysicsSimulation
     private bool ShouldSkipTile(in GameState state, Tile tile, int x, int y)
     {
         if (tile.Type == ElementType.None) return true;
-        if (tile.IsSuspended) return true;
         if (_newlyOccupiedSlots.Contains(y * state.Width + x)) return true;
 
-        // Check if static cover blocks movement
+        // Check if static cover or Drop lock blocks movement
         if (!state.CanMove(x, y)) return true;
 
         return false;
@@ -276,6 +275,12 @@ public class RealtimeGravitySystem : IPhysicsSimulation
                Math.Abs(tile.Velocity.X) <= SnapThreshold &&
                Math.Abs(tile.Position.Y - y) <= SnapThreshold &&
                Math.Abs(tile.Position.X - x) <= SnapThreshold;
+    }
+
+    /// <inheritdoc />
+    public IPhysicsSimulation CloneForSimulation(IRandom newRandom)
+    {
+        return new RealtimeGravitySystem(_config, newRandom);
     }
 }
 

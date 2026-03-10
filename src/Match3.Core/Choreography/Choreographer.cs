@@ -23,29 +23,6 @@ public sealed class Choreographer : IEventVisitor
     /// </summary>
     public ChoreographyConfig Config { get; set; } = new();
 
-    /// <summary>
-    /// Whether the last Choreograph() call produced a bomb merge sequence.
-    /// Use this to decide whether to suppress physics sync.
-    /// </summary>
-    public bool LastBatchHadMerge { get; private set; }
-
-    /// <summary>
-    /// Whether the last Choreograph() call had non-merge match destroys.
-    /// Use this to decide whether to apply drop delay locks.
-    /// </summary>
-    public bool LastBatchHadMatch { get; private set; }
-
-    /// <summary>
-    /// Per-cell lock schedule emitted by the last Choreograph() call.
-    /// Bridge should acquire locks and release them after each entry's Duration.
-    /// </summary>
-    public IReadOnlyList<CellLockEntry> LockEntries => _lockEntries;
-    private readonly List<CellLockEntry> _lockEntries = new();
-
-    // Timing tracking for cascade calculations
-    private readonly Dictionary<int, float> _columnDestroyEndTimes = new();
-    private readonly Dictionary<int, List<MoveRecord>> _columnMoves = new();
-
     // Visual-only beam projectile IDs (negative to avoid collision with Core projectile IDs)
     private int _nextBeamId;
 
@@ -67,8 +44,6 @@ public sealed class Choreographer : IEventVisitor
 
     private record struct ColorBombSessionInfo(float SessionStartTime, Vector2 HoppedOrigin, float MaxBeamArrivalTime);
 
-    private record struct MoveRecord(float StartTime, float EndTime, int TargetRow, Vector2 From, Vector2 To);
-
     /// <summary>
     /// Convert a sequence of game events into render commands.
     /// </summary>
@@ -79,9 +54,6 @@ public sealed class Choreographer : IEventVisitor
     {
         _commands.Clear();
         _baseTime = baseTime;
-        LastBatchHadMerge = false;
-        LastBatchHadMatch = false;
-        _lockEntries.Clear();
         _nextBeamId = -1;
         // Note: _beamHitTimes is NOT cleared here — it must persist across batches
         // because ExplosionSystem emits BombActivatedEvent and TileDestroyedEvents
@@ -99,11 +71,6 @@ public sealed class Choreographer : IEventVisitor
                     _minSimulationTime = evt.SimulationTime;
             }
         }
-
-        // Clear timing tracking (reuse inner lists to avoid re-allocation)
-        _columnDestroyEndTimes.Clear();
-        foreach (var kvp in _columnMoves)
-            kvp.Value.Clear();
 
         // Note: _activeUfoFlights persists across batches because ProjectileSystem
         // may emit launch/retarget/impact events across multiple ticks.
@@ -128,29 +95,7 @@ public sealed class Choreographer : IEventVisitor
     /// <inheritdoc />
     public void Visit(TileMovedEvent evt)
     {
-        int column = (int)evt.ToPosition.X;
-        int targetRow = (int)evt.ToPosition.Y;
-
-        // Calculate start time considering cascading animations
-        float eventTime = GetStartTime(evt);
-        float startTime = CalculateMoveStartTime(column, targetRow, eventTime);
-
-        // If movement is delayed (waiting for destroy/merge to finish),
-        // hold the tile at its current position. This sets IsBeingAnimated=true,
-        // preventing SyncFallingTilesFromGameState from updating the position
-        // via physics during the wait.
-        if (startTime > eventTime)
-        {
-            _commands.Add(new MoveTileCommand
-            {
-                TileId = evt.TileId,
-                From = evt.FromPosition,
-                To = evt.FromPosition,
-                StartTime = eventTime,
-                Duration = startTime - eventTime,
-                Easing = EasingType.Linear
-            });
-        }
+        float startTime = GetStartTime(evt);
 
         var command = new MoveTileCommand
         {
@@ -163,9 +108,6 @@ public sealed class Choreographer : IEventVisitor
         };
 
         _commands.Add(command);
-
-        // Track this move for cascade timing
-        TrackMove(column, startTime, startTime + Config.MoveDuration, targetRow, evt.FromPosition, evt.ToPosition);
     }
 
     /// <inheritdoc />
@@ -173,7 +115,6 @@ public sealed class Choreographer : IEventVisitor
     {
         float startTime = GetStartTime(evt);
         var position = new Vector2(evt.GridPosition.X, evt.GridPosition.Y);
-        int column = evt.GridPosition.X;
 
         if (evt.MergeTarget.HasValue)
         {
@@ -210,51 +151,15 @@ public sealed class Choreographer : IEventVisitor
                 Duration = 0,
                 Priority = 10
             });
-
-            // Lock merge source for merge duration only
-            // Source positions become empty after tile slides away — no bomb pop-in here
-            _lockEntries.Add(new CellLockEntry
-            {
-                Position = evt.GridPosition,
-                LockType = CellLockType.Receive,
-                Duration = Config.MergeDuration,
-                IsMerge = true
-            });
-
-            // Track merge end time for column cascade stalling
-            if (!_columnDestroyEndTimes.TryGetValue(column, out float existing) || endTime > existing)
-            {
-                _columnDestroyEndTimes[column] = endTime;
-            }
         }
         else if (_beamHitTimes.TryGetValue(evt.GridPosition, out float beamHitTime))
         {
             // Color bomb beam target: delay destruction until beam arrives
             _beamHitTimes.Remove(evt.GridPosition);
-            EmitBeamTargetDestroy(evt, position, column, beamHitTime);
+            EmitBeamTargetDestroy(evt, position, beamHitTime);
         }
         else
         {
-            LastBatchHadMatch = true;
-
-            // Wave delay: later waves (higher SimulationTime) get longer locks
-            float waveDelay = evt.SimulationTime - _minSimulationTime;
-            float dropDelay = evt.Reason switch
-            {
-                DestroyReason.BombEffect => Config.BombDropDelay,
-                DestroyReason.Projectile => 0.05f, // Fast unlock for UFO/Projectile hits
-                _ => Config.DropDelay
-            };
-
-            // Emit cell lock for destroy position (drop delay + wave offset)
-            _lockEntries.Add(new CellLockEntry
-            {
-                Position = evt.GridPosition,
-                LockType = CellLockType.Receive,
-                Duration = waveDelay + dropDelay,
-                IsMerge = false
-            });
-
             // Standard destroy animation: fade + scale down in place
             _commands.Add(new DestroyTileCommand
             {
@@ -266,11 +171,6 @@ public sealed class Choreographer : IEventVisitor
             });
 
             float endTime = startTime + Config.DestroyDuration;
-
-            if (!_columnDestroyEndTimes.TryGetValue(column, out float existing) || endTime > existing)
-            {
-                _columnDestroyEndTimes[column] = endTime;
-            }
 
             // Add visual effect
             if (!evt.IsGoal)
@@ -310,14 +210,22 @@ public sealed class Choreographer : IEventVisitor
     /// <summary>
     /// Color bomb beam target: delay destruction until beam arrives.
     /// </summary>
-    private void EmitBeamTargetDestroy(TileDestroyedEvent evt, Vector2 position, int column, float beamHitTime)
+    private void EmitBeamTargetDestroy(TileDestroyedEvent evt, Vector2 position, float beamHitTime)
     {
-        LastBatchHadMatch = true;
-
         // Pause after beam impact before tile starts dissolving —
         // gives the player time to read the beam pattern before targets explode.
         const float hitPause = 0.5f;
         float destroyStart = beamHitTime + hitPause;
+
+        // Continuous shake from beam impact until destroy starts
+        _commands.Add(new ShakeTileCommand
+        {
+            TileId = evt.TileId,
+            Amplitude = Config.ColorBombHitShakeAmplitude,
+            Frequency = Config.ColorBombHitShakeFrequency,
+            StartTime = beamHitTime,
+            Duration = hitPause
+        });
 
         // Hold tile in place until destroy starts — keeps IsBeingAnimated=true
         // so SyncFallingTilesFromGameState won't garbage-collect it early.
@@ -362,39 +270,13 @@ public sealed class Choreographer : IEventVisitor
             Duration = 0,
             Priority = 10
         });
-
-        float lockEnd = endTime + Config.BombDropDelay;
-
-        _lockEntries.Add(new CellLockEntry
-        {
-            Position = evt.GridPosition,
-            LockType = CellLockType.Receive,
-            Duration = lockEnd,
-            IsMerge = false
-        });
-
-        if (!_columnDestroyEndTimes.TryGetValue(column, out float existing) || lockEnd > existing)
-        {
-            _columnDestroyEndTimes[column] = lockEnd;
-        }
     }
 
     /// <inheritdoc />
     public void Visit(TileSpawnedEvent evt)
     {
-        int column = evt.GridPosition.X;
         float startTime = GetStartTime(evt);
 
-        // Delay spawn until after destroy/merge animations in this column.
-        // Without this, tiles would appear and start falling (via physics sync)
-        // while merge animations are still playing.
-        if (_columnDestroyEndTimes.TryGetValue(column, out float destroyEndTime))
-        {
-            startTime = Math.Max(startTime, destroyEndTime);
-        }
-
-        // Spawn command - creates the tile in visual state
-        // Physics system handles the falling animation via SyncFallingTilesFromGameState
         var spawnCommand = new SpawnTileCommand
         {
             TileId = evt.TileId,
@@ -405,15 +287,12 @@ public sealed class Choreographer : IEventVisitor
             Duration = 0
         };
         _commands.Add(spawnCommand);
-
-        // No MoveTileCommand - physics system controls the falling movement
-        // Cascade timing is handled naturally by physics (tiles wait for space below)
     }
 
     /// <inheritdoc />
     public void Visit(TilesSwappedEvent evt)
     {
-        // New move boundary — clear any stale beam hit times from previous moves
+        // New move boundary — clear cross-batch state from previous moves
         _beamHitTimes.Clear();
         _activeColorBombSessions.Clear();
 
@@ -460,22 +339,9 @@ public sealed class Choreographer : IEventVisitor
     /// <inheritdoc />
     public void Visit(BombCreatedEvent evt)
     {
-        LastBatchHadMerge = true;
-
-        // Lock bomb origin for merge + pop-in duration to prevent gravity overlap
-        float totalBombDuration = Config.MergeDuration + Config.BombPopDuration;
-        _lockEntries.Add(new CellLockEntry
-        {
-            Position = evt.Position,
-            LockType = CellLockType.Receive | CellLockType.Drop,
-            Duration = totalBombDuration,
-            IsMerge = true
-        });
-
         float baseStart = GetStartTime(evt);
         float mergeEndTime = baseStart + Config.MergeDuration;
         var position = new Vector2(evt.Position.X, evt.Position.Y);
-        int column = evt.Position.X;
 
         // Hold the bomb-origin tile in place during merge.
         // This sets IsBeingAnimated=true, preventing SyncFallingTilesFromGameState
@@ -493,7 +359,6 @@ public sealed class Choreographer : IEventVisitor
         // Spawn the new bomb tile immediately at scale=0 so that
         // SyncFallingTilesFromGameState doesn't create it at full size.
         // The tile already exists in GameState after ProcessMatches.
-        // BombType IS the tile's ElementType in the unified model.
         _commands.Add(new SpawnTileCommand
         {
             TileId = evt.NewTileId,
@@ -546,14 +411,6 @@ public sealed class Choreographer : IEventVisitor
             StartTime = mergeEndTime,
             Duration = 0.3f
         });
-
-        // Track full bomb appearance time for this column (delays gravity)
-        // Include BombPopDuration so tiles above don't fall until pop-in completes
-        float bombReadyTime = mergeEndTime + Config.BombPopDuration;
-        if (!_columnDestroyEndTimes.TryGetValue(column, out float existing) || bombReadyTime > existing)
-        {
-            _columnDestroyEndTimes[column] = bombReadyTime;
-        }
     }
 
     /// <inheritdoc />
@@ -788,15 +645,6 @@ public sealed class Choreographer : IEventVisitor
             Duration = 0,
             Priority = 10
         });
-
-        // Lock the origin cell until the performance completes
-        _lockEntries.Add(new CellLockEntry
-        {
-            Position = gridOrigin,
-            LockType = CellLockType.Receive,
-            Duration = spinEndTime + shrinkDuration,
-            IsMerge = false
-        });
     }
 
     /// <summary>
@@ -920,29 +768,12 @@ public sealed class Choreographer : IEventVisitor
     }
 
     /// <summary>
-    /// Emit UFO-specific effects: origin cell lock for launch clearing.
+    /// Emit UFO-specific effects.
     /// UfoLaunchCommand is emitted from Visit(ProjectileLaunchedEvent) using SourceTileId.
     /// Cross tiles get standard destroy; remote target is destroyed on projectile impact.
     /// </summary>
     private void EmitUfoEffects(BombActivatedEvent evt, float startTime, Vector2 origin)
     {
-
-        // Origin cell is free shortly after launch
-        int column = evt.Position.X;
-        float launchClearTime = 0.45f;
-        _lockEntries.Add(new CellLockEntry
-        {
-            Position = evt.Position,
-            LockType = CellLockType.Receive,
-            Duration = launchClearTime + Config.BombDropDelay,
-            IsMerge = false
-        });
-
-        float endTime = startTime + launchClearTime;
-        if (!_columnDestroyEndTimes.TryGetValue(column, out float existing) || endTime > existing)
-        {
-            _columnDestroyEndTimes[column] = endTime;
-        }
     }
 
     /// <inheritdoc />
@@ -985,6 +816,7 @@ public sealed class Choreographer : IEventVisitor
             StartTime = startTime,
             Duration = 0.5f
         });
+
     }
 
     /// <summary>
@@ -1064,8 +896,7 @@ public sealed class Choreographer : IEventVisitor
             });
         }
 
-        // No blanket cell locks here — the ExplosionSystem handles tile suspension,
-        // and each TileDestroyedEvent adds its own per-cell BombDropDelay lock.
+        // No blanket cell locks here — the ExplosionSystem handles cell locking via LockScheduler.
         // ShowEffectCommands are fire-and-forget and don't block gravity.
 
         float totalWipeDur = wipeCumDelay[maxDist] + 0.15f;
@@ -1112,6 +943,21 @@ public sealed class Choreographer : IEventVisitor
             int tileId = evt.SourceTileId ?? 0;
 
             if (tileId == 0) return; // No tile to animate
+
+            // Combo-spawned UFO: create a new tile visual at the launch origin
+            if (evt.SpawnVisual)
+            {
+                var originPos = new Position((int)evt.Origin.X, (int)evt.Origin.Y);
+                _commands.Add(new SpawnTileCommand
+                {
+                    TileId = tileId,
+                    Type = ElementType.Ufo,
+                    GridPos = originPos,
+                    SpawnPos = evt.Origin,
+                    StartTime = startTime,
+                    Duration = 0
+                });
+            }
 
             var targetPos = evt.TargetPosition.HasValue
                 ? new Vector2(evt.TargetPosition.Value.X, evt.TargetPosition.Value.Y)
@@ -1270,21 +1116,6 @@ public sealed class Choreographer : IEventVisitor
                 Duration = 0,
                 Priority = 10
             });
-
-            // Lock target cell for impact — brief hold so the landing reads before tiles drop in
-            int column = evt.ImpactPosition.X;
-            _lockEntries.Add(new CellLockEntry
-            {
-                Position = evt.ImpactPosition,
-                LockType = CellLockType.Receive,
-                Duration = 0.15f,
-                IsMerge = false
-            });
-
-            if (!_columnDestroyEndTimes.TryGetValue(column, out float existing) || startTime > existing)
-            {
-                _columnDestroyEndTimes[column] = startTime;
-            }
 
             return;
         }
@@ -1475,15 +1306,6 @@ public sealed class Choreographer : IEventVisitor
             Duration = totalDuration
         });
 
-        // Lock origin cell during session
-        _lockEntries.Add(new CellLockEntry
-        {
-            Position = evt.Position,
-            LockType = CellLockType.Receive,
-            Duration = startTime + totalDuration,
-            IsMerge = false
-        });
-
         // Track session for beam coordination
         _activeColorBombSessions[evt.TileId] = new ColorBombSessionInfo(
             startTime, hoppedOrigin, startTime + chargeDuration);
@@ -1563,6 +1385,16 @@ public sealed class Choreographer : IEventVisitor
             StartTime = arrivalTime,
             Duration = 0.5f
         });
+
+        // Continuous shake on target tile from beam impact until destroyed
+        _commands.Add(new ShakeTileCommand
+        {
+            TileId = evt.TargetTileId,
+            Amplitude = Config.ColorBombHitShakeAmplitude,
+            Frequency = Config.ColorBombHitShakeFrequency,
+            StartTime = arrivalTime,
+            Duration = Config.ColorBombHoldDuration
+        });
     }
 
     /// <inheritdoc />
@@ -1617,57 +1449,6 @@ public sealed class Choreographer : IEventVisitor
                 Priority = 10
             });
         }
-    }
-
-    #endregion
-
-    #region Cascade Timing
-
-    /// <summary>
-    /// Calculate the start time for a move animation considering cascading.
-    /// Tiles should wait for destroyed tiles above them and for tiles below them to clear space.
-    /// </summary>
-    private float CalculateMoveStartTime(int column, int targetRow, float eventTime)
-    {
-        float startTime = eventTime;
-
-        // Wait for destroy animations in this column at or above the target row
-        if (_columnDestroyEndTimes.TryGetValue(column, out float destroyEndTime))
-        {
-            startTime = Math.Max(startTime, destroyEndTime);
-        }
-
-        // Wait for tiles below to clear 0.5 cells of space
-        if (_columnMoves.TryGetValue(column, out var moves))
-        {
-            foreach (var move in moves)
-            {
-                // Check if this existing move ends at or below our target row
-                if (move.TargetRow >= targetRow)
-                {
-                    // Calculate when this tile clears half a cell from its start
-                    float totalDistance = move.To.Y - move.From.Y;
-                    if (totalDistance > 0)
-                    {
-                        float halfCellRatio = Math.Min(0.5f / totalDistance, 1.0f);
-                        float halfCellTime = move.StartTime + (move.EndTime - move.StartTime) * halfCellRatio;
-                        startTime = Math.Max(startTime, halfCellTime);
-                    }
-                }
-            }
-        }
-
-        return startTime;
-    }
-
-    private void TrackMove(int column, float startTime, float endTime, int targetRow, Vector2 from, Vector2 to)
-    {
-        if (!_columnMoves.TryGetValue(column, out var moves))
-        {
-            moves = new List<MoveRecord>();
-            _columnMoves[column] = moves;
-        }
-        moves.Add(new MoveRecord(startTime, endTime, targetRow, from, to));
     }
 
     #endregion

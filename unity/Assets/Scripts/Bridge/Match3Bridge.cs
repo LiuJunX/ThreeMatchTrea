@@ -42,7 +42,6 @@ namespace Match3.Unity.Bridge
 
         private bool _initialized;
 
-        private CellLockManager _lockManager;
         private ObjectiveCollectionProcessor _objectiveCollector;
         private readonly List<GameEvent> _eventBuffer = new();
         private readonly ClassicMatchFinder _hintMatchFinder = new(new BombGenerator());
@@ -264,7 +263,6 @@ namespace Match3.Unity.Bridge
             var state = _session.Engine.State;
             _player.SyncFromGameState(in state);
 
-            _lockManager = new CellLockManager();
             _objectiveCollector = new ObjectiveCollectionProcessor();
             _initialized = true;
 
@@ -337,7 +335,6 @@ namespace Match3.Unity.Bridge
             var state = _session.Engine.State;
             _player.SyncFromGameState(in state);
 
-            _lockManager = new CellLockManager();
             _objectiveCollector = new ObjectiveCollectionProcessor();
             _initialized = true;
 
@@ -378,12 +375,6 @@ namespace Match3.Unity.Bridge
 
                 var commands = _choreographer.Choreograph(events, _player.CurrentTime);
                 _player.Append(commands);
-
-                // Acquire per-cell locks from Choreographer's lock schedule
-                _lockManager.AcquireFromSchedule(
-                    _choreographer.LockEntries,
-                    _objectiveCollector.PendingFlies,
-                    _session.Engine.AcquireLock);
             }
 
             // Tick the animation player
@@ -391,9 +382,6 @@ namespace Match3.Unity.Bridge
 
             // Tick visual effects (advance elapsed time, remove expired)
             _player.VisualState.UpdateEffects(scaledDelta);
-
-            // Tick per-cell lock timers, release expired ones
-            _lockManager.Tick(scaledDelta, _session.Engine.ReleaseLock);
 
             // Sync falling tiles from game state (physics-driven positions)
             {
@@ -764,10 +752,6 @@ namespace Match3.Unity.Bridge
 
         private void Cleanup()
         {
-            if (_session != null)
-            {
-                _lockManager?.ReleaseAll(_session.Engine.ReleaseLock);
-            }
             _session?.Dispose();
             _session = null;
             _player = null;
