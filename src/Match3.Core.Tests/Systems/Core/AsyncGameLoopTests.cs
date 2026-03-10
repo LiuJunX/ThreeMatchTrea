@@ -25,6 +25,7 @@ public class AsyncGameLoopTests
     {
         public void Update(ref GameState state, float deltaTime) { }
         public bool IsStable(in GameState state) => true;
+        public IPhysicsSimulation CloneForSimulation(IRandom newRandom) => this;
     }
 
     private class StubSpawnModel : ISpawnModel
@@ -277,6 +278,7 @@ public class AsyncGameLoopTests
         }
 
         public bool IsStable(in GameState state) => true;
+        public IPhysicsSimulation CloneForSimulation(IRandom newRandom) => this;
     }
 
     #endregion
@@ -417,6 +419,7 @@ public class AsyncGameLoopTests
         }
 
         public bool IsStable(in GameState state) => true;
+        public IPhysicsSimulation CloneForSimulation(IRandom newRandom) => this;
     }
 
     #endregion

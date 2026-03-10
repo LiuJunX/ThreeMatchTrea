@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Match3.Core.Models.Enums;
 
 namespace Match3.Core.Models.Grid;
@@ -10,21 +11,16 @@ namespace Match3.Core.Models.Grid;
 public sealed class LockScheduler
 {
     private int _nextId;
-
-    private bool[] _released;
-    private int _releasedCapacity;
+    private readonly HashSet<int> _activeIds = new();
 
     private int _timedCount;
     private LockToken[] _timedTokens;
     private float[] _timedRemaining;
 
     private const int InitialTimedCapacity = 32;
-    private const int InitialReleasedCapacity = 64;
 
     public LockScheduler()
     {
-        _released = new bool[InitialReleasedCapacity];
-        _releasedCapacity = InitialReleasedCapacity;
         _timedTokens = new LockToken[InitialTimedCapacity];
         _timedRemaining = new float[InitialTimedCapacity];
     }
@@ -37,6 +33,7 @@ public sealed class LockScheduler
         int id = ++_nextId;
         int idx = state.Index(pos);
         state.CellLocks[idx] = CellLockOps.Lock(state.CellLocks[idx], types);
+        _activeIds.Add(id);
         return new LockToken(id, idx, types);
     }
 
@@ -59,9 +56,7 @@ public sealed class LockScheduler
     public void Release(ref GameState state, LockToken token)
     {
         if (!token.IsValid) return;
-        EnsureReleasedCapacity(token.Id);
-        if (_released[token.Id]) return;
-        _released[token.Id] = true;
+        if (!_activeIds.Remove(token.Id)) return;
         state.CellLocks[token.CellIndex] = CellLockOps.Unlock(state.CellLocks[token.CellIndex], token.Types);
     }
 
@@ -94,15 +89,12 @@ public sealed class LockScheduler
     /// </summary>
     public LockScheduler Clone()
     {
-        var clone = new LockScheduler
-        {
-            _nextId = _nextId,
-            _releasedCapacity = _releasedCapacity,
-            _timedCount = _timedCount
-        };
+        var clone = new LockScheduler();
+        clone._nextId = _nextId;
+        clone._timedCount = _timedCount;
 
-        clone._released = new bool[_releasedCapacity];
-        Array.Copy(_released, clone._released, _releasedCapacity);
+        foreach (var id in _activeIds)
+            clone._activeIds.Add(id);
 
         clone._timedTokens = new LockToken[_timedTokens.Length];
         clone._timedRemaining = new float[_timedRemaining.Length];
@@ -120,20 +112,8 @@ public sealed class LockScheduler
         Array.Clear(state.CellLocks, 0, state.CellLocks.Length);
         _nextId = 0;
         _timedCount = 0;
-        Array.Clear(_released, 0, _releasedCapacity);
+        _activeIds.Clear();
         Array.Clear(_timedTokens, 0, _timedTokens.Length);
-    }
-
-    private void EnsureReleasedCapacity(int id)
-    {
-        if (id < _releasedCapacity) return;
-        int newCapacity = _releasedCapacity;
-        while (newCapacity <= id)
-            newCapacity *= 2;
-        var newArray = new bool[newCapacity];
-        Array.Copy(_released, newArray, _releasedCapacity);
-        _released = newArray;
-        _releasedCapacity = newCapacity;
     }
 
     private void EnsureTimedCapacity()

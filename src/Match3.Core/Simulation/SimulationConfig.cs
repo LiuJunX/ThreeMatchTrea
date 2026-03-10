@@ -74,4 +74,19 @@ public class SimulationConfig
             TimeScale = 1.0f
         };
     }
+
+    /// <summary>
+    /// Create an independent copy. Required for parallel simulation (DryRun/AI branching)
+    /// to avoid shared mutable state between cloned engines.
+    /// IMPORTANT: When adding new properties, update this method accordingly.
+    /// </summary>
+    public SimulationConfig Clone() => new SimulationConfig
+    {
+        FixedDeltaTime = FixedDeltaTime,
+        MaxTicksPerRun = MaxTicksPerRun,
+        EmitEvents = EmitEvents,
+        TimeScale = TimeScale,
+        EnableDeadlockDetection = EnableDeadlockDetection,
+        ShuffleMaxAttempts = ShuffleMaxAttempts,
+    };
 }

@@ -312,6 +312,57 @@ Do NOT cache VisualState properties in View objects for dirty checking.
 This creates a second source of truth that can desync from the original.
 Instead, compare against the renderer's actual state (sprite, mesh, material reference).
 
+## 15. Thread Safety for Cloned Engines (DryRun / AI Branching)
+
+### The Rule
+
+> **`SimulationEngine.Clone()` 产出的引擎必须与原始引擎零共享可变状态，
+> 以支持在后台线程并行执行 DryRun。**
+
+### Why
+
+Best-of-N DryRun 需要同时跑多个候选模拟。每个候选在独立的 Clone 上执行。
+如果 Clone 之间共享了可变字段（IRandom、HashSet 帧缓冲区等），并行执行时会产生
+data race — 轻则结果不确定，重则 crash。
+
+### Shared Reference Categories
+
+Clone() 中的引用分为三类：
+
+| 类别 | 要求 | 当前实例 |
+|------|------|---------|
+| **独立实例** | Clone() 必须创建新实例 | GameState, SimulationConfig, Physics, LockScheduler, CoverSystem, GroundSystem, ExplosionSystem, ProjectileSystem, ColorBombSessionManager, PowerUpHandler |
+| **安全共享** | 无可变实例字段，可直接共享 | MatchFinder, MatchProcessor, DeadlockDetector, ShuffleSystem, ObjectiveSystem, NullEventCollector |
+| **事实不可变共享** | 有 setter 但 session 内不写入 | Match3Config (被 Physics clone 共享；若未来 session 内可变则需 Clone) |
+| **条件安全** | 取决于构造方式 | RefillSystem (SpawnModel 必须用 `state.Random` 而非存储的 `_rng`) |
+
+### Checklist for New Systems
+
+新增 System 被 `SimulationEngine` 引用时，必须回答：
+
+1. **有可变实例字段吗？** (包括 `IRandom`、集合类、缓冲区数组)
+   - 有 → Clone() 必须创建独立实例
+   - 没有 → 可安全共享
+
+2. **`readonly` 字段持有的对象是否可变？**
+   - `readonly List<T>` — 引用不变，但内容可变 → **不安全**
+   - `readonly IRandom` — 调 `Next()` 改变内部状态 → **不安全**
+   - `readonly ImmutableArray<T>` — 真正不可变 → 安全
+
+3. **用了 `stackalloc` / `Span<T>` 做临时缓冲？** → 安全（栈上，线程隔离）
+4. **用了 Pool？** → 安全（当前 Pool 实现基于 `ThreadLocal`）
+
+### Interface Convention
+
+有可变状态的系统接口应提供克隆方法：
+
+```csharp
+// IPhysicsSimulation 已实现此模式
+IPhysicsSimulation CloneForSimulation(IRandom newRandom);
+```
+
+无状态实现可直接 `return this;`。
+
 ## Related Documents
 *   Code Style: `docs/02-guides/coding-standards.md`
 *   Testing Guidelines: `docs/testing-guidelines.md`

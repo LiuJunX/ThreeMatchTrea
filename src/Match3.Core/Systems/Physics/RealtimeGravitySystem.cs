@@ -278,7 +278,11 @@ public class RealtimeGravitySystem : IPhysicsSimulation
     }
 
     /// <inheritdoc />
-    public IPhysicsSimulation CloneForSimulation(IRandom newRandom)
+    /// <remarks>
+    /// Match3Config is shared (read-only in practice). If it ever becomes mutable
+    /// during simulation, it must be cloned here as well.
+    /// </remarks>
+    public virtual IPhysicsSimulation CloneForSimulation(IRandom newRandom)
     {
         return new RealtimeGravitySystem(_config, newRandom);
     }
