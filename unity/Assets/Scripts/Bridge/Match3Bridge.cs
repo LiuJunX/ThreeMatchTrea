@@ -41,6 +41,7 @@ namespace Match3.Unity.Bridge
         private WeightedMoveSelector _autoPlaySelector;
 
         private bool _initialized;
+        private float _timeAccumulator;
 
         private ObjectiveCollectionProcessor _objectiveCollector;
         private readonly List<GameEvent> _eventBuffer = new();
@@ -272,6 +273,7 @@ namespace Match3.Unity.Bridge
             _isAutoPlaying = false;
             _gameEndFired = false;
             _lastObjectiveHash = -1;
+            _timeAccumulator = 0f;
 
             Debug.Log($"Match3Bridge initialized: {_width}x{_height}, seed={seed}, level={levelId}");
         }
@@ -345,6 +347,7 @@ namespace Match3.Unity.Bridge
             _isAutoPlaying = false;
             _gameEndFired = false;
             _lastObjectiveHash = -1;
+            _timeAccumulator = 0f;
 
             Debug.Log($"Match3Bridge initialized: {width}x{height}, seed={seed}");
         }
@@ -361,10 +364,17 @@ namespace Match3.Unity.Bridge
             // Apply game speed
             var scaledDelta = deltaTime * _gameSpeed;
 
-            // Tick the simulation engine
-            _session.Engine.Tick(scaledDelta);
+            // Fixed timestep accumulator: ensures simulation uses identical dt
+            // to replay (1/60f), making recorded games deterministically reproducible.
+            const float fixedStep = Match3.Core.Simulation.SimulationConfig.DefaultFixedDeltaTime;
+            _timeAccumulator += scaledDelta;
+            while (_timeAccumulator >= fixedStep)
+            {
+                _timeAccumulator -= fixedStep;
+                _session.Engine.Tick(fixedStep);
+            }
 
-            // Drain events into reusable buffer (zero allocation)
+            // Drain events accumulated from all fixed ticks
             _session.DrainEventsTo(_eventBuffer);
             var events = (IReadOnlyList<GameEvent>)_eventBuffer;
             if (_eventBuffer.Count > 0)
@@ -377,7 +387,7 @@ namespace Match3.Unity.Bridge
                 _player.Append(commands);
             }
 
-            // Tick the animation player
+            // Tick the animation player (uses real delta for smooth rendering)
             _player.Tick(scaledDelta);
 
             // Tick visual effects (advance elapsed time, remove expired)

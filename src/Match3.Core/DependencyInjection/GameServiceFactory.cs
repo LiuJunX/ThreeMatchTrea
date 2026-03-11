@@ -82,28 +82,51 @@ public sealed class GameServiceFactory : IGameServiceFactory
         SimulationConfig config,
         IEventCollector? eventCollector = null)
     {
+        // Single-random mode: all domains map to state.Random (used by AI/DryRun).
+        // Uses a null-seed SeedManager; RandomStreamFactory.Create(null, domain) produces
+        // independent seeded streams per domain, which is acceptable for non-replay use.
+        return BuildSimulationEngine(initialState, config, new SeedManager(null), eventCollector);
+    }
+
+    /// <inheritdoc />
+    public SimulationEngine CreateSimulationEngine(
+        GameState initialState,
+        SimulationConfig config,
+        SeedManager seedManager,
+        IEventCollector? eventCollector = null)
+    {
+        return BuildSimulationEngine(initialState, config, seedManager, eventCollector);
+    }
+
+    /// <summary>
+    /// Single point of engine assembly. All random domain → subsystem wiring lives here.
+    /// Adding a new RandomDomain only requires updating this method.
+    /// </summary>
+    private SimulationEngine BuildSimulationEngine(
+        GameState initialState,
+        SimulationConfig config,
+        SeedManager seedManager,
+        IEventCollector? eventCollector,
+        ILevelObjectiveSystem? objectiveSystem = null)
+    {
         var match3Config = new Match3Config(initialState.Width, initialState.Height, initialState.TileTypesCount);
 
-        // Create all systems
+        objectiveSystem ??= _objectiveSystemFactory();
         var bombGenerator = _bombGeneratorFactory();
         var matchFinder = _matchFinderFactory(bombGenerator);
         var scoreSystem = _scoreSystemFactory();
         var bombRegistry = _bombRegistryFactory();
         var matchProcessor = _matchProcessorFactory(scoreSystem, bombRegistry);
         var projectileSystem = _projectileFactory();
-        var objectiveSystem = _objectiveSystemFactory();
         var explosionSystem = new ExplosionSystem(new CoverSystem(objectiveSystem), new GroundSystem(objectiveSystem), objectiveSystem);
         var powerUpHandler = _powerUpFactory(scoreSystem).WithExplosionSystem(explosionSystem).WithProjectileSystem(projectileSystem);
-
-        // Use provided event collector or create based on config
         var collector = eventCollector ?? _eventCollectorFactory(true);
 
-        // Physics and refill need random from state
-        var spawnModel = _spawnModelFactory(initialState.Random);
-        var physics = _physicsFactory(match3Config, initialState.Random);
+        // ── Random domain wiring (single update point) ──
+        var spawnModel = _spawnModelFactory(seedManager.GetRandom(RandomDomain.Refill));
+        var physics = _physicsFactory(match3Config, seedManager.GetRandom(RandomDomain.Physics));
         var refill = _refillFactory(spawnModel);
 
-        // Create deadlock detection and shuffle systems
         var deadlockDetector = _deadlockDetectorFactory(matchFinder);
         var shuffleSystem = _shuffleSystemFactory(deadlockDetector);
 
@@ -142,18 +165,12 @@ public sealed class GameServiceFactory : IGameServiceFactory
         // Create initial state
         var state = new GameState(width, height, configuration.TileTypesCount, mainRng);
 
-        // Create objective system
+        // Initialize board (consumes Refill-domain random for tile generation)
         var objectiveSystem = _objectiveSystemFactory();
-
-        // Initialize board
         var tileGenerator = _tileGeneratorFactory(seedManager.GetRandom(RandomDomain.Refill));
 
         if (levelConfig != null)
         {
-            // BoardInitializer handles all cases:
-            // - Grid with tiles → use specified layout
-            // - Grid null/empty → generate random tiles for Slot cells
-            // - Cells array → skip Void/Wall cells
             var initializer = new BoardInitializer(tileGenerator, objectiveSystem);
             initializer.Initialize(ref state, levelConfig);
         }
@@ -165,39 +182,8 @@ public sealed class GameServiceFactory : IGameServiceFactory
         // Create event collector
         var eventCollector = _eventCollectorFactory(configuration.EnableEventCollection);
 
-        // Create simulation engine
-        var match3Config = new Match3Config(width, height, configuration.TileTypesCount);
-        var spawnModel = _spawnModelFactory(seedManager.GetRandom(RandomDomain.Refill));
-
-        var bombGenerator = _bombGeneratorFactory();
-        var matchFinder = _matchFinderFactory(bombGenerator);
-        var scoreSystem = _scoreSystemFactory();
-        var bombRegistry = _bombRegistryFactory();
-        var matchProcessor = _matchProcessorFactory(scoreSystem, bombRegistry);
-        var projectileSystem = _projectileFactory();
-        var explosionSystem = new ExplosionSystem(new CoverSystem(objectiveSystem), new GroundSystem(objectiveSystem), objectiveSystem);
-        var powerUpHandler = _powerUpFactory(scoreSystem).WithExplosionSystem(explosionSystem).WithProjectileSystem(projectileSystem);
-        var physics = _physicsFactory(match3Config, seedManager.GetRandom(RandomDomain.Physics));
-        var refill = _refillFactory(spawnModel);
-
-        // Create deadlock detection and shuffle systems
-        var deadlockDetector = _deadlockDetectorFactory(matchFinder);
-        var shuffleSystem = _shuffleSystemFactory(deadlockDetector);
-
-        var engine = new SimulationEngine(
-            state,
-            configuration.SimulationConfig,
-            physics,
-            refill,
-            matchFinder,
-            matchProcessor,
-            powerUpHandler,
-            projectileSystem,
-            eventCollector,
-            explosionSystem,
-            deadlockDetector,
-            shuffleSystem,
-            objectiveSystem);
+        // Delegate engine assembly to shared builder (pass objectiveSystem to avoid double creation)
+        var engine = BuildSimulationEngine(state, configuration.SimulationConfig, seedManager, eventCollector, objectiveSystem);
 
         return new GameSession(engine, eventCollector, seedManager, configuration);
     }

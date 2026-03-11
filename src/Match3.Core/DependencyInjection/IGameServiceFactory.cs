@@ -18,6 +18,7 @@ public interface IGameServiceFactory
 {
     /// <summary>
     /// Create a SimulationEngine with all required dependencies.
+    /// Uses state.Random for all subsystems (single random stream).
     /// </summary>
     /// <param name="initialState">Initial game state.</param>
     /// <param name="config">Simulation configuration.</param>
@@ -26,6 +27,21 @@ public interface IGameServiceFactory
     SimulationEngine CreateSimulationEngine(
         GameState initialState,
         SimulationConfig config,
+        IEventCollector? eventCollector = null);
+
+    /// <summary>
+    /// Create a SimulationEngine with multi-domain random streams for deterministic replay.
+    /// Each subsystem gets its own random stream derived from the SeedManager.
+    /// </summary>
+    /// <param name="initialState">Initial game state (state.Random = Main domain).</param>
+    /// <param name="config">Simulation configuration.</param>
+    /// <param name="seedManager">SeedManager providing per-domain random streams.</param>
+    /// <param name="eventCollector">Event collector (null uses default based on config).</param>
+    /// <returns>Configured SimulationEngine with deterministic multi-domain randoms.</returns>
+    SimulationEngine CreateSimulationEngine(
+        GameState initialState,
+        SimulationConfig config,
+        SeedManager seedManager,
         IEventCollector? eventCollector = null);
 
     /// <summary>

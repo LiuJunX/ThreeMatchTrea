@@ -1,6 +1,7 @@
 using System;
 using Match3.Core.Commands;
 using Match3.Core.DependencyInjection;
+using Match3.Core.Events;
 using Match3.Core.Simulation;
 using Match3.Random;
 
@@ -12,6 +13,8 @@ namespace Match3.Core.Replay;
 /// </summary>
 public sealed class ReplayController : IDisposable
 {
+    private const float TickDuration = SimulationConfig.DefaultFixedDeltaTime;
+
     private readonly GameRecording _recording;
     private readonly IGameServiceFactory _factory;
     private SimulationEngine? _engine;
@@ -110,6 +113,7 @@ public sealed class ReplayController : IDisposable
 
     /// <summary>
     /// Seeks to a specific progress position (0.0 to 1.0).
+    /// Uses precise seek with full simulation ticking for accuracy.
     /// </summary>
     /// <param name="progress">Target progress (0.0 to 1.0).</param>
     public void Seek(float progress)
@@ -119,22 +123,29 @@ public sealed class ReplayController : IDisposable
         progress = Math.Clamp(progress, 0f, 1f);
         int targetTick = (int)(progress * _recording.DurationTicks);
 
-        // If seeking backwards, need to restart
-        if (targetTick < _currentTick)
+        // If seeking backwards or engine not yet created, (re)initialize
+        if (targetTick < _currentTick || _engine == null)
         {
-            ResetToStart();
+            Initialize();
         }
 
-        // Fast-forward to target tick
-        while (_currentTick < targetTick && _currentCommandIndex < _recording.Commands.Count)
+        // Fast-forward to target tick with full simulation
+        while (_currentTick < targetTick)
         {
             ExecuteNextCommandIfReady();
+            _engine!.Tick(TickDuration);
             _currentTick++;
+        }
+
+        // Drain accumulated events during seek to prevent memory leak
+        if (_engine!.EventCollector is BufferedEventCollector buffered)
+        {
+            buffered.Clear();
         }
     }
 
     /// <summary>
-    /// Steps forward by one command.
+    /// Steps forward by one command, ticking the engine to the command's tick for accurate simulation state.
     /// </summary>
     public void StepForward()
     {
@@ -149,7 +160,15 @@ public sealed class ReplayController : IDisposable
         if (_currentCommandIndex < _recording.Commands.Count)
         {
             var cmd = _recording.Commands[_currentCommandIndex];
-            _currentTick = cmd.IssuedAtTick;
+            int targetTick = cmd.IssuedAtTick;
+
+            // Tick the engine to catch up to the command's tick
+            while (_currentTick < targetTick)
+            {
+                _engine!.Tick(TickDuration);
+                _currentTick++;
+            }
+
             ExecuteCommand(cmd);
             _currentCommandIndex++;
         }
@@ -165,18 +184,14 @@ public sealed class ReplayController : IDisposable
 
         _accumulatedTime += deltaTime * PlaybackSpeed;
 
-        // Convert accumulated time to ticks (assuming 60 ticks per second)
-        const float TickDuration = 1f / 60f;
         while (_accumulatedTime >= TickDuration)
         {
             _accumulatedTime -= TickDuration;
-            _currentTick++;
 
-            // Execute commands scheduled for this tick
+            // Execute commands scheduled for this tick, then advance simulation
             ExecuteNextCommandIfReady();
-
-            // Tick the simulation
             _engine.Tick(TickDuration);
+            _currentTick++;
 
             // Check for completion
             if (_currentTick >= _recording.DurationTicks &&
@@ -193,25 +208,20 @@ public sealed class ReplayController : IDisposable
     {
         _engine?.Dispose();
 
-        // Create random with recorded seed
+        // Recreate multi-domain random streams from recorded seed
         var seedManager = new SeedManager(_recording.RandomSeed);
-        var random = seedManager.GetRandom(RandomDomain.Main);
+        var mainRng = seedManager.GetRandom(RandomDomain.Main);
 
-        // Restore initial state from the recording
-        var initialState = _recording.InitialState.ToState(random);
+        // Restore initial state with Main-domain random
+        var initialState = _recording.InitialState.ToState(mainRng);
 
-        // Create simulation engine with the RESTORED state (not a new one)
+        // Create engine with per-domain randoms (Refill, Physics) for deterministic replay
         var simulationConfig = SimulationConfig.ForHumanPlay();
-        _engine = _factory.CreateSimulationEngine(initialState, simulationConfig);
+        _engine = _factory.CreateSimulationEngine(initialState, simulationConfig, seedManager);
 
         _currentCommandIndex = 0;
         _currentTick = 0;
         _accumulatedTime = 0;
-    }
-
-    private void ResetToStart()
-    {
-        Initialize();
     }
 
     private void ExecuteNextCommandIfReady()

@@ -1,4 +1,6 @@
+using System;
 using Match3.Core.Models.Enums;
+using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
 using Match3.Core.Simulation;
 
@@ -20,16 +22,16 @@ public sealed record GameStateSnapshot
     public int TileTypesCount { get; init; }
 
     /// <summary>Flattened tile type array (row-major order).</summary>
-    public ElementType[] TileTypes { get; init; } = System.Array.Empty<ElementType>();
+    public ElementType[] TileTypes { get; init; } = Array.Empty<ElementType>();
 
     /// <summary>Flattened cover layer array.</summary>
-    public Cover[] CoverLayers { get; init; } = System.Array.Empty<Cover>();
+    public Cover[] CoverLayers { get; init; } = Array.Empty<Cover>();
 
     /// <summary>Flattened ground layer array.</summary>
-    public Ground[] GroundLayers { get; init; } = System.Array.Empty<Ground>();
+    public Ground[] GroundLayers { get; init; } = Array.Empty<Ground>();
 
     /// <summary>Per-cell cell kind (topology).</summary>
-    public CellKind[] Cells { get; init; } = System.Array.Empty<CellKind>();
+    public CellKind[] Cells { get; init; } = Array.Empty<CellKind>();
 
     /// <summary>Next tile ID to assign.</summary>
     public int NextTileId { get; init; }
@@ -40,6 +42,18 @@ public sealed record GameStateSnapshot
     /// <summary>Total moves made.</summary>
     public int MoveCount { get; init; }
 
+    /// <summary>Maximum moves allowed.</summary>
+    public int MoveLimit { get; init; } = 20;
+
+    /// <summary>Target difficulty for spawn model (0.0-1.0).</summary>
+    public float TargetDifficulty { get; init; } = 0.5f;
+
+    /// <summary>Objective progress (fixed size 4).</summary>
+    public ObjectiveProgress[] ObjectiveProgress { get; init; } = new ObjectiveProgress[4];
+
+    /// <summary>Current level status.</summary>
+    public LevelStatus LevelStatus { get; init; } = LevelStatus.InProgress;
+
     /// <summary>
     /// Creates a snapshot from a GameState.
     /// </summary>
@@ -49,7 +63,6 @@ public sealed record GameStateSnapshot
         var tileTypes = new ElementType[size];
         var coverLayers = new Cover[size];
         var groundLayers = new Ground[size];
-
         var cells = new CellKind[size];
 
         for (int y = 0; y < state.Height; y++)
@@ -65,6 +78,9 @@ public sealed record GameStateSnapshot
             }
         }
 
+        var objectiveProgress = new ObjectiveProgress[4];
+        Array.Copy(state.ObjectiveProgress, objectiveProgress, 4);
+
         return new GameStateSnapshot
         {
             Width = state.Width,
@@ -76,7 +92,11 @@ public sealed record GameStateSnapshot
             Cells = cells,
             NextTileId = state.NextTileId,
             Score = state.Score,
-            MoveCount = state.MoveCount
+            MoveCount = state.MoveCount,
+            MoveLimit = state.MoveLimit,
+            TargetDifficulty = state.TargetDifficulty,
+            ObjectiveProgress = objectiveProgress,
+            LevelStatus = state.LevelStatus
         };
     }
 
@@ -90,22 +110,28 @@ public sealed record GameStateSnapshot
         {
             NextTileId = NextTileId,
             Score = Score,
-            MoveCount = MoveCount
+            MoveCount = MoveCount,
+            MoveLimit = MoveLimit,
+            TargetDifficulty = TargetDifficulty,
+            LevelStatus = LevelStatus
         };
+
+        Array.Copy(ObjectiveProgress, state.ObjectiveProgress, 4);
 
         for (int y = 0; y < Height; y++)
         {
             for (int x = 0; x < Width; x++)
             {
                 int index = y * Width + x;
-                var tile = new Tile(
-                    state.NextTileId++,
-                    TileTypes[index],
-                    x, y
-                );
-                state.SetTile(x, y, tile);
-                state.SetCover(x, y, CoverLayers[index]);
-                state.SetGround(x, y, GroundLayers[index]);
+                if (index < TileTypes.Length)
+                {
+                    var tile = new Tile(state.NextTileId++, TileTypes[index], x, y);
+                    state.SetTile(x, y, tile);
+                }
+                if (index < CoverLayers.Length)
+                    state.SetCover(x, y, CoverLayers[index]);
+                if (index < GroundLayers.Length)
+                    state.SetGround(x, y, GroundLayers[index]);
                 if (index < Cells.Length)
                     state.Cells[index] = Cells[index];
             }

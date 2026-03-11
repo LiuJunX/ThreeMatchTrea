@@ -65,6 +65,13 @@ public class ReplayControllerTests
             var matchProcessor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), BombEffectRegistry.CreateDefault());
             var powerUpHandler = new PowerUpHandler(scoreSystem);
 
+            var lockScheduler = new LockScheduler();
+            var explosionSystem = new ExplosionSystem(
+                new Match3.Core.Systems.Layers.CoverSystem(),
+                new Match3.Core.Systems.Layers.GroundSystem(),
+                null,
+                lockScheduler);
+
             return new SimulationEngine(
                 initialState,
                 config,
@@ -74,12 +81,20 @@ public class ReplayControllerTests
                 matchProcessor,
                 powerUpHandler,
                 null,
-                eventCollector);
+                eventCollector,
+                explosionSystem);
         }
+
+        public SimulationEngine CreateSimulationEngine(
+            GameState initialState,
+            SimulationConfig config,
+            SeedManager seedManager,
+            IEventCollector? eventCollector = null)
+            => CreateSimulationEngine(initialState, config, eventCollector);
 
         public GameSession CreateGameSession(LevelConfig? levelConfig = null)
             => throw new NotSupportedException("Not needed for replay tests");
-        
+
         public ISpawnModel CreateSpawnModel(IRandom random) => new StubSpawnModel();
         public ITileGenerator CreateTileGenerator(IRandom random) => throw new NotSupportedException();
         public IDeadlockDetectionSystem CreateDeadlockDetector(IMatchFinder matchFinder) => throw new NotSupportedException();
@@ -916,7 +931,80 @@ public class ReplayControllerTests
     }
 
     #endregion
+
+    #region Seek With Engine Ticking
+
+    [Fact]
+    public void Seek_InitializesEngineIfStopped()
+    {
+        var controller = CreateController(CreateRecording(durationTicks: 120));
+        Assert.Null(controller.Engine);
+
+        controller.Seek(0.5f);
+
+        Assert.NotNull(controller.Engine);
+    }
+
+    [Fact]
+    public void Seek_ForwardThenBackward_ResetsAndReplays()
+    {
+        var commands = new IGameCommand[]
+        {
+            new StubCommand { IssuedAtTick = 10 },
+            new StubCommand { IssuedAtTick = 50 }
+        };
+        var recording = CreateRecording(commands: commands, durationTicks: 120);
+        var controller = CreateController(recording);
+
+        // Seek forward
+        controller.Seek(0.8f);
+        Assert.Equal(2, controller.CommandsExecuted);
+
+        // Seek backward
+        controller.Seek(0.05f);
+        Assert.True(controller.CurrentTick < 50,
+            $"After backward seek, tick should be < 50 but was {controller.CurrentTick}");
+    }
+
+    [Fact]
+    public void Seek_ToEnd_ExecutesAllCommands()
+    {
+        var commands = new IGameCommand[]
+        {
+            new StubCommand { IssuedAtTick = 5 },
+            new StubCommand { IssuedAtTick = 10 },
+            new StubCommand { IssuedAtTick = 20 }
+        };
+        var recording = CreateRecording(commands: commands, durationTicks: 30);
+        var controller = CreateController(recording);
+
+        controller.Seek(1.0f);
+
+        Assert.Equal(3, controller.CommandsExecuted);
+        Assert.Equal(30, controller.CurrentTick);
+    }
+
+    [Fact]
+    public void Seek_MultipleForwardSeeks_WorkCorrectly()
+    {
+        var commands = new IGameCommand[]
+        {
+            new StubCommand { IssuedAtTick = 10 },
+            new StubCommand { IssuedAtTick = 50 },
+            new StubCommand { IssuedAtTick = 100 }
+        };
+        var recording = CreateRecording(commands: commands, durationTicks: 120);
+        var controller = CreateController(recording);
+
+        controller.Seek(0.2f);
+        Assert.Equal(1, controller.CommandsExecuted);
+
+        controller.Seek(0.5f);
+        Assert.Equal(2, controller.CommandsExecuted);
+
+        controller.Seek(0.9f);
+        Assert.Equal(3, controller.CommandsExecuted);
+    }
+
+    #endregion
 }
-
-
-
