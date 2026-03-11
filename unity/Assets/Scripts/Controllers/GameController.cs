@@ -300,6 +300,11 @@ namespace Match3.Unity.Controllers
             Reset();
             Initialize(width, height, newSeed);
 
+            // Re-frame camera in case board dimensions changed (e.g. after replay)
+            var cameraSetup = FindObjectOfType<CameraSetup>();
+            if (cameraSetup != null)
+                cameraSetup.SetupCamera();
+
             Debug.Log($"Game restarted with seed: {newSeed}");
         }
 
@@ -326,6 +331,11 @@ namespace Match3.Unity.Controllers
             // Re-initialize views with new dimensions
             _boardView.Initialize(_bridge);
             _effectManager.Initialize(_bridge);
+
+            // Re-frame camera for replay board dimensions
+            var cameraSetup = FindObjectOfType<CameraSetup>();
+            if (cameraSetup != null)
+                cameraSetup.SetupCamera();
 
             _initialized = true;
         }
