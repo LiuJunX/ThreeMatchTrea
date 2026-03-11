@@ -242,9 +242,13 @@ public class ExplosionSystem : IExplosionSystem
                     // Track objective progress before destroying
                     _objectiveSystem?.OnTileDestroyed(ref state, tile.Type, tick, simTime, eventCollector);
 
-                    // Destroy (Set to None) — lock is released since tile is gone
+                    // Destroy (Set to None) — Drop lock is released since tile is gone
                     state.SetTile(pos.X, pos.Y, new Tile(0, ElementType.None, pos.X, pos.Y));
                     ReleaseLockForCell(ref state, explosion, pos);
+
+                    // Apply timed Receive lock to prevent premature gravity fill
+                    if (_lockScheduler != null)
+                        _lockScheduler.Acquire(ref state, pos, CellLockType.Receive, ReceiveLockTimings.ExplosionClear);
 
                     // Notify ground layer
                     _groundSystem.OnTileDestroyed(ref state, pos, tick, simTime, eventCollector);

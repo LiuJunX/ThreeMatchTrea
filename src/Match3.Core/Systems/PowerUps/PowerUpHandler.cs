@@ -22,6 +22,7 @@ public class PowerUpHandler : IPowerUpHandler
     private readonly IExplosionSystem? _explosionSystem;
     private readonly IProjectileSystem? _projectileSystem;
     private readonly IColorBombSessionManager? _colorBombSessionManager;
+    private readonly LockScheduler? _lockScheduler;
 
     public PowerUpHandler(IScoreSystem scoreSystem)
         : this(scoreSystem, new BombComboHandler(), BombEffectRegistry.CreateDefault(),
@@ -37,7 +38,8 @@ public class PowerUpHandler : IPowerUpHandler
         IGroundSystem groundSystem,
         IExplosionSystem? explosionSystem = null,
         IProjectileSystem? projectileSystem = null,
-        IColorBombSessionManager? colorBombSessionManager = null)
+        IColorBombSessionManager? colorBombSessionManager = null,
+        LockScheduler? lockScheduler = null)
     {
         _scoreSystem = scoreSystem;
         _comboHandler = comboHandler;
@@ -47,6 +49,7 @@ public class PowerUpHandler : IPowerUpHandler
         _explosionSystem = explosionSystem;
         _projectileSystem = projectileSystem;
         _colorBombSessionManager = colorBombSessionManager;
+        _lockScheduler = lockScheduler;
     }
 
     public void ProcessSpecialMove(ref GameState state, Position p1, Position p2, out int points)
@@ -70,7 +73,44 @@ public class PowerUpHandler : IPowerUpHandler
         // Calculate score before modifying state (tiles might be cleared)
         points = _scoreSystem.CalculateSpecialMoveScore(t1.Type, t2.Type);
 
-        // Use BombComboHandler to process combos
+        // ColorBomb + other bomb combo → route to session-based flow
+        // (beams fly out, transform targets on arrival, batch activate at end)
+        if (_colorBombSessionManager != null && IsColorBombWithOtherBomb(t1.Type, t2.Type))
+        {
+            var colorBombPos = t1.Type.IsColorBomb() ? p1 : p2;
+            var colorBombTile = t1.Type.IsColorBomb() ? t1 : t2;
+            var otherBombType = t1.Type.IsColorBomb() ? t2.Type : t1.Type;
+
+            // Emit BombComboEvent (no affected positions — they'll be determined by session)
+            if (events.IsEnabled)
+            {
+                events.Emit(new BombComboEvent
+                {
+                    Tick = tick,
+                    SimulationTime = simTime,
+                    TileIdA = t1.Id,
+                    TileIdB = t2.Id,
+                    BombTypeA = t1.Type,
+                    BombTypeB = t2.Type,
+                    PositionA = p1,
+                    PositionB = p2,
+                    AffectedPositions = new List<Position>()
+                });
+            }
+
+            // Clear both bomb attributes
+            ClearBombAttribute(ref state, p1);
+            ClearBombAttribute(ref state, p2);
+
+            // Create combo session — beams fly to each target color tile,
+            // transform on arrival, batch activate all transformed bombs at the end
+            _colorBombSessionManager.CreateComboSession(
+                ref state, colorBombPos, colorBombTile.Id, otherBombType, tick, simTime, events);
+
+            return;
+        }
+
+        // Use BombComboHandler to process non-ColorBomb combos (and ColorBomb+ColorBomb)
         var affected = Pools.ObtainHashSet<Position>();
         try
         {
@@ -115,12 +155,38 @@ public class PowerUpHandler : IPowerUpHandler
                     ClearAffectedTiles(ref state, affected, tick, simTime, events);
                 }
 
-                // UFO + UFO: launch projectiles for remote targets
+                // UFO combos: launch projectiles for remote targets.
                 // ClearBombAttribute preserved tile IDs (set to None), so Choreographer
                 // can animate the existing tile visuals flying to their targets.
-                if (t1.Type == ElementType.Ufo && t2.Type == ElementType.Ufo && _projectileSystem != null)
+                if (_projectileSystem != null)
                 {
-                    LaunchUfoComboProjectiles(ref state, t1.Id, t2.Id, p1, p2, tick, simTime, events);
+                    // UFO + UFO: 3 projectiles
+                    if (t1.Type == ElementType.Ufo && t2.Type == ElementType.Ufo)
+                    {
+                        LaunchUfoComboProjectiles(ref state, t1.Id, t2.Id, p1, p2, tick, simTime, events);
+                    }
+                    // UFO + Rocket: 1 projectile with Row/Column payload, rocket dragged behind
+                    else if ((t1.Type.IsUfo() && t2.Type.IsRocket()) || (t1.Type.IsRocket() && t2.Type.IsUfo()))
+                    {
+                        var ufoTile = t1.Type.IsUfo() ? t1 : t2;
+                        var otherTile = t1.Type.IsUfo() ? t2 : t1;
+                        var ufoPos = t1.Type.IsUfo() ? p1 : p2;
+                        var otherPos = t1.Type.IsUfo() ? p2 : p1;
+                        var payload = otherTile.Type == ElementType.HorizontalRocket
+                            ? UfoPayload.Row : UfoPayload.Column;
+                        LaunchUfoPayloadProjectile(ref state, ufoTile.Id, ufoPos, payload, tick, simTime, events,
+                            passengerTileId: otherTile.Id, passengerPos: otherPos);
+                    }
+                    // UFO + Square: 1 projectile with Area5x5 payload, square dragged behind
+                    else if ((t1.Type.IsUfo() && t2.Type.IsAreaBomb()) || (t1.Type.IsAreaBomb() && t2.Type.IsUfo()))
+                    {
+                        var ufoTile = t1.Type.IsUfo() ? t1 : t2;
+                        var otherTile = t1.Type.IsUfo() ? t2 : t1;
+                        var ufoPos = t1.Type.IsUfo() ? p1 : p2;
+                        var otherPos = t1.Type.IsUfo() ? p2 : p1;
+                        LaunchUfoPayloadProjectile(ref state, ufoTile.Id, ufoPos, UfoPayload.Area5x5, tick, simTime, events,
+                            passengerTileId: otherTile.Id, passengerPos: otherPos);
+                    }
                 }
 
                 return;
@@ -249,12 +315,17 @@ public class PowerUpHandler : IPowerUpHandler
 
     public IPowerUpHandler WithExplosionSystem(IExplosionSystem? explosionSystem)
     {
-        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, explosionSystem, _projectileSystem, _colorBombSessionManager);
+        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, explosionSystem, _projectileSystem, _colorBombSessionManager, _lockScheduler);
     }
 
     public IPowerUpHandler WithProjectileSystem(IProjectileSystem? projectileSystem)
     {
-        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, projectileSystem, _colorBombSessionManager);
+        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, projectileSystem, _colorBombSessionManager, _lockScheduler);
+    }
+
+    public IPowerUpHandler WithLockScheduler(LockScheduler? lockScheduler)
+    {
+        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, _projectileSystem, _colorBombSessionManager, lockScheduler);
     }
 
     /// <summary>
@@ -299,14 +370,53 @@ public class PowerUpHandler : IPowerUpHandler
     }
 
     /// <summary>
-    /// Clears the bomb attribute from a tile to prevent double explosion during combo processing.
+    /// Launch a single UFO projectile with an enhanced payload (Rocket row/column or Square 5×5).
+    /// Reuses the existing UFO tile visual for the flight animation.
+    /// The passenger bomb's tile visual follows the UFO during flight.
     /// </summary>
-    private static void ClearBombAttribute(ref GameState state, Position p)
+    private void LaunchUfoPayloadProjectile(
+        ref GameState state, int ufoTileId, Position ufoPos,
+        UfoPayload payload,
+        int tick, float simTime, IEventCollector events,
+        int? passengerTileId = null, Position? passengerPos = null)
+    {
+        var target = UfoEffect.PickRemoteTarget(in state, ufoPos);
+        if (target.HasValue)
+        {
+            var proj = new UfoProjectile(
+                _projectileSystem!.GenerateProjectileId(), ufoPos, target.Value)
+            {
+                SourceTileId = ufoTileId,
+                Payload = payload,
+                PassengerTileId = passengerTileId,
+                PassengerOrigin = passengerPos
+            };
+            _projectileSystem.Launch(proj, tick, simTime, events);
+        }
+    }
+
+    /// <summary>
+    /// Check if one tile is a ColorBomb and the other is a non-ColorBomb bomb.
+    /// ColorBomb+ColorBomb and ColorBomb+normal are NOT matched here.
+    /// </summary>
+    private static bool IsColorBombWithOtherBomb(ElementType a, ElementType b)
+    {
+        if (a == ElementType.ColorBomb && b.IsBomb() && b != ElementType.ColorBomb) return true;
+        if (b == ElementType.ColorBomb && a.IsBomb() && a != ElementType.ColorBomb) return true;
+        return false;
+    }
+
+    /// <summary>
+    /// Clears the bomb attribute from a tile to prevent double explosion during combo processing.
+    /// Applies a timed Receive lock to prevent premature gravity fill.
+    /// </summary>
+    private void ClearBombAttribute(ref GameState state, Position p)
     {
         var tile = state.GetTile(p.X, p.Y);
         if (tile.Type.IsBomb())
         {
             state.SetTile(p.X, p.Y, new Tile(tile.Id, ElementType.None, p.X, p.Y) { Position = tile.Position });
+            _lockScheduler?.Acquire(ref state, p, CellLockType.Receive, ReceiveLockTimings.BombActivateClear);
         }
     }
 
@@ -388,6 +498,9 @@ public class PowerUpHandler : IPowerUpHandler
 
                 // Clear the tile
                 state.SetTile(pos.X, pos.Y, new Tile(0, ElementType.None, pos.X, pos.Y));
+
+                // Apply timed Receive lock to prevent premature gravity fill
+                _lockScheduler?.Acquire(ref state, pos, CellLockType.Receive, ReceiveLockTimings.BombActivateClear);
 
                 // Notify ground layer
                 _groundSystem.OnTileDestroyed(ref state, pos, tick, simTime, events);

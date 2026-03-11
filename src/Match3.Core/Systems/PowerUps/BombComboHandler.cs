@@ -11,10 +11,10 @@ namespace Match3.Core.Systems.PowerUps;
 /// 组合规则：
 /// - 火箭 + 火箭 = 十字（1行+1列）
 /// - 火箭 + 方块炸弹 = 3行+3列
-/// - 火箭 + UFO = 起飞前小十字，落地后消除一行或一列
+/// - 火箭 + UFO = 起飞前小十字 + 飞出1个UFO飞弹（落地消除一行或一列，由ProjectileSystem处理）
 /// - 火箭 + 彩球 = 最多颜色全变火箭并爆炸
 /// - 方块炸弹 + 方块炸弹 = 9x9
-/// - 方块炸弹 + UFO = 起飞前小十字，落地后消除5x5
+/// - 方块炸弹 + UFO = 起飞前小十字 + 飞出1个UFO飞弹（落地消除5x5，由ProjectileSystem处理）
 /// - 方块炸弹 + 彩球 = 最多颜色全变3x3炸弹并爆炸
 /// - UFO + UFO = 两个原地小十字 + 飞出3个UFO飞弹（由ProjectileSystem处理）
 /// - UFO + 彩球 = 最多颜色全变UFO并起飞
@@ -94,9 +94,8 @@ public class BombComboHandler
         // 火箭 + UFO
         if ((b1.IsRocket() && b2 == ElementType.Ufo) || (b2.IsRocket() && b1 == ElementType.Ufo))
         {
-            var rocketType = b1.IsRocket() ? b1 : b2;
             var ufoPos = b1 == ElementType.Ufo ? p1 : p2;
-            ApplyRocketPlusUfo(ref state, ufoPos, rocketType, affected);
+            ApplyRocketPlusUfo(ref state, ufoPos, affected);
             return;
         }
 
@@ -168,32 +167,15 @@ public class BombComboHandler
     }
 
     /// <summary>
-    /// 火箭 + UFO = 小十字 + 一行或一列
+    /// 火箭 + UFO = 起飞前小十字，落地后消除一行或一列
+    /// 远程目标由 ProjectileSystem 发射 UfoProjectile 处理（携带 Row/Column 载荷）。
     /// </summary>
-    private void ApplyRocketPlusUfo(ref GameState state, Position ufoPos, ElementType rocketType, HashSet<Position> affected)
+    private void ApplyRocketPlusUfo(ref GameState state, Position ufoPos, HashSet<Position> affected)
     {
         // UFO起飞前小十字
         ApplySmallCross(state, ufoPos, affected);
 
-        // UFO落地后：随机位置消除一行或一列
-        var target = GetRandomTarget(ref state, ufoPos, affected);
-        if (target.HasValue)
-        {
-            // 根据火箭类型决定消除行还是列
-            bool clearRow = rocketType == ElementType.HorizontalRocket ||
-                           (rocketType == ElementType.VerticalRocket ? false : state.Random.Next(0, 2) == 0);
-
-            if (clearRow)
-            {
-                for (int x = 0; x < state.Width; x++)
-                    affected.Add(new Position(x, target.Value.Y));
-            }
-            else
-            {
-                for (int y = 0; y < state.Height; y++)
-                    affected.Add(new Position(target.Value.X, y));
-            }
-        }
+        // 远程目标由 ProjectileSystem 发射 UfoProjectile 处理（携带 Rocket 载荷）
     }
 
     /// <summary>
@@ -205,19 +187,15 @@ public class BombComboHandler
     }
 
     /// <summary>
-    /// 方块炸弹 + UFO = 小十字 + 5x5
+    /// 方块炸弹 + UFO = 起飞前小十字，落地后消除5x5
+    /// 远程目标由 ProjectileSystem 发射 UfoProjectile 处理（携带 Area5x5 载荷）。
     /// </summary>
     private void ApplySquarePlusUfo(ref GameState state, Position ufoPos, HashSet<Position> affected)
     {
         // UFO起飞前小十字
         ApplySmallCross(state, ufoPos, affected);
 
-        // UFO落地后：随机位置5x5
-        var target = GetRandomTarget(ref state, ufoPos, affected);
-        if (target.HasValue)
-        {
-            ApplyArea(state, target.Value, 2, affected); // 半径2 = 5x5
-        }
+        // 远程目标由 ProjectileSystem 发射 UfoProjectile 处理（携带 Area5x5 载荷）
     }
 
     /// <summary>

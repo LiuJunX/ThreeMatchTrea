@@ -13,6 +13,9 @@ namespace Match3.Core.Systems.PowerUps.ColorBomb;
 /// <summary>
 /// Manages ColorBomb sessions: color reservation, timed beam launching,
 /// cell locking, re-scanning, and batch destruction.
+///
+/// Normal mode:  beam → arrive (shaking) → batch destroy
+/// Combo mode:   beam → arrive (transform to bomb + Indestructible) → batch activate
 /// </summary>
 public sealed class ColorBombSessionManager : IColorBombSessionManager
 {
@@ -54,6 +57,18 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
     public void CreateSession(ref GameState state, Position origin, int bombTileId,
         int tick, float simTime, IEventCollector events)
     {
+        CreateSessionInternal(ref state, origin, bombTileId, ElementType.None, tick, simTime, events);
+    }
+
+    public void CreateComboSession(ref GameState state, Position origin, int bombTileId,
+        ElementType comboBombType, int tick, float simTime, IEventCollector events)
+    {
+        CreateSessionInternal(ref state, origin, bombTileId, comboBombType, tick, simTime, events);
+    }
+
+    private void CreateSessionInternal(ref GameState state, Position origin, int bombTileId,
+        ElementType comboBombType, int tick, float simTime, IEventCollector events)
+    {
         // Pick target color: most frequent color excluding reserved colors
         var targetColor = PickTargetColor(in state);
         if (targetColor == ElementType.None)
@@ -68,6 +83,7 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
             BombTileId = bombTileId,
             BombPosition = origin,
             TargetColor = targetColor,
+            ComboBombType = comboBombType,
             Phase = ColorBombPhase.Shooting,
             ShootTimer = 0f, // Fire first beam immediately
             ReScanCount = 0
@@ -78,6 +94,19 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
 
         // Collect initial targets
         CollectTargets(in state, session);
+
+        // Lock bomb origin with Receive — prevents drops into the bomb position
+        // during the entire session. Released in ExecuteBatchDestroy/ExecuteBatchActivate.
+        if (_lockScheduler != null)
+        {
+            var token = _lockScheduler.Acquire(ref state, origin, CellLockType.Receive);
+            session.LockTokens.Add(token);
+        }
+        else
+        {
+            state.Lock(origin, CellLockType.Receive);
+            session.LockedPositions.Add(origin);
+        }
 
         // Shuffle targets randomly
         ShuffleTargets(session.PendingTargets, 0, state.Random);
@@ -99,7 +128,7 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
     }
 
     public void Update(ref GameState state, float deltaTime, int tick, float simTime,
-        IEventCollector events)
+        IEventCollector events, List<Position>? triggeredBombs = null)
     {
         for (int i = _sessions.Count - 1; i >= 0; i--)
         {
@@ -109,7 +138,7 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
             CheckExternalDestructions(ref state, session);
 
             // 2. Update active beams (flight progress)
-            UpdateActiveBeams(ref state, session, deltaTime);
+            UpdateActiveBeams(ref state, session, deltaTime, tick, simTime, events);
 
             // 3. Phase-specific logic
             switch (session.Phase)
@@ -121,12 +150,19 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
                 case ColorBombPhase.WaitingForBeams:
                     if (session.ActiveBeams.Count == 0)
                     {
-                        session.Phase = ColorBombPhase.BatchDestroy;
+                        session.Phase = session.ComboBombType != ElementType.None
+                            ? ColorBombPhase.BatchActivate
+                            : ColorBombPhase.BatchDestroy;
                     }
                     break;
 
                 case ColorBombPhase.BatchDestroy:
                     ExecuteBatchDestroy(ref state, session, tick, simTime, events);
+                    session.Phase = ColorBombPhase.Done;
+                    break;
+
+                case ColorBombPhase.BatchActivate:
+                    ExecuteBatchActivate(ref state, session, tick, simTime, events, triggeredBombs);
                     session.Phase = ColorBombPhase.Done;
                     break;
             }
@@ -252,21 +288,32 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
                 }
                 else
                 {
-                    // No new targets — release color and transition
-                    ReleaseColor(session);
-                    session.Phase = session.ActiveBeams.Count > 0
-                        ? ColorBombPhase.WaitingForBeams
-                        : ColorBombPhase.BatchDestroy;
+                    TransitionFromShooting(session);
                 }
             }
             else
             {
-                // Max re-scans reached — release color and transition
-                ReleaseColor(session);
-                session.Phase = session.ActiveBeams.Count > 0
-                    ? ColorBombPhase.WaitingForBeams
-                    : ColorBombPhase.BatchDestroy;
+                TransitionFromShooting(session);
             }
+        }
+    }
+
+    /// <summary>
+    /// Transition from Shooting phase to the appropriate next phase.
+    /// </summary>
+    private void TransitionFromShooting(ColorBombSession session)
+    {
+        ReleaseColor(session);
+
+        if (session.ActiveBeams.Count > 0)
+        {
+            session.Phase = ColorBombPhase.WaitingForBeams;
+        }
+        else
+        {
+            session.Phase = session.ComboBombType != ElementType.None
+                ? ColorBombPhase.BatchActivate
+                : ColorBombPhase.BatchDestroy;
         }
     }
 
@@ -279,21 +326,12 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
         var currentTile = state.GetTile(target.Position.X, target.Position.Y);
         if (currentTile.Id != target.TileId || currentTile.Type != session.TargetColor)
         {
-            // Target gone — skip
+            // Target gone — skip (no lock was acquired yet)
             session.TargetedPositions.Remove(target.Position);
             return;
         }
 
-        // Calculate flight time from distance
-        float dx = target.Position.X - session.BombPosition.X;
-        float dy = target.Position.Y - session.BombPosition.Y;
-        float distance = MathF.Sqrt(dx * dx + dy * dy);
-        float flightTime = MathF.Max(distance / _config.BeamSpeed, _config.MinFlightDuration);
-
-        target.FlightTime = flightTime;
-        target.ElapsedTime = 0f;
-
-        // Lock the target cell
+        // Acquire lock when firing beam (prevents target from being moved/matched/targeted)
         if (_lockScheduler != null)
         {
             var token = _lockScheduler.Acquire(ref state, target.Position, BeamTargetLock);
@@ -304,6 +342,15 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
             state.Lock(target.Position, BeamTargetLock);
             session.LockedPositions.Add(target.Position);
         }
+
+        // Calculate flight time from distance
+        float dx = target.Position.X - session.BombPosition.X;
+        float dy = target.Position.Y - session.BombPosition.Y;
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        float flightTime = MathF.Max(distance / _config.BeamSpeed, _config.MinFlightDuration);
+
+        target.FlightTime = flightTime;
+        target.ElapsedTime = 0f;
 
         session.ActiveBeams.Add(target);
 
@@ -328,7 +375,8 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
 
     #region Beam Flight & Arrival
 
-    private void UpdateActiveBeams(ref GameState state, ColorBombSession session, float deltaTime)
+    private void UpdateActiveBeams(ref GameState state, ColorBombSession session,
+        float deltaTime, int tick, float simTime, IEventCollector events)
     {
         for (int i = session.ActiveBeams.Count - 1; i >= 0; i--)
         {
@@ -345,13 +393,47 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
                 var tile = state.GetTile(beam.Position.X, beam.Position.Y);
                 if (tile.Id == beam.TileId && tile.Type == session.TargetColor)
                 {
-                    // Target alive — mark as arrived (shaking)
+                    // Combo mode: transform tile to bomb type on arrival
+                    if (session.ComboBombType != ElementType.None)
+                    {
+                        // Transform tile — preserve ID for visual tracking
+                        state.SetTile(beam.Position.X, beam.Position.Y,
+                            new Tile(tile.Id, session.ComboBombType, beam.Position.X, beam.Position.Y)
+                            { Position = tile.Position });
+
+                        // Add Indestructible lock to prevent explosion chain-trigger
+                        if (_lockScheduler != null)
+                        {
+                            var token = _lockScheduler.Acquire(ref state, beam.Position, CellLockType.Indestructible);
+                            session.LockTokens.Add(token);
+                        }
+                        else
+                        {
+                            state.Lock(beam.Position, CellLockType.Indestructible);
+                        }
+
+                        // Emit transform event
+                        if (events.IsEnabled)
+                        {
+                            events.Emit(new ColorBombComboTransformEvent
+                            {
+                                Tick = tick,
+                                SimulationTime = simTime,
+                                BombTileId = session.BombTileId,
+                                TargetPosition = beam.Position,
+                                TargetTileId = tile.Id,
+                                NewBombType = session.ComboBombType
+                            });
+                        }
+                    }
+
+                    // Target alive — mark as arrived
                     session.ArrivedTargets.Add(beam);
                 }
                 else
                 {
                     // Target destroyed externally — release lock
-                    ReleaseLockForPosition(ref state, session, beam.Position);
+                    ReleaseAllLocksForPosition(ref state, session, beam.Position);
                     session.TargetedPositions.Remove(beam.Position);
                 }
             }
@@ -369,16 +451,20 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
         {
             var target = session.ArrivedTargets[i];
             var tile = state.GetTile(target.Position.X, target.Position.Y);
+
+            // For combo mode, arrived targets have been transformed to ComboBombType.
+            // For normal mode, they still have TargetColor.
+            // In both cases, tile.Id must match and tile must not be None.
             if (tile.Id != target.TileId || tile.Type == ElementType.None)
             {
-                // Destroyed externally — release lock
-                ReleaseLockForPosition(ref state, session, target.Position);
+                // Destroyed externally — release all locks for this position
+                ReleaseAllLocksForPosition(ref state, session, target.Position);
                 session.ArrivedTargets.RemoveAt(i);
                 session.TargetedPositions.Remove(target.Position);
             }
         }
 
-        // Check active beams (in-flight targets)
+        // Check active beams (in-flight targets — still have original color type)
         for (int i = session.ActiveBeams.Count - 1; i >= 0; i--)
         {
             var beam = session.ActiveBeams[i];
@@ -386,7 +472,7 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
             if (tile.Id != beam.TileId || tile.Type == ElementType.None)
             {
                 // Target destroyed while beam in flight — release lock
-                ReleaseLockForPosition(ref state, session, beam.Position);
+                ReleaseAllLocksForPosition(ref state, session, beam.Position);
                 session.ActiveBeams.RemoveAt(i);
                 session.TargetedPositions.Remove(beam.Position);
             }
@@ -395,7 +481,7 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
 
     #endregion
 
-    #region Batch Destruction
+    #region Batch Destruction (Normal Mode)
 
     private void ExecuteBatchDestroy(ref GameState state, ColorBombSession session,
         int tick, float simTime, IEventCollector events)
@@ -463,19 +549,74 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
             _groundSystem.OnTileDestroyed(ref state, pos, tick, simTime, events);
         }
 
-        // Release all remaining locks
+        // Release all remaining session locks
+        ReleaseAllSessionLocks(ref state, session);
+
+        // Apply timed Receive locks for destroyed positions (post-destruction grace period)
         if (_lockScheduler != null)
         {
-            foreach (var token in session.LockTokens)
-                _lockScheduler.Release(ref state, token);
-            session.LockTokens.Clear();
+            foreach (var pos in destroyedPositions)
+            {
+                _lockScheduler.Acquire(ref state, pos, CellLockType.Receive, ReceiveLockTimings.ColorBombBatchClear);
+            }
         }
-        else
+
+        session.ArrivedTargets.Clear();
+
+        // Release color if still reserved (shouldn't be, but safety)
+        ReleaseColor(session);
+    }
+
+    #endregion
+
+    #region Batch Activation (Combo Mode)
+
+    /// <summary>
+    /// All beams arrived and targets transformed to bombs.
+    /// Release locks, emit batch event, output bomb positions for activation by orchestrator.
+    /// </summary>
+    private void ExecuteBatchActivate(ref GameState state, ColorBombSession session,
+        int tick, float simTime, IEventCollector events, List<Position>? triggeredBombs)
+    {
+        var activatedPositions = new List<Position>(session.ArrivedTargets.Count);
+        var activatedTileIds = new List<int>(session.ArrivedTargets.Count);
+
+        // Collect valid transformed bombs
+        foreach (var target in session.ArrivedTargets)
         {
-            foreach (var pos in session.LockedPositions)
-                state.Unlock(pos, BeamTargetLock);
-            session.LockedPositions.Clear();
+            var tile = state.GetTile(target.Position.X, target.Position.Y);
+            if (tile.Id != target.TileId || tile.Type == ElementType.None)
+                continue;
+
+            activatedPositions.Add(target.Position);
+            activatedTileIds.Add(tile.Id);
         }
+
+        // Emit batch activate event
+        if (events.IsEnabled)
+        {
+            events.Emit(new ColorBombComboBatchActivateEvent
+            {
+                Tick = tick,
+                SimulationTime = simTime,
+                BombTileId = session.BombTileId,
+                BombPosition = session.BombPosition,
+                ComboBombType = session.ComboBombType,
+                ActivatedPositions = activatedPositions,
+                ActivatedTileIds = activatedTileIds
+            });
+        }
+
+        // Release ALL session locks (BeamTargetLock + Indestructible) before activation
+        ReleaseAllSessionLocks(ref state, session);
+
+        // Output bomb positions — orchestrator will call ActivateBomb for each
+        if (triggeredBombs != null)
+        {
+            foreach (var pos in activatedPositions)
+                triggeredBombs.Add(pos);
+        }
+
         session.ArrivedTargets.Clear();
 
         // Release color if still reserved (shouldn't be, but safety)
@@ -491,6 +632,10 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
         _reservedColors.Remove(session.TargetColor);
     }
 
+    /// <summary>
+    /// Release the first lock token matching a specific cell position.
+    /// Used for single-lock cleanup (e.g., beam target lost during flight, normal mode).
+    /// </summary>
     private void ReleaseLockForPosition(ref GameState state, ColorBombSession session, Position pos)
     {
         if (_lockScheduler != null)
@@ -510,6 +655,59 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
         {
             if (session.LockedPositions.Remove(pos))
                 state.Unlock(pos, BeamTargetLock);
+        }
+    }
+
+    /// <summary>
+    /// Release ALL lock tokens matching a specific cell position.
+    /// Combo mode may have multiple tokens per cell (BeamTargetLock + Indestructible).
+    /// </summary>
+    private void ReleaseAllLocksForPosition(ref GameState state, ColorBombSession session, Position pos)
+    {
+        if (_lockScheduler != null)
+        {
+            int cellIndex = state.Index(pos);
+            for (int i = session.LockTokens.Count - 1; i >= 0; i--)
+            {
+                if (session.LockTokens[i].CellIndex == cellIndex)
+                {
+                    _lockScheduler.Release(ref state, session.LockTokens[i]);
+                    session.LockTokens.RemoveAt(i);
+                }
+            }
+        }
+        else
+        {
+            if (session.LockedPositions.Remove(pos))
+            {
+                state.Unlock(pos, BeamTargetLock);
+                // Combo mode also has Indestructible lock
+                if (session.ComboBombType != ElementType.None)
+                    state.Unlock(pos, CellLockType.Indestructible);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Release all remaining locks for the entire session.
+    /// </summary>
+    private void ReleaseAllSessionLocks(ref GameState state, ColorBombSession session)
+    {
+        if (_lockScheduler != null)
+        {
+            foreach (var token in session.LockTokens)
+                _lockScheduler.Release(ref state, token);
+            session.LockTokens.Clear();
+        }
+        else
+        {
+            var unlockFlags = BeamTargetLock;
+            if (session.ComboBombType != ElementType.None)
+                unlockFlags |= CellLockType.Indestructible;
+
+            foreach (var pos in session.LockedPositions)
+                state.Unlock(pos, unlockFlags);
+            session.LockedPositions.Clear();
         }
     }
 

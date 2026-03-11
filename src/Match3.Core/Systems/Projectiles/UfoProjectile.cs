@@ -10,6 +10,24 @@ using Match3.Core.Utility.Pools;
 namespace Match3.Core.Systems.Projectiles;
 
 /// <summary>
+/// Payload type determining the landing effect of a UFO projectile.
+/// </summary>
+public enum UfoPayload
+{
+    /// <summary>Single tile (normal UFO).</summary>
+    Default,
+
+    /// <summary>Entire row at target (UFO + HorizontalRocket combo).</summary>
+    Row,
+
+    /// <summary>Entire column at target (UFO + VerticalRocket combo).</summary>
+    Column,
+
+    /// <summary>5×5 area at target (UFO + Square5x5 combo).</summary>
+    Area5x5,
+}
+
+/// <summary>
 /// Timer-based UFO projectile that flies to a target position.
 /// Duration = overhead + distance / speed (matching ChoreographyConfig).
 /// Checks target validity each tick and retargets if target is empty,
@@ -22,6 +40,22 @@ public sealed class UfoProjectile : Projectile
     private float _elapsedTime;
     private float _phaseStartTime; // Reset on retarget to fix progress calculation
     private Vector2 _startPos;
+
+    /// <summary>
+    /// Landing effect payload. Default = single tile; enhanced payloads from bomb combos.
+    /// </summary>
+    public UfoPayload Payload { get; set; } = UfoPayload.Default;
+
+    /// <summary>
+    /// Tile ID of the bomb being dragged behind the UFO (Rocket or Square5x5).
+    /// Null for normal UFO or UFO+UFO combos.
+    /// </summary>
+    public int? PassengerTileId { get; set; }
+
+    /// <summary>
+    /// Grid position of the passenger bomb (for correct visual starting position).
+    /// </summary>
+    public Position? PassengerOrigin { get; set; }
 
     /// <summary>
     /// Creates a new timer-based UFO projectile.
@@ -156,9 +190,36 @@ public sealed class UfoProjectile : Projectile
     {
         var affected = Pools.ObtainHashSet<Position>();
 
-        if (TargetGridPosition.HasValue)
+        if (!TargetGridPosition.HasValue)
+            return affected;
+
+        var target = TargetGridPosition.Value;
+
+        switch (Payload)
         {
-            affected.Add(TargetGridPosition.Value);
+            case UfoPayload.Row:
+                for (int x = 0; x < state.Width; x++)
+                    affected.Add(new Position(x, target.Y));
+                break;
+
+            case UfoPayload.Column:
+                for (int y = 0; y < state.Height; y++)
+                    affected.Add(new Position(target.X, y));
+                break;
+
+            case UfoPayload.Area5x5:
+                for (int dy = -2; dy <= 2; dy++)
+                    for (int dx = -2; dx <= 2; dx++)
+                    {
+                        int nx = target.X + dx, ny = target.Y + dy;
+                        if (nx >= 0 && nx < state.Width && ny >= 0 && ny < state.Height)
+                            affected.Add(new Position(nx, ny));
+                    }
+                break;
+
+            default:
+                affected.Add(target);
+                break;
         }
 
         return affected;

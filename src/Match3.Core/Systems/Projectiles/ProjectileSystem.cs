@@ -28,7 +28,7 @@ public sealed class ProjectileSystem : IProjectileSystem
 
         if (events.IsEnabled)
         {
-            events.Emit(new ProjectileLaunchedEvent
+            var launchEvt = new ProjectileLaunchedEvent
             {
                 Tick = tick,
                 SimulationTime = simTime,
@@ -38,7 +38,22 @@ public sealed class ProjectileSystem : IProjectileSystem
                 TargetPosition = projectile.TargetGridPosition,
                 SourceTileId = projectile.SourceTileId,
                 SpawnVisual = projectile.SpawnVisual
-            });
+            };
+
+            // Forward passenger info from UfoProjectile
+            if (projectile is UfoProjectile ufo && ufo.PassengerTileId.HasValue)
+            {
+                var passengerOrigin = ufo.PassengerOrigin.HasValue
+                    ? new System.Numerics.Vector2(ufo.PassengerOrigin.Value.X, ufo.PassengerOrigin.Value.Y)
+                    : (System.Numerics.Vector2?)null;
+                launchEvt = launchEvt with
+                {
+                    PassengerTileId = ufo.PassengerTileId,
+                    PassengerOrigin = passengerOrigin
+                };
+            }
+
+            events.Emit(launchEvt);
         }
     }
 

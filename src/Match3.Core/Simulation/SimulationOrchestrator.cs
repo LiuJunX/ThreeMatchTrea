@@ -1,5 +1,6 @@
 using Match3.Core.Events;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Objectives;
 using Match3.Core.Systems.Physics;
@@ -34,7 +35,8 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
         IProjectileSystem? projectileSystem = null,
         IExplosionSystem? explosionSystem = null,
         ILevelObjectiveSystem? objectiveSystem = null,
-        IColorBombSessionManager? colorBombSessionManager = null)
+        IColorBombSessionManager? colorBombSessionManager = null,
+        LockScheduler? lockScheduler = null)
     {
         _physics = physics;
         _refill = refill;
@@ -43,7 +45,7 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
         _powerUpHandler = powerUpHandler;
         _objectiveSystem = objectiveSystem;
         _colorBombSessionManager = colorBombSessionManager;
-        _matchHandler = new SimulationMatchHandler(matchFinder, matchProcessor, objectiveSystem);
+        _matchHandler = new SimulationMatchHandler(matchFinder, matchProcessor, objectiveSystem, lockScheduler);
     }
 
     /// <inheritdoc />
@@ -152,11 +154,27 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
         _colorBombSessionManager != null && _colorBombSessionManager.HasActiveSessions;
 
     /// <summary>
-    /// Update ColorBomb sessions (beam timing, re-scan, batch destruction).
+    /// Update ColorBomb sessions (beam timing, re-scan, batch destruction / batch activation).
+    /// Combo sessions output triggered bomb positions that are activated here.
     /// </summary>
     public void UpdateColorBombSessions(ref GameState state, float deltaTime, int tick, float simTime, IEventCollector events)
     {
-        _colorBombSessionManager?.Update(ref state, deltaTime, tick, simTime, events);
+        if (_colorBombSessionManager == null) return;
+
+        var triggeredBombs = Pools.ObtainList<Position>();
+        try
+        {
+            _colorBombSessionManager.Update(ref state, deltaTime, tick, simTime, events, triggeredBombs);
+
+            foreach (var pos in triggeredBombs)
+            {
+                _powerUpHandler.ActivateBomb(ref state, pos, tick, simTime, events, isChainReaction: true);
+            }
+        }
+        finally
+        {
+            Pools.Release(triggeredBombs);
+        }
     }
 
     /// <summary>

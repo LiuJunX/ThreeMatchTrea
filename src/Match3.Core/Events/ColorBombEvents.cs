@@ -53,7 +53,7 @@ public sealed record ColorBombBeamLaunchedEvent : GameEvent
 }
 
 /// <summary>
-/// Event emitted when all beams have arrived and batch destruction executes.
+/// Event emitted when all beams have arrived and batch destruction executes (normal mode).
 /// </summary>
 public sealed record ColorBombBatchDestroyEvent : GameEvent
 {
@@ -68,6 +68,51 @@ public sealed record ColorBombBatchDestroyEvent : GameEvent
 
     /// <summary>Tile IDs of destroyed tiles (parallel to DestroyedPositions).</summary>
     public IReadOnlyList<int> DestroyedTileIds { get; init; } = Array.Empty<int>();
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
+}
+
+/// <summary>
+/// Event emitted when a beam arrives at its target in combo mode and the tile transforms into a bomb.
+/// </summary>
+public sealed record ColorBombComboTransformEvent : GameEvent
+{
+    /// <summary>Tile ID of the source ColorBomb.</summary>
+    public int BombTileId { get; init; }
+
+    /// <summary>Grid position of the transformed target.</summary>
+    public Position TargetPosition { get; init; }
+
+    /// <summary>Tile ID of the target that transformed.</summary>
+    public int TargetTileId { get; init; }
+
+    /// <summary>The bomb type the target transformed into.</summary>
+    public ElementType NewBombType { get; init; }
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
+}
+
+/// <summary>
+/// Event emitted when all combo-transformed bombs are about to activate simultaneously.
+/// </summary>
+public sealed record ColorBombComboBatchActivateEvent : GameEvent
+{
+    /// <summary>Tile ID of the ColorBomb that started this combo.</summary>
+    public int BombTileId { get; init; }
+
+    /// <summary>Grid position of the ColorBomb.</summary>
+    public Position BombPosition { get; init; }
+
+    /// <summary>The bomb type all targets were transformed into.</summary>
+    public ElementType ComboBombType { get; init; }
+
+    /// <summary>Positions of bombs about to activate (only those still alive).</summary>
+    public IReadOnlyList<Position> ActivatedPositions { get; init; } = Array.Empty<Position>();
+
+    /// <summary>Tile IDs of bombs about to activate (parallel to ActivatedPositions).</summary>
+    public IReadOnlyList<int> ActivatedTileIds { get; init; } = Array.Empty<int>();
 
     /// <inheritdoc />
     public override void Accept(IEventVisitor visitor) => visitor.Visit(this);

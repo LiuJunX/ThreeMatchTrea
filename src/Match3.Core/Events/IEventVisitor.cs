@@ -77,4 +77,10 @@ public interface IEventVisitor
 
     /// <summary>Visit a color bomb batch destroy event.</summary>
     void Visit(ColorBombBatchDestroyEvent evt);
+
+    /// <summary>Visit a color bomb combo transform event (beam arrived, tile becomes bomb).</summary>
+    void Visit(ColorBombComboTransformEvent evt);
+
+    /// <summary>Visit a color bomb combo batch activate event (all transformed bombs fire simultaneously).</summary>
+    void Visit(ColorBombComboBatchActivateEvent evt);
 }

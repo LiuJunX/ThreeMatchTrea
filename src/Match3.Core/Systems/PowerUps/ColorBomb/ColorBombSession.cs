@@ -16,6 +16,9 @@ public sealed class ColorBombSession
     public ElementType TargetColor;
     public ColorBombPhase Phase;
 
+    /// <summary>If non-None, this is a combo session where targets transform into this bomb type on beam arrival.</summary>
+    public ElementType ComboBombType;
+
     /// <summary>Targets not yet fired (shuffled order).</summary>
     public readonly List<BeamTarget> PendingTargets = new();
 
@@ -54,6 +57,7 @@ public sealed class ColorBombSession
         BombTileId = 0;
         BombPosition = default;
         TargetColor = ElementType.None;
+        ComboBombType = ElementType.None;
         Phase = ColorBombPhase.Done;
         PendingTargets.Clear();
         ActiveBeams.Clear();
@@ -88,8 +92,10 @@ public enum ColorBombPhase
     Shooting,
     /// <summary>All beams fired, waiting for in-flight beams to arrive.</summary>
     WaitingForBeams,
-    /// <summary>All beams arrived, executing batch destruction.</summary>
+    /// <summary>All beams arrived, executing batch destruction (normal mode).</summary>
     BatchDestroy,
+    /// <summary>All beams arrived, activating all transformed bombs simultaneously (combo mode).</summary>
+    BatchActivate,
     /// <summary>Session complete.</summary>
     Done
 }

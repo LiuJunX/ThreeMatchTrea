@@ -252,15 +252,13 @@ public class BombComboTests
 
     #endregion
 
-    #region 火箭 + UFO = 小十字 + 一行或一列
+    #region 火箭 + UFO = 小十字（远程效果由 ProjectileSystem 处理）
 
     [Fact]
-    public void RocketPlusUfo_ClearsSmallCrossAndRowOrCol()
+    public void RocketPlusUfo_OnlySmallCross_RemoteTargetDeferredToProjectile()
     {
         // Arrange
-        var rng = new StubRandom();
-        rng.EnqueueValues(10); // 随机目标索引
-        var state = CreateFilledState(rng: rng);
+        var state = CreateFilledState();
         var combo = new BombComboHandler();
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
@@ -272,23 +270,21 @@ public class BombComboTests
         var affected = new HashSet<Position>();
         combo.ApplyCombo(ref state, p1, p2, affected);
 
-        // Assert:
-        // UFO小十字: 5格
-        // UFO落地后一行或一列: 8格
-        // 可能有重叠
-        Assert.True(affected.Count >= 8); // 至少一行/列
-
-        // 验证小十字被包含
+        // Assert: 只有 UFO 位置的小十字 = 5格
+        // 远程行/列效果由 ProjectileSystem 发射 UfoProjectile 处理
+        Assert.Equal(5, affected.Count);
         Assert.Contains(p2, affected); // UFO中心
+        Assert.Contains(new Position(p2.X - 1, p2.Y), affected);
+        Assert.Contains(new Position(p2.X + 1, p2.Y), affected);
+        Assert.Contains(new Position(p2.X, p2.Y - 1), affected);
+        Assert.Contains(new Position(p2.X, p2.Y + 1), affected);
     }
 
     [Fact]
-    public void UfoPlusRocket_SameEffect()
+    public void UfoPlusRocket_OnlySmallCross()
     {
-        // Arrange: 顺序反过来
-        var rng = new StubRandom();
-        rng.EnqueueValues(10);
-        var state = CreateFilledState(rng: rng);
+        // Arrange: 顺序反过来 — UFO 在 p1
+        var state = CreateFilledState();
         var combo = new BombComboHandler();
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
@@ -300,8 +296,9 @@ public class BombComboTests
         var affected = new HashSet<Position>();
         combo.ApplyCombo(ref state, p1, p2, affected);
 
-        // Assert
-        Assert.True(affected.Count >= 8);
+        // Assert: 小十字在 UFO 位置 p1
+        Assert.Equal(5, affected.Count);
+        Assert.Contains(p1, affected);
     }
 
     #endregion
@@ -417,15 +414,13 @@ public class BombComboTests
 
     #endregion
 
-    #region 方块炸弹 + UFO = 小十字 + 5x5
+    #region 方块炸弹 + UFO = 小十字（远程效果由 ProjectileSystem 处理）
 
     [Fact]
-    public void SquarePlusUfo_ClearsSmallCrossAnd5x5()
+    public void SquarePlusUfo_OnlySmallCross_RemoteTargetDeferredToProjectile()
     {
         // Arrange
-        var rng = new StubRandom();
-        rng.EnqueueValues(20); // 随机目标
-        var state = CreateFilledState(rng: rng);
+        var state = CreateFilledState();
         var combo = new BombComboHandler();
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
@@ -437,23 +432,21 @@ public class BombComboTests
         var affected = new HashSet<Position>();
         combo.ApplyCombo(ref state, p1, p2, affected);
 
-        // Assert:
-        // UFO小十字: 5格
-        // UFO落地后5x5: 25格
-        // 可能有重叠
-        Assert.True(affected.Count >= 25);
-
-        // 验证UFO中心
+        // Assert: 只有 UFO 位置的小十字 = 5格
+        // 远程 5x5 效果由 ProjectileSystem 发射 UfoProjectile 处理
+        Assert.Equal(5, affected.Count);
         Assert.Contains(p2, affected);
+        Assert.Contains(new Position(p2.X - 1, p2.Y), affected);
+        Assert.Contains(new Position(p2.X + 1, p2.Y), affected);
+        Assert.Contains(new Position(p2.X, p2.Y - 1), affected);
+        Assert.Contains(new Position(p2.X, p2.Y + 1), affected);
     }
 
     [Fact]
-    public void UfoPlusSquare_SameEffect()
+    public void UfoPlusSquare_OnlySmallCross()
     {
-        // Arrange
-        var rng = new StubRandom();
-        rng.EnqueueValues(20);
-        var state = CreateFilledState(rng: rng);
+        // Arrange: UFO 在 p1
+        var state = CreateFilledState();
         var combo = new BombComboHandler();
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
@@ -465,8 +458,9 @@ public class BombComboTests
         var affected = new HashSet<Position>();
         combo.ApplyCombo(ref state, p1, p2, affected);
 
-        // Assert
-        Assert.True(affected.Count >= 25);
+        // Assert: 小十字在 UFO 位置 p1
+        Assert.Equal(5, affected.Count);
+        Assert.Contains(p1, affected);
     }
 
     #endregion
@@ -696,15 +690,14 @@ public class BombComboTests
 
     #endregion
 
-    #region 火箭 + UFO 方向测试
+    #region 火箭 + UFO 方向保留（rocketType 传递给 PowerUpHandler）
 
     [Fact]
-    public void HorizontalRocketPlusUfo_ClearsRow()
+    public void HorizontalRocketPlusUfo_SmallCrossOnly()
     {
-        // Arrange: 横向火箭 + UFO，应该消除一行
-        var rng = new StubRandom();
-        rng.EnqueueValues(10); // 随机目标索引
-        var state = CreateFilledState(rng: rng);
+        // Arrange: 横向火箭 + UFO
+        // 行/列效果由 UfoProjectile(Payload=Row) 在落地时处理
+        var state = CreateFilledState();
         var combo = new BombComboHandler();
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
@@ -716,20 +709,16 @@ public class BombComboTests
         var affected = new HashSet<Position>();
         combo.ApplyCombo(ref state, p1, p2, affected);
 
-        // Assert: 应该包含完整的一行（小十字5 + 一行8 - 重叠）
-        Assert.True(affected.Count >= 8);
-
-        // 验证小十字包含 UFO 位置
+        // Assert: 只有 UFO 小十字
+        Assert.Equal(5, affected.Count);
         Assert.Contains(p2, affected);
     }
 
     [Fact]
-    public void VerticalRocketPlusUfo_ClearsColumn()
+    public void VerticalRocketPlusUfo_SmallCrossOnly()
     {
-        // Arrange: 纵向火箭 + UFO，应该消除一列
-        var rng = new StubRandom();
-        rng.EnqueueValues(10);
-        var state = CreateFilledState(rng: rng);
+        // Arrange: 纵向火箭 + UFO
+        var state = CreateFilledState();
         var combo = new BombComboHandler();
         var p1 = new Position(3, 4);
         var p2 = new Position(4, 4);
@@ -741,8 +730,9 @@ public class BombComboTests
         var affected = new HashSet<Position>();
         combo.ApplyCombo(ref state, p1, p2, affected);
 
-        // Assert: 应该包含完整的一列（8 格）
-        Assert.True(affected.Count >= 8);
+        // Assert: 只有 UFO 小十字
+        Assert.Equal(5, affected.Count);
+        Assert.Contains(p2, affected);
     }
 
     #endregion

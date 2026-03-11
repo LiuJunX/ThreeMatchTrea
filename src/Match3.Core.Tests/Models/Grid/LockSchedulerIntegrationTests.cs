@@ -415,8 +415,12 @@ public class LockSchedulerIntegrationTests
         Assert.False(state.IsLocked(2, 4, CellLockType.Drop));
 
         // Run gravity again — tile should now fall through the cleared cells
+        // Also tick the lock scheduler to expire timed Receive locks from destruction
         for (int i = 0; i < 120; i++)
+        {
+            lockScheduler.Tick(ref state, 1f / 60f);
             gravity.Update(ref state, 1f / 60f);
+        }
 
         // The spawned tile should have moved from (2,0) or (2,1) into the now-cleared zone
         bool tileMovedDown = state.GetTile(2, 0).Id != spawnedId;

@@ -81,6 +81,7 @@ public class AsyncGameLoopTests
         
         public IPowerUpHandler WithExplosionSystem(IExplosionSystem? explosionSystem) => this;
         public IPowerUpHandler WithProjectileSystem(IProjectileSystem? projectileSystem) => this;
+        public IPowerUpHandler WithLockScheduler(LockScheduler? lockScheduler) => this;
     }
 
     #region Basic Update Tests
@@ -334,6 +335,7 @@ public class AsyncGameLoopTests
 
         public IPowerUpHandler WithExplosionSystem(IExplosionSystem? explosionSystem) => this;
         public IPowerUpHandler WithProjectileSystem(IProjectileSystem? projectileSystem) => this;
+        public IPowerUpHandler WithLockScheduler(LockScheduler? lockScheduler) => this;
     }
 
     #endregion

@@ -43,7 +43,8 @@ public sealed class Choreographer : IEventVisitor
     private record struct UfoFlightInfo(
         int TileId, float LaunchTime, float Duration,
         Vector2 Origin, Vector2 Target, float StayFraction,
-        Vector2? DivergeControl, Vector2? ApproachControl);
+        Vector2? DivergeControl, Vector2? ApproachControl,
+        int? PassengerTileId = null);
 
     private record struct ColorBombSessionInfo(float SessionStartTime, Vector2 HoppedOrigin, float MaxBeamArrivalTime);
 
@@ -1031,10 +1032,29 @@ public sealed class Choreographer : IEventVisitor
                 Duration = totalDuration
             });
 
+            // Passenger bomb (Rocket/Square) follows the same flight path.
+            // Origin is the passenger's own position so it visually merges with the UFO
+            // during the StayFraction phase, then flies together to the target.
+            if (evt.PassengerTileId.HasValue)
+            {
+                var passengerOrigin = evt.PassengerOrigin ?? evt.Origin;
+                _commands.Add(new UfoLaunchCommand
+                {
+                    TileId = evt.PassengerTileId.Value,
+                    Origin = passengerOrigin,
+                    Target = targetPos,
+                    StayFraction = stayFrac,
+                    DivergeControl = divergeControl,
+                    ApproachControl = approachControl,
+                    StartTime = startTime,
+                    Duration = totalDuration
+                });
+            }
+
             // Track active flight for retarget/impact handling
             _activeUfoFlights[evt.ProjectileId] = new UfoFlightInfo(
                 tileId, startTime, totalDuration, evt.Origin, targetPos, stayFrac,
-                divergeControl, approachControl);
+                divergeControl, approachControl, evt.PassengerTileId);
 
             return;
         }
@@ -1134,9 +1154,22 @@ public sealed class Choreographer : IEventVisitor
             Duration = 0 // Instant command
         });
 
+        // Passenger follows the same retarget
+        if (flight.PassengerTileId.HasValue)
+        {
+            _commands.Add(new UfoRetargetCommand
+            {
+                TileId = flight.PassengerTileId.Value,
+                NewTarget = newTargetVec,
+                StartTime = startTime,
+                Duration = 0
+            });
+        }
+
         // Update tracked flight info (StayFraction=0, no diverge for retarget segments)
         _activeUfoFlights[evt.ProjectileId] = new UfoFlightInfo(
-            flight.TileId, startTime, newDuration, currentPos, newTargetVec, 0f, null, null);
+            flight.TileId, startTime, newDuration, currentPos, newTargetVec, 0f, null, null,
+            flight.PassengerTileId);
     }
 
     /// <inheritdoc />
@@ -1173,6 +1206,18 @@ public sealed class Choreographer : IEventVisitor
                 Duration = 0,
                 Priority = 10
             });
+
+            // Remove passenger bomb tile on arrival
+            if (flight.PassengerTileId.HasValue)
+            {
+                _commands.Add(new RemoveTileCommand
+                {
+                    TileId = flight.PassengerTileId.Value,
+                    StartTime = removeTime,
+                    Duration = 0,
+                    Priority = 10
+                });
+            }
 
             return;
         }
@@ -1506,6 +1551,19 @@ public sealed class Choreographer : IEventVisitor
                 Priority = 10
             });
         }
+    }
+
+    /// <inheritdoc />
+    public void Visit(ColorBombComboTransformEvent evt)
+    {
+        // TODO: animate beam arrival + tile transform to bomb type
+    }
+
+    /// <inheritdoc />
+    public void Visit(ColorBombComboBatchActivateEvent evt)
+    {
+        // TODO: animate all transformed bombs activating simultaneously
+        // Individual BombActivatedEvents will follow for each bomb.
     }
 
     #endregion

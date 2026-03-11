@@ -32,6 +32,17 @@ public sealed record ProjectileLaunchedEvent : GameEvent
     /// <summary>When true, Choreographer spawns a new tile visual for this projectile.</summary>
     public bool SpawnVisual { get; init; }
 
+    /// <summary>
+    /// Tile ID of the bomb being dragged behind the UFO (Rocket or Square5x5).
+    /// Null for normal UFO or UFO+UFO combos.
+    /// </summary>
+    public int? PassengerTileId { get; init; }
+
+    /// <summary>
+    /// Grid origin of the passenger bomb (for correct visual starting position).
+    /// </summary>
+    public Vector2? PassengerOrigin { get; init; }
+
     /// <inheritdoc />
     public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }

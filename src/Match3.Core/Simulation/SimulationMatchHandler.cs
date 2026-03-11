@@ -2,8 +2,9 @@ using System.Collections.Generic;
 using Match3.Core.Events;
 using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
-using Match3.Core.Models.Grid;
 using Match3.Core.Models.Gameplay;
+using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Objectives;
 using Match3.Core.Utility.Pools;
@@ -19,6 +20,7 @@ internal sealed class SimulationMatchHandler
     private readonly IMatchFinder _matchFinder;
     private readonly IMatchProcessor _matchProcessor;
     private readonly ILevelObjectiveSystem? _objectiveSystem;
+    private readonly LockScheduler? _lockScheduler;
 
     // Reused to avoid per-match Dictionary allocation
     private readonly Dictionary<Position, int> _bombOrigins = new();
@@ -26,11 +28,13 @@ internal sealed class SimulationMatchHandler
     public SimulationMatchHandler(
         IMatchFinder matchFinder,
         IMatchProcessor matchProcessor,
-        ILevelObjectiveSystem? objectiveSystem = null)
+        ILevelObjectiveSystem? objectiveSystem = null,
+        LockScheduler? lockScheduler = null)
     {
         _matchFinder = matchFinder;
         _matchProcessor = matchProcessor;
         _objectiveSystem = objectiveSystem;
+        _lockScheduler = lockScheduler;
     }
 
     /// <summary>
@@ -80,6 +84,9 @@ internal sealed class SimulationMatchHandler
 
                 processed = stableGroups.Count;
                 _matchProcessor.ProcessMatches(ref state, stableGroups);
+
+                // Apply timed locks for destroyed/merged positions
+                ApplyPostMatchLocks(ref state, stableGroups);
 
                 // Emit BombCreatedEvent after ProcessMatches (bomb tiles now exist in state)
                 EmitBombCreatedEvents(ref state, _bombOrigins, stableGroups, currentTick, elapsedTime, eventCollector);
@@ -136,6 +143,38 @@ internal sealed class SimulationMatchHandler
             _objectiveSystem?.OnTileDestroyed(ref state, tile.Type, currentTick, elapsedTime, eventCollector);
 
             state.SetTile(pos.X, pos.Y, new Tile());
+
+            // Apply timed Receive lock to prevent premature gravity fill
+            _lockScheduler?.Acquire(ref state, pos, CellLockType.Receive, ReceiveLockTimings.ProjectileImpactClear);
+        }
+    }
+
+    /// <summary>
+    /// Apply timed Receive/Drop locks to positions affected by match processing.
+    /// Merge sources get longer locks (merge animation), bomb origins get Drop locks (pop animation).
+    /// </summary>
+    private void ApplyPostMatchLocks(ref GameState state, List<MatchGroup> stableGroups)
+    {
+        if (_lockScheduler == null) return;
+
+        foreach (var group in stableGroups)
+        {
+            bool hasBomb = group.SpawnBombType != ElementType.None && group.BombOrigin.HasValue;
+
+            foreach (var pos in group.Positions)
+            {
+                if (hasBomb && group.BombOrigin.Value == pos)
+                {
+                    // Bomb origin: Drop lock prevents newly created bomb from falling during pop animation
+                    _lockScheduler.Acquire(ref state, pos, CellLockType.Drop, ReceiveLockTimings.BombOriginDrop);
+                }
+                else
+                {
+                    // Cleared position: Receive lock prevents premature gravity fill
+                    float duration = hasBomb ? ReceiveLockTimings.MergeSource : ReceiveLockTimings.MatchClear;
+                    _lockScheduler.Acquire(ref state, pos, CellLockType.Receive, duration);
+                }
+            }
         }
     }
 

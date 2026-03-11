@@ -128,7 +128,8 @@ public sealed class SimulationEngine : IDisposable
             projectileSystem ?? new ProjectileSystem(),
             explosionSystem ?? new ExplosionSystem(),
             objectiveSystem,
-            colorBombSessionManager);
+            colorBombSessionManager,
+            _lockScheduler);
 
         // Initialize shared swap operations with instant context
         var swapContext = new InstantSwapContext(SwapAnimationDuration);
@@ -584,6 +585,7 @@ public sealed class SimulationEngine : IDisposable
         return System.Math.Abs(a.X - b.X) + System.Math.Abs(a.Y - b.Y) == 1;
     }
 
+
     /// <summary>
     /// Check if simulation is in stable state.
     /// </summary>
@@ -594,6 +596,7 @@ public sealed class SimulationEngine : IDisposable
             && !_orchestrator.HasActiveProjectiles
             && !_orchestrator.HasActiveExplosions
             && !_orchestrator.HasActiveColorBombSessions
+            && !_lockScheduler.HasTimedLocks
             && !HasPendingMatches()
             && !_pendingMoveState.HasPending;
     }
@@ -630,7 +633,7 @@ public sealed class SimulationEngine : IDisposable
         var cloneExplosion = new ExplosionSystem(cloneCover, cloneGround, _objectiveSystem, cloneLocks);
         var cloneProjectile = new ProjectileSystem();
         var cloneColorBomb = new ColorBombSessionManager(null, cloneCover, cloneGround, _objectiveSystem, cloneLocks);
-        var clonePowerUp = _powerUpHandler.WithExplosionSystem(cloneExplosion).WithProjectileSystem(cloneProjectile);
+        var clonePowerUp = _powerUpHandler.WithExplosionSystem(cloneExplosion).WithProjectileSystem(cloneProjectile).WithLockScheduler(cloneLocks);
 
         // Shared stateless systems: _matchFinder, _matchProcessor, _deadlockDetector,
         // _shuffleSystem, _objectiveSystem — safe to share (no mutable instance fields).

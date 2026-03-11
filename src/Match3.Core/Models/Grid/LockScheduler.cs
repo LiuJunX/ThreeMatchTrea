@@ -26,6 +26,12 @@ public sealed class LockScheduler
     }
 
     /// <summary>
+    /// True if there are any active timed locks awaiting expiry.
+    /// Used by IsStable() — timed locks imply pending state changes.
+    /// </summary>
+    public bool HasTimedLocks => _timedCount > 0;
+
+    /// <summary>
     /// Acquire a manual lock on a cell. Caller is responsible for calling Release.
     /// </summary>
     public LockToken Acquire(ref GameState state, Position pos, CellLockType types)

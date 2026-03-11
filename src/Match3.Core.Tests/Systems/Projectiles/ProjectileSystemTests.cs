@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using Match3.Core.Events;
+﻿using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Projectiles;
@@ -230,6 +229,82 @@ public class ProjectileSystemTests
 
         // Both should still be active and moving in different directions
         Assert.Equal(2, system.ActiveProjectiles.Count);
+    }
+
+    #endregion
+
+    #region UfoProjectile Payload Tests
+
+    [Fact]
+    public void UfoProjectile_DefaultPayload_AffectsSingleTile()
+    {
+        var projectile = new UfoProjectile(1, new Position(0, 0), new Position(4, 3));
+        var state = CreateTestState();
+
+        var affected = projectile.ApplyEffect(ref state);
+
+        Assert.Single(affected);
+        Assert.Contains(new Position(4, 3), affected);
+    }
+
+    [Fact]
+    public void UfoProjectile_RowPayload_AffectsEntireRow()
+    {
+        var projectile = new UfoProjectile(1, new Position(0, 0), new Position(4, 3))
+        { Payload = UfoPayload.Row };
+        var state = CreateTestState();
+
+        var affected = projectile.ApplyEffect(ref state);
+
+        Assert.Equal(8, affected.Count);
+        for (int x = 0; x < 8; x++)
+            Assert.Contains(new Position(x, 3), affected);
+    }
+
+    [Fact]
+    public void UfoProjectile_ColumnPayload_AffectsEntireColumn()
+    {
+        var projectile = new UfoProjectile(1, new Position(0, 0), new Position(4, 3))
+        { Payload = UfoPayload.Column };
+        var state = CreateTestState();
+
+        var affected = projectile.ApplyEffect(ref state);
+
+        Assert.Equal(8, affected.Count);
+        for (int y = 0; y < 8; y++)
+            Assert.Contains(new Position(4, y), affected);
+    }
+
+    [Fact]
+    public void UfoProjectile_Area5x5Payload_AffectsArea()
+    {
+        var projectile = new UfoProjectile(1, new Position(0, 0), new Position(4, 4))
+        { Payload = UfoPayload.Area5x5 };
+        var state = CreateTestState();
+
+        var affected = projectile.ApplyEffect(ref state);
+
+        // 5x5 centered at (4,4) = 25 tiles
+        Assert.Equal(25, affected.Count);
+        for (int dy = -2; dy <= 2; dy++)
+            for (int dx = -2; dx <= 2; dx++)
+                Assert.Contains(new Position(4 + dx, 4 + dy), affected);
+    }
+
+    [Fact]
+    public void UfoProjectile_Area5x5Payload_ClipsToBoard()
+    {
+        var projectile = new UfoProjectile(1, new Position(4, 4), new Position(0, 0))
+        { Payload = UfoPayload.Area5x5 };
+        var state = CreateTestState();
+
+        var affected = projectile.ApplyEffect(ref state);
+
+        // 5x5 centered at (0,0), clipped: x=0-2, y=0-2 = 9 tiles
+        Assert.Equal(9, affected.Count);
+        for (int y = 0; y <= 2; y++)
+            for (int x = 0; x <= 2; x++)
+                Assert.Contains(new Position(x, y), affected);
     }
 
     #endregion
