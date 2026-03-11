@@ -27,11 +27,12 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
 
     /// <summary>
     /// Lock combination applied to beam target cells.
-    /// Drop: tile stays in cell. Swap: no player interaction.
-    /// Matching: excluded from match detection. Targeting: no UFO targeting.
+    /// Drop: tile stays in cell. Receive: cell refuses incoming tiles.
+    /// Swap: no player interaction. Matching: excluded from match detection.
+    /// Targeting: no UFO targeting.
     /// </summary>
     private const CellLockType BeamTargetLock =
-        CellLockType.Drop | CellLockType.Swap | CellLockType.Matching | CellLockType.Targeting;
+        CellLockType.Drop | CellLockType.Receive | CellLockType.Swap | CellLockType.Matching | CellLockType.Targeting;
 
     public ColorBombSessionManager(ColorBombConfig? config = null,
         ICoverSystem? coverSystem = null,
