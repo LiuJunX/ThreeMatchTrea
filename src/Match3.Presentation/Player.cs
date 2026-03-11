@@ -454,9 +454,9 @@ public sealed class Player
                     // visually "re-launches" from a grounded state.
                     ufoT.UfoFlightProgress = ufo.StayFraction > 0 ? t : 0.35f + t * 0.65f;
 
-                    // XY position: stay at origin during spin-up/launch, then cruise to target
-                    float stayFrac = ufo.StayFraction; // 0.35 for initial launch, 0 for retarget segment
-                    const float arriveFrac = 0.97f; // arrive by 97%
+                    // XY position: stay at origin during spin-up, then cruise to target
+                    float stayFrac = ufo.StayFraction;
+                    const float arriveFrac = 0.97f;
                     float moveT;
                     if (t <= stayFrac)
                         moveT = 0f;
@@ -466,13 +466,20 @@ public sealed class Player
                         moveT = (t - stayFrac) / (arriveFrac - stayFrac);
 
                     // Retarget segments: ease-out (full speed at entry, decelerate to land)
-                    // Initial launches: smoothstep (accelerate from origin, decelerate to target)
+                    // Initial/diverge launches: smoothstep (accelerate from origin, decelerate to target)
                     float eased = ufo.MomentumControl.HasValue
                         ? 1f - (1f - moveT) * (1f - moveT)  // ease-out quadratic
                         : moveT * moveT * (3f - 2f * moveT); // smoothstep
 
                     Vector2 ufoPos;
-                    if (ufo.MomentumControl.HasValue)
+                    if (ufo.DivergeControl.HasValue && ufo.ApproachControl.HasValue)
+                    {
+                        // Cubic Bezier: P0=Origin, P1=DivergeControl, P2=ApproachControl, P3=Target
+                        ufoPos = UfoConstants.CubicBezier(eased,
+                            ufo.Origin, ufo.DivergeControl.Value,
+                            ufo.ApproachControl.Value, ufo.Target);
+                    }
+                    else if (ufo.MomentumControl.HasValue)
                     {
                         // Quadratic Bezier: P0=Origin, P1=Control, P2=Target
                         float inv = 1f - eased;
@@ -676,9 +683,18 @@ public sealed class Player
                 else
                     moveT = (t - stayFrac) / (arriveFrac - stayFrac);
 
-                float eased = moveT * moveT * (3f - 2f * moveT);
+                // Match easing to UpdateCommand: smoothstep for initial/diverge, ease-out for retarget
+                float eased = cmd.MomentumControl.HasValue
+                    ? 1f - (1f - moveT) * (1f - moveT)   // ease-out quadratic (retarget)
+                    : moveT * moveT * (3f - 2f * moveT);  // smoothstep (initial/diverge)
                 Vector2 currentPos;
-                if (cmd.MomentumControl.HasValue)
+                if (cmd.DivergeControl.HasValue && cmd.ApproachControl.HasValue)
+                {
+                    currentPos = UfoConstants.CubicBezier(eased,
+                        cmd.Origin, cmd.DivergeControl.Value,
+                        cmd.ApproachControl.Value, cmd.Target);
+                }
+                else if (cmd.MomentumControl.HasValue)
                 {
                     float inv = 1f - eased;
                     currentPos = inv * inv * cmd.Origin
@@ -701,8 +717,18 @@ public sealed class Player
                     : 0.01f;
 
                 // Momentum control point: extend old flight direction to create a curved path.
-                // Strength scales with how opposed the new direction is to the old.
-                var oldDirVec = cmd.Target - cmd.Origin;
+                // Use cubic Bezier tangent when available for accurate direction.
+                Vector2 oldDirVec;
+                if (cmd.DivergeControl.HasValue && cmd.ApproachControl.HasValue)
+                {
+                    oldDirVec = UfoConstants.CubicBezierTangent(eased,
+                        cmd.Origin, cmd.DivergeControl.Value,
+                        cmd.ApproachControl.Value, cmd.Target);
+                }
+                else
+                {
+                    oldDirVec = cmd.Target - cmd.Origin;
+                }
                 float oldLen = oldDirVec.Length();
                 Vector2? momentum = null;
                 if (oldLen > 1e-4f && visualDistance > 1e-4f)
@@ -725,10 +751,12 @@ public sealed class Player
                 };
 
                 // Start the new command — keep progress in cruise range (0.35+)
-                // so the View doesn't replay the takeoff animation
+                // so the View doesn't replay the takeoff animation.
+                // Set retarget flag so View can blend the arc transition smoothly.
                 var ufoTile = _visualState.GetTile(retarget.TileId);
                 if (ufoTile != null)
                 {
+                    ufoTile.UfoRetargetFlag = true;
                     ufoTile.UfoFlightProgress = 0.35f;
                     ufoTile.UfoFlightDuration = newDuration;
                 }

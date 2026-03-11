@@ -45,6 +45,13 @@ namespace Match3.Unity.Views
         private float _ufoTiltVelX, _ufoTiltVelZ;
         private Vector3 _ufoPrevWorldPos;
         private Vector3 _ufoSmoothVel; // EMA-smoothed velocity to avoid frame jitter
+
+        // Retarget blend: smooths arc/scale transition when progress jumps on retarget
+        private float _ufoArcCurrent;
+        private float _ufoArcSnapshot;
+        private float _retargetBlend;
+        // takeoffBlend: only increases (never snaps back to upright on retarget)
+        private float _ufoTakeoffBlend;
         private HintAnimationType _hintType;
         private Vector2 _hintNudgeDir;
         private float _hintTime;
@@ -464,10 +471,22 @@ namespace Match3.Unity.Views
                 _ufoTiltVelX = _ufoTiltVelZ = 0f;
                 _ufoSmoothVel = Vector3.zero;
                 _ufoPrevWorldPos = worldPos;
+                _ufoArcCurrent = 0f;
+                _ufoArcSnapshot = 0f;
+                _retargetBlend = 0f;
+                _ufoTakeoffBlend = 0f;
                 if (_shadowTransform != null)
                     _shadowTransform.gameObject.SetActive(false);
                 // Clear lingering alpha/emission from normal rendering
                 _meshRenderer.SetPropertyBlock(null);
+            }
+
+            // --- Retarget blend: snapshot current arc when retarget flag is set ---
+            if (visual.UfoRetargetFlag)
+            {
+                visual.UfoRetargetFlag = false;
+                _ufoArcSnapshot = _ufoArcCurrent;
+                _retargetBlend = 1f;
             }
 
             // --- 1. Continuous propeller spin ---
@@ -476,23 +495,40 @@ namespace Match3.Unity.Views
 
             // --- 2. Smooth flight arc (continuous, no flat cruise, no pauses) ---
             const float arriveFrac = 0.97f;
-            float yOffset, scaleMul, takeoffBlend;
+            float yOffset, scaleMul;
 
-            // Orientation blend: fast transition in first 15% of progress
-            takeoffBlend = Mathf.Clamp01(progress / 0.15f);
-            takeoffBlend = takeoffBlend * takeoffBlend * (3f - 2f * takeoffBlend);
+            // Orientation blend: only increases (never snaps back to upright on retarget).
+            // Rate-limited to prevent jump when progress skips from <0.15 to 0.35.
+            float rawTakeoff = Mathf.Clamp01(progress / 0.15f);
+            rawTakeoff = rawTakeoff * rawTakeoff * (3f - 2f * rawTakeoff);
+            float targetBlend = Mathf.Max(_ufoTakeoffBlend, rawTakeoff);
+            _ufoTakeoffBlend = Mathf.MoveTowards(_ufoTakeoffBlend, targetBlend, dt * 8f);
+            float takeoffBlend = _ufoTakeoffBlend;
 
             if (progress < arriveFrac)
             {
-                // Single sine arc: peak at midpoint, zero at both ends
-                // Y=0 exactly when XY reaches target — no hover-above-then-dive
-                float arc = Mathf.Sin(progress / arriveFrac * Mathf.PI);
-                yOffset = UfoArcY * cellSize * arc;
-                scaleMul = 1f + (UfoArcScale - 1f) * arc;
+                // Raw sine arc from progress
+                float rawArc = Mathf.Sin(progress / arriveFrac * Mathf.PI);
+
+                // Apply retarget blend: smooth transition from snapshot to new arc
+                if (_retargetBlend > 0f)
+                {
+                    _retargetBlend = Mathf.Max(0f, _retargetBlend - dt / 0.4f);
+                    _ufoArcCurrent = Mathf.Lerp(rawArc, _ufoArcSnapshot, _retargetBlend);
+                }
+                else
+                {
+                    _ufoArcCurrent = rawArc;
+                }
+
+                yOffset = UfoArcY * cellSize * _ufoArcCurrent;
+                scaleMul = 1f + (UfoArcScale - 1f) * _ufoArcCurrent;
             }
             else
             {
                 // Impact: hold briefly, then shrink to 0.5 (effect covers disappearance)
+                _ufoArcCurrent = 0f;
+                _retargetBlend = 0f;
                 yOffset = 0f;
                 float shrinkT = Mathf.Clamp01((progress - 0.98f) / 0.02f);
                 scaleMul = Mathf.Lerp(1f, 0.5f, shrinkT * shrinkT);
@@ -618,6 +654,10 @@ namespace Match3.Unity.Views
             _ufoTiltX = _ufoTiltZ = 0f;
             _ufoTiltVelX = _ufoTiltVelZ = 0f;
             _ufoSmoothVel = Vector3.zero;
+            _ufoArcCurrent = 0f;
+            _ufoArcSnapshot = 0f;
+            _retargetBlend = 0f;
+            _ufoTakeoffBlend = 0f;
             _lastMaterials = null;
             transform.localScale = Vector3.one;
             transform.localEulerAngles = BaseTiltEuler;

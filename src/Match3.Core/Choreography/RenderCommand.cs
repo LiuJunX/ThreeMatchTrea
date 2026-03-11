@@ -286,14 +286,26 @@ public sealed record UfoLaunchCommand : RenderCommand
     /// <summary>Grid target position.</summary>
     public Vector2 Target { get; init; }
 
-    /// <summary>Fraction of duration to stay at origin (spin-up phase). 0.35 for initial launch, 0 for retarget.</summary>
-    public float StayFraction { get; init; } = 0.35f;
+    /// <summary>Fraction of duration to stay at origin (spin-up phase). LaunchStayFraction for initial launch, 0 for retarget.</summary>
+    public float StayFraction { get; init; } = UfoConstants.LaunchStayFraction;
 
     /// <summary>
     /// Optional quadratic Bezier control point for curved retarget paths.
     /// Null for initial launches (straight-line path).
     /// </summary>
     public Vector2? MomentumControl { get; init; }
+
+    /// <summary>
+    /// Cubic Bezier P1: pull toward diverge direction at takeoff.
+    /// Null when diverge is disabled (short-range targets) or for retarget segments.
+    /// </summary>
+    public Vector2? DivergeControl { get; init; }
+
+    /// <summary>
+    /// Cubic Bezier P2: smooth approach toward target.
+    /// Null when diverge is disabled or for retarget segments.
+    /// </summary>
+    public Vector2? ApproachControl { get; init; }
 }
 
 /// <summary>
@@ -308,8 +320,6 @@ public sealed record UfoRetargetCommand : RenderCommand
     /// <summary>New target position.</summary>
     public Vector2 NewTarget { get; init; }
 
-    /// <summary>Duration for the new flight segment.</summary>
-    public float NewDuration { get; init; }
 }
 
 #endregion

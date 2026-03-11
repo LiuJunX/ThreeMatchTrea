@@ -176,30 +176,27 @@ public class UfoProjectileTests
     #endregion
 
     [Fact]
-    public void Update_DoesNotRetarget_WhenWithinLockInWindow()
+    public void Update_RetargetsAtAnyTime_WhenLockInTimeIsZero()
     {
         var origin = new Position(0, 0);
         var target = new Position(4, 0);
-        // overhead=0, speed=2 → duration = 4/2 = 2s, lock-in at remaining < 0.3s → after 1.7s
+        // overhead=0, speed=2 → duration = 4/2 = 2s
+        // With LockInTime=0, retarget is allowed at any moment
         var ufo = new UfoProjectile(1, origin, target, 0f, 2f);
         var state = CreateTestState();
         var collector = new BufferedEventCollector();
 
-        // Advance to 1.8s (within lock-in window: remaining = 0.2s < 0.3s)
+        // Advance to 1.8s (very close to arrival)
         ufo.Update(ref state, 1.8f, 1, 1.8f, NullEventCollector.Instance);
 
         // Clear the target tile
         state.SetTile(4, 0, new Tile(0, ElementType.None, 4, 0));
 
-        // Update — should NOT retarget because we're in the lock-in window
+        // Update — should retarget even near arrival (LockInTime=0)
         ufo.Update(ref state, 0.01f, 2, 1.81f, collector);
 
-        // Target should remain at original position
-        Assert.Equal(target, ufo.TargetGridPosition);
-
-        // No retarget event should be emitted
-        var events = collector.GetEvents();
-        Assert.DoesNotContain(events, e => e is ProjectileRetargetedEvent);
+        // Target should have changed (retargeted to any available tile)
+        Assert.NotEqual(target, ufo.TargetGridPosition);
     }
 
     [Fact]
@@ -512,6 +509,117 @@ public class UfoProjectileTests
         Assert.True(s45 < s90, $"45° < 90°: {s45} < {s90}");
         Assert.True(s90 < s135, $"90° < 135°: {s90} < {s135}");
         Assert.True(s135 < s180, $"135° < 180°: {s135} < {s180}");
+    }
+
+    #endregion
+
+    #region CubicBezier Tests
+
+    [Fact]
+    public void CubicBezier_AtT0_ReturnsP0()
+    {
+        var p0 = new Vector2(1, 2);
+        var p1 = new Vector2(3, 5);
+        var p2 = new Vector2(6, 5);
+        var p3 = new Vector2(8, 2);
+
+        var result = UfoConstants.CubicBezier(0f, p0, p1, p2, p3);
+
+        Assert.Equal(p0.X, result.X, 0.001f);
+        Assert.Equal(p0.Y, result.Y, 0.001f);
+    }
+
+    [Fact]
+    public void CubicBezier_AtT1_ReturnsP3()
+    {
+        var p0 = new Vector2(1, 2);
+        var p1 = new Vector2(3, 5);
+        var p2 = new Vector2(6, 5);
+        var p3 = new Vector2(8, 2);
+
+        var result = UfoConstants.CubicBezier(1f, p0, p1, p2, p3);
+
+        Assert.Equal(p3.X, result.X, 0.001f);
+        Assert.Equal(p3.Y, result.Y, 0.001f);
+    }
+
+    [Fact]
+    public void CubicBezier_AtT05_ReturnsMidpoint_ForStraightLine()
+    {
+        // Collinear control points → straight line
+        var p0 = new Vector2(0, 0);
+        var p1 = new Vector2(2, 0);
+        var p2 = new Vector2(4, 0);
+        var p3 = new Vector2(6, 0);
+
+        var result = UfoConstants.CubicBezier(0.5f, p0, p1, p2, p3);
+
+        Assert.Equal(3f, result.X, 0.001f);
+        Assert.Equal(0f, result.Y, 0.001f);
+    }
+
+    [Fact]
+    public void CubicBezierTangent_AtT0_PointsFromP0ToP1()
+    {
+        var p0 = new Vector2(0, 0);
+        var p1 = new Vector2(3, 0);
+        var p2 = new Vector2(6, 3);
+        var p3 = new Vector2(9, 3);
+
+        var tangent = UfoConstants.CubicBezierTangent(0f, p0, p1, p2, p3);
+
+        // At t=0: tangent = 3*(P1-P0) = (9, 0)
+        Assert.Equal(9f, tangent.X, 0.001f);
+        Assert.Equal(0f, tangent.Y, 0.001f);
+    }
+
+    [Fact]
+    public void CubicBezierTangent_AtT1_PointsFromP2ToP3()
+    {
+        var p0 = new Vector2(0, 0);
+        var p1 = new Vector2(3, 0);
+        var p2 = new Vector2(6, 3);
+        var p3 = new Vector2(9, 3);
+
+        var tangent = UfoConstants.CubicBezierTangent(1f, p0, p1, p2, p3);
+
+        // At t=1: tangent = 3*(P3-P2) = (9, 0)
+        Assert.Equal(9f, tangent.X, 0.001f);
+        Assert.Equal(0f, tangent.Y, 0.001f);
+    }
+
+    #endregion
+
+    #region HashFloat Tests
+
+    [Fact]
+    public void HashFloat_ReturnsBetween0And1()
+    {
+        for (int seed = -100; seed <= 100; seed++)
+        {
+            float val = UfoConstants.HashFloat(seed);
+            Assert.True(val >= 0f && val < 1f, $"HashFloat({seed}) = {val} out of range");
+        }
+    }
+
+    [Fact]
+    public void HashFloat_IsDeterministic()
+    {
+        Assert.Equal(UfoConstants.HashFloat(42), UfoConstants.HashFloat(42));
+        Assert.Equal(UfoConstants.HashFloat(0), UfoConstants.HashFloat(0));
+        Assert.Equal(UfoConstants.HashFloat(-1), UfoConstants.HashFloat(-1));
+    }
+
+    [Fact]
+    public void HashFloat_ProducesVariedOutput()
+    {
+        // Different seeds should produce different values (basic distribution check)
+        var values = new HashSet<float>();
+        for (int i = 0; i < 100; i++)
+            values.Add(UfoConstants.HashFloat(i));
+
+        // At least 90% unique values (allow some collisions)
+        Assert.True(values.Count >= 90, $"Only {values.Count} unique values from 100 seeds");
     }
 
     #endregion

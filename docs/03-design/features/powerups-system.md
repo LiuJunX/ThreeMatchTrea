@@ -235,16 +235,37 @@ UFO 的远程打击通过 `ProjectileSystem` 实现真正的延迟销毁：
 |------|---|------|
 | `LaunchOverhead` | 0.6s | 起飞+着陆固定开销 |
 | `FlightSpeed` | 3.9 格/秒 | 巡航速度 |
-| `LockInTime` | 0.3s | 锁定窗口（见下文） |
+| `LockInTime` | 0s | 锁定窗口（0 = 任意时刻可重定向） |
 | `MomentumBase` | 0.8 格 | 变向时 Bezier 控制点基础距离 |
 | `MomentumReverseBonus` | 0.7 格 | 反向变向时额外控制点距离 |
+| `DivergeMinAngle` | 30° | 起飞偏离最小角度 |
+| `DivergeMaxAngle` | 75° | 起飞偏离最大角度 |
+| `DivergeStrength` | 3.0 格 | 三次 Bezier P1 距离 |
+| `ApproachStrength` | 1.5 格 | 三次 Bezier P2 距离 |
+| `DivergeMinDistance` | 2.0 格 | 启用偏离所需最小距离 |
+| `LaunchStayFraction` | 0.15 | 起飞蓄力阶段占比 |
+
+#### 随机起飞偏离 (Diverge)
+
+首次发射时，UFO 不直飞目标，而是以随机角度偏离后再弯向目标，增加趣味性。
+
+**三次 Bezier 飞行路径**: `P0=起点, P1=偏离控制点, P2=接近控制点, P3=目标`
+- P1 沿偏离方向延伸 `DivergeStrength`(3.0 格)
+- P2 从目标反向延伸 `ApproachStrength`(1.5 格)
+- 配合 smoothstep 缓动，起飞/着陆速度为零，中段自然加速
+
+**偏离角度**: 30°–75° 随机（确定性伪随机，基于 tileId + 位置的 Wang hash）。
+左右方向随机，但棋盘边缘处约束方向避免飞出屏幕。
+
+**短距离豁免**: 起点到目标距离 < `DivergeMinDistance`(2.0 格) 时退化为直线。
 
 #### 动态重定向 (Dynamic Retargeting)
 
 飞行中每 tick 检查目标格子：若目标已为空（被其他爆炸消除或掉落走），自动寻找新的有效目标。
 
-**锁定窗口**: 当剩余飞行时间 < `LockInTime`(0.3s) 时，UFO 锁定当前目标不再重定向。
-这避免了临近着陆时的突兀转向，并给视觉层足够帧数（~18帧@60fps）播放降落动画。
+**任意时刻重定向**: `LockInTime=0`，UFO 在飞行任何阶段（包括即将着陆）都可重定向。
+视觉层通过 Retarget Blend 机制（0.4s 弧度过渡）平滑处理最后时刻的转向，
+而非在模拟层禁止重定向。
 
 **重定向后位置连续性**: `_phaseStartTime` 字段在重定向时重置，确保进度从 0 重新计算，
 避免从旧时间线计算出错误的 65%+ 进度导致位置跳变。
@@ -254,18 +275,25 @@ UFO 的远程打击通过 `ProjectileSystem` 实现真正的延迟销毁：
 同向→几乎直线（0 格），垂直→温和弯弧（0.4 格），反向→大弧 U 形转弯（1.5 格）。
 配合 ease-out 缓动（起点全速、终点减速），UFO 以当前速度自然弯入新航线，无顿感。
 
+**Retarget Blend (View 层)**: 重定向时 progress 跳变导致弧度/缩放突变。
+View 快照当前弧度值，在 0.4s 内 Lerp 到新弧度。同时 takeoffBlend 使用
+`MoveTowards`（只增不减），防止已倾斜的 UFO 突然回正。
+
 #### UFO 视觉编排 (Choreography)
 
 | 事件 | RenderCommand | 说明 |
 |------|---------------|------|
 | `BombActivatedEvent` | 原点 CellLock | 锁定起飞格子 |
-| `ProjectileLaunchedEvent` | `UfoLaunchCommand` | 起飞动画（StayFraction=0.35 蓄力阶段） |
+| `ProjectileLaunchedEvent` | `UfoLaunchCommand` | 起飞动画（StayFraction=0.15，含三次 Bezier 偏离控制点） |
 | `ProjectileRetargetedEvent` | `UfoRetargetCommand` | Player 替换飞行段（StayFraction=0） |
 | `ProjectileImpactEvent` | `RemoveTileCommand` + `ShowEffectCommand` | 移除 UFO tile + 撞击特效 |
 
-Player 使用 smoothstep 插值初始飞行路径。重定向段改用 Bezier 曲线 + ease-out 缓动，
-`UfoLaunchCommand.MomentumControl` 携带控制点，Player 从实际视觉位置重新计算飞行时长，
-确保速度恒定（`UfoConstants.FlightSpeed`）。
+**初始发射**: 三次 Bezier (DivergeControl + ApproachControl) + smoothstep 缓动，
+UFO 先偏离后弯向目标。短距离退化为直线 + smoothstep。
+
+**重定向段**: 二次 Bezier (MomentumControl) + ease-out 缓动，
+Player 从实际视觉位置重新计算飞行时长，确保速度恒定（`UfoConstants.FlightSpeed`）。
+使用三次 Bezier 切线计算旧飞行方向，确保弯弧方向准确。
 
 ---
 
@@ -664,4 +692,5 @@ void Apply(in GameState state, Position origin, HashSet<Position> affectedTiles)
 | 1.1 | 2024-01 | 添加 BombComboHandler：10 种组合效果 |
 | 1.2 | 2024-01 | 彩球规则修正：单独激活消除最多颜色，手动交换消除指定颜色 |
 | 2.0 | 2026-03 | UFO 投射物系统重构：计时器飞行、动态重定向、锁定窗口、UfoConstants 共享常量 |
+| 2.1 | 2026-03 | UFO 飞行增强：随机起飞偏离（三次 Bezier）、任意时刻重定向（LockInTime=0）、Retarget Blend 弧度平滑 |
 | 3.0 | 2026-03 | 彩球多 tick 会话系统：颜色预约、随机顺序固定间隔光束、格子锁定、re-scan、批量销毁 |

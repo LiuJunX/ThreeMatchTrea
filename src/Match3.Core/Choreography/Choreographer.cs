@@ -40,7 +40,10 @@ public sealed class Choreographer : IEventVisitor
     // Key = BombTileId. Cleared when ColorBombBatchDestroyEvent is processed.
     private readonly Dictionary<int, ColorBombSessionInfo> _activeColorBombSessions = new();
 
-    private record struct UfoFlightInfo(int TileId, float LaunchTime, float Duration, Vector2 Origin, Vector2 Target, float StayFraction);
+    private record struct UfoFlightInfo(
+        int TileId, float LaunchTime, float Duration,
+        Vector2 Origin, Vector2 Target, float StayFraction,
+        Vector2? DivergeControl, Vector2? ApproachControl);
 
     private record struct ColorBombSessionInfo(float SessionStartTime, Vector2 HoppedOrigin, float MaxBeamArrivalTime);
 
@@ -977,20 +980,61 @@ public sealed class Choreographer : IEventVisitor
             targetPos.Y -= 0.40f;
             float flightTime = distance > 0 ? distance / Config.UfoFlightSpeed : 0.01f;
             float totalDuration = Config.UfoLaunchOverhead + flightTime;
+            float stayFrac = UfoConstants.LaunchStayFraction;
+
+            // Compute diverge control points for cubic Bezier (random takeoff angle)
+            Vector2? divergeControl = null;
+            Vector2? approachControl = null;
+            if (distance >= UfoConstants.DivergeMinDistance)
+            {
+                var toTarget = targetPos - evt.Origin;
+                float toTargetLen = toTarget.Length();
+                var toTargetNorm = toTargetLen > 1e-4f ? toTarget / toTargetLen : Vector2.UnitX;
+
+                // Deterministic pseudo-random diverge angle
+                float hash1 = UfoConstants.HashFloat(tileId * 7919 + (int)(evt.Origin.X * 31 + evt.Origin.Y * 97));
+                float hash2 = UfoConstants.HashFloat(tileId * 6271 + (int)(evt.Origin.X * 53 + evt.Origin.Y * 41));
+                float angle = UfoConstants.DivergeMinAngle
+                            + hash1 * (UfoConstants.DivergeMaxAngle - UfoConstants.DivergeMinAngle);
+
+                // Random left/right, with edge constraints.
+                // Y thresholds assume typical 9-row board (Y 0..8). For non-standard
+                // board sizes, pass height via config and use Origin.Y > height - 1.5f.
+                bool goRight = hash2 >= 0.5f;
+                bool isTopEdge = evt.Origin.Y < 1.5f;
+                bool isBottomEdge = evt.Origin.Y > 7.5f;
+                if (isTopEdge) goRight = toTargetNorm.X > 0; // diverge away from top
+                if (isBottomEdge) goRight = toTargetNorm.X <= 0; // diverge away from bottom
+                if (!goRight) angle = -angle;
+
+                // Rotate target direction by diverge angle
+                float rad = angle * MathF.PI / 180f;
+                float cos = MathF.Cos(rad);
+                float sin = MathF.Sin(rad);
+                var divergeDir = new Vector2(
+                    toTargetNorm.X * cos - toTargetNorm.Y * sin,
+                    toTargetNorm.X * sin + toTargetNorm.Y * cos);
+
+                divergeControl = evt.Origin + divergeDir * UfoConstants.DivergeStrength;
+                approachControl = targetPos - toTargetNorm * UfoConstants.ApproachStrength;
+            }
 
             _commands.Add(new UfoLaunchCommand
             {
                 TileId = tileId,
                 Origin = evt.Origin,
                 Target = targetPos,
-                StayFraction = 0.35f,
+                StayFraction = stayFrac,
+                DivergeControl = divergeControl,
+                ApproachControl = approachControl,
                 StartTime = startTime,
                 Duration = totalDuration
             });
 
             // Track active flight for retarget/impact handling
             _activeUfoFlights[evt.ProjectileId] = new UfoFlightInfo(
-                tileId, startTime, totalDuration, evt.Origin, targetPos, 0.35f);
+                tileId, startTime, totalDuration, evt.Origin, targetPos, stayFrac,
+                divergeControl, approachControl);
 
             return;
         }
@@ -1052,8 +1096,22 @@ public sealed class Choreographer : IEventVisitor
             moveT = 1f;
         else
             moveT = (t - stayFrac) / (arriveFrac - stayFrac);
-        float eased = moveT * moveT * (3f - 2f * moveT);
-        var currentPos = Vector2.Lerp(flight.Origin, flight.Target, eased);
+        // Match easing to what Player.UpdateCommand uses:
+        // initial/diverge launches → smoothstep; retarget segments (StayFraction==0) → ease-out
+        float eased = stayFrac > 0
+            ? moveT * moveT * (3f - 2f * moveT)  // smoothstep
+            : 1f - (1f - moveT) * (1f - moveT);  // ease-out quadratic
+        Vector2 currentPos;
+        if (flight.DivergeControl.HasValue && flight.ApproachControl.HasValue)
+        {
+            currentPos = UfoConstants.CubicBezier(eased,
+                flight.Origin, flight.DivergeControl.Value,
+                flight.ApproachControl.Value, flight.Target);
+        }
+        else
+        {
+            currentPos = Vector2.Lerp(flight.Origin, flight.Target, eased);
+        }
 
         // Overshoot along flight direction (same as initial launch)
         float retargetDist = Vector2.Distance(currentPos, newTargetVec);
@@ -1072,14 +1130,13 @@ public sealed class Choreographer : IEventVisitor
         {
             TileId = flight.TileId,
             NewTarget = newTargetVec,
-            NewDuration = newDuration,
             StartTime = startTime,
             Duration = 0 // Instant command
         });
 
-        // Update tracked flight info (StayFraction=0 for retarget segments)
+        // Update tracked flight info (StayFraction=0, no diverge for retarget segments)
         _activeUfoFlights[evt.ProjectileId] = new UfoFlightInfo(
-            flight.TileId, startTime, newDuration, currentPos, newTargetVec, 0f);
+            flight.TileId, startTime, newDuration, currentPos, newTargetVec, 0f, null, null);
     }
 
     /// <inheritdoc />

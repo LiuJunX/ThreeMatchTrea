@@ -355,6 +355,12 @@ public sealed class TileVisual
     public float UfoFlightDuration { get; set; }
 
     /// <summary>
+    /// Set to true by Player when a retarget replaces the active flight segment.
+    /// View reads and clears this flag to trigger arc-blend smoothing.
+    /// </summary>
+    public bool UfoRetargetFlag { get; set; }
+
+    /// <summary>
     /// Increment animation reference count (call when animation starts).
     /// </summary>
     public void AddAnimationRef() => AnimationRefCount++;
