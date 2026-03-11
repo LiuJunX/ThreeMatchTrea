@@ -231,7 +231,7 @@ public class ShapeRuleTests
             _rule.Detect(square, feature, results);
 
             Assert.Single(results);
-            Assert.Equal(20, results[0].Weight);
+            Assert.Equal(BombDefinitions.UFO.Weight, results[0].Weight);
         }
 
         [Fact]

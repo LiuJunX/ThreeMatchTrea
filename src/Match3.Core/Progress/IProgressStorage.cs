@@ -1,11 +1,10 @@
-namespace Match3.Core.Progress
+namespace Match3.Core.Progress;
+
+/// <summary>
+/// Persistence interface for player progress.
+/// </summary>
+public interface IProgressStorage
 {
-    /// <summary>
-    /// Persistence interface for player progress.
-    /// </summary>
-    public interface IProgressStorage
-    {
-        PlayerProgress Load();
-        void Save(PlayerProgress progress);
-    }
+    PlayerProgress Load();
+    void Save(PlayerProgress progress);
 }

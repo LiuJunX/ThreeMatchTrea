@@ -380,7 +380,7 @@ public class MoveSelectorTests
 
         // Assert
         Assert.Equal(10, config.Weights.GetWeight(ElementType.None));
-        Assert.Equal(20, config.Weights.GetWeight(ElementType.Ufo));
+        Assert.Equal(config.Weights.Ufo, config.Weights.GetWeight(ElementType.Ufo));
         Assert.Equal(20, config.Weights.GetWeight(ElementType.HorizontalRocket));
         Assert.Equal(20, config.Weights.GetWeight(ElementType.VerticalRocket));
         Assert.Equal(30, config.Weights.GetWeight(ElementType.Square5x5));

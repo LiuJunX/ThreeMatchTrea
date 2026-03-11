@@ -6,138 +6,137 @@ using Match3.Core.Scenarios;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 
-namespace Match3.Editor.Logic
+namespace Match3.Editor.Logic;
+
+public enum EditorMode
 {
-    public enum EditorMode
+    Level,
+    Scenario
+}
+
+public class EditorSession : INotifyPropertyChanged
+{
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private EditorMode _currentMode = EditorMode.Level;
+    private LevelConfig _currentLevel = new LevelConfig();
+    private ScenarioConfig _currentScenario = new ScenarioConfig();
+    private string _scenarioName = "New Scenario";
+    private bool _isDirty;
+
+    public EditorSession()
     {
-        Level,
-        Scenario
+        EnsureDefaultLevel();
     }
 
-    public class EditorSession : INotifyPropertyChanged
+    public EditorMode CurrentMode
     {
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        private EditorMode _currentMode = EditorMode.Level;
-        private LevelConfig _currentLevel = new LevelConfig();
-        private ScenarioConfig _currentScenario = new ScenarioConfig();
-        private string _scenarioName = "New Scenario";
-        private bool _isDirty;
-
-        public EditorSession()
+        get => _currentMode;
+        set
         {
-            EnsureDefaultLevel();
-        }
-
-        public EditorMode CurrentMode
-        {
-            get => _currentMode;
-            set
+            if (_currentMode != value)
             {
-                if (_currentMode != value)
-                {
-                    _currentMode = value;
-                    OnPropertyChanged(nameof(CurrentMode));
-                    OnPropertyChanged(nameof(ActiveLevelConfig));
-                }
+                _currentMode = value;
+                OnPropertyChanged(nameof(CurrentMode));
+                OnPropertyChanged(nameof(ActiveLevelConfig));
             }
         }
+    }
 
-        public LevelConfig CurrentLevel
+    public LevelConfig CurrentLevel
+    {
+        get => _currentLevel;
+        set
         {
-            get => _currentLevel;
-            set
+            _currentLevel = value;
+            OnPropertyChanged(nameof(CurrentLevel));
+            if (CurrentMode == EditorMode.Level)
+                OnPropertyChanged(nameof(ActiveLevelConfig));
+        }
+    }
+
+    public ScenarioConfig CurrentScenario
+    {
+        get => _currentScenario;
+        set
+        {
+            _currentScenario = value;
+            OnPropertyChanged(nameof(CurrentScenario));
+            OnPropertyChanged(nameof(ScenarioDescription));
+            if (CurrentMode == EditorMode.Scenario)
+                OnPropertyChanged(nameof(ActiveLevelConfig));
+        }
+    }
+
+    public string ScenarioName
+    {
+        get => _scenarioName;
+        set
+        {
+            if (_scenarioName != value)
             {
-                _currentLevel = value;
-                OnPropertyChanged(nameof(CurrentLevel));
-                if (CurrentMode == EditorMode.Level)
-                    OnPropertyChanged(nameof(ActiveLevelConfig));
+                _scenarioName = value;
+                OnPropertyChanged(nameof(ScenarioName));
+                IsDirty = true;
             }
         }
+    }
 
-        public ScenarioConfig CurrentScenario
+    public string ScenarioDescription
+    {
+        get => CurrentScenario.Description;
+        set
         {
-            get => _currentScenario;
-            set
+            if (CurrentScenario.Description != value)
             {
-                _currentScenario = value;
-                OnPropertyChanged(nameof(CurrentScenario));
+                CurrentScenario.Description = value;
                 OnPropertyChanged(nameof(ScenarioDescription));
-                if (CurrentMode == EditorMode.Scenario)
-                    OnPropertyChanged(nameof(ActiveLevelConfig));
+                IsDirty = true;
             }
         }
+    }
 
-        public string ScenarioName
+    public bool IsDirty
+    {
+        get => _isDirty;
+        set
         {
-            get => _scenarioName;
-            set
+            if (_isDirty != value)
             {
-                if (_scenarioName != value)
-                {
-                    _scenarioName = value;
-                    OnPropertyChanged(nameof(ScenarioName));
-                    IsDirty = true;
-                }
+                _isDirty = value;
+                OnPropertyChanged(nameof(IsDirty));
             }
         }
+    }
 
-        public string ScenarioDescription
+    public LevelConfig ActiveLevelConfig => CurrentMode == EditorMode.Level ? CurrentLevel : CurrentScenario.InitialState;
+
+    public void EnsureDefaultLevel()
+    {
+        if (CurrentLevel.Grid == null || CurrentLevel.Grid.Length == 0)
         {
-            get => CurrentScenario.Description;
-            set
+            CurrentLevel = new LevelConfig(8, 8);
+            // GridManipulator will handle filling content
+        }
+        // 确保有默认目标
+        if (CurrentLevel.Objectives[0].TargetLayer == ObjectiveTargetLayer.None)
+        {
+            CurrentLevel.Objectives[0] = new LevelObjective
             {
-                if (CurrentScenario.Description != value)
-                {
-                    CurrentScenario.Description = value;
-                    OnPropertyChanged(nameof(ScenarioDescription));
-                    IsDirty = true;
-                }
-            }
+                TargetLayer = ObjectiveTargetLayer.Tile,
+                ElementType = (int)ElementType.Item1,
+                TargetCount = 20
+            };
         }
+    }
 
-        public bool IsDirty
-        {
-            get => _isDirty;
-            set
-            {
-                if (_isDirty != value)
-                {
-                    _isDirty = value;
-                    OnPropertyChanged(nameof(IsDirty));
-                }
-            }
-        }
+    public void NotifyActiveLevelChanged()
+    {
+        OnPropertyChanged(nameof(ActiveLevelConfig));
+    }
 
-        public LevelConfig ActiveLevelConfig => CurrentMode == EditorMode.Level ? CurrentLevel : CurrentScenario.InitialState;
-
-        public void EnsureDefaultLevel()
-        {
-            if (CurrentLevel.Grid == null || CurrentLevel.Grid.Length == 0)
-            {
-                CurrentLevel = new LevelConfig(8, 8);
-                // GridManipulator will handle filling content
-            }
-            // 确保有默认目标
-            if (CurrentLevel.Objectives[0].TargetLayer == ObjectiveTargetLayer.None)
-            {
-                CurrentLevel.Objectives[0] = new LevelObjective
-                {
-                    TargetLayer = ObjectiveTargetLayer.Tile,
-                    ElementType = (int)ElementType.Item1,
-                    TargetCount = 20
-                };
-            }
-        }
-
-        public void NotifyActiveLevelChanged()
-        {
-            OnPropertyChanged(nameof(ActiveLevelConfig));
-        }
-
-        protected void OnPropertyChanged(string name)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        }
+    protected void OnPropertyChanged(string name)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 }
