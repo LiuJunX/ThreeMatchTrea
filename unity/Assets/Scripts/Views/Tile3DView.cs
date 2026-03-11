@@ -437,6 +437,14 @@ namespace Match3.Unity.Views
             UpdateBlobShadow(_lastShadowWorldPos, _lastShadowCellSize, _lastShadowTileScale, _lastShadowTileZ);
         }
 
+        /// <summary>
+        /// Re-derive shadow from current transform (for fly animations that bypass UpdateFromVisual).
+        /// </summary>
+        internal void RefreshShadow(float cellSize)
+        {
+            UpdateBlobShadow(transform.position, cellSize, transform.localScale, transform.position.z);
+        }
+
         #region UFO Flight
 
         // Propeller-carries-bomb physics: propeller faces camera, bomb hangs behind

@@ -399,6 +399,7 @@ namespace Match3.Unity.Views
                 else
                     UpdateFlyModeA(ref fly, dt);
 
+                fly.View.RefreshShadow(_bridge.CellSize);
                 _activeFlies[i] = fly;
 
                 // Check completion
