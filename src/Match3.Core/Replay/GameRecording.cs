@@ -34,6 +34,9 @@ public sealed record GameRecording
     /// <summary>Total moves made.</summary>
     public int TotalMoves { get; init; }
 
+    /// <summary>User-placed bookmarks (tick numbers) for bug reproduction.</summary>
+    public IReadOnlyList<int> Bookmarks { get; init; } = Array.Empty<int>();
+
     /// <summary>
     /// Creates a recording from a game session.
     /// </summary>
@@ -49,7 +52,8 @@ public sealed record GameRecording
         IReadOnlyList<IGameCommand> commands,
         int durationTicks,
         int finalScore,
-        int totalMoves)
+        int totalMoves,
+        IReadOnlyList<int>? bookmarks = null)
     {
         return new GameRecording
         {
@@ -58,7 +62,8 @@ public sealed record GameRecording
             Commands = commands,
             DurationTicks = durationTicks,
             FinalScore = finalScore,
-            TotalMoves = totalMoves
+            TotalMoves = totalMoves,
+            Bookmarks = bookmarks ?? Array.Empty<int>()
         };
     }
 }

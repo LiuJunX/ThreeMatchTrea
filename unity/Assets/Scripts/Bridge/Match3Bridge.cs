@@ -1,11 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using Match3.Core.Choreography;
+using Match3.Core.Commands;
 using Match3.Core.Config;
 using Match3.Core.DependencyInjection;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Replay;
+using Match3.Core.Simulation;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Matching.Generation;
 using Match3.Core.Systems.Selection;
@@ -43,6 +47,13 @@ namespace Match3.Unity.Bridge
         private bool _initialized;
         private float _timeAccumulator;
 
+        // Recording (always-on during gameplay)
+        private GameRecorder _recorder;
+
+        // Replay mode
+        private ReplayController _replayController;
+        private bool _isReplaying;
+
         private ObjectiveCollectionProcessor _objectiveCollector;
         private readonly List<GameEvent> _eventBuffer = new();
         private readonly ClassicMatchFinder _hintMatchFinder = new(new BombGenerator());
@@ -75,8 +86,9 @@ namespace Match3.Unity.Bridge
         {
             get
             {
-                if (_session == null) return null;
-                var state = _session.Engine.State;
+                if (!_initialized) return null;
+                var state = CurrentState;
+                if (state.Grid == null) return null;
                 var layout = new bool[state.Height, state.Width];
                 for (int y = 0; y < state.Height; y++)
                     for (int x = 0; x < state.Width; x++)
@@ -101,9 +113,16 @@ namespace Match3.Unity.Bridge
         public bool IsInitialized => _initialized;
 
         /// <summary>
+        /// Whether the bridge is in replay mode.
+        /// </summary>
+        public bool IsReplaying => _isReplaying;
+
+        /// <summary>
         /// Current game state reference. Returns default if not initialized.
         /// </summary>
-        public GameState CurrentState => _session?.Engine.State ?? default;
+        public GameState CurrentState =>
+            _isReplaying ? (_replayController?.Engine?.State ?? default)
+                         : (_session?.Engine.State ?? default);
 
         #region UI Properties
 
@@ -191,7 +210,7 @@ namespace Match3.Unity.Bridge
         /// <summary>
         /// Current move limit (for star calculation).
         /// </summary>
-        public int MoveLimit => _session?.Engine.State.MoveLimit ?? 0;
+        public int MoveLimit => CurrentState.MoveLimit;
 
         /// <summary>
         /// Current moves remaining.
@@ -200,8 +219,7 @@ namespace Match3.Unity.Bridge
         {
             get
             {
-                if (_session == null) return 0;
-                var s = _session.Engine.State;
+                var s = CurrentState;
                 return s.MoveLimit - s.MoveCount;
             }
         }
@@ -274,6 +292,10 @@ namespace Match3.Unity.Bridge
             _gameEndFired = false;
             _lastObjectiveHash = -1;
             _timeAccumulator = 0f;
+            _isReplaying = false;
+
+            // Start recording
+            _recorder = new GameRecorder(in state, seed);
 
             Debug.Log($"Match3Bridge initialized: {_width}x{_height}, seed={seed}, level={levelId}");
         }
@@ -348,6 +370,10 @@ namespace Match3.Unity.Bridge
             _gameEndFired = false;
             _lastObjectiveHash = -1;
             _timeAccumulator = 0f;
+            _isReplaying = false;
+
+            // Start recording
+            _recorder = new GameRecorder(in state, seed);
 
             Debug.Log($"Match3Bridge initialized: {width}x{height}, seed={seed}");
         }
@@ -358,15 +384,29 @@ namespace Match3.Unity.Bridge
         /// </summary>
         public void Tick(float deltaTime)
         {
-            if (!_initialized || _session == null) return;
+            if (!_initialized) return;
             if (_isPaused) return;
 
-            // Apply game speed
-            var scaledDelta = deltaTime * _gameSpeed;
+            if (_isReplaying)
+            {
+                // Replay has its own speed control (ReplayController.PlaybackSpeed),
+                // bypass _gameSpeed to avoid double-scaling.
+                TickReplay(deltaTime);
+            }
+            else
+            {
+                var scaledDelta = deltaTime * _gameSpeed;
+                TickNormal(scaledDelta);
+            }
+        }
+
+        private void TickNormal(float scaledDelta)
+        {
+            if (_session == null) return;
 
             // Fixed timestep accumulator: ensures simulation uses identical dt
             // to replay (1/60f), making recorded games deterministically reproducible.
-            const float fixedStep = Match3.Core.Simulation.SimulationConfig.DefaultFixedDeltaTime;
+            const float fixedStep = SimulationConfig.DefaultFixedDeltaTime;
             _timeAccumulator += scaledDelta;
             while (_timeAccumulator >= fixedStep)
             {
@@ -376,33 +416,18 @@ namespace Match3.Unity.Bridge
 
             // Drain events accumulated from all fixed ticks
             _session.DrainEventsTo(_eventBuffer);
-            var events = (IReadOnlyList<GameEvent>)_eventBuffer;
-            if (_eventBuffer.Count > 0)
-            {
-                // Scan for objective collections before choreography
-                // Always call Process() so PendingFlies is fresh for lock duration adjustment
-                _objectiveCollector.Process(events, _session.Engine.State, OnObjectiveCollected);
-
-                var commands = _choreographer.Choreograph(events, _player.CurrentTime);
-                _player.Append(commands);
-            }
-
-            // Tick the animation player (uses real delta for smooth rendering)
-            _player.Tick(scaledDelta);
-
-            // Tick visual effects (advance elapsed time, remove expired)
-            _player.VisualState.UpdateEffects(scaledDelta);
-
-            // Sync falling tiles from game state (physics-driven positions)
-            {
-                var state = _session.Engine.State;
-                _player.VisualState.SyncFallingTilesFromGameState(in state);
-            }
+            ProcessEventsAndAnimate(scaledDelta, _session.Engine.State);
 
             // Check for UI state changes
             CheckStateChanges();
 
-            // Handle auto-play (same logic as Web version)
+            // Auto-save recording on game end
+            if (_gameEndFired && _recorder != null && _recorder.IsRecording)
+            {
+                AutoSaveRecording();
+            }
+
+            // Handle auto-play
             if (_isAutoPlaying)
             {
                 if (_session.Engine.IsStable() && !HasActiveAnimations)
@@ -415,6 +440,52 @@ namespace Match3.Unity.Bridge
                     Debug.Log($"[AutoPlay] waiting: stable={_session.Engine.IsStable()} anim={HasActiveAnimations} moves={st.MoveCount}/{st.MoveLimit} | {_player.GetAnimationDiagnostics()}");
                 }
             }
+        }
+
+        private bool _replayCompletedFired;
+
+        private void TickReplay(float deltaTime)
+        {
+            if (_replayController == null) return;
+
+            _replayController.Tick(deltaTime);
+
+            // Drain events from the replay engine
+            _eventBuffer.Clear();
+            if (_replayController.Engine?.EventCollector is BufferedEventCollector buffered)
+            {
+                buffered.DrainEventsTo(_eventBuffer);
+            }
+
+            // Animation speed must match replay speed so events don't pile up
+            var effectiveDelta = deltaTime * _replayController.PlaybackSpeed;
+            ProcessEventsAndAnimate(effectiveDelta, _replayController.Engine?.State ?? default);
+
+            // Update UI (score, moves, objectives) during replay
+            CheckStateChanges();
+
+            // One-shot completion log
+            if (!_replayCompletedFired && _replayController.State == ReplayState.Completed)
+            {
+                _replayCompletedFired = true;
+                Debug.Log("[Replay] Playback completed.");
+            }
+        }
+
+        private void ProcessEventsAndAnimate(float scaledDelta, GameState state)
+        {
+            var events = (IReadOnlyList<GameEvent>)_eventBuffer;
+            if (_eventBuffer.Count > 0)
+            {
+                _objectiveCollector.Process(events, state, OnObjectiveCollected);
+
+                var commands = _choreographer.Choreograph(events, _player.CurrentTime);
+                _player.Append(commands);
+            }
+
+            _player.Tick(scaledDelta);
+            _player.VisualState.UpdateEffects(scaledDelta);
+            _player.VisualState.SyncFallingTilesFromGameState(in state);
         }
 
         private void TryMakeAutoMove()
@@ -433,16 +504,17 @@ namespace Match3.Unity.Bridge
             _autoPlaySelector.InvalidateCache();
 
             // Use Core's weighted move selector (same as Web)
+            // Route through public methods so auto-play moves are also recorded
             if (_autoPlaySelector.TryGetMove(in state, out var action))
             {
                 Debug.Log($"[AutoPlay] move #{state.MoveCount+1}: {action.ActionType} ({action.From.X},{action.From.Y})->({action.To.X},{action.To.Y})");
                 if (action.ActionType == MoveActionType.Tap)
                 {
-                    _session.Engine.HandleTap(action.From);
+                    HandleTap(action.From);
                 }
                 else
                 {
-                    _session.Engine.ApplyMove(action.From, action.To);
+                    ApplyMove(action.From, action.To);
                 }
             }
             else
@@ -455,7 +527,7 @@ namespace Match3.Unity.Bridge
 
         private void CheckStateChanges()
         {
-            var state = _session.Engine.State;
+            var state = CurrentState;
 
             // Check moves changed (MovesRemaining = MoveLimit - MoveCount)
             var currentMoves = state.MoveLimit - state.MoveCount;
@@ -554,21 +626,28 @@ namespace Match3.Unity.Bridge
 
         /// <summary>
         /// Apply a move from position A to position B.
-        /// Core's CanInteract handles per-tile checks (cover, falling, suspended).
+        /// Creates a SwapCommand, records it, and executes through the engine.
         /// </summary>
         public bool ApplyMove(Position from, Position to)
         {
-            if (!_initialized) return false;
+            if (!_initialized || _session == null) return false;
 
-            // Check if positions are adjacent
             if (!AreAdjacent(from, to))
-            {
                 return false;
-            }
 
-            // Apply swap through simulation engine
-            // Core's ApplyMove checks CanInteract (cover, falling, suspended, None)
-            return _session.Engine.ApplyMove(from, to);
+            var cmd = new SwapCommand
+            {
+                From = from,
+                To = to,
+                IssuedAtTick = _session.Engine.CurrentTick
+            };
+
+            if (cmd.Execute(_session.Engine))
+            {
+                _recorder?.RecordCommand(cmd);
+                return true;
+            }
+            return false;
         }
 
         /// <summary>
@@ -576,7 +655,9 @@ namespace Match3.Unity.Bridge
         /// </summary>
         public bool IsIdle()
         {
-            return _initialized && !HasActiveAnimations && _session.Engine.IsStable();
+            if (!_initialized) return false;
+            if (_isReplaying) return false;
+            return !HasActiveAnimations && _session != null && _session.Engine.IsStable();
         }
 
         /// <summary>
@@ -586,7 +667,7 @@ namespace Match3.Unity.Bridge
         public bool TryGetHintMove(out MoveAction action)
         {
             action = default;
-            if (!_initialized || _autoPlaySelector == null) return false;
+            if (!_initialized || _session == null || _autoPlaySelector == null) return false;
 
             var state = _session.Engine.State;
             _autoPlaySelector.InvalidateCache();
@@ -601,7 +682,7 @@ namespace Match3.Unity.Bridge
         public Position GetHintHighlightPosition(MoveAction action)
         {
             if (action.ActionType != MoveActionType.Swap) return action.From;
-            if (!_initialized) return action.From;
+            if (!_initialized || _session == null) return action.From;
 
             var state = _session.Engine.State;
             var from = action.From;
@@ -662,7 +743,7 @@ namespace Match3.Unity.Bridge
         public IReadOnlyList<Position> GetHintMatchPositions(Position hintFrom, Position hintTo)
         {
             _hintMatchPositions.Clear();
-            if (!_initialized) return _hintMatchPositions;
+            if (!_initialized || _session == null) return _hintMatchPositions;
 
             var state = _session.Engine.State;
             var matchFinder = _hintMatchFinder;
@@ -698,20 +779,26 @@ namespace Match3.Unity.Bridge
         /// </summary>
         public void ClearSelection()
         {
-            if (!_initialized) return;
+            if (!_initialized || _session == null) return;
             _session.Engine.SetSelectedPosition(Position.Invalid);
         }
 
         /// <summary>
         /// Handle a tap at the specified grid position.
-        /// Delegates to Core's SimulationEngine.HandleTap for selection/bomb activation logic.
-        /// Core's CanInteract handles per-tile checks (cover, falling, suspended).
+        /// Creates a TapCommand, records it, and executes through the engine.
         /// </summary>
         public void HandleTap(Position pos)
         {
-            if (!_initialized) return;
+            if (!_initialized || _session == null) return;
 
-            _session.Engine.HandleTap(pos);
+            var cmd = new TapCommand
+            {
+                Position = pos,
+                IssuedAtTick = _session.Engine.CurrentTick
+            };
+
+            if (cmd.Execute(_session.Engine))
+                _recorder?.RecordCommand(cmd);
         }
 
         /// <summary>
@@ -722,7 +809,7 @@ namespace Match3.Unity.Bridge
         {
             if (!_initialized) return -1;
 
-            var state = _session.Engine.State;
+            var state = CurrentState;
             if (pos.X < 0 || pos.X >= state.Width || pos.Y < 0 || pos.Y >= state.Height)
                 return -1;
 
@@ -736,9 +823,9 @@ namespace Match3.Unity.Bridge
         /// </summary>
         public (int entryY, int exitY)? GetColumnHoleZone(int column)
         {
-            if (!_initialized || _session == null) return null;
+            if (!_initialized) return null;
 
-            var state = _session.Engine.State;
+            var state = CurrentState;
             if (column < 0 || column >= state.Width) return null;
 
             for (int y = 0; y < state.Height; y++)
@@ -753,6 +840,189 @@ namespace Match3.Unity.Bridge
             return null;
         }
 
+        #region Recording & Replay
+
+        private const int RingBufferSize = 5;
+        private const string RecordingDir = "Recordings";
+
+        private static string RecordingBasePath =>
+            Path.Combine(Application.persistentDataPath, RecordingDir);
+
+        /// <summary>
+        /// Saves the current recording to the ring buffer (auto-called on game end).
+        /// Also callable manually from debug menu.
+        /// </summary>
+        public string SaveRecording()
+        {
+            if (_recorder == null || _session == null) return null;
+
+            var state = _session.Engine.State;
+            var recording = _recorder.Complete(
+                _session.Engine.CurrentTick,
+                state.Score,
+                state.MoveCount);
+
+            var path = SaveToRingBuffer(recording);
+            Debug.Log($"[Recording] Saved: {path} ({recording.TotalMoves} moves, {recording.Commands.Count} commands)");
+
+            // Create a fresh recorder for continued play
+            _recorder = new GameRecorder(in state, _seed);
+
+            return path;
+        }
+
+        /// <summary>
+        /// Saves a named recording (for archiving a specific bug).
+        /// </summary>
+        public string SaveRecordingAs(string name)
+        {
+            if (_recorder == null || _session == null) return null;
+
+            var state = _session.Engine.State;
+            var recording = _recorder.Complete(
+                _session.Engine.CurrentTick,
+                state.Score,
+                state.MoveCount);
+
+            var dir = RecordingBasePath;
+            Directory.CreateDirectory(dir);
+            var path = Path.Combine(dir, $"{name}.json");
+            File.WriteAllText(path, GameRecordingSerializer.ToJson(recording));
+            Debug.Log($"[Recording] Saved as: {path}");
+
+            _recorder = new GameRecorder(in state, _seed);
+            return path;
+        }
+
+        private void AutoSaveRecording()
+        {
+            if (_recorder == null || !_recorder.IsRecording || _session == null) return;
+
+            var state = _session.Engine.State;
+            var recording = _recorder.Complete(
+                _session.Engine.CurrentTick,
+                state.Score,
+                state.MoveCount);
+
+            var path = SaveToRingBuffer(recording);
+            Debug.Log($"[Recording] Auto-saved: {path}");
+        }
+
+        private static string SaveToRingBuffer(GameRecording recording)
+        {
+            var dir = RecordingBasePath;
+            Directory.CreateDirectory(dir);
+
+            var indexPath = Path.Combine(dir, "index.txt");
+            int slot = 0;
+            if (File.Exists(indexPath))
+                int.TryParse(File.ReadAllText(indexPath).Trim(), out slot);
+
+            var filePath = Path.Combine(dir, $"recording_{slot}.json");
+            File.WriteAllText(filePath, GameRecordingSerializer.ToJson(recording));
+            File.WriteAllText(indexPath, ((slot + 1) % RingBufferSize).ToString());
+
+            return filePath;
+        }
+
+        /// <summary>
+        /// Starts replay mode from a recording file.
+        /// </summary>
+        public void StartReplay(GameRecording recording)
+        {
+            if (recording == null) return;
+
+            // Auto-save current game recording before entering replay
+            if (_recorder != null && _recorder.IsRecording && _session != null)
+            {
+                AutoSaveRecording();
+            }
+
+            StopReplay();
+
+            // Dispose the previous game session to free resources
+            _recorder?.Dispose();
+            _recorder = null;
+            _session?.Dispose();
+            _session = null;
+
+            _factory ??= new GameServiceBuilder().UseDefaultServices().Build();
+            _replayController = new ReplayController(recording, _factory);
+
+            // Reset presentation
+            _choreographer = new Choreographer();
+            _player = new Player();
+            _objectiveCollector = new ObjectiveCollectionProcessor();
+
+            // Sync initial visual state from recording
+            var seedManager = new SeedManager(recording.RandomSeed);
+            var mainRng = seedManager.GetRandom(RandomDomain.Main);
+            var initialState = recording.InitialState.ToState(mainRng);
+            _player.SyncFromGameState(in initialState);
+
+            _width = recording.InitialState.Width;
+            _height = recording.InitialState.Height;
+
+            _isReplaying = true;
+            _initialized = true;
+            _isPaused = false;
+            _isAutoPlaying = false;
+            _gameEndFired = false;
+            _replayCompletedFired = false;
+            _timeAccumulator = 0f;
+            _lastMovesRemaining = -1;
+            _lastScore = -1;
+            _lastObjectiveHash = -1;
+
+            _replayController.Play();
+
+            Debug.Log($"[Replay] Started: {recording.TotalMoves} moves, {recording.DurationTicks} ticks, seed={recording.RandomSeed}");
+        }
+
+        /// <summary>
+        /// Stops replay mode.
+        /// </summary>
+        public void StopReplay()
+        {
+            _replayController?.Dispose();
+            _replayController = null;
+            _isReplaying = false;
+            // Session was disposed when entering replay, so bridge is uninitialized.
+            // User must restart the game to resume playing.
+            _initialized = false;
+        }
+
+        /// <summary>
+        /// Adds a bookmark at the current tick.
+        /// Press during gameplay to mark a point for later investigation.
+        /// </summary>
+        public void AddBookmark()
+        {
+            if (_recorder == null || _session == null) return;
+
+            var tick = _session.Engine.CurrentTick;
+            _recorder.AddBookmark(tick);
+            Debug.Log($"[Bookmark] Added at tick {tick} (move #{_session.Engine.State.MoveCount})");
+        }
+
+        /// <summary>
+        /// Returns the replay controller for external control (pause/seek/speed).
+        /// Null when not in replay mode.
+        /// </summary>
+        public ReplayController ReplayCtrl => _replayController;
+
+        /// <summary>
+        /// Lists available recording files.
+        /// </summary>
+        public static string[] GetRecordingFiles()
+        {
+            var dir = RecordingBasePath;
+            if (!Directory.Exists(dir)) return Array.Empty<string>();
+            return Directory.GetFiles(dir, "*.json", SearchOption.TopDirectoryOnly);
+        }
+
+        #endregion
+
         private static bool AreAdjacent(Position a, Position b)
         {
             int dx = System.Math.Abs(a.X - b.X);
@@ -762,6 +1032,9 @@ namespace Match3.Unity.Bridge
 
         private void Cleanup()
         {
+            StopReplay();
+            _recorder?.Dispose();
+            _recorder = null;
             _session?.Dispose();
             _session = null;
             _player = null;

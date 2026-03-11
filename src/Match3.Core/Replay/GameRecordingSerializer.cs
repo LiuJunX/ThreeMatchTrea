@@ -60,6 +60,10 @@ public static class GameRecordingSerializer
             commands.Add(CommandToDto(cmd));
         }
 
+        var bookmarks = new List<int>(recording.Bookmarks.Count);
+        for (int i = 0; i < recording.Bookmarks.Count; i++)
+            bookmarks.Add(recording.Bookmarks[i]);
+
         return new RecordingDto
         {
             Version = recording.Version,
@@ -69,7 +73,8 @@ public static class GameRecordingSerializer
             FinalScore = recording.FinalScore,
             TotalMoves = recording.TotalMoves,
             InitialState = SnapshotToDto(recording.InitialState),
-            Commands = commands
+            Commands = commands,
+            Bookmarks = bookmarks
         };
     }
 
@@ -93,7 +98,8 @@ public static class GameRecordingSerializer
             FinalScore = dto.FinalScore,
             TotalMoves = dto.TotalMoves,
             InitialState = DtoToSnapshot(dto.InitialState),
-            Commands = commands
+            Commands = commands,
+            Bookmarks = dto.Bookmarks ?? new List<int>()
         };
     }
 
@@ -272,6 +278,7 @@ public static class GameRecordingSerializer
         public int TotalMoves { get; set; }
         public SnapshotDto InitialState { get; set; } = new();
         public List<CommandDto> Commands { get; set; } = new();
+        public List<int> Bookmarks { get; set; } = new();
     }
 
     internal sealed class SnapshotDto

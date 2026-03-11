@@ -303,9 +303,48 @@ namespace Match3.Unity.Controllers
             Debug.Log($"Game restarted with seed: {newSeed}");
         }
 
+        /// <summary>
+        /// Start replay mode with a recording.
+        /// Reuses existing BoardView and rendering pipeline.
+        /// </summary>
+        public void StartReplay(Match3.Core.Replay.GameRecording recording)
+        {
+            if (recording == null) return;
+
+            // Disable input during replay
+            if (_inputController != null)
+                _inputController.enabled = false;
+
+            _hintController?.SetEnabled(false);
+
+            // Create board view if needed
+            _boardView ??= CreateBoardView();
+
+            // Start replay on bridge
+            _bridge.StartReplay(recording);
+
+            // Re-initialize views with new dimensions
+            _boardView.Initialize(_bridge);
+            _effectManager.Initialize(_bridge);
+
+            _initialized = true;
+        }
+
         private void Update()
         {
             if (!_initialized || !_bridge.IsInitialized) return;
+
+            // F5: add bookmark during gameplay
+            if (!_bridge.IsReplaying && Input.GetKeyDown(KeyCode.F5))
+            {
+                _bridge.AddBookmark();
+            }
+
+            // Handle replay keyboard controls
+            if (_bridge.IsReplaying)
+            {
+                HandleReplayInput();
+            }
 
             // Restore camera before input processing (InputController.Update runs in same frame)
             _shakeController.Restore();
@@ -319,8 +358,8 @@ namespace Match3.Unity.Controllers
             // Render board
             _boardView.Render(state);
 
-            // Update hint system
-            if (_hintController != null)
+            // Update hint system (disabled during replay)
+            if (_hintController != null && !_bridge.IsReplaying)
             {
                 bool gameInProgress = _bridge.CurrentState.LevelStatus == Core.Models.Enums.LevelStatus.InProgress;
                 bool canHint = !_bridge.IsPaused && !_bridge.IsAutoPlaying && gameInProgress;
@@ -340,11 +379,93 @@ namespace Match3.Unity.Controllers
             _shakeController.UpdateEffectCount(state);
         }
 
+        private void HandleReplayInput()
+        {
+            var ctrl = _bridge.ReplayCtrl;
+            if (ctrl == null) return;
+
+            // Space: toggle pause
+            if (Input.GetKeyDown(KeyCode.Space))
+                ctrl.TogglePause();
+
+            // Right arrow: step forward (auto-pauses)
+            if (Input.GetKeyDown(KeyCode.RightArrow))
+            {
+                ctrl.Pause();
+                ctrl.StepForward();
+            }
+
+            // 1/2/3: speed control
+            if (Input.GetKeyDown(KeyCode.Alpha1)) ctrl.PlaybackSpeed = 1f;
+            if (Input.GetKeyDown(KeyCode.Alpha2)) ctrl.PlaybackSpeed = 2f;
+            if (Input.GetKeyDown(KeyCode.Alpha3)) ctrl.PlaybackSpeed = 4f;
+
+            // Escape: stop replay and restart game
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                _bridge.StopReplay();
+                if (_inputController != null)
+                    _inputController.enabled = true;
+                Debug.Log("[Replay] Stopped by user. Restarting game...");
+                RestartGame();
+            }
+        }
+
         private void LateUpdate()
         {
             // Apply shake in LateUpdate so it doesn't affect input raycasts in Update
             _shakeController.Apply();
         }
+
+        #region Debug Overlay
+
+        private GUIStyle _bookmarkButtonStyle;
+
+        private void OnGUI()
+        {
+            if (!_initialized || !_bridge.IsInitialized) return;
+
+            if (_bridge.IsReplaying)
+                DrawReplayOverlay();
+            else
+                DrawGameOverlay();
+        }
+
+        private void DrawGameOverlay()
+        {
+            // Bookmark button — top-right corner
+            var btnRect = new Rect(Screen.width - 110, 10, 100, 36);
+            if (GUI.Button(btnRect, "Bookmark (F5)"))
+            {
+                _bridge.AddBookmark();
+            }
+        }
+
+        private void DrawReplayOverlay()
+        {
+            var ctrl = _bridge.ReplayCtrl;
+            if (ctrl == null) return;
+
+            // Status bar at top
+            var stateText = ctrl.State.ToString();
+            var progress = ctrl.Progress;
+            var tickInfo = $"Tick {ctrl.CurrentTick}/{ctrl.TotalTicks}";
+            var speedInfo = $"{ctrl.PlaybackSpeed}x";
+            var cmdInfo = $"Cmd {ctrl.CommandsExecuted}/{ctrl.TotalCommands}";
+
+            GUI.Box(new Rect(0, 0, Screen.width, 30), "");
+            GUI.Label(new Rect(10, 5, 200, 20), $"REPLAY  [{stateText}]  {speedInfo}  {tickInfo}  {cmdInfo}");
+
+            // Progress bar
+            GUI.Box(new Rect(0, 30, Screen.width, 8), "");
+            GUI.DrawTexture(new Rect(0, 30, Screen.width * progress, 8), Texture2D.whiteTexture);
+
+            // Controls hint at bottom
+            GUI.Label(new Rect(10, Screen.height - 25, Screen.width, 20),
+                "Space=Pause  →=Step  1/2/3=Speed  Esc=Exit");
+        }
+
+        #endregion
 
         /// <summary>
         /// Reset the game.

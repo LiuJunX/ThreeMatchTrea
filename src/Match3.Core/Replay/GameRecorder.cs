@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Match3.Core.Commands;
 using Match3.Core.Models.Grid;
 
@@ -13,6 +14,7 @@ public sealed class GameRecorder : IDisposable
     private readonly GameStateSnapshot _initialState;
     private readonly int _seed;
     private readonly CommandHistory _history;
+    private readonly List<int> _bookmarks = new();
     private bool _isRecording;
 
     /// <summary>Whether the recorder is actively recording commands.</summary>
@@ -51,6 +53,15 @@ public sealed class GameRecorder : IDisposable
     }
 
     /// <summary>
+    /// Adds a bookmark at the specified tick for later reference.
+    /// </summary>
+    public void AddBookmark(int tick)
+    {
+        if (_isRecording)
+            _bookmarks.Add(tick);
+    }
+
+    /// <summary>
     /// Completes the recording and returns a <see cref="GameRecording"/>.
     /// Stops further recording.
     /// </summary>
@@ -67,7 +78,8 @@ public sealed class GameRecorder : IDisposable
             _history.GetCommands(),
             durationTicks,
             finalScore,
-            totalMoves);
+            totalMoves,
+            _bookmarks.ToArray());
     }
 
     public void Dispose()
