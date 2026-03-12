@@ -223,7 +223,13 @@ public class SimulationInvariantTests
         for (int i = 0; i < size; i++)
         {
             if (state.Grid[i].IsFalling)
-                Assert.Fail($"{context}: tile at index {i} still has Falling flag");
+            {
+                int x = i % state.Width, y = i / state.Width;
+                var tile = state.Grid[i];
+                Assert.Fail($"{context}: tile at index {i} ({x},{y}) still has Falling flag. " +
+                    $"Type={tile.Type}, Pos=({tile.Position.X:F2},{tile.Position.Y:F2}), " +
+                    $"Vel=({tile.Velocity.X:F2},{tile.Velocity.Y:F2})");
+            }
         }
     }
 

@@ -45,6 +45,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
     {
         ResetFrameBuffers();
         ProcessShuffledColumns(ref state, deltaTime);
+        ClearStaleFallingFlags(ref state);
     }
 
     public bool IsStable(in GameState state)
@@ -110,7 +111,20 @@ public class RealtimeGravitySystem : IPhysicsSimulation
         {
             var tile = state.GetTile(x, y);
 
-            if (ShouldSkipTile(in state, tile, x, y)) continue;
+            if (ShouldSkipTile(in state, tile, x, y))
+            {
+                // Clear falling state and snap position for immovable tiles (e.g. under Drop lock or cover)
+                if (tile.IsFalling && tile.Type != ElementType.None && !state.CanMove(x, y))
+                {
+                    tile.IsFalling = false;
+                    tile.Velocity.Y = 0;
+                    tile.Velocity.X = 0;
+                    tile.Position.X = x;
+                    tile.Position.Y = y;
+                    state.SetTile(x, y, tile);
+                }
+                continue;
+            }
 
             var target = _targetResolver.DetermineTarget(ref state, x, y);
             SimulatePhysics(ref tile, target, dt);
@@ -268,13 +282,43 @@ public class RealtimeGravitySystem : IPhysicsSimulation
 
         if (tile.Type == ElementType.None) return true;
 
-        // Tiles blocked by static cover are considered stable
+        // A tile with IsFalling needs at least one more tick for gravity to clear it
+        if (tile.IsFalling) return false;
+
+        // Tiles blocked by static cover are considered stable (flag already cleared above)
         if (!state.CanMove(x, y)) return true;
 
         return Math.Abs(tile.Velocity.Y) <= SnapThreshold &&
                Math.Abs(tile.Velocity.X) <= SnapThreshold &&
                Math.Abs(tile.Position.Y - y) <= SnapThreshold &&
                Math.Abs(tile.Position.X - x) <= SnapThreshold;
+    }
+
+    /// <summary>
+    /// Clear stale IsFalling flags on tiles that are physically at rest.
+    /// Prevents self-reinforcing follow cycles where tiles at grid position
+    /// with zero velocity retain IsFalling from a previous SnapToTargetY
+    /// with FoundDynamicTarget, causing tiles above to endlessly "follow".
+    /// </summary>
+    private void ClearStaleFallingFlags(ref GameState state)
+    {
+        for (int x = 0; x < state.Width; x++)
+        {
+            for (int y = 0; y < state.Height; y++)
+            {
+                var tile = state.GetTile(x, y);
+                if (!tile.IsFalling || tile.Type == ElementType.None) continue;
+
+                if (Math.Abs(tile.Velocity.Y) <= SnapThreshold &&
+                    Math.Abs(tile.Velocity.X) <= SnapThreshold &&
+                    Math.Abs(tile.Position.Y - y) <= SnapThreshold &&
+                    Math.Abs(tile.Position.X - x) <= SnapThreshold)
+                {
+                    tile.IsFalling = false;
+                    state.SetTile(x, y, tile);
+                }
+            }
+        }
     }
 
     /// <inheritdoc />

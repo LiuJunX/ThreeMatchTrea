@@ -118,6 +118,9 @@ internal sealed class SimulationMatchHandler
             var tile = state.GetTile(pos.X, pos.Y);
             if (tile.Type == ElementType.None) continue;
 
+            // Respect Indestructible lock (e.g., combo-transformed bombs awaiting batch activation)
+            if (!state.CanDestroy(pos)) continue;
+
             // Bombs are triggered, not destroyed — let ActivateBomb handle them
             if (tile.Type.IsBomb())
             {

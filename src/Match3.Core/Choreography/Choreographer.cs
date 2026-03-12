@@ -794,10 +794,30 @@ public sealed class Choreographer : IEventVisitor
             return;
         }
 
-        // Color bomb + normal tile: same performance as tap path
+        // Color bomb + other bomb combo: session-based flow handles the ColorBomb animation
+        // via ColorBombSessionStartEvent / BeamLaunched / ComboBatchActivate.
+        // Just remove the other bomb tile (ClearBombAttribute set it to None).
         if (evt.BombTypeA == ElementType.ColorBomb || evt.BombTypeB == ElementType.ColorBomb)
         {
             bool aIsColor = evt.BombTypeA == ElementType.ColorBomb;
+            var otherType = aIsColor ? evt.BombTypeB : evt.BombTypeA;
+
+            if (otherType.IsBomb())
+            {
+                // ColorBomb + bomb combo → session handles all animation.
+                // Remove the other bomb tile that was cleared.
+                int otherTileId = aIsColor ? evt.TileIdB : evt.TileIdA;
+                _commands.Add(new RemoveTileCommand
+                {
+                    TileId = otherTileId,
+                    StartTime = startTime + 0.1f,
+                    Duration = 0,
+                    Priority = 10
+                });
+                return;
+            }
+
+            // ColorBomb + normal tile: instant path (same performance as tap)
             var colorPos = aIsColor ? evt.PositionA : evt.PositionB;
             var origin = aIsColor ? posA : posB;
             int colorTileId = aIsColor ? evt.TileIdA : evt.TileIdB;
@@ -1556,14 +1576,57 @@ public sealed class Choreographer : IEventVisitor
     /// <inheritdoc />
     public void Visit(ColorBombComboTransformEvent evt)
     {
-        // TODO: animate beam arrival + tile transform to bomb type
+        // Beam arrival + tile transform: the state already changed the tile type,
+        // immediate-mode view picks it up. Choreographer records the hit time
+        // so subsequent BombActivatedEvent can sequence correctly.
+        float hitTime = GetStartTime(evt);
+        _beamHitTimes[evt.TargetPosition] = hitTime;
     }
 
     /// <inheritdoc />
     public void Visit(ColorBombComboBatchActivateEvent evt)
     {
-        // TODO: animate all transformed bombs activating simultaneously
-        // Individual BombActivatedEvents will follow for each bomb.
+        // Remove the ColorBomb tile (same as BatchDestroy path).
+        // Individual BombActivatedEvents will follow for each transformed bomb.
+        float startTime = GetStartTime(evt);
+
+        if (_activeColorBombSessions.TryGetValue(evt.BombTileId, out var sessionInfo))
+        {
+            float maxHitTime = sessionInfo.MaxBeamArrivalTime;
+            const float hitPause = 0.5f;
+            float shrinkStart = Math.Max(maxHitTime + hitPause, startTime);
+            float shrinkDuration = Config.ColorBombShrinkDuration;
+
+            _commands.Add(new ScaleTileCommand
+            {
+                TileId = evt.BombTileId,
+                FromScale = new Vector2(Config.ColorBombChargeScale, Config.ColorBombChargeScale),
+                ToScale = Vector2.Zero,
+                Easing = EasingType.InQuadratic,
+                StartTime = shrinkStart,
+                Duration = shrinkDuration
+            });
+
+            _commands.Add(new RemoveTileCommand
+            {
+                TileId = evt.BombTileId,
+                StartTime = shrinkStart + shrinkDuration,
+                Duration = 0,
+                Priority = 10
+            });
+
+            _activeColorBombSessions.Remove(evt.BombTileId);
+        }
+        else
+        {
+            _commands.Add(new RemoveTileCommand
+            {
+                TileId = evt.BombTileId,
+                StartTime = startTime,
+                Duration = 0,
+                Priority = 10
+            });
+        }
     }
 
     #endregion

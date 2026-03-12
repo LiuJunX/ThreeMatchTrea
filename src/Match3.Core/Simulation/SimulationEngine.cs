@@ -296,6 +296,11 @@ public sealed class SimulationEngine : IDisposable
         _currentTick++;
         _elapsedTime += deltaTime;
 
+        // 6.5. Clear stale physics state on immovable tiles.
+        // IsTileStable considers immovable tiles (under covers/Drop locks) always stable
+        // without checking their physics state, so stale IsFalling/velocity can persist.
+        ClearImmovableTilePhysicsState(ref state);
+
         State = state;
 
         var isStable = IsStable();
@@ -451,6 +456,37 @@ public sealed class SimulationEngine : IDisposable
 
         State = state;
         return true;
+    }
+
+    /// <summary>
+    /// Clear stale physics state on tiles that cannot move (under covers, Drop locks, etc.).
+    /// These tiles are considered "always stable" by IsTileStable, but their physics state
+    /// (IsFalling, Velocity, Position) can become stale when set by systems that don't
+    /// check movement restrictions (e.g., spawning, gravity inheritance).
+    /// </summary>
+    private static void ClearImmovableTilePhysicsState(ref GameState state)
+    {
+        for (int x = 0; x < state.Width; x++)
+        {
+            for (int y = 0; y < state.Height; y++)
+            {
+                var tile = state.GetTile(x, y);
+                if (tile.Type == ElementType.None) continue;
+                if (state.CanMove(x, y)) continue;
+
+                // Tile is immovable — clear any stale physics state
+                if (tile.IsFalling || tile.Velocity.X != 0 || tile.Velocity.Y != 0 ||
+                    tile.Position.X != x || tile.Position.Y != y)
+                {
+                    tile.IsFalling = false;
+                    tile.Velocity.X = 0;
+                    tile.Velocity.Y = 0;
+                    tile.Position.X = x;
+                    tile.Position.Y = y;
+                    state.SetTile(x, y, tile);
+                }
+            }
+        }
     }
 
     /// <summary>
