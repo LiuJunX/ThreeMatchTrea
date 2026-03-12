@@ -45,7 +45,7 @@ public sealed class ChoreographyConfig
     public float ColorBombChargeScale { get; set; } = 1.2f;
 
     /// <summary>Spin rate for color bomb: degrees per second during performance.</summary>
-    public float ColorBombSpinRate { get; set; } = 4320f;
+    public float ColorBombSpinRate { get; set; } = 21600f;
 
     /// <summary>Duration for color bomb shrink-to-nothing after beams land.</summary>
     public float ColorBombShrinkDuration { get; set; } = 0.15f;
