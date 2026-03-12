@@ -122,7 +122,7 @@ public sealed class Choreographer : IEventVisitor
 
         if (evt.MergeTarget.HasValue)
         {
-            // Merge animation: move to bomb origin and shrink
+            // Merge animation: move to bomb origin (no scaling — keep original size)
             var target = new Vector2(evt.MergeTarget.Value.X, evt.MergeTarget.Value.Y);
 
             _commands.Add(new MoveTileCommand
@@ -130,16 +130,6 @@ public sealed class Choreographer : IEventVisitor
                 TileId = evt.TileId,
                 From = position,
                 To = target,
-                StartTime = startTime,
-                Duration = Config.MergeDuration,
-                Easing = EasingType.InOutCubic
-            });
-
-            _commands.Add(new ScaleTileCommand
-            {
-                TileId = evt.TileId,
-                FromScale = Vector2.One,
-                ToScale = Vector2.Zero,
                 StartTime = startTime,
                 Duration = Config.MergeDuration,
                 Easing = EasingType.InOutCubic
@@ -991,18 +981,7 @@ public sealed class Choreographer : IEventVisitor
                 ? new Vector2(evt.TargetPosition.Value.X, evt.TargetPosition.Value.Y)
                 : evt.Origin;
 
-            // Overshoot along flight direction: the UFO's propeller sits on top and
-            // the bomb body hangs below, so the propeller must fly slightly past the
-            // target for the bomb body to align with the target cell center.
             float distance = Vector2.Distance(evt.Origin, targetPos);
-            if (distance > 0)
-            {
-                var dir = (targetPos - evt.Origin) / distance;
-                targetPos += dir * 0.3f;
-            }
-            // Additional screen-up nudge (grid Y is inverted) to fine-tune
-            // the bomb body's vertical alignment with the target cell.
-            targetPos.Y -= 0.40f;
             float flightTime = distance > 0 ? distance / Config.UfoFlightSpeed : 0.01f;
             float totalDuration = Config.UfoLaunchOverhead + flightTime;
             float stayFrac = UfoConstants.LaunchStayFraction;
@@ -1164,14 +1143,7 @@ public sealed class Choreographer : IEventVisitor
             currentPos = Vector2.Lerp(flight.Origin, flight.Target, eased);
         }
 
-        // Overshoot along flight direction (same as initial launch)
         float retargetDist = Vector2.Distance(currentPos, newTargetVec);
-        if (retargetDist > 0)
-        {
-            var dir = (newTargetVec - currentPos) / retargetDist;
-            newTargetVec += dir * 0.3f;
-        }
-        newTargetVec.Y -= 0.40f;
 
         // New flight segment duration based on distance to new target
         float newDistance = Vector2.Distance(currentPos, newTargetVec);
