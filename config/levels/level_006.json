@@ -1,0 +1,24 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_006",
+  "name": "Bomb Combos",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 99,
+  "targetDifficulty": 0.1,
+  "objectives": [
+    { "targetLayer": "Tile", "elementType": 1, "targetCount": 999 }
+  ],
+  "grid": [
+    10, 11,  0,  0,  0,  0,  0, 14, 14,
+     0,  0,  0,  0,  0,  0,  0,  0,  0,
+    10, 14,  0,  0,  0,  0,  0, 10, 13,
+     0,  0,  0,  0,  0,  0,  0,  0,  0,
+    10, 12,  0,  0,  0,  0,  0, 13, 13,
+     0,  0,  0,  0,  0,  0,  0,  0,  0,
+    14, 13,  0,  0,  0,  0,  0, 13, 12,
+     0,  0,  0,  0,  0,  0,  0,  0,  0,
+    12, 12,  0,  0, 11, 14,  0,  0,  0
+  ],
+  "notes": "Bomb combo test level. Pairs (swap to trigger): Row0: Rocket+Rocket, Square+Square | Row2: Rocket+Square, Rocket+UFO | Row4: Rocket+ColorBomb, UFO+UFO | Row6: Square+UFO, UFO+ColorBomb | Row8: ColorBomb+ColorBomb, VRocket+Square"
+}
