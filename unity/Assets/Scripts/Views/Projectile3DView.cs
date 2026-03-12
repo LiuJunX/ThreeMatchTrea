@@ -69,7 +69,7 @@ namespace Match3.Unity.Views
 
         private void ApplyBeamAppearance(byte colorIndex)
         {
-            var color = GetBeamColor(colorIndex);
+            var color = BeamColorPalette.GetBeamColor(colorIndex);
             _meshFilter.sharedMesh = MeshFactory.GetSphereMesh();
             _meshRenderer.sharedMaterial = GetOrCreateBeamMaterial(colorIndex);
             transform.localScale = Vector3.one * 0.25f;
@@ -88,12 +88,7 @@ namespace Match3.Unity.Views
             transform.rotation = Quaternion.Euler(0, 0, visual.Rotation);
             gameObject.SetActive(visual.IsVisible);
 
-            // Re-enable trail emission after first position update (prevents flash)
-            if (!_trail.emitting)
-            {
-                _trail.Clear();
-                _trail.emitting = true;
-            }
+            ProjectileLifecycleHelper.UpdateTrailEmission(_trail);
         }
 
         #region IPoolable
@@ -101,35 +96,16 @@ namespace Match3.Unity.Views
         public void OnSpawn()
         {
             ProjectileId = -1;
-            // Suppress trail until first UpdateFromVisual sets correct position
-            _trail.emitting = false;
-            _trail.Clear();
+            ProjectileLifecycleHelper.OnSpawn(_trail);
         }
 
         public void OnDespawn()
         {
             ProjectileId = -1;
-            gameObject.SetActive(false);
-            _trail.emitting = false;
-            _trail.Clear();
+            ProjectileLifecycleHelper.OnDespawn(gameObject, _trail);
         }
 
         #endregion
-
-        private static readonly Color[] BeamColors =
-        {
-            new Color(1f, 0.3f, 0.3f),    // Red
-            new Color(0.3f, 1f, 0.4f),     // Green
-            new Color(0.3f, 0.5f, 1f),     // Blue
-            new Color(1f, 0.95f, 0.3f),    // Yellow
-            new Color(0.8f, 0.4f, 1f),     // Purple
-            new Color(1f, 0.6f, 0.2f),     // Orange
-        };
-
-        private static Color GetBeamColor(byte index)
-        {
-            return index < BeamColors.Length ? BeamColors[index] : BeamColors[0];
-        }
 
         private static void EnsureTrailMaterial()
         {
@@ -143,7 +119,7 @@ namespace Match3.Unity.Views
         private static Material GetOrCreateBeamMaterial(byte colorIndex)
         {
             if (_beamMaterials == null)
-                _beamMaterials = new Material[BeamColors.Length];
+                _beamMaterials = new Material[BeamColorPalette.BeamColors.Length];
 
             int idx = colorIndex < _beamMaterials.Length ? colorIndex : 0;
             if (_beamMaterials[idx] != null) return _beamMaterials[idx];
@@ -152,7 +128,7 @@ namespace Match3.Unity.Views
                          ?? Shader.Find("Unlit/Color")
                          ?? Shader.Find("Sprites/Default");
             _beamMaterials[idx] = new Material(shader);
-            _beamMaterials[idx].color = GetBeamColor((byte)idx);
+            _beamMaterials[idx].color = BeamColorPalette.GetBeamColor((byte)idx);
             return _beamMaterials[idx];
         }
     }
