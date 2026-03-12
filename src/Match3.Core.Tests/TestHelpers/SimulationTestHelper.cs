@@ -118,6 +118,19 @@ public static class SimulationTestHelper
     }
 
     /// <summary>
+    /// Searches the entire grid for a tile with the given ID.
+    /// Returns <c>default</c> (Type == None) if not found.
+    /// </summary>
+    public static Tile FindTileById(in GameState state, long id)
+    {
+        for (int i = 0; i < state.Grid.Length; i++)
+        {
+            if (state.Grid[i].Id == id) return state.Grid[i];
+        }
+        return default;
+    }
+
+    /// <summary>
     /// Asserts two game states are logically equivalent (grid types, IDs, scores, objectives).
     /// </summary>
     public static void AssertStateEqual(GameState a, GameState b, string context = "")
