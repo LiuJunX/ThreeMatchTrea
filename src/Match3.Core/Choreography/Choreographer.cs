@@ -1314,22 +1314,136 @@ public sealed class Choreographer : IEventVisitor
     {
         float startTime = GetStartTime(evt);
 
-        // Emit update commands for all changed tiles
-        foreach (var change in evt.Changes)
+        var allTiles = evt.AllShuffledTiles;
+        if (allTiles.Count == 0)
         {
-            var updateCommand = new UpdateTileTypeCommand
+            // Fallback: no AllShuffledTiles — use Changes only (instant update)
+            foreach (var change in evt.Changes)
             {
-                TileId = change.TileId,
-                Position = change.Position,
-                TileType = change.ToType,
-                StartTime = startTime,
-                Duration = 0 // Instant update
-            };
-            _commands.Add(updateCommand);
+                _commands.Add(new UpdateTileTypeCommand
+                {
+                    TileId = change.TileId,
+                    Position = change.Position,
+                    TileType = change.ToType,
+                    StartTime = startTime,
+                    Duration = 0
+                });
+            }
+            return;
         }
 
-        // Optional: Add visual effect for shuffle notification
-        // UI can show a shuffle animation/notification if needed
+        // Compute board center for stagger ordering
+        float centerX = 0f, centerY = 0f;
+        foreach (var tile in allTiles)
+        {
+            centerX += tile.Position.X;
+            centerY += tile.Position.Y;
+        }
+        centerX /= allTiles.Count;
+        centerY /= allTiles.Count;
+
+        // Find max distance for normalizing stagger
+        float maxDist = 0f;
+        foreach (var tile in allTiles)
+        {
+            float dx = tile.Position.X - centerX;
+            float dy = tile.Position.Y - centerY;
+            float dist = MathF.Sqrt(dx * dx + dy * dy);
+            if (dist > maxDist) maxDist = dist;
+        }
+        if (maxDist < 0.001f) maxDist = 1f;
+
+        float gatherDuration = Config.ShuffleGatherDuration;
+        float gatherScale = Config.ShuffleGatherScale;
+        float gatherRotation = Config.ShuffleGatherRotation;
+        float midPause = Config.ShuffleMidpointPause;
+        float scatterDuration = Config.ShuffleScatterDuration;
+        float staggerMax = Config.ShuffleStaggerMax;
+
+        // Build maps from TileId -> new type/position for changed tiles
+        var changeMap = new Dictionary<int, TileTypeChange>(evt.Changes.Count);
+        foreach (var change in evt.Changes)
+            changeMap[change.TileId] = change;
+
+        foreach (var tile in allTiles)
+        {
+            float dx = tile.Position.X - centerX;
+            float dy = tile.Position.Y - centerY;
+            float dist = MathF.Sqrt(dx * dx + dy * dy);
+            float normalizedDist = dist / maxDist;
+            float stagger = normalizedDist * staggerMax;
+
+            // --- Phase 1: Gather (shrink + rotate, staggered by distance) ---
+            float gatherStart = startTime + stagger;
+
+            _commands.Add(new ScaleTileCommand
+            {
+                TileId = tile.TileId,
+                FromScale = Vector2.One,
+                ToScale = new Vector2(gatherScale, gatherScale),
+                StartTime = gatherStart,
+                Duration = gatherDuration,
+                Easing = EasingType.InQuadratic
+            });
+
+            _commands.Add(new RotateTileCommand
+            {
+                TileId = tile.TileId,
+                FromAngle = 0f,
+                ToAngle = gatherRotation,
+                StartTime = gatherStart,
+                Duration = gatherDuration,
+                Easing = EasingType.InQuadratic
+            });
+
+            // --- Phase 2: Type swap (instant, when tiles are invisible) ---
+            float typeSwapTime = startTime + staggerMax + gatherDuration;
+
+            if (changeMap.TryGetValue(tile.TileId, out var change))
+            {
+                _commands.Add(new UpdateTileTypeCommand
+                {
+                    TileId = tile.TileId,
+                    Position = change.Position,
+                    TileType = change.ToType,
+                    StartTime = typeSwapTime,
+                    Duration = 0
+                });
+            }
+
+            // --- Phase 3: Scatter (scale back up + rotate, reverse stagger) ---
+            float scatterStart = typeSwapTime + midPause + (staggerMax - stagger);
+
+            _commands.Add(new ScaleTileCommand
+            {
+                TileId = tile.TileId,
+                FromScale = new Vector2(gatherScale, gatherScale),
+                ToScale = Vector2.One,
+                StartTime = scatterStart,
+                Duration = scatterDuration,
+                Easing = EasingType.OutBack
+            });
+
+            _commands.Add(new RotateTileCommand
+            {
+                TileId = tile.TileId,
+                FromAngle = gatherRotation,
+                ToAngle = 360f,
+                StartTime = scatterStart,
+                Duration = scatterDuration,
+                Easing = EasingType.OutCubic
+            });
+        }
+
+        // --- Phase 4: Center flash effect ---
+        float effectTime = startTime + staggerMax + gatherDuration;
+        _commands.Add(new ShowEffectCommand
+        {
+            EffectType = "shuffle_flash",
+            Position = new Vector2(centerX, centerY),
+            StartTime = effectTime,
+            Duration = 0.1f
+        });
     }
 
     /// <inheritdoc />

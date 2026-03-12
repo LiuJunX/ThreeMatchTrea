@@ -10,7 +10,7 @@ namespace Match3.Core.Systems.Matching;
 public interface IBoardShuffleSystem
 {
     /// <summary>
-    /// Checks if the board needs shuffling (e.g. no possible moves).
+    /// Checks if the board needs shuffling (no valid moves available).
     /// </summary>
     bool NeedsShuffle(in GameState state);
 
@@ -27,5 +27,9 @@ public interface IBoardShuffleSystem
     /// <param name="state">游戏状态</param>
     /// <param name="events">事件收集器</param>
     /// <param name="maxAttempts">最大尝试次数</param>
-    void ShuffleUntilSolvable(ref GameState state, IEventCollector events, int maxAttempts = 10);
+    /// <param name="tick">当前 tick</param>
+    /// <param name="simulationTime">当前模拟时间</param>
+    /// <returns>true 表示成功找到有解布局，false 表示 maxAttempts 耗尽仍无解</returns>
+    bool ShuffleUntilSolvable(ref GameState state, IEventCollector events,
+        int maxAttempts = 20, int tick = 0, float simulationTime = 0f);
 }

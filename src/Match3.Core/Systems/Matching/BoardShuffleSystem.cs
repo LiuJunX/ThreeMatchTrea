@@ -14,39 +14,36 @@ namespace Match3.Core.Systems.Matching;
 /// </summary>
 public class BoardShuffleSystem : IBoardShuffleSystem
 {
-    private readonly IMatchFinder _matchFinder;
+    private readonly IDeadlockDetectionSystem _deadlockDetector;
 
-    public BoardShuffleSystem(IMatchFinder matchFinder)
+    public BoardShuffleSystem(IDeadlockDetectionSystem deadlockDetector)
     {
-        _matchFinder = matchFinder;
+        _deadlockDetector = deadlockDetector;
     }
 
     /// <inheritdoc />
     public bool NeedsShuffle(in GameState state)
     {
-        // 简单判定：如果没有可匹配的移动，就需要洗牌
-        // 这里需要更复杂的 MoveFinder 逻辑，暂时简化为：
-        // 如果棋盘稳定且没有匹配，假定需要检测（通常由上层逻辑 MoveFinder 决定）
-        // 实际上这个方法应该调用 MoveFinder.HasPossibleMoves()
-        // 但为了解耦，我们假设调用者只有在确认死锁时才调用 Shuffle
-        return false;
+        return !_deadlockDetector.HasValidMoves(in state);
     }
 
     /// <inheritdoc />
     public void Shuffle(ref GameState state, IEventCollector events)
     {
-        var changes = ShuffleAndGetChanges(ref state);
-        Pools.Release(changes); // 不需要保留，调用者如果需要会用 ShuffleUntilSolvable
+        var (changes, allTiles) = ShuffleAndGetChanges(ref state);
+        Pools.Release(changes);
+        Pools.Release(allTiles);
     }
 
     /// <summary>
-    /// 执行洗牌并返回变化列表
+    /// 执行洗牌并返回变化列表和所有参与 tile 列表
     /// </summary>
-    private List<TileTypeChange> ShuffleAndGetChanges(ref GameState state)
+    private (List<TileTypeChange> changes, List<ShuffledTileInfo> allTiles) ShuffleAndGetChanges(ref GameState state)
     {
         var types = Pools.ObtainList<ElementType>();
         var oldTypes = Pools.ObtainList<(Position Pos, ElementType OldType, int TileId)>();
         var changes = Pools.ObtainList<TileTypeChange>();
+        var allTiles = Pools.ObtainList<ShuffledTileInfo>();
 
         try
         {
@@ -75,14 +72,14 @@ public class BoardShuffleSystem : IBoardShuffleSystem
             // 2. 洗牌阶段：使用 Fisher-Yates 算法
             ShuffleTileTypes(types, state.Random);
 
-            // 2.5 智能调整：确保洗牌后有有效移动配置
-            EnsureValidMoveInTypes(types, state.Width, state.Height);
-
             // 3. 应用阶段：将洗好的类型填回棋盘
             for (int i = 0; i < oldTypes.Count; i++)
             {
                 var (pos, oldType, tileId) = oldTypes[i];
                 var newType = types[i];
+
+                // 记录所有参与洗牌的 tile（供动画使用）
+                allTiles.Add(new ShuffledTileInfo(tileId, pos, newType));
 
                 if (oldType != newType)
                 {
@@ -101,40 +98,61 @@ public class BoardShuffleSystem : IBoardShuffleSystem
                 }
             }
 
-            return changes; // 返回 changes 列表，由调用者负责 Release
+            return (changes, allTiles);
         }
         finally
         {
             Pools.Release(types);
             Pools.Release(oldTypes);
-            // changes 不释放，因为要返回
+            // changes 和 allTiles 不释放，由调用者负责
         }
     }
 
     /// <inheritdoc />
-    public void ShuffleUntilSolvable(ref GameState state, IEventCollector events, int maxAttempts = 10)
+    public bool ShuffleUntilSolvable(ref GameState state, IEventCollector events,
+        int maxAttempts = 20, int tick = 0, float simulationTime = 0f)
     {
+        List<TileTypeChange>? lastChanges = null;
+        List<ShuffledTileInfo>? lastAllTiles = null;
+        int attemptCount = 0;
+        bool success = false;
+
         for (int i = 0; i < maxAttempts; i++)
         {
-            var changes = ShuffleAndGetChanges(ref state);
+            // 释放上一轮的结果
+            if (lastChanges != null) Pools.Release(lastChanges);
+            if (lastAllTiles != null) Pools.Release(lastAllTiles);
 
-            // 检查是否有解 (这里需要 MoveFinder，暂时略过，假设 ShuffleAndGetChanges 内部做了启发式保证)
-            // 实际上 EnsureValidMoveInTypes 已经做了一定保证
+            var (changes, allTiles) = ShuffleAndGetChanges(ref state);
+            lastChanges = changes;
+            lastAllTiles = allTiles;
+            attemptCount = i + 1;
 
-            // 发送事件
-            if (events.IsEnabled && changes.Count > 0)
+            // 检查洗牌后是否有解
+            if (_deadlockDetector.HasValidMoves(in state))
             {
-                events.Emit(new BoardShuffledEvent
-                {
-                    Tick = 0, // 上下文 Tick 由外部传入？这里暂时为 0
-                    SimulationTime = 0,
-                    Changes = new List<TileTypeChange>(changes) // 复制一份，因为 changes 会被 Release
-                });
+                success = true;
+                break;
             }
-
-            Pools.Release(changes);
-            break; // 目前只试一次
         }
+
+        // 只在最终结果时发射一次事件
+        if (events.IsEnabled && lastChanges != null && lastAllTiles != null)
+        {
+            events.Emit(new BoardShuffledEvent
+            {
+                Tick = tick,
+                SimulationTime = simulationTime,
+                AttemptCount = attemptCount,
+                Changes = new List<TileTypeChange>(lastChanges),
+                AllShuffledTiles = new List<ShuffledTileInfo>(lastAllTiles)
+            });
+        }
+
+        if (lastChanges != null) Pools.Release(lastChanges);
+        if (lastAllTiles != null) Pools.Release(lastAllTiles);
+
+        return success;
     }
 
     /// <summary>
@@ -161,61 +179,6 @@ public class BoardShuffleSystem : IBoardShuffleSystem
             n--;
             int k = random.Next(0, n + 1);
             (types[k], types[n]) = (types[n], types[k]);
-        }
-    }
-
-    /// <summary>
-    /// 智能调整：确保 types 列表分配到棋盘后至少有一个有效移动
-    /// 策略：找到数量>=3的颜色，确保其中2个相邻，第3个在可交换位置
-    /// </summary>
-    private static void EnsureValidMoveInTypes(List<ElementType> types, int width, int height)
-    {
-        if (types.Count < 3 || width < 2 || height < 2)
-            return;
-
-        // 统计每种颜色的数量和位置
-        var colorPositions = new Dictionary<ElementType, List<int>>();
-        for (int i = 0; i < types.Count; i++)
-        {
-            var type = types[i];
-            if (!colorPositions.ContainsKey(type))
-                colorPositions[type] = new List<int>();
-            colorPositions[type].Add(i);
-        }
-
-        // 找到数量 >= 3 的颜色
-        ElementType? targetColor = null;
-        List<int>? targetPositions = null;
-        foreach (var kvp in colorPositions)
-        {
-            if (kvp.Value.Count >= 3)
-            {
-                targetColor = kvp.Key;
-                targetPositions = kvp.Value;
-                break;
-            }
-        }
-
-        if (targetColor == null || targetPositions == null)
-            return; // 没有足够的同色方块，无法保证有效移动
-
-        // 创建有效移动配置：
-        // 配置 A（垂直）：位置 (0,0), (0,1), (0,2) 放目标颜色
-        //   - 已经是垂直3连，会直接消除 - 不好
-        // 配置 B（潜在）：位置 (0,0), (0,1) 放目标色，(1,2) 放目标色 -> 交换 (0,2)<->(1,2) 可消除
-        // 为了简化，我们强制修改 types 中的前几个元素为目标颜色，模拟一个潜在匹配
-        // 注意：这只是修改了列表中的元素值，并不保证位置映射回 grid 后一定相邻
-        // 因为 types 是按 (0,0)->(w,h) 顺序收集的，所以 types[0], types[1] 对应 (0,0), (1,0) [水平] 或 (0,0), (0,1) [垂直]?
-        // 收集顺序是 y then x: (0,0), (1,0), (2,0)...
-        
-        // 强制设置 (0,0) 和 (1,0) 为目标色 (水平相邻)
-        if (types.Count > width + 2)
-        {
-            // 找到非目标色的索引，用于交换
-            // 这里逻辑比较复杂，简化处理：
-            // 只要 Shuffle 足够随机，且颜色分布合理，大概率有解。
-            // 严格的 EnsureSolvable 需要模拟 MoveFinder。
-            // 既然当前是 Prototype，先保留随机洗牌。
         }
     }
 }

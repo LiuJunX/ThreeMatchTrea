@@ -47,7 +47,7 @@ public class DeadlockIntegrationTests
         var bombGenerator = new BombGenerator();
         var matchFinder = new ClassicMatchFinder(bombGenerator);
         var detector = new DeadlockDetectionSystem(matchFinder);
-        var shuffler = new BoardShuffleSystem(matchFinder);
+        var shuffler = new BoardShuffleSystem(detector);
         return (detector, shuffler);
     }
 
@@ -100,6 +100,14 @@ public class DeadlockIntegrationTests
 
         // 最终棋盘应该稳定且有可行移动
         Assert.True(engine.IsStable(), "模拟应该达到稳定状态");
+
+        // 验证洗牌后棋盘可解（或已通关/失败）
+        var finalState = engine.State;
+        if (finalState.LevelStatus == Match3.Core.Models.Enums.LevelStatus.InProgress)
+        {
+            Assert.True(deadlockDetector.HasValidMoves(in finalState),
+                "洗牌后棋盘应该有可行移动");
+        }
     }
 
     [Fact]

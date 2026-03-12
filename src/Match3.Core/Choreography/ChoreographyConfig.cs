@@ -87,4 +87,24 @@ public sealed class ChoreographyConfig
 
     /// <summary>Acceleration for wipe wave (each ring faster than the last).</summary>
     public float DoubleColorWipeAccel { get; set; } = DoubleColorBombConstants.WipeAcceleration;
+
+    // --- Shuffle Animation ---
+
+    /// <summary>Duration for gather phase (tiles shrink + rotate to disappear).</summary>
+    public float ShuffleGatherDuration { get; set; } = 0.2f;
+
+    /// <summary>Target scale during gather phase (0 = fully shrunk).</summary>
+    public float ShuffleGatherScale { get; set; } = 0f;
+
+    /// <summary>Rotation degrees during gather phase.</summary>
+    public float ShuffleGatherRotation { get; set; } = 180f;
+
+    /// <summary>Pause between gather and scatter phases (type swap happens here).</summary>
+    public float ShuffleMidpointPause { get; set; } = 0.1f;
+
+    /// <summary>Duration for scatter phase (tiles scale back up + rotate to appear).</summary>
+    public float ShuffleScatterDuration { get; set; } = 0.25f;
+
+    /// <summary>Maximum stagger delay per tile (seconds) based on distance from center.</summary>
+    public float ShuffleStaggerMax { get; set; } = 0.08f;
 }

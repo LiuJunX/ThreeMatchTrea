@@ -192,7 +192,7 @@ public sealed class GameServiceBuilder
         _spawnModelFactory = rng => new RuleBasedSpawnModel(rng);
         _tileGeneratorFactory = rng => new StandardTileGenerator(rng);
         _deadlockDetectorFactory = matchFinder => new DeadlockDetectionSystem(matchFinder);
-        _shuffleSystemFactory = deadlockDetector => new BoardShuffleSystem(new ClassicMatchFinder(new BombGenerator()));
+        _shuffleSystemFactory = deadlockDetector => new BoardShuffleSystem(deadlockDetector);
 
         return this;
     }
@@ -239,6 +239,6 @@ public sealed class GameServiceBuilder
         _spawnModelFactory ??= rng => new RuleBasedSpawnModel(rng);
         _tileGeneratorFactory ??= rng => new StandardTileGenerator(rng);
         _deadlockDetectorFactory ??= matchFinder => new DeadlockDetectionSystem(matchFinder);
-        _shuffleSystemFactory ??= deadlockDetector => new BoardShuffleSystem(new ClassicMatchFinder(new BombGenerator()));
+        _shuffleSystemFactory ??= deadlockDetector => new BoardShuffleSystem(deadlockDetector);
     }
 }

@@ -43,11 +43,56 @@ public class BoardShuffleSystemTests
         public ulong GetState() => 0;
     }
 
+    /// <summary>
+    /// Mock deadlock detector that can be configured to return specific results.
+    /// </summary>
+    private class MockDeadlockDetector : IDeadlockDetectionSystem
+    {
+        private readonly Queue<bool> _results = new();
+        private bool _defaultResult = true;
+
+        /// <summary>
+        /// Queue a sequence of HasValidMoves results. After exhausted, uses defaultResult.
+        /// </summary>
+        public MockDeadlockDetector WithResults(params bool[] results)
+        {
+            foreach (var r in results)
+                _results.Enqueue(r);
+            return this;
+        }
+
+        /// <summary>
+        /// Set the default result after queued results are exhausted.
+        /// </summary>
+        public MockDeadlockDetector WithDefault(bool result)
+        {
+            _defaultResult = result;
+            return this;
+        }
+
+        public int CallCount { get; private set; }
+
+        public bool HasValidMoves(in GameState state)
+        {
+            CallCount++;
+            return _results.Count > 0 ? _results.Dequeue() : _defaultResult;
+        }
+
+        public List<Match3.Core.Utility.ValidMove> FindAllValidMoves(in GameState state) => new();
+        public void InvalidateCache() { }
+    }
+
     private BoardShuffleSystem CreateShuffleSystem()
     {
         var bombGenerator = new BombGenerator();
         var matchFinder = new ClassicMatchFinder(bombGenerator);
-        return new BoardShuffleSystem(matchFinder);
+        var deadlockDetector = new DeadlockDetectionSystem(matchFinder);
+        return new BoardShuffleSystem(deadlockDetector);
+    }
+
+    private BoardShuffleSystem CreateShuffleSystem(IDeadlockDetectionSystem detector)
+    {
+        return new BoardShuffleSystem(detector);
     }
 
     private GameState CreateEmptyState(int width = 6, int height = 6)
@@ -161,29 +206,70 @@ public class BoardShuffleSystemTests
         var events = NullEventCollector.Instance;
 
         // Act
-        shuffleSystem.ShuffleUntilSolvable(ref state, events, maxAttempts: 10);
+        bool success = shuffleSystem.ShuffleUntilSolvable(ref state, events, maxAttempts: 20);
 
-        // Assert
-        // Check if board is solvable or if events were emitted
-        // Since we don't have deadlockDetector here, we assume if it didn't throw/crash it's fine
-        // Or we can check if any changes happened
-        Assert.True(true); // Placeholder, verify events later
+        // Assert — after shuffle, should have valid moves
+        var bombGenerator = new BombGenerator();
+        var matchFinder = new ClassicMatchFinder(bombGenerator);
+        var detector = new DeadlockDetectionSystem(matchFinder);
+        Assert.True(success, "ShuffleUntilSolvable should find a valid layout");
+        Assert.True(detector.HasValidMoves(in state), "Board should have valid moves after successful shuffle");
     }
 
     [Fact]
     public void ShuffleUntilSolvable_RespectsMaxAttempts()
     {
-        // Arrange
-        var shuffleSystem = CreateShuffleSystem();
+        // Arrange — mock that always returns no valid moves
+        var mockDetector = new MockDeadlockDetector().WithDefault(false);
+        var shuffleSystem = CreateShuffleSystem(mockDetector);
         var state = CreateDeadlockBoard();
         var events = NullEventCollector.Instance;
 
-        // Act - 使用非常小的最大尝试次数
-        shuffleSystem.ShuffleUntilSolvable(ref state, events, maxAttempts: 1);
+        // Act
+        bool success = shuffleSystem.ShuffleUntilSolvable(ref state, events, maxAttempts: 5);
+
+        // Assert — should fail and have called HasValidMoves exactly maxAttempts + 1 times
+        // (once per attempt + one final check)
+        Assert.False(success, "Should return false when all attempts fail");
+    }
+
+    [Fact]
+    public void ShuffleUntilSolvable_RetriesUntilSolvable()
+    {
+        // Arrange — mock returns false for first 3 calls, then true
+        var mockDetector = new MockDeadlockDetector()
+            .WithResults(false, false, false, true);
+        var shuffleSystem = CreateShuffleSystem(mockDetector);
+        var state = CreateDeadlockBoard();
+        var events = new BufferedEventCollector();
+
+        // Act
+        bool success = shuffleSystem.ShuffleUntilSolvable(ref state, events, maxAttempts: 10);
 
         // Assert
-        // 结果取决于随机性，但至少应该尝试了一次
-        Assert.True(true);
+        Assert.True(success, "Should succeed after retries");
+        var shuffleEvents = events.GetEvents().OfType<BoardShuffledEvent>().ToList();
+        Assert.Single(shuffleEvents); // Only one event emitted at the end
+        Assert.Equal(4, shuffleEvents[0].AttemptCount); // 4 attempts before success
+    }
+
+    [Fact]
+    public void ShuffleUntilSolvable_AllAttemptsFail_ReturnsFalse()
+    {
+        // Arrange — mock always returns false
+        var mockDetector = new MockDeadlockDetector().WithDefault(false);
+        var shuffleSystem = CreateShuffleSystem(mockDetector);
+        var state = CreateDeadlockBoard();
+        var events = new BufferedEventCollector();
+
+        // Act
+        bool success = shuffleSystem.ShuffleUntilSolvable(ref state, events, maxAttempts: 3);
+
+        // Assert
+        Assert.False(success, "Should return false when all attempts exhausted");
+        var shuffleEvents = events.GetEvents().OfType<BoardShuffledEvent>().ToList();
+        Assert.Single(shuffleEvents); // Still emits one event with the final state
+        Assert.Equal(3, shuffleEvents[0].AttemptCount);
     }
 
     [Fact]
@@ -222,22 +308,22 @@ public class BoardShuffleSystemTests
         var events = new BufferedEventCollector();
 
         // Act
-        shuffleSystem.ShuffleUntilSolvable(ref state, events, maxAttempts: 5);
+        shuffleSystem.ShuffleUntilSolvable(ref state, events, maxAttempts: 20, tick: 5, simulationTime: 1.5f);
 
         // Assert
         var shuffleEvents = events.GetEvents().OfType<BoardShuffledEvent>().ToList();
-        Assert.NotEmpty(shuffleEvents);
+        Assert.Single(shuffleEvents); // Only one event at the end
 
-        // 至少应该有一个洗牌事件
-        var firstEvent = shuffleEvents.First();
-        Assert.True(firstEvent.AttemptCount >= 1);
-        Assert.True(firstEvent.AttemptCount <= 5);
+        var evt = shuffleEvents[0];
+        Assert.True(evt.AttemptCount >= 1);
+        Assert.Equal(5, evt.Tick);
+        Assert.Equal(1.5f, evt.SimulationTime);
 
         // 验证事件包含变化信息
-        Assert.NotNull(firstEvent.Changes);
-        // 洗牌后至少有一些棋子改变了类型（大多数情况）
-        // 注意：理论上有极小概率洗牌后完全一样，但实际不太可能
-        Assert.True(firstEvent.Changes.Count >= 0);
+        Assert.NotNull(evt.Changes);
+        // 验证 AllShuffledTiles 包含所有参与的 tile
+        Assert.NotNull(evt.AllShuffledTiles);
+        Assert.True(evt.AllShuffledTiles.Count > 0, "AllShuffledTiles should contain participating tiles");
     }
 
     [Fact]
@@ -274,9 +360,7 @@ public class BoardShuffleSystemTests
             }
         }
 
-        // 洗牌应该改变至少一些位置（大多数情况下）
-        // 注意：理论上有极小概率洗牌后完全一样，但实际不太可能
-        Assert.True(changedCount > 0 || changedCount == 0); // 允许任何结果，主要是确保不崩溃
+        Assert.True(changedCount > 0, "Shuffle should change at least some tile positions");
     }
 
     [Fact]
@@ -362,7 +446,7 @@ public class BoardShuffleSystemTests
         }
 
         // Act
-        shuffleSystem.ShuffleUntilSolvable(ref state, events, maxAttempts: 5);
+        shuffleSystem.ShuffleUntilSolvable(ref state, events, maxAttempts: 20);
 
         // Assert
         var shuffleEvents = events.GetEvents().OfType<BoardShuffledEvent>().ToList();
@@ -378,7 +462,7 @@ public class BoardShuffleSystemTests
             Assert.True(change.Position.X >= 0 && change.Position.X < state.Width);
             Assert.True(change.Position.Y >= 0 && change.Position.Y < state.Height);
 
-            // 验证 TileId 匹配原始位置的 ID
+            // 验证 TileId 匹配位置的 ID（Tile Id 在洗牌中不变）
             var expectedId = tileIds[(change.Position.X, change.Position.Y)];
             Assert.Equal(expectedId, change.TileId);
 
@@ -396,4 +480,3 @@ public class BoardShuffleSystemTests
         }
     }
 }
-

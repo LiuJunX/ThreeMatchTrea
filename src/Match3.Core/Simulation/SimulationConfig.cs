@@ -44,9 +44,9 @@ public class SimulationConfig
 
     /// <summary>
     /// Maximum number of shuffle attempts when trying to resolve deadlock.
-    /// Default: 10.
+    /// Default: 20.
     /// </summary>
-    public int ShuffleMaxAttempts { get; set; } = 10;
+    public int ShuffleMaxAttempts { get; set; } = 20;
 
     /// <summary>
     /// Creates a config optimized for AI simulation.

@@ -1,4 +1,5 @@
 using System;
+using Match3.Core.Choreography;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
@@ -31,6 +32,7 @@ public sealed class SimulationEngine : IDisposable
     private readonly IBoardShuffleSystem? _shuffleSystem;
     private readonly ILevelObjectiveSystem? _objectiveSystem;
     private readonly LockScheduler _lockScheduler;
+    private readonly ChoreographyConfig? _choreographyConfig;
 
     private IEventCollector _eventCollector;
     private int _currentTick;
@@ -104,7 +106,8 @@ public sealed class SimulationEngine : IDisposable
         IBoardShuffleSystem? shuffleSystem = null,
         ILevelObjectiveSystem? objectiveSystem = null,
         IColorBombSessionManager? colorBombSessionManager = null,
-        LockScheduler? lockScheduler = null)
+        LockScheduler? lockScheduler = null,
+        ChoreographyConfig? choreographyConfig = null)
     {
         State = initialState;
         _config = config ?? new SimulationConfig();
@@ -116,6 +119,7 @@ public sealed class SimulationEngine : IDisposable
         _eventCollector = eventCollector ?? NullEventCollector.Instance;
         _objectiveSystem = objectiveSystem;
         _lockScheduler = lockScheduler ?? new LockScheduler();
+        _choreographyConfig = choreographyConfig;
         _pendingMoveState = PendingMoveState.None;
 
         // Create orchestrator to coordinate subsystems
@@ -129,7 +133,8 @@ public sealed class SimulationEngine : IDisposable
             explosionSystem ?? new ExplosionSystem(),
             objectiveSystem,
             colorBombSessionManager,
-            _lockScheduler);
+            _lockScheduler,
+            choreographyConfig);
 
         // Initialize shared swap operations with instant context
         var swapContext = new InstantSwapContext(SwapAnimationDuration);
@@ -280,13 +285,16 @@ public sealed class SimulationEngine : IDisposable
                 }
 
                 // Shuffle until solvable
-                _shuffleSystem.ShuffleUntilSolvable(
-                    ref state, _eventCollector, maxAttempts: _config.ShuffleMaxAttempts);
+                bool shuffleSuccess = _shuffleSystem.ShuffleUntilSolvable(
+                    ref state, _eventCollector,
+                    maxAttempts: _config.ShuffleMaxAttempts,
+                    tick: _currentTick,
+                    simulationTime: _elapsedTime);
 
-                if (!_deadlockDetector.HasValidMoves(in state))
+                if (!shuffleSuccess)
                 {
-                    // Extreme case: still deadlocked after max attempts
-                    // Mark as failed to prevent infinite shuffle loop
+                    // All attempts exhausted — level fails
+                    state.LevelStatus = LevelStatus.Defeat;
                     _shuffleFailed = true;
                 }
             }
