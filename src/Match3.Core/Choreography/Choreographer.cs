@@ -1645,6 +1645,19 @@ public sealed class Choreographer : IEventVisitor
                 Priority = 10
             });
         }
+
+        // Remove each transformed bomb tile — ClearBombAttribute sets them to None
+        // before the explosion, so no TileDestroyedEvent is emitted for them.
+        foreach (var tileId in evt.ActivatedTileIds)
+        {
+            _commands.Add(new RemoveTileCommand
+            {
+                TileId = tileId,
+                StartTime = startTime,
+                Duration = 0,
+                Priority = 10
+            });
+        }
     }
 
     #endregion

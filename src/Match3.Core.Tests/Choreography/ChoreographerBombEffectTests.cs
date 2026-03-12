@@ -370,6 +370,61 @@ public class ChoreographerBombEffectTests
     }
 
     [Fact]
+    public void ComboBatchActivate_RemovesTransformedBombTiles()
+    {
+        // Session + beam + transform
+        _choreographer.Choreograph(new GameEvent[]
+        {
+            new ColorBombSessionStartEvent
+            {
+                TileId = 42,
+                Position = new Position(3, 3),
+                TargetColor = ElementType.Item1,
+                SimulationTime = 0f
+            }
+        });
+        _choreographer.Choreograph(new GameEvent[]
+        {
+            new ColorBombBeamLaunchedEvent
+            {
+                BombTileId = 42, Origin = new Vector2(3, 3),
+                TargetPosition = new Position(5, 3), TargetTileId = 10,
+                FlightDuration = 0.2f, BeamIndex = 0, SimulationTime = 0.1f
+            }
+        }, baseTime: 0.1f);
+        _choreographer.Choreograph(new GameEvent[]
+        {
+            new ColorBombComboTransformEvent
+            {
+                BombTileId = 42, TargetPosition = new Position(5, 3),
+                TargetTileId = 10, NewBombType = ElementType.HorizontalRocket,
+                SimulationTime = 0.3f
+            }
+        }, baseTime: 0.3f);
+
+        // Batch activate: all transformed bombs fire
+        var commands = _choreographer.Choreograph(new GameEvent[]
+        {
+            new ColorBombComboBatchActivateEvent
+            {
+                BombTileId = 42,
+                BombPosition = new Position(3, 3),
+                ComboBombType = ElementType.HorizontalRocket,
+                ActivatedPositions = new List<Position> { new(5, 3) },
+                ActivatedTileIds = new List<int> { 10 },
+                SimulationTime = 1.0f
+            }
+        }, baseTime: 1.0f);
+
+        // ColorBomb itself should be removed
+        Assert.Contains(commands.OfType<RemoveTileCommand>(), c => c.TileId == 42);
+
+        // Transformed bomb tile should also be removed
+        var removeTarget = Assert.Single(commands.OfType<RemoveTileCommand>().Where(c => c.TileId == 10));
+        Assert.NotNull(removeTarget);
+    }
+
+    [Fact]
     public void BeamTarget_ShakeCoversBetweenHitAndDestroy()
     {
         // Single-tick: BombActivated + TileDestroyed in same batch
