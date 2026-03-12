@@ -443,11 +443,11 @@ public class DropTimingTests
     }
 
     /// <summary>
-    /// When a bomb origin is created from a match, the origin cell should have a Drop lock
-    /// to prevent the bomb from falling during the pop animation.
+    /// When a 4-match triggers bomb generation, the bomb origin cell gets DropLock (not ReceiveLock)
+    /// and all other merge-source positions get ReceiveLock (not DropLock).
     /// </summary>
     [Fact]
-    public void BombOrigin_HasDropLock_AfterMatchCreation()
+    public void BombMerge_BombOriginGetsDropLock_MergeSourcesGetReceiveLock()
     {
         var rng = new StubRandom();
         var state = new GameState(5, 5, 4, rng);
@@ -458,7 +458,7 @@ public class DropTimingTests
             for (int x = 0; x < 5; x++)
                 state.SetTile(x, y, new Tile(id++, (x + y) % 2 == 0 ? ElementType.Item4 : ElementType.Item3, x, y));
 
-        // 4-in-a-row to trigger bomb generation at row 0
+        // 4-in-a-row at row 0 → triggers bomb generation
         state.SetTile(0, 0, new Tile(100, ElementType.Item2, 0, 0));
         state.SetTile(1, 0, new Tile(101, ElementType.Item2, 1, 0));
         state.SetTile(2, 0, new Tile(102, ElementType.Item2, 2, 0));
@@ -467,29 +467,171 @@ public class DropTimingTests
         var events = new BufferedEventCollector();
         var engine = CreateFullEngine(state, rng, events);
 
-        // Run a few ticks so the match fires
-        for (int i = 0; i < 3; i++)
-            engine.Tick();
-
-        // Find which position got a bomb (if any)
-        var s = engine.State;
+        // Tick until match fires (bomb appears)
         Position? bombPos = null;
+        for (int tick = 0; tick < 5; tick++)
+        {
+            engine.Tick();
+            var s = engine.State;
+            for (int x = 0; x < 4; x++)
+            {
+                if (s.GetTile(x, 0).Type.IsBomb())
+                {
+                    bombPos = new Position(x, 0);
+                    break;
+                }
+            }
+            if (bombPos.HasValue) break;
+        }
+
+        Assert.True(bombPos.HasValue, "4-match should generate a bomb");
+
+        var st = engine.State;
+
+        // Bomb origin: has DropLock, no ReceiveLock
+        Assert.True(st.IsLocked(bombPos.Value, CellLockType.Drop),
+            $"BombOrigin ({bombPos.Value}) should have DropLock");
+        Assert.False(st.IsLocked(bombPos.Value, CellLockType.Receive),
+            $"BombOrigin ({bombPos.Value}) should NOT have ReceiveLock");
+
+        // Merge sources: have ReceiveLock, no DropLock
         for (int x = 0; x < 4; x++)
         {
-            if (s.GetTile(x, 0).Type.IsBomb())
+            var pos = new Position(x, 0);
+            if (pos == bombPos.Value) continue;
+
+            Assert.True(st.IsLocked(pos, CellLockType.Receive),
+                $"MergeSource ({pos}) should have ReceiveLock");
+            Assert.False(st.IsLocked(pos, CellLockType.Drop),
+                $"MergeSource ({pos}) should NOT have DropLock");
+        }
+    }
+
+    /// <summary>
+    /// BombOrigin DropLock duration = BombOriginDrop (0.15s).
+    /// At 60 FPS (dt ≈ 0.01667s), the lock should expire after ≈9 ticks.
+    /// </summary>
+    [Fact]
+    public void BombMerge_DropLockDuration_MatchesBombOriginDropConstant()
+    {
+        var rng = new StubRandom();
+        var state = new GameState(5, 5, 4, rng);
+
+        int id = 1;
+        for (int y = 0; y < 5; y++)
+            for (int x = 0; x < 5; x++)
+                state.SetTile(x, y, new Tile(id++, (x + y) % 2 == 0 ? ElementType.Item4 : ElementType.Item3, x, y));
+
+        state.SetTile(0, 0, new Tile(100, ElementType.Item2, 0, 0));
+        state.SetTile(1, 0, new Tile(101, ElementType.Item2, 1, 0));
+        state.SetTile(2, 0, new Tile(102, ElementType.Item2, 2, 0));
+        state.SetTile(3, 0, new Tile(103, ElementType.Item2, 3, 0));
+
+        var engine = CreateFullEngine(state, rng, new BufferedEventCollector());
+
+        // Find the tick where bomb appears
+        Position? bombPos = null;
+        for (int tick = 0; tick < 5; tick++)
+        {
+            engine.Tick();
+            var s = engine.State;
+            for (int x = 0; x < 4; x++)
             {
-                bombPos = new Position(x, 0);
+                if (s.GetTile(x, 0).Type.IsBomb())
+                {
+                    bombPos = new Position(x, 0);
+                    break;
+                }
+            }
+            if (bombPos.HasValue) break;
+        }
+
+        Assert.True(bombPos.HasValue, "4-match should generate a bomb");
+
+        // Count how many additional ticks until DropLock expires
+        float dt = SimulationConfig.DefaultFixedDeltaTime;
+        int expectedTicks = (int)System.Math.Ceiling(ReceiveLockTimings.BombOriginDrop / dt);
+
+        int ticksWithLock = 0;
+        for (int i = 0; i < expectedTicks + 5; i++)
+        {
+            if (engine.State.IsLocked(bombPos.Value, CellLockType.Drop))
+                ticksWithLock++;
+            else
+                break;
+            engine.Tick();
+        }
+
+        // Lock should last approximately expectedTicks (allow ±1 for boundary rounding)
+        Assert.InRange(ticksWithLock, expectedTicks - 1, expectedTicks + 1);
+    }
+
+    /// <summary>
+    /// MergeSource ReceiveLock duration = MergeSource (0.3s).
+    /// Should last roughly twice as long as the BombOrigin DropLock (0.15s).
+    /// </summary>
+    [Fact]
+    public void BombMerge_ReceiveLockDuration_MatchesMergeSourceConstant()
+    {
+        var rng = new StubRandom();
+        var state = new GameState(5, 5, 4, rng);
+
+        int id = 1;
+        for (int y = 0; y < 5; y++)
+            for (int x = 0; x < 5; x++)
+                state.SetTile(x, y, new Tile(id++, (x + y) % 2 == 0 ? ElementType.Item4 : ElementType.Item3, x, y));
+
+        state.SetTile(0, 0, new Tile(100, ElementType.Item2, 0, 0));
+        state.SetTile(1, 0, new Tile(101, ElementType.Item2, 1, 0));
+        state.SetTile(2, 0, new Tile(102, ElementType.Item2, 2, 0));
+        state.SetTile(3, 0, new Tile(103, ElementType.Item2, 3, 0));
+
+        var engine = CreateFullEngine(state, rng, new BufferedEventCollector());
+
+        // Find bomb position and a merge source
+        Position? bombPos = null;
+        for (int tick = 0; tick < 5; tick++)
+        {
+            engine.Tick();
+            var s = engine.State;
+            for (int x = 0; x < 4; x++)
+            {
+                if (s.GetTile(x, 0).Type.IsBomb())
+                {
+                    bombPos = new Position(x, 0);
+                    break;
+                }
+            }
+            if (bombPos.HasValue) break;
+        }
+
+        Assert.True(bombPos.HasValue, "4-match should generate a bomb");
+
+        // Pick first merge source (non-bomb position in the match)
+        Position mergeSource = default;
+        for (int x = 0; x < 4; x++)
+        {
+            if (x != bombPos.Value.X)
+            {
+                mergeSource = new Position(x, 0);
                 break;
             }
         }
 
-        // If a bomb was created, it should be at the correct position (not fallen)
-        if (bombPos != null)
+        float dt = SimulationConfig.DefaultFixedDeltaTime;
+        int expectedTicks = (int)System.Math.Ceiling(ReceiveLockTimings.MergeSource / dt);
+
+        int ticksWithLock = 0;
+        for (int i = 0; i < expectedTicks + 5; i++)
         {
-            var tile = s.GetTile(bombPos.Value.X, bombPos.Value.Y);
-            Assert.True(tile.Type.IsBomb(), $"Expected bomb at {bombPos.Value}");
-            Assert.Equal((float)bombPos.Value.Y, tile.Position.Y);
+            if (engine.State.IsLocked(mergeSource, CellLockType.Receive))
+                ticksWithLock++;
+            else
+                break;
+            engine.Tick();
         }
+
+        Assert.InRange(ticksWithLock, expectedTicks - 1, expectedTicks + 1);
     }
 
     /// <summary>
