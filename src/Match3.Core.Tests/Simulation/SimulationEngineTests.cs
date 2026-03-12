@@ -667,6 +667,11 @@ public class SimulationEngineTests
         // Bomb effects are triggered AFTER swap animation completes
         engine.Tick(0.16f);
 
+        // Run additional ticks so explosion waves can process all affected tiles
+        // (wave interval = 0.1s, max radius up to 4 → need ~0.5s more)
+        for (int i = 0; i < 10; i++)
+            engine.Tick(0.1f);
+
         // Assert: 验证组合效果 - 通过检查 TileDestroyedEvent
         // 火箭+火箭=十字消除，应该触发多个 TileDestroyedEvent
         var destroyedEvents = collector.GetEvents().OfType<TileDestroyedEvent>().ToList();

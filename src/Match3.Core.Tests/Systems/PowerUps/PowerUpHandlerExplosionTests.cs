@@ -182,6 +182,11 @@ public class PowerUpHandlerExplosionTests
             CreatedExplosions.Add((origin, new HashSet<Position>(targets)));
         }
 
+        public void CreateTargetedExplosion(ref GameState state, Position origin, IEnumerable<Position> targets, float waveInterval, float acceleration, float receiveLockDuration)
+        {
+            CreatedExplosions.Add((origin, new HashSet<Position>(targets)));
+        }
+
         public void Update(ref GameState state, float deltaTime, int tick, float simTime,
             IEventCollector eventCollector, List<Position> triggeredBombs) { }
 

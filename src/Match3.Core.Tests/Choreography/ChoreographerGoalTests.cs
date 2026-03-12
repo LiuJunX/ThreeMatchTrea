@@ -38,8 +38,8 @@ public class ChoreographerGoalTests
         var commands = _choreographer.Choreograph(new[] { evt });
 
         // Assert
-        // Goal tile: no destroy animation, no effects — only RemoveTileCommand
-        Assert.DoesNotContain(commands, c => c is DestroyTileCommand);
+        // Goal tile: DestroyTileCommand (for IsBeingAnimated protection) + RemoveTileCommand, but NO ShowEffectCommand
+        Assert.Contains(commands, c => c is DestroyTileCommand);
         Assert.Contains(commands, c => c is RemoveTileCommand);
         Assert.DoesNotContain(commands, c => c is ShowEffectCommand);
     }

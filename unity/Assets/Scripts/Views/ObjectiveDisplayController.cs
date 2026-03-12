@@ -49,7 +49,6 @@ namespace Match3.Unity.Views
         private struct ObjectiveIcon
         {
             public Transform Root;
-            public Transform Model;
             public MeshRenderer Renderer;
             public TextMesh CountText;
             public ElementType ElementType;
@@ -170,12 +169,9 @@ namespace Match3.Unity.Views
             go.transform.localEulerAngles = new Vector3(IconTiltX, 0f, 0f);
             go.transform.localScale = Vector3.one * (IconScale * _bridge.CellSize);
 
-            // Gem mesh (on a child so bounce animation doesn't affect text)
-            var modelGo = new GameObject("Model");
-            modelGo.transform.SetParent(go.transform, false);
-
-            var mf = modelGo.AddComponent<MeshFilter>();
-            var mr = modelGo.AddComponent<MeshRenderer>();
+            // Gem mesh
+            var mf = go.AddComponent<MeshFilter>();
+            var mr = go.AddComponent<MeshRenderer>();
 
             if (elementType != ElementType.None)
             {
@@ -215,7 +211,6 @@ namespace Match3.Unity.Views
             return new ObjectiveIcon
             {
                 Root = go.transform,
-                Model = modelGo.transform,
                 Renderer = mr,
                 CountText = textMesh,
                 ElementType = elementType,
@@ -251,7 +246,7 @@ namespace Match3.Unity.Views
         {
             // Find icon index for this objective
             int iconIndex = FindIconIndex(request.ObjectiveIndex);
-            if (iconIndex < 0) return;
+            if (iconIndex < 0 || iconIndex >= _icons.Count) return;
 
             // Track in-flight count (display updates on arrival, not emission)
             var icon = _icons[iconIndex];
@@ -363,15 +358,23 @@ namespace Match3.Unity.Views
                 {
                     float t = icon.BounceTimer / BounceTime;
                     float squash = Mathf.Sin(t * Mathf.PI) * 0.15f;
-                    icon.Model.localScale = new Vector3(
-                        1f + squash,
-                        1f - squash,
-                        1f + squash);
+                    var baseScale = Vector3.one * (IconScale * _bridge.CellSize);
+                    icon.Root.localScale = new Vector3(
+                        baseScale.x * (1f + squash),
+                        baseScale.y * (1f - squash),
+                        baseScale.z * (1f + squash));
+                    // Counter-scale text so it stays stable during bounce
+                    float invScale = 1f / IconScale;
+                    icon.CountText.transform.localScale = new Vector3(
+                        invScale / (1f + squash),
+                        invScale / (1f - squash),
+                        invScale / (1f + squash));
                 }
                 else
                 {
                     icon.BounceTimer = -1f;
-                    icon.Model.localScale = Vector3.one;
+                    icon.Root.localScale = Vector3.one * (IconScale * _bridge.CellSize);
+                    icon.CountText.transform.localScale = Vector3.one * (1f / IconScale);
                 }
                 _icons[i] = icon;
             }

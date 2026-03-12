@@ -443,8 +443,8 @@ namespace Match3.Unity.Controllers
 
         private void DrawGameOverlay()
         {
-            // Bookmark button — top-right corner
-            var btnRect = new Rect(Screen.width - 110, 10, 100, 36);
+            // Bookmark button — top-right, below TopPanel
+            var btnRect = new Rect(Screen.width - 110, 40, 100, 36);
             if (GUI.Button(btnRect, "Bookmark (F5)"))
             {
                 _bridge.AddBookmark();
@@ -463,12 +463,12 @@ namespace Match3.Unity.Controllers
             var speedInfo = $"{ctrl.PlaybackSpeed}x";
             var cmdInfo = $"Cmd {ctrl.CommandsExecuted}/{ctrl.TotalCommands}";
 
-            GUI.Box(new Rect(0, 0, Screen.width, 30), "");
-            GUI.Label(new Rect(10, 5, 200, 20), $"REPLAY  [{stateText}]  {speedInfo}  {tickInfo}  {cmdInfo}");
+            GUI.Box(new Rect(0, 40, Screen.width, 30), "");
+            GUI.Label(new Rect(10, 45, 200, 20), $"REPLAY  [{stateText}]  {speedInfo}  {tickInfo}  {cmdInfo}");
 
             // Progress bar
-            GUI.Box(new Rect(0, 30, Screen.width, 8), "");
-            GUI.DrawTexture(new Rect(0, 30, Screen.width * progress, 8), Texture2D.whiteTexture);
+            GUI.Box(new Rect(0, 70, Screen.width, 8), "");
+            GUI.DrawTexture(new Rect(0, 70, Screen.width * progress, 8), Texture2D.whiteTexture);
 
             // Controls hint at bottom
             GUI.Label(new Rect(10, Screen.height - 25, Screen.width, 20),
@@ -499,6 +499,11 @@ namespace Match3.Unity.Controllers
             _boardView?.Clear();
             _effectManager?.Clear();
             _uiManager?.HideResult();
+
+            // Restore input (may have been disabled by StartReplay)
+            if (_inputController != null)
+                _inputController.enabled = true;
+
             _initialized = false;
         }
 

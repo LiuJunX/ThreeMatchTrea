@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
 using Match3.Core.Events;
-using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
-using UnityEngine;
 
 namespace Match3.Unity.Bridge
 {
@@ -54,7 +52,7 @@ namespace Match3.Unity.Bridge
             for (int i = 0; i < events.Count; i++)
             {
                 var evt = events[i];
-                if (evt is TileDestroyedEvent tde && tde.Reason == DestroyReason.Match)
+                if (evt is TileDestroyedEvent tde && tde.IsGoal)
                 {
                     if (!_destroyedBySimTime.TryGetValue(tde.SimulationTime, out var byType))
                     {

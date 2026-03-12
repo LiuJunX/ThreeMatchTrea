@@ -20,7 +20,7 @@ public class ExplosionSystem : IExplosionSystem
     private readonly LockScheduler? _lockScheduler;
 
     // Config
-    private const float WaveInterval = 0.1f; // 100ms per wave
+    public const float DefaultWaveInterval = 0.1f; // 100ms per wave
 
     public ExplosionSystem()
         : this(new CoverSystem(), new GroundSystem(), null, null)
@@ -45,7 +45,7 @@ public class ExplosionSystem : IExplosionSystem
     public void CreateExplosion(ref GameState state, Position origin, int radius)
     {
         var explosion = Pools.Obtain<Explosion>();
-        explosion.Initialize(origin, radius, WaveInterval);
+        explosion.Initialize(origin, radius, DefaultWaveInterval);
 
         // Calculate affected area and lock tiles
         int width = state.Width;
@@ -82,12 +82,15 @@ public class ExplosionSystem : IExplosionSystem
     }
 
     public void CreateTargetedExplosion(ref GameState state, Position origin, IEnumerable<Position> targets)
-        => CreateTargetedExplosion(ref state, origin, targets, WaveInterval);
+        => CreateTargetedExplosion(ref state, origin, targets, DefaultWaveInterval);
 
     public void CreateTargetedExplosion(ref GameState state, Position origin, IEnumerable<Position> targets, float waveInterval)
         => CreateTargetedExplosion(ref state, origin, targets, waveInterval, 1f);
 
     public void CreateTargetedExplosion(ref GameState state, Position origin, IEnumerable<Position> targets, float waveInterval, float acceleration)
+        => CreateTargetedExplosion(ref state, origin, targets, waveInterval, acceleration, ReceiveLockTimings.ExplosionClear);
+
+    public void CreateTargetedExplosion(ref GameState state, Position origin, IEnumerable<Position> targets, float waveInterval, float acceleration, float receiveLockDuration)
     {
         // 1. Calculate MaxRadius
         int maxRadius = 0;
@@ -103,6 +106,7 @@ public class ExplosionSystem : IExplosionSystem
         // 2. Initialize Explosion
         var explosion = Pools.Obtain<Explosion>();
         explosion.Initialize(origin, maxRadius, waveInterval, acceleration);
+        explosion.ReceiveLockDuration = receiveLockDuration;
 
         // 3. Populate AffectedArea and lock tiles
         foreach (var pos in targets)
@@ -111,19 +115,18 @@ public class ExplosionSystem : IExplosionSystem
 
             if (pos.X >= 0 && pos.X < state.Width && pos.Y >= 0 && pos.Y < state.Height)
             {
-                var tile = state.GetTile(pos.X, pos.Y);
-                if (tile.Type != ElementType.None)
+                // Lock ALL target positions (including None tiles cleared by ClearBombAttribute)
+                // to prevent premature gravity fill during multi-wave explosions.
+                // ProcessWave releases the lock when the wave reaches each position.
+                if (_lockScheduler != null)
                 {
-                    if (_lockScheduler != null)
-                    {
-                        var token = _lockScheduler.Acquire(ref state, pos, CellLockType.Drop);
-                        explosion.LockTokens.Add(token);
-                    }
-                    else
-                    {
-                        state.Lock(pos, CellLockType.Drop);
-                        explosion.LockedPositions.Add(pos);
-                    }
+                    var token = _lockScheduler.Acquire(ref state, pos, CellLockType.Drop);
+                    explosion.LockTokens.Add(token);
+                }
+                else
+                {
+                    state.Lock(pos, CellLockType.Drop);
+                    explosion.LockedPositions.Add(pos);
                 }
             }
         }
@@ -248,7 +251,7 @@ public class ExplosionSystem : IExplosionSystem
 
                     // Apply timed Receive lock to prevent premature gravity fill
                     if (_lockScheduler != null)
-                        _lockScheduler.Acquire(ref state, pos, CellLockType.Receive, ReceiveLockTimings.ExplosionClear);
+                        _lockScheduler.Acquire(ref state, pos, CellLockType.Receive, explosion.ReceiveLockDuration);
 
                     // Notify ground layer
                     _groundSystem.OnTileDestroyed(ref state, pos, tick, simTime, eventCollector);

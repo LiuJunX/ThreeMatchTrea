@@ -10,7 +10,8 @@ public interface IExplosionSystem
     void CreateTargetedExplosion(ref GameState state, Position origin, System.Collections.Generic.IEnumerable<Position> targets);
     void CreateTargetedExplosion(ref GameState state, Position origin, System.Collections.Generic.IEnumerable<Position> targets, float waveInterval);
     void CreateTargetedExplosion(ref GameState state, Position origin, System.Collections.Generic.IEnumerable<Position> targets, float waveInterval, float acceleration);
-    
+    void CreateTargetedExplosion(ref GameState state, Position origin, System.Collections.Generic.IEnumerable<Position> targets, float waveInterval, float acceleration, float receiveLockDuration);
+
     void Update(
         ref GameState state,
         float deltaTime,

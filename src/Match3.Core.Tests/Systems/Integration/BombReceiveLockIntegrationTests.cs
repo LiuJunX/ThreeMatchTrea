@@ -1,9 +1,9 @@
+using System.Linq;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Simulation;
 using Match3.Core.Tests.TestFixtures;
-using Match3.Random;
 using Xunit;
 
 namespace Match3.Core.Tests.Systems.Integration;
@@ -82,11 +82,11 @@ public class BombReceiveLockIntegrationTests
     }
 
     /// <summary>
-    /// 彩球与普通元素交换（走 BombComboHandler 即时消除路径）：
-    /// 所有被消除位置在若干 tick 内持有 ReceiveLock。
+    /// 彩球与普通元素交换（走 ColorBombSessionManager 路径）：
+    /// 彩球位置持有不定期 ReceiveLock（session 级别），非目标色不受影响。
     /// </summary>
     [Fact]
-    public void ColorBombSwapNormal_ClearedPositionsHaveReceiveLock()
+    public void ColorBombSwapNormal_OriginHasSessionReceiveLock()
     {
         // 3×3 棋盘
         //  (0,0): ColorBomb
@@ -103,16 +103,63 @@ public class BombReceiveLockIntegrationTests
         // 交换彩球与普通元素
         engine.ApplyMove(new Position(0, 0), new Position(1, 0));
 
-        // 跑几 tick 让交换动画完成并处理炸弹效果
+        // 跑几 tick 让交换动画完成，触发 session
         for (int i = 0; i < 20; i++)
             engine.Tick();
 
         var s = engine.State;
 
-        // 至少一个被消除位置应持有 ReceiveLock（在 0.15f 内还没过期）
-        // 或者已经被重力填充（说明 lock 已正确工作并过期）
-        // 关键断言：非目标色 (2,2) 的 Item2 应该存活
+        // 彩球交换后位置 (1,0) 应持有 ReceiveLock（session 不定期锁，同 tap 路径）
+        Assert.True(s.IsLocked(1, 0, CellLockType.Receive),
+            "彩球交换后，彩球位置应持有 session 级别的 ReceiveLock");
+
+        // 非目标色 (2,2) 的 Item2 应该存活
         Assert.Equal(ElementType.Item2, s.GetTile(2, 2).Type);
+    }
+
+    /// <summary>
+    /// 彩球与普通元素交换：目标颜色是被交换 tile 的颜色（非最多颜色）。
+    /// </summary>
+    [Fact]
+    public void ColorBombSwapNormal_UsesSwappedTileColor()
+    {
+        // 5×3 棋盘
+        //  (0,0): ColorBomb
+        //  (1,0): Item2 — 交换目标（少数颜色）
+        //  其余大量 Item1（多数颜色）+ 少量 Item2
+        var state = CreateIsolatedState(5, 3);
+        int id = 1;
+        for (int y = 0; y < 3; y++)
+            for (int x = 0; x < 5; x++)
+                state.SetTile(x, y, new Tile(id++, ElementType.Item1, x, y));
+
+        state.SetTile(0, 0, new Tile(100, ElementType.ColorBomb, 0, 0));
+        state.SetTile(1, 0, new Tile(101, ElementType.Item2, 1, 0)); // 少数颜色
+        state.SetTile(2, 0, new Tile(102, ElementType.Item2, 2, 0));
+        state.SetTile(3, 0, new Tile(103, ElementType.Item2, 3, 0));
+
+        var collector = new BufferedEventCollector();
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
+
+        engine.ApplyMove(new Position(0, 0), new Position(1, 0));
+
+        // 跑足够 tick 让 session 完成
+        for (int i = 0; i < 300; i++)
+        {
+            engine.Tick(1f / 60f);
+            if (i > 60 && engine.IsStable()) break;
+        }
+
+        var allEvents = collector.GetEvents().ToList();
+
+        // session 应选择 Item2（被交换 tile 的颜色），而不是 Item1（最多颜色）
+        var sessionStart = allEvents.OfType<ColorBombSessionStartEvent>().FirstOrDefault();
+        Assert.NotNull(sessionStart);
+        Assert.Equal(ElementType.Item2, sessionStart.TargetColor);
+
+        // Item2 应被消除
+        var destroyed = allEvents.OfType<TileDestroyedEvent>().Where(e => e.Type == ElementType.Item2).ToList();
+        Assert.True(destroyed.Count >= 2, $"应消除 Item2，实际消除 {destroyed.Count} 个");
     }
 
     /// <summary>

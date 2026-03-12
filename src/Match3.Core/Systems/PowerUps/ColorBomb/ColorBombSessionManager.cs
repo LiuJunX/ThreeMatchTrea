@@ -57,20 +57,26 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
     public void CreateSession(ref GameState state, Position origin, int bombTileId,
         int tick, float simTime, IEventCollector events)
     {
-        CreateSessionInternal(ref state, origin, bombTileId, ElementType.None, tick, simTime, events);
+        CreateSessionInternal(ref state, origin, bombTileId, ElementType.None, null, tick, simTime, events);
+    }
+
+    public void CreateSession(ref GameState state, Position origin, int bombTileId,
+        ElementType targetColor, int tick, float simTime, IEventCollector events)
+    {
+        CreateSessionInternal(ref state, origin, bombTileId, ElementType.None, targetColor, tick, simTime, events);
     }
 
     public void CreateComboSession(ref GameState state, Position origin, int bombTileId,
         ElementType comboBombType, int tick, float simTime, IEventCollector events)
     {
-        CreateSessionInternal(ref state, origin, bombTileId, comboBombType, tick, simTime, events);
+        CreateSessionInternal(ref state, origin, bombTileId, comboBombType, null, tick, simTime, events);
     }
 
     private void CreateSessionInternal(ref GameState state, Position origin, int bombTileId,
-        ElementType comboBombType, int tick, float simTime, IEventCollector events)
+        ElementType comboBombType, ElementType? specifiedColor, int tick, float simTime, IEventCollector events)
     {
-        // Pick target color: most frequent color excluding reserved colors
-        var targetColor = PickTargetColor(in state);
+        // Use specified color (swap with normal tile) or pick most frequent
+        var targetColor = specifiedColor ?? PickTargetColor(in state);
         if (targetColor == ElementType.None)
         {
             // No valid color available — ColorBomb does nothing

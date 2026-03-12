@@ -18,10 +18,17 @@ public interface IColorBombSessionManager
 
     /// <summary>
     /// Create a new ColorBomb session (normal mode: beam → destroy).
-    /// The bomb tile should already be cleared (ClearBombAttribute) before calling this.
+    /// Target color is auto-selected (most frequent). The bomb tile should already be cleared.
     /// </summary>
     void CreateSession(ref GameState state, Position origin, int bombTileId,
         int tick, float simTime, IEventCollector events);
+
+    /// <summary>
+    /// Create a new ColorBomb session with a specified target color (swap with normal tile).
+    /// The bomb tile should already be cleared (ClearBombAttribute) before calling this.
+    /// </summary>
+    void CreateSession(ref GameState state, Position origin, int bombTileId,
+        ElementType targetColor, int tick, float simTime, IEventCollector events);
 
     /// <summary>
     /// Create a combo session (beam → transform to bomb → batch activate).

@@ -25,6 +25,6 @@ public static class ReceiveLockTimings
     /// <summary>Projectile impact clear → Receive lock duration.</summary>
     public const float ProjectileImpactClear = 0.05f;
 
-    /// <summary>ColorBomb batch destroy → Receive lock duration.</summary>
-    public const float ColorBombBatchClear = 0.15f;
+    /// <summary>ColorBomb batch destroy → Receive lock duration (hitPause 0.5 + DestroyDuration 0.15 + buffer 0.15).</summary>
+    public const float ColorBombBatchClear = 0.80f;
 }

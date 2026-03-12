@@ -109,6 +109,21 @@ public class PowerUpHandler : IPowerUpHandler
             return;
         }
 
+        // ColorBomb + normal tile → route to session-based flow with specified target color
+        if (_colorBombSessionManager != null && BombComboHelpers.IsColorBombWithNormalTile(t1, t2))
+        {
+            var colorBombPos = t1.Type.IsColorBomb() ? p1 : p2;
+            var colorBombTile = t1.Type.IsColorBomb() ? t1 : t2;
+            var normalTile = t1.Type.IsColorBomb() ? t2 : t1;
+
+            ClearBombAttribute(ref state, colorBombPos);
+
+            _colorBombSessionManager.CreateSession(
+                ref state, colorBombPos, colorBombTile.Id, normalTile.Type, tick, simTime, events);
+
+            return;
+        }
+
         // Use BombComboHandler to process non-ColorBomb combos (and ColorBomb+ColorBomb)
         var affected = Pools.ObtainHashSet<Position>();
         try
@@ -140,11 +155,20 @@ public class PowerUpHandler : IPowerUpHandler
                 if (_explosionSystem != null)
                 {
                     bool isDoubleColorBomb = t1.Type == ElementType.ColorBomb && t2.Type == ElementType.ColorBomb;
+                    bool hasColorBomb = t1.Type == ElementType.ColorBomb || t2.Type == ElementType.ColorBomb;
                     if (isDoubleColorBomb)
                     {
                         // Slow wave for dramatic effect
                         _explosionSystem.CreateTargetedExplosion(ref state, p2, affected,
-                            DoubleColorBombConstants.WipeInterval, DoubleColorBombConstants.WipeAcceleration);
+                            DoubleColorBombConstants.WipeInterval, DoubleColorBombConstants.WipeAcceleration,
+                            ReceiveLockTimings.ColorBombBatchClear);
+                    }
+                    else if (hasColorBomb)
+                    {
+                        // ColorBomb + normal tile: longer receive lock for beam animation
+                        _explosionSystem.CreateTargetedExplosion(ref state, p1, affected,
+                            ExplosionSystem.DefaultWaveInterval, 1f,
+                            ReceiveLockTimings.ColorBombBatchClear);
                     }
                     else
                     {

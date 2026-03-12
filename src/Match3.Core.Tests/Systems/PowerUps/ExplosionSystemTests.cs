@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using Match3.Core.Events;
-using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
-using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Tests.TestFixtures;
-using Match3.Core.Utility.Pools;
 using Xunit;
 
 namespace Match3.Core.Tests.Systems.PowerUps;
@@ -165,6 +163,57 @@ public class ExplosionSystemTests : IDisposable
         Assert.False(state.IsLocked(5, 5, CellLockType.Drop)); // Default cell has no Drop lock
     }
 
+    [Fact]
+    public void CreateTargetedExplosion_LocksNoneTilesInTargetSet()
+    {
+        // Arrange: position (2,2) is None (simulates ClearBombAttribute clearing a bomb)
+        var state = CreateGameState(5, 5);
+        var clearedPos = new Position(2, 2);
+        state.SetTile(2, 2, new Tile(0, ElementType.None, 2, 2));
+
+        var lockScheduler = new LockScheduler();
+        var sut = new ExplosionSystem(new StubCoverSystem(), new StubGroundSystem(), null, lockScheduler);
+
+        var targets = new HashSet<Position>
+        {
+            clearedPos,
+            new Position(1, 2), // normal tile
+            new Position(3, 2), // normal tile
+        };
+
+        // Act
+        sut.CreateTargetedExplosion(ref state, new Position(0, 2), targets);
+
+        // Assert: even the None position should have a Drop lock
+        Assert.True(state.IsLocked(2, 2, CellLockType.Drop),
+            "None tile in target set should still get Drop lock");
+        Assert.True(state.IsLocked(1, 2, CellLockType.Drop));
+        Assert.True(state.IsLocked(3, 2, CellLockType.Drop));
+    }
+
+    [Fact]
+    public void CreateTargetedExplosion_NonePosition_DropLockReleasedOnWave()
+    {
+        // Arrange: (1,0) is None, origin is (0,0)
+        var state = CreateGameState(3, 3);
+        state.SetTile(1, 0, new Tile(0, ElementType.None, 1, 0));
+
+        var lockScheduler = new LockScheduler();
+        var sut = new ExplosionSystem(new StubCoverSystem(), new StubGroundSystem(), null, lockScheduler);
+
+        var targets = new HashSet<Position> { new Position(0, 0), new Position(1, 0), new Position(2, 0) };
+        sut.CreateTargetedExplosion(ref state, new Position(0, 0), targets);
+
+        // Wave 0: processes (0,0) — normal tile destroyed
+        sut.Update(ref state, 0.1f, 1, 1f, _eventCollector, new List<Position>());
+
+        // Wave 1: processes (1,0) — None tile, Drop lock released
+        sut.Update(ref state, 0.1f, 2, 1.1f, _eventCollector, new List<Position>());
+
+        Assert.False(state.IsLocked(1, 0, CellLockType.Drop),
+            "Drop lock on None position should be released after wave processes it");
+    }
+
     private GameState CreateGameState(int width, int height)
     {
         var state = new GameState(width, height, 5, new StubRandom());
@@ -176,6 +225,18 @@ public class ExplosionSystemTests : IDisposable
             }
         }
         return state;
+    }
+
+    private class StubCoverSystem : ICoverSystem
+    {
+        public bool IsTileProtected(in GameState state, Position pos) => false;
+        public bool TryDamageCover(ref GameState state, Position pos, int tick, float simTime, IEventCollector events) => false;
+        public void SyncDynamicCovers(ref GameState state, Position from, Position to) { }
+    }
+
+    private class StubGroundSystem : IGroundSystem
+    {
+        public void OnTileDestroyed(ref GameState state, Position pos, int tick, float simTime, IEventCollector events) { }
     }
 
 }

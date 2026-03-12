@@ -23,6 +23,12 @@ public class Explosion
     public float Acceleration;
 
     /// <summary>
+    /// Receive lock duration applied to each destroyed cell.
+    /// Defaults to <see cref="ReceiveLockTimings.ExplosionClear"/>.
+    /// </summary>
+    public float ReceiveLockDuration;
+
+    /// <summary>
     /// All tiles affected by this explosion.
     /// Calculated at initialization.
     /// </summary>
@@ -54,6 +60,7 @@ public class Explosion
         MaxRadius = radius;
         WaveInterval = interval;
         Acceleration = acceleration;
+        ReceiveLockDuration = ReceiveLockTimings.ExplosionClear;
         CurrentWaveRadius = 0;
         Timer = 0f;
         AffectedArea.Clear();
