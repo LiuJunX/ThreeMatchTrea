@@ -67,8 +67,6 @@ namespace Match3.Unity.Views
         private static readonly int ClipYMinProp = Shader.PropertyToID("_ClipYMin");
         private static readonly int ClipYMaxProp = Shader.PropertyToID("_ClipYMax");
 
-        private const float BounceEndTime = 0.15f;
-
         // Per-tile X tilt (replaces TileContainer3D rotation for clean coordinates)
         private const float BaseTiltX = -10f;
         private static readonly Vector3 BaseTiltEuler = new Vector3(BaseTiltX, 0f, 0f);
@@ -213,38 +211,30 @@ namespace Match3.Unity.Views
             var finalScale = _baseScale;
 
             // Landing bounce
-            if (_bounceTime >= 0f && _bounceTime < BounceEndTime)
             {
-                _bounceTime += Time.deltaTime;
-                var t = _bounceTime / BounceEndTime;
-                var squash = Mathf.Sin(t * Mathf.PI) * 0.1f;
-                finalScale.x *= 1f + squash;
-                finalScale.z *= 1f + squash;
-                finalScale.y *= 1f - squash;
-            }
-            else if (_bounceTime >= BounceEndTime)
-            {
-                _bounceTime = -1f;
+                var (newBounce, squash) = TileAnimationHelper.CalculateBounceSquash(_bounceTime, Time.deltaTime);
+                _bounceTime = newBounce;
+                if (squash != 0f)
+                {
+                    finalScale.x *= 1f + squash;
+                    finalScale.z *= 1f + squash;
+                    finalScale.y *= 1f - squash;
+                }
             }
 
             // Hint animation (selection overrides hint)
             if (_isHinted && !_isHighlighted)
             {
-                _hintTime += Time.deltaTime;
-                if (_hintType == HintAnimationType.BombPulse)
+                var (newHint, pulse, phase) = TileAnimationHelper.CalculateHintPulse(_hintTime, Time.deltaTime, _hintType);
+                _hintTime = newHint;
+                finalScale *= pulse;
+
+                if (_hintType == HintAnimationType.SwapNudge)
                 {
-                    var pulse = 1f + Mathf.Sin(_hintTime * 2f * Mathf.PI * 2f) * 0.06f;
-                    finalScale *= pulse;
-                }
-                else if (_hintType == HintAnimationType.SwapNudge)
-                {
-                    var phase = Mathf.Sin(_hintTime * Mathf.PI * 2f);
-                    var pulse = 1f + phase * 0.04f;
-                    finalScale *= pulse;
-                    var nudge = Mathf.Max(phase, 0f) * 0.12f * cellSize;
+                    var nudge = TileAnimationHelper.CalculateSwapNudgeOffset(phase, cellSize);
                     pos += new Vector3(_hintNudgeDir.x * nudge, _hintNudgeDir.y * nudge, 0f);
-                    // Tilt toward movement direction during nudge
-                    var tiltAngle = Mathf.Max(phase, 0f) * 6f;
+                    // Tilt toward movement direction during nudge (3D: X/Y axes with base tilt)
+                    var tiltAngle = TileAnimationHelper.CalculateSwapNudgeTiltAngle(phase);
                     var tiltX = -_hintNudgeDir.y * tiltAngle; // vertical: X axis
                     var tiltY = _hintNudgeDir.x * tiltAngle;  // horizontal: Y axis
                     transform.localEulerAngles = new Vector3(BaseTiltX + tiltX, tiltY, 0f);
@@ -268,7 +258,7 @@ namespace Match3.Unity.Views
             // Selection pulse (scale + rotation; _highlightTime already updated above)
             if (_isHighlighted)
             {
-                var pulse = 1f + Mathf.Sin(_highlightTime * 8f) * 0.08f;
+                var pulse = TileAnimationHelper.CalculateSelectionPulse(_highlightTime);
                 finalScale *= pulse;
 
                 // 3D mode: Y-axis rotation
