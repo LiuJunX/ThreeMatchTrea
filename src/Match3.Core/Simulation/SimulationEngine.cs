@@ -701,7 +701,8 @@ public sealed class SimulationEngine : IDisposable
             _shuffleSystem,
             _objectiveSystem,
             cloneColorBomb,
-            cloneLocks
+            cloneLocks,
+            _choreographyConfig
         );
     }
 

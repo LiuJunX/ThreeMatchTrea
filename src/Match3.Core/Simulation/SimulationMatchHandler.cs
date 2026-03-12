@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Match3.Core.Choreography;
 using Match3.Core.Events;
 using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
@@ -22,19 +23,31 @@ internal sealed class SimulationMatchHandler
     private readonly ILevelObjectiveSystem? _objectiveSystem;
     private readonly LockScheduler? _lockScheduler;
 
+    // Bomb origin lock durations derived from ChoreographyConfig
+    private readonly float _bombOriginDropLock;
+    private readonly float _bombOriginReceiveLock;
+
     // Reused to avoid per-match Dictionary allocation
     private readonly Dictionary<Position, int> _bombOrigins = new();
+
+    /// <summary>Buffer between bomb DropLock expiry and ReceiveLock expiry (seconds).</summary>
+    private const float BombReceiveLockBuffer = 0.05f;
 
     public SimulationMatchHandler(
         IMatchFinder matchFinder,
         IMatchProcessor matchProcessor,
         ILevelObjectiveSystem? objectiveSystem = null,
-        LockScheduler? lockScheduler = null)
+        LockScheduler? lockScheduler = null,
+        ChoreographyConfig? choreographyConfig = null)
     {
         _matchFinder = matchFinder;
         _matchProcessor = matchProcessor;
         _objectiveSystem = objectiveSystem;
         _lockScheduler = lockScheduler;
+
+        var config = choreographyConfig ?? new ChoreographyConfig();
+        _bombOriginDropLock = config.MergeDuration + config.BombPopDuration;
+        _bombOriginReceiveLock = _bombOriginDropLock + BombReceiveLockBuffer;
     }
 
     /// <summary>
@@ -168,8 +181,10 @@ internal sealed class SimulationMatchHandler
             {
                 if (hasBomb && group.BombOrigin.Value == pos)
                 {
-                    // Bomb origin: Drop lock prevents newly created bomb from falling during pop animation
-                    _lockScheduler.Acquire(ref state, pos, CellLockType.Drop, ReceiveLockTimings.BombOriginDrop);
+                    // Bomb origin: Drop lock prevents newly created bomb from falling during merge+pop animation
+                    _lockScheduler.Acquire(ref state, pos, CellLockType.Drop, _bombOriginDropLock);
+                    // Receive lock prevents tiles above from entering this cell until bomb has gravity head start
+                    _lockScheduler.Acquire(ref state, pos, CellLockType.Receive, _bombOriginReceiveLock);
                 }
                 else
                 {

@@ -443,11 +443,11 @@ public class DropTimingTests
     }
 
     /// <summary>
-    /// When a 4-match triggers bomb generation, the bomb origin cell gets DropLock (not ReceiveLock)
+    /// When a 4-match triggers bomb generation, the bomb origin cell gets both DropLock and ReceiveLock,
     /// and all other merge-source positions get ReceiveLock (not DropLock).
     /// </summary>
     [Fact]
-    public void BombMerge_BombOriginGetsDropLock_MergeSourcesGetReceiveLock()
+    public void BombMerge_BombOriginGetsBothLocks_MergeSourcesGetReceiveLock()
     {
         var rng = new StubRandom();
         var state = new GameState(5, 5, 4, rng);
@@ -488,11 +488,11 @@ public class DropTimingTests
 
         var st = engine.State;
 
-        // Bomb origin: has DropLock, no ReceiveLock
+        // Bomb origin: has both DropLock and ReceiveLock
         Assert.True(st.IsLocked(bombPos.Value, CellLockType.Drop),
             $"BombOrigin ({bombPos.Value}) should have DropLock");
-        Assert.False(st.IsLocked(bombPos.Value, CellLockType.Receive),
-            $"BombOrigin ({bombPos.Value}) should NOT have ReceiveLock");
+        Assert.True(st.IsLocked(bombPos.Value, CellLockType.Receive),
+            $"BombOrigin ({bombPos.Value}) should have ReceiveLock");
 
         // Merge sources: have ReceiveLock, no DropLock
         for (int x = 0; x < 4; x++)
@@ -508,11 +508,10 @@ public class DropTimingTests
     }
 
     /// <summary>
-    /// BombOrigin DropLock duration = BombOriginDrop (0.15s).
-    /// At 60 FPS (dt ≈ 0.01667s), the lock should expire after ≈9 ticks.
+    /// BombOrigin DropLock duration = MergeDuration + BombPopDuration (derived from ChoreographyConfig).
     /// </summary>
     [Fact]
-    public void BombMerge_DropLockDuration_MatchesBombOriginDropConstant()
+    public void BombMerge_DropLockDuration_MatchesChoreographyConfig()
     {
         var rng = new StubRandom();
         var state = new GameState(5, 5, 4, rng);
@@ -548,9 +547,13 @@ public class DropTimingTests
 
         Assert.True(bombPos.HasValue, "4-match should generate a bomb");
 
+        // Expected duration derived from ChoreographyConfig (same source as SimulationMatchHandler)
+        var choreoConfig = new Match3.Core.Choreography.ChoreographyConfig();
+        float expectedDuration = choreoConfig.MergeDuration + choreoConfig.BombPopDuration;
+
         // Count how many additional ticks until DropLock expires
         float dt = SimulationConfig.DefaultFixedDeltaTime;
-        int expectedTicks = (int)System.Math.Ceiling(ReceiveLockTimings.BombOriginDrop / dt);
+        int expectedTicks = (int)System.Math.Ceiling(expectedDuration / dt);
 
         int ticksWithLock = 0;
         for (int i = 0; i < expectedTicks + 5; i++)
@@ -568,7 +571,6 @@ public class DropTimingTests
 
     /// <summary>
     /// MergeSource ReceiveLock duration = MergeSource (0.3s).
-    /// Should last roughly twice as long as the BombOrigin DropLock (0.15s).
     /// </summary>
     [Fact]
     public void BombMerge_ReceiveLockDuration_MatchesMergeSourceConstant()

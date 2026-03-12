@@ -201,10 +201,8 @@ public class ChoreographerTests
         var ufoCmd = Assert.Single(commands.OfType<UfoLaunchCommand>());
         Assert.Equal(42, ufoCmd.TileId);
         Assert.Equal(new Vector2(3, 4), ufoCmd.Origin);
-        // Target includes overshoot (0.3 along flight dir) + screen-up offset (-0.40 Y)
-        Assert.NotEqual(new Vector2(6, 7), ufoCmd.Target); // Raw grid pos is adjusted
-        Assert.True(ufoCmd.Target.X > 6); // Overshoot pushes past raw target
-        Assert.True(ufoCmd.Target.Y < 7); // Screen-up nudge reduces Y
+        // Target matches raw grid position (no overshoot/offset)
+        Assert.Equal(new Vector2(6, 7), ufoCmd.Target);
         Assert.Equal(UfoConstants.LaunchStayFraction, ufoCmd.StayFraction);
         // Diverge control points should be set (origin-to-target distance > DivergeMinDistance)
         Assert.NotNull(ufoCmd.DivergeControl);
@@ -1082,8 +1080,8 @@ public class ChoreographerTests
 
         var retargetCmd = Assert.Single(commands.OfType<UfoRetargetCommand>());
         Assert.Equal(10, retargetCmd.TileId);
-        // NewTarget includes overshoot (0.3 along flight dir) + screen-up offset (-0.40 Y)
-        Assert.NotEqual(new Vector2(3, 0), retargetCmd.NewTarget); // Raw grid pos is adjusted
+        // NewTarget matches raw grid position (no overshoot/offset)
+        Assert.Equal(new Vector2(3, 0), retargetCmd.NewTarget);
         Assert.Equal(0, retargetCmd.Duration); // Instant command
     }
 

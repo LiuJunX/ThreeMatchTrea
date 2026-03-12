@@ -13,9 +13,6 @@ public static class ReceiveLockTimings
     /// <summary>Merge source (tiles that merge into a bomb) → Receive lock duration (matches MergeDuration).</summary>
     public const float MergeSource = 0.3f;
 
-    /// <summary>Bomb origin (newly spawned bomb) → Drop lock duration (matches BombPopDuration).</summary>
-    public const float BombOriginDrop = 0.15f;
-
     /// <summary>Explosion wave clear → Receive lock duration.</summary>
     public const float ExplosionClear = 0.15f;
 
