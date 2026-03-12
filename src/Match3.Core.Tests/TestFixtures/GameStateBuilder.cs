@@ -194,6 +194,79 @@ public class GameStateBuilder
             .WithEmptyTiles()
             .Build();
     }
+
+    #region Batch Tile Helpers
+
+    /// <summary>
+    /// Sets a single tile at (<paramref name="x"/>, <paramref name="y"/>) with an
+    /// auto-generated ID taken from <c>state.NextTileId</c>.
+    /// </summary>
+    /// <param name="state">The game state to modify.</param>
+    /// <param name="x">Column index.</param>
+    /// <param name="y">Row index.</param>
+    /// <param name="type">The element type to assign.</param>
+    public static void SetTile(ref GameState state, int x, int y, ElementType type)
+    {
+        state.SetTile(x, y, new Tile(state.NextTileId++, type, x, y));
+    }
+
+    /// <summary>
+    /// Sets a horizontal row of tiles starting at (<paramref name="startX"/>, <paramref name="y"/>).
+    /// Each tile receives an auto-generated ID from <c>state.NextTileId</c>.
+    /// </summary>
+    /// <param name="state">The game state to modify.</param>
+    /// <param name="y">Row index.</param>
+    /// <param name="startX">Starting column index.</param>
+    /// <param name="types">Element types to place left-to-right.</param>
+    public static void SetTileRow(ref GameState state, int y, int startX, params ElementType[] types)
+    {
+        for (int i = 0; i < types.Length; i++)
+        {
+            int x = startX + i;
+            state.SetTile(x, y, new Tile(state.NextTileId++, types[i], x, y));
+        }
+    }
+
+    /// <summary>
+    /// Sets a vertical column of tiles starting at (<paramref name="x"/>, <paramref name="startY"/>).
+    /// Each tile receives an auto-generated ID from <c>state.NextTileId</c>.
+    /// </summary>
+    /// <param name="state">The game state to modify.</param>
+    /// <param name="x">Column index.</param>
+    /// <param name="startY">Starting row index.</param>
+    /// <param name="types">Element types to place top-to-bottom.</param>
+    public static void SetTileColumn(ref GameState state, int x, int startY, params ElementType[] types)
+    {
+        for (int i = 0; i < types.Length; i++)
+        {
+            int y = startY + i;
+            state.SetTile(x, y, new Tile(state.NextTileId++, types[i], x, y));
+        }
+    }
+
+    /// <summary>
+    /// Fills a rectangular area with the specified element type.
+    /// Each tile receives an auto-generated ID from <c>state.NextTileId</c>.
+    /// Tiles are filled row by row, left-to-right, top-to-bottom.
+    /// </summary>
+    /// <param name="state">The game state to modify.</param>
+    /// <param name="x">Left column of the rectangle.</param>
+    /// <param name="y">Top row of the rectangle.</param>
+    /// <param name="w">Width (number of columns).</param>
+    /// <param name="h">Height (number of rows).</param>
+    /// <param name="type">The element type to fill.</param>
+    public static void FillRect(ref GameState state, int x, int y, int w, int h, ElementType type)
+    {
+        for (int row = y; row < y + h; row++)
+        {
+            for (int col = x; col < x + w; col++)
+            {
+                state.SetTile(col, row, new Tile(state.NextTileId++, type, col, row));
+            }
+        }
+    }
+
+    #endregion
 }
 
 
