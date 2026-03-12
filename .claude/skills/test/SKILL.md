@@ -23,8 +23,17 @@ allowed-tools: Read, Bash(dotnet test:*), Bash(dotnet build:*), Bash(dotnet buil
 | 表现层/presentation | Presentation | Match3.Presentation.Tests |
 | editor/编辑器 | Editor | Match3.Editor.Tests |
 | unity | Unity | Unity Editor Tests (触发器模式) |
-| 全量/所有/all | 全部 | 以上所有 |
+| 全量/所有/all | 全部 | 以上所有（包含慢速测试） |
 | (无范围词) | Core | 默认运行核心测试 |
+
+## 速度模式
+
+| 关键词 | filter | 说明 |
+|--------|--------|------|
+| (默认) | `--filter "Category!=Performance&Category!=Slow"` | 排除慢速和性能测试 |
+| 全量/完整/所有/all | 无 filter | 跑全部测试（含慢速） |
+
+**重要**：除非用户明确要求"全量/完整/所有"测试，否则始终加 filter 排除慢速测试。
 
 ## 执行流程
 
@@ -49,8 +58,8 @@ dotnet build <测试项目列表> --nologo -v q
 构建完成后用 `--no-build` 跑测试，避免重复构建引发文件锁：
 
 ```bash
-# Core 测试
-dotnet test src/Match3.Core.Tests src/Match3.Random.Tests src/Match3.Core.PoolTests --no-build --nologo --verbosity minimal
+# Core 测试（默认排除慢速）
+dotnet test src/Match3.Core.Tests src/Match3.Random.Tests src/Match3.Core.PoolTests --no-build --nologo --verbosity minimal --filter "Category!=Performance&Category!=Slow"
 
 # Presentation 测试
 dotnet test src/Match3.Presentation.Tests --no-build --nologo --verbosity minimal
@@ -58,7 +67,10 @@ dotnet test src/Match3.Presentation.Tests --no-build --nologo --verbosity minima
 # Editor 测试
 dotnet test src/Match3.Editor.Tests --no-build --nologo --verbosity minimal
 
-# 全量 dotnet 测试
+# 全量 dotnet 测试（默认排除慢速）
+dotnet build --nologo -v q && dotnet test --no-build --nologo --verbosity minimal --filter "Category!=Performance&Category!=Slow"
+
+# 全量 dotnet 测试（包含慢速，仅用户明确要求时）
 dotnet build --nologo -v q && dotnet test --no-build --nologo --verbosity minimal
 ```
 

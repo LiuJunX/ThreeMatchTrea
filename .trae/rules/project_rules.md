@@ -53,7 +53,7 @@ alwaysApply: true
 ## 7. Testing Strategy
 遵循 `docs/testing-guidelines.md`（真源）
 - 新增逻辑前优先编写测试（TDD-lite）
-- 修改核心逻辑后必须运行 `dotnet test`
+- 修改核心逻辑后必须运行 `dotnet test --filter "Category!=Performance&Category!=Slow"`（日常），遵循 `docs/testing-guidelines.md`（真源）
 
 ## 8. Documentation Maintenance
 - **Docs-as-Code**: Documentation lives in `/docs`.
@@ -114,7 +114,7 @@ alwaysApply: true
 
 - `Application.runInBackground = true` 必须保留在 GameBootstrap.Awake，否则 MCP 自动化时 Unity 失焦导致 Update 停止
 - `dotnet build` 后 DLL 可能因确定性构建未变化导致 git add 无效
-- 性能测试（AIPerformance, TickThroughput）受机器负载影响易 flaky，失败先重跑
+- 慢速测试（Analysis、SimulationInvariant、Determinism）标记为 `[Trait("Category", "Slow")]`，日常开发用 filter 排除
 - `_outlineMaterial` 和 blob shadow 材质不可在 `ClearCache()` 中销毁（池对象持有引用）
 - DebugTools (`[InitializeOnLoad]`) 提供 auto-unpause 防止 Error Pause 冻结
 - GameBootstrap 动态 AddComponent 会立即触发 Awake

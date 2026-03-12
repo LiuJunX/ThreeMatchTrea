@@ -15,6 +15,7 @@ namespace Match3.Core.Tests.Analysis;
 /// - Ensuring objective initialization works correctly
 /// - Testing analysis configuration options
 /// </summary>
+[Trait("Category", "Slow")]
 public class LevelAnalysisServiceTests
 {
     private readonly LevelAnalysisService _service = new();

@@ -14,6 +14,7 @@ namespace Match3.Core.Tests.Simulation;
 /// Verifies that the simulation is fully deterministic and that Clone()
 /// produces functionally independent but equivalent engines.
 /// </summary>
+[Trait("Category", "Slow")]
 public class DeterminismTests
 {
     private const int MaxMoves = 20;

@@ -12,6 +12,7 @@ namespace Match3.Core.Tests.Analysis;
 /// <summary>
 /// MCTSAnalyzer 单元测试
 /// </summary>
+[Trait("Category", "Slow")]
 public class MCTSAnalyzerTests
 {
     [Fact]

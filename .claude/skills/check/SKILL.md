@@ -36,7 +36,7 @@ allowed-tools: Read, Grep, Glob, Bash(dotnet:*), Bash(git:*)
 
 ### 快速检查
 - 构建验证（dotnet build）
-- 测试运行（dotnet test）
+- 测试运行（dotnet test --filter "Category!=Performance&Category!=Slow"）
 - 基础规范检查
 
 ### 深度检查（在快速基础上增加）

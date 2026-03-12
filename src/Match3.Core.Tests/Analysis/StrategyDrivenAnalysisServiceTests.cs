@@ -10,6 +10,7 @@ namespace Match3.Core.Tests.Analysis;
 /// <summary>
 /// StrategyDrivenAnalysisService 单元测试
 /// </summary>
+[Trait("Category", "Slow")]
 public class StrategyDrivenAnalysisServiceTests
 {
     private readonly StrategyDrivenAnalysisService _service = new();

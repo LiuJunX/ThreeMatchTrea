@@ -9,6 +9,7 @@ namespace Match3.Core.Tests.Simulation;
 /// and assert system-level invariants at every step.
 /// On failure the seed is visible in the test name for reproduction.
 /// </summary>
+[Trait("Category", "Slow")]
 public class SimulationInvariantTests
 {
     private const int MaxMoves = 25;

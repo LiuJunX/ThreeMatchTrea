@@ -11,6 +11,7 @@ namespace Match3.Core.Tests.Analysis;
 /// <summary>
 /// ComprehensiveLevelAnalyzer 单元测试
 /// </summary>
+[Trait("Category", "Slow")]
 public class ComprehensiveLevelAnalyzerTests
 {
     [Fact]
