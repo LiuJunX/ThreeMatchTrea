@@ -162,21 +162,12 @@ public sealed class Choreographer : IEventVisitor
             _beamHitTimes.Remove(evt.GridPosition);
             EmitBeamTargetDestroy(evt, position, beamHitTime);
         }
-        else if (evt.IsGoal)
-        {
-            // Goal tile: ObjectiveDisplayController handles fly animation.
-            // No destroy animation or effects — just remove from VisualState immediately.
-            _commands.Add(new RemoveTileCommand
-            {
-                TileId = evt.TileId,
-                StartTime = startTime,
-                Duration = 0,
-                Priority = 10
-            });
-        }
         else
         {
-            // Standard destroy animation: fade + scale down in place
+            // Standard destroy animation: fade + scale down in place.
+            // For goal tiles the DestroyTileCommand still runs (sets IsBeingAnimated
+            // to protect from SyncFallingTilesFromGameState), but HiddenTileIds in
+            // Board3DView prevents rendering — so the shrink is invisible.
             _commands.Add(new DestroyTileCommand
             {
                 TileId = evt.TileId,
@@ -188,22 +179,27 @@ public sealed class Choreographer : IEventVisitor
 
             float endTime = startTime + Config.DestroyDuration;
 
-            string effectType = evt.Reason switch
+            // Suppress visual effects for goal tiles (ObjectiveDisplayController
+            // handles the fly animation; match_pop would be redundant).
+            if (!evt.IsGoal)
             {
-                DestroyReason.Match => "match_pop",
-                DestroyReason.BombEffect => "explosion",
-                DestroyReason.Projectile => "projectile_hit",
-                DestroyReason.ChainReaction => "chain_pop",
-                _ => "pop"
-            };
+                string effectType = evt.Reason switch
+                {
+                    DestroyReason.Match => "match_pop",
+                    DestroyReason.BombEffect => "explosion",
+                    DestroyReason.Projectile => "projectile_hit",
+                    DestroyReason.ChainReaction => "chain_pop",
+                    _ => "pop"
+                };
 
-            _commands.Add(new ShowEffectCommand
-            {
-                EffectType = effectType,
-                Position = position,
-                StartTime = startTime,
-                Duration = Config.DestroyDuration
-            });
+                _commands.Add(new ShowEffectCommand
+                {
+                    EffectType = effectType,
+                    Position = position,
+                    StartTime = startTime,
+                    Duration = Config.DestroyDuration
+                });
+            }
 
             // Remove tile after destroy animation completes
             _commands.Add(new RemoveTileCommand
@@ -1591,11 +1587,18 @@ public sealed class Choreographer : IEventVisitor
     /// <inheritdoc />
     public void Visit(ColorBombComboTransformEvent evt)
     {
-        // Beam arrival + tile transform: the state already changed the tile type,
-        // immediate-mode view picks it up. Choreographer records the hit time
-        // so subsequent BombActivatedEvent can sequence correctly.
         float hitTime = GetStartTime(evt);
         _beamHitTimes[evt.TargetPosition] = hitTime;
+
+        // Update visual tile type so the view shows the new bomb appearance on beam arrival
+        _commands.Add(new UpdateTileTypeCommand
+        {
+            TileId = evt.TargetTileId,
+            Position = evt.TargetPosition,
+            TileType = evt.NewBombType,
+            StartTime = hitTime,
+            Duration = 0
+        });
     }
 
     /// <inheritdoc />

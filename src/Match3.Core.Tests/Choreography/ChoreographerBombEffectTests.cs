@@ -323,6 +323,53 @@ public class ChoreographerBombEffectTests
     }
 
     [Fact]
+    public void ComboTransform_EmitsUpdateTileTypeCommand()
+    {
+        // Register session + beam so _beamHitTimes is populated
+        _choreographer.Choreograph(new GameEvent[]
+        {
+            new ColorBombSessionStartEvent
+            {
+                TileId = 42,
+                Position = new Position(3, 3),
+                TargetColor = ElementType.Item1,
+                SimulationTime = 0f
+            }
+        });
+        _choreographer.Choreograph(new GameEvent[]
+        {
+            new ColorBombBeamLaunchedEvent
+            {
+                BombTileId = 42,
+                Origin = new Vector2(3, 3),
+                TargetPosition = new Position(5, 3),
+                TargetTileId = 10,
+                FlightDuration = 0.2f,
+                BeamIndex = 0,
+                SimulationTime = 0.1f
+            }
+        }, baseTime: 0.1f);
+
+        // Beam arrives → tile transforms to UFO
+        var commands = _choreographer.Choreograph(new GameEvent[]
+        {
+            new ColorBombComboTransformEvent
+            {
+                BombTileId = 42,
+                TargetPosition = new Position(5, 3),
+                TargetTileId = 10,
+                NewBombType = ElementType.Ufo,
+                SimulationTime = 0.3f
+            }
+        }, baseTime: 0.3f);
+
+        var update = Assert.Single(commands.OfType<UpdateTileTypeCommand>());
+        Assert.Equal(10, update.TileId);
+        Assert.Equal(ElementType.Ufo, update.TileType);
+        Assert.Equal(new Position(5, 3), update.Position);
+    }
+
+    [Fact]
     public void BeamTarget_ShakeCoversBetweenHitAndDestroy()
     {
         // Single-tick: BombActivated + TileDestroyed in same batch
