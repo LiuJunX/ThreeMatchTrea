@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <!-- 禁止 MSBuild 节点和 Roslyn 编译服务器常驻，避免持有文件锁 -->
+    <UseSharedCompilation>false</UseSharedCompilation>
+    <!-- 并行构建时增加文件复制重试次数（默认 10 次 × 1000ms = 10s，改为 30 次 × 500ms = 15s） -->
+    <CopyRetryCount>30</CopyRetryCount>
+    <CopyRetryDelayMilliseconds>500</CopyRetryDelayMilliseconds>
+  </PropertyGroup>
+</Project>

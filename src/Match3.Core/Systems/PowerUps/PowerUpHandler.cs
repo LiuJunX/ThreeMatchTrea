@@ -137,20 +137,23 @@ public class PowerUpHandler : IPowerUpHandler
                 ClearBombAttribute(ref state, p1);
                 ClearBombAttribute(ref state, p2);
 
-                // Double color bomb: use wave-based destruction from midpoint
-                bool isDoubleColorBomb = t1.Type == ElementType.ColorBomb && t2.Type == ElementType.ColorBomb;
-                if (isDoubleColorBomb && _explosionSystem != null)
+                if (_explosionSystem != null)
                 {
-                    // Use p2 as origin (swap destination), slow wave for dramatic effect
-                    _explosionSystem.CreateTargetedExplosion(ref state, p2, affected,
-                        DoubleColorBombConstants.WipeInterval, DoubleColorBombConstants.WipeAcceleration);
+                    bool isDoubleColorBomb = t1.Type == ElementType.ColorBomb && t2.Type == ElementType.ColorBomb;
+                    if (isDoubleColorBomb)
+                    {
+                        // Slow wave for dramatic effect
+                        _explosionSystem.CreateTargetedExplosion(ref state, p2, affected,
+                            DoubleColorBombConstants.WipeInterval, DoubleColorBombConstants.WipeAcceleration);
+                    }
+                    else
+                    {
+                        _explosionSystem.CreateTargetedExplosion(ref state, p1, affected);
+                    }
                 }
                 else
                 {
-                    // NOTE: Without ExplosionSystem, tiles are destroyed instantly in one tick.
-                    // The Choreographer still emits 4-phase wipe animation from BombComboEvent,
-                    // causing a visual/logic desync. Production always has ExplosionSystem;
-                    // this path exists only for backward-compatible test fallback.
+                    // Fallback: instant destruction (backward-compatible test path)
                     ClearAffectedTiles(ref state, affected, tick, simTime, events);
                 }
 
@@ -341,13 +344,16 @@ public class PowerUpHandler : IPowerUpHandler
         Position p1, Position p2,
         int tick, float simTime, IEventCollector events)
     {
+        // Random base angle for 180° fan spread (different each swap)
+        float baseAngle = state.Random.Next(0, 360);
+
         // UFO 1: from p1 (reuses existing tile visual)
         var target1 = UfoEffect.PickRemoteTarget(in state, p1);
         if (target1.HasValue)
         {
             var proj = new UfoProjectile(
                 _projectileSystem!.GenerateProjectileId(), p1, target1.Value)
-            { SourceTileId = tileId1 };
+            { SourceTileId = tileId1, ComboDivergeAngle = baseAngle };
             _projectileSystem.Launch(proj, tick, simTime, events);
         }
 
@@ -357,7 +363,7 @@ public class PowerUpHandler : IPowerUpHandler
         {
             var proj = new UfoProjectile(
                 _projectileSystem!.GenerateProjectileId(), p2, target2.Value)
-            { SourceTileId = tileId2 };
+            { SourceTileId = tileId2, ComboDivergeAngle = baseAngle + 90f };
             _projectileSystem.Launch(proj, tick, simTime, events);
         }
 
@@ -368,7 +374,7 @@ public class PowerUpHandler : IPowerUpHandler
             int syntheticTileId = state.NextTileId++;
             var proj = new UfoProjectile(
                 _projectileSystem!.GenerateProjectileId(), p1, target3.Value)
-            { SourceTileId = syntheticTileId, SpawnVisual = true };
+            { SourceTileId = syntheticTileId, SpawnVisual = true, ComboDivergeAngle = baseAngle + 180f };
             _projectileSystem.Launch(proj, tick, simTime, events);
         }
     }

@@ -10,6 +10,7 @@ using Match3.Core.Systems.Matching.Generation;
 using Match3.Core.Systems.Objectives;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
+using Match3.Core.Systems.PowerUps.ColorBomb;
 using Match3.Core.Systems.Projectiles;
 using Match3.Core.Systems.Scoring;
 using Match3.Core.Systems.Spawning;
@@ -118,8 +119,18 @@ public sealed class GameServiceFactory : IGameServiceFactory
         var bombRegistry = _bombRegistryFactory();
         var matchProcessor = _matchProcessorFactory(scoreSystem, bombRegistry);
         var projectileSystem = _projectileFactory();
-        var explosionSystem = new ExplosionSystem(new CoverSystem(objectiveSystem), new GroundSystem(objectiveSystem), objectiveSystem);
-        var powerUpHandler = _powerUpFactory(scoreSystem).WithExplosionSystem(explosionSystem).WithProjectileSystem(projectileSystem);
+
+        // Create shared LockScheduler first — all subsystems that apply cell locks must share it
+        var lockScheduler = new LockScheduler();
+        var coverSystem = new CoverSystem(objectiveSystem);
+        var groundSystem = new GroundSystem(objectiveSystem);
+        var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem, lockScheduler);
+        var colorBombSessionManager = new ColorBombSessionManager(null, coverSystem, groundSystem, objectiveSystem, lockScheduler);
+        var powerUpHandler = _powerUpFactory(scoreSystem)
+            .WithExplosionSystem(explosionSystem)
+            .WithProjectileSystem(projectileSystem)
+            .WithLockScheduler(lockScheduler)
+            .WithColorBombSessionManager(colorBombSessionManager);
         var collector = eventCollector ?? _eventCollectorFactory(true);
 
         // ── Random domain wiring (single update point) ──
@@ -143,7 +154,9 @@ public sealed class GameServiceFactory : IGameServiceFactory
             explosionSystem,
             deadlockDetector,
             shuffleSystem,
-            objectiveSystem);
+            objectiveSystem,
+            colorBombSessionManager,
+            lockScheduler);
     }
 
     /// <inheritdoc />

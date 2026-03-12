@@ -58,6 +58,12 @@ public sealed class UfoProjectile : Projectile
     public Position? PassengerOrigin { get; set; }
 
     /// <summary>
+    /// Absolute diverge angle (degrees) for combo-launched UFOs.
+    /// When set, Choreographer uses this instead of computing a random angle.
+    /// </summary>
+    public float? ComboDivergeAngle { get; set; }
+
+    /// <summary>
     /// Creates a new timer-based UFO projectile.
     /// </summary>
     public UfoProjectile(

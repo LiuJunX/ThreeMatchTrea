@@ -40,17 +40,25 @@ public sealed class ProjectileSystem : IProjectileSystem
                 SpawnVisual = projectile.SpawnVisual
             };
 
-            // Forward passenger info from UfoProjectile
-            if (projectile is UfoProjectile ufo && ufo.PassengerTileId.HasValue)
+            // Forward UFO-specific info
+            if (projectile is UfoProjectile ufo)
             {
-                var passengerOrigin = ufo.PassengerOrigin.HasValue
-                    ? new System.Numerics.Vector2(ufo.PassengerOrigin.Value.X, ufo.PassengerOrigin.Value.Y)
-                    : (System.Numerics.Vector2?)null;
-                launchEvt = launchEvt with
+                if (ufo.PassengerTileId.HasValue)
                 {
-                    PassengerTileId = ufo.PassengerTileId,
-                    PassengerOrigin = passengerOrigin
-                };
+                    var passengerOrigin = ufo.PassengerOrigin.HasValue
+                        ? new System.Numerics.Vector2(ufo.PassengerOrigin.Value.X, ufo.PassengerOrigin.Value.Y)
+                        : (System.Numerics.Vector2?)null;
+                    launchEvt = launchEvt with
+                    {
+                        PassengerTileId = ufo.PassengerTileId,
+                        PassengerOrigin = passengerOrigin
+                    };
+                }
+
+                if (ufo.ComboDivergeAngle.HasValue)
+                {
+                    launchEvt = launchEvt with { ComboDivergeAngle = ufo.ComboDivergeAngle };
+                }
             }
 
             events.Emit(launchEvt);

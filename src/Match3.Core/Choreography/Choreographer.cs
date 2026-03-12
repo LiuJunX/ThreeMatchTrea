@@ -162,6 +162,18 @@ public sealed class Choreographer : IEventVisitor
             _beamHitTimes.Remove(evt.GridPosition);
             EmitBeamTargetDestroy(evt, position, beamHitTime);
         }
+        else if (evt.IsGoal)
+        {
+            // Goal tile: ObjectiveDisplayController handles fly animation.
+            // No destroy animation or effects — just remove from VisualState immediately.
+            _commands.Add(new RemoveTileCommand
+            {
+                TileId = evt.TileId,
+                StartTime = startTime,
+                Duration = 0,
+                Priority = 10
+            });
+        }
         else
         {
             // Standard destroy animation: fade + scale down in place
@@ -176,26 +188,22 @@ public sealed class Choreographer : IEventVisitor
 
             float endTime = startTime + Config.DestroyDuration;
 
-            // Add visual effect
-            if (!evt.IsGoal)
+            string effectType = evt.Reason switch
             {
-                string effectType = evt.Reason switch
-                {
-                    DestroyReason.Match => "match_pop",
-                    DestroyReason.BombEffect => "explosion",
-                    DestroyReason.Projectile => "projectile_hit",
-                    DestroyReason.ChainReaction => "chain_pop",
-                    _ => "pop"
-                };
+                DestroyReason.Match => "match_pop",
+                DestroyReason.BombEffect => "explosion",
+                DestroyReason.Projectile => "projectile_hit",
+                DestroyReason.ChainReaction => "chain_pop",
+                _ => "pop"
+            };
 
-                _commands.Add(new ShowEffectCommand
-                {
-                    EffectType = effectType,
-                    Position = position,
-                    StartTime = startTime,
-                    Duration = Config.DestroyDuration
-                });
-            }
+            _commands.Add(new ShowEffectCommand
+            {
+                EffectType = effectType,
+                Position = position,
+                StartTime = startTime,
+                Duration = Config.DestroyDuration
+            });
 
             // Remove tile after destroy animation completes
             _commands.Add(new RemoveTileCommand
@@ -1012,29 +1020,36 @@ public sealed class Choreographer : IEventVisitor
                 float toTargetLen = toTarget.Length();
                 var toTargetNorm = toTargetLen > 1e-4f ? toTarget / toTargetLen : Vector2.UnitX;
 
-                // Deterministic pseudo-random diverge angle
-                float hash1 = UfoConstants.HashFloat(tileId * 7919 + (int)(evt.Origin.X * 31 + evt.Origin.Y * 97));
-                float hash2 = UfoConstants.HashFloat(tileId * 6271 + (int)(evt.Origin.X * 53 + evt.Origin.Y * 41));
-                float angle = UfoConstants.DivergeMinAngle
-                            + hash1 * (UfoConstants.DivergeMaxAngle - UfoConstants.DivergeMinAngle);
+                Vector2 divergeDir;
+                if (evt.ComboDivergeAngle.HasValue)
+                {
+                    // Combo UFOs: absolute angle for 180° fan spread
+                    float rad = evt.ComboDivergeAngle.Value * MathF.PI / 180f;
+                    divergeDir = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
+                }
+                else
+                {
+                    // Normal UFO: deterministic pseudo-random diverge angle
+                    float hash1 = UfoConstants.HashFloat(tileId * 7919 + (int)(evt.Origin.X * 31 + evt.Origin.Y * 97));
+                    float hash2 = UfoConstants.HashFloat(tileId * 6271 + (int)(evt.Origin.X * 53 + evt.Origin.Y * 41));
+                    float angle = UfoConstants.DivergeMinAngle
+                                + hash1 * (UfoConstants.DivergeMaxAngle - UfoConstants.DivergeMinAngle);
 
-                // Random left/right, with edge constraints.
-                // Y thresholds assume typical 9-row board (Y 0..8). For non-standard
-                // board sizes, pass height via config and use Origin.Y > height - 1.5f.
-                bool goRight = hash2 >= 0.5f;
-                bool isTopEdge = evt.Origin.Y < 1.5f;
-                bool isBottomEdge = evt.Origin.Y > 7.5f;
-                if (isTopEdge) goRight = toTargetNorm.X > 0; // diverge away from top
-                if (isBottomEdge) goRight = toTargetNorm.X <= 0; // diverge away from bottom
-                if (!goRight) angle = -angle;
+                    // Random left/right, with edge constraints.
+                    bool goRight = hash2 >= 0.5f;
+                    bool isTopEdge = evt.Origin.Y < 1.5f;
+                    bool isBottomEdge = evt.Origin.Y > 7.5f;
+                    if (isTopEdge) goRight = toTargetNorm.X > 0;
+                    if (isBottomEdge) goRight = toTargetNorm.X <= 0;
+                    if (!goRight) angle = -angle;
 
-                // Rotate target direction by diverge angle
-                float rad = angle * MathF.PI / 180f;
-                float cos = MathF.Cos(rad);
-                float sin = MathF.Sin(rad);
-                var divergeDir = new Vector2(
-                    toTargetNorm.X * cos - toTargetNorm.Y * sin,
-                    toTargetNorm.X * sin + toTargetNorm.Y * cos);
+                    float rad = angle * MathF.PI / 180f;
+                    float cos = MathF.Cos(rad);
+                    float sin = MathF.Sin(rad);
+                    divergeDir = new Vector2(
+                        toTargetNorm.X * cos - toTargetNorm.Y * sin,
+                        toTargetNorm.X * sin + toTargetNorm.Y * cos);
+                }
 
                 divergeControl = evt.Origin + divergeDir * UfoConstants.DivergeStrength;
                 approachControl = targetPos - toTargetNorm * UfoConstants.ApproachStrength;

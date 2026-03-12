@@ -9,6 +9,7 @@ using Match3.Core.Systems.Matching.Generation;
 using Match3.Core.Systems.Objectives;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
+using Match3.Core.Systems.PowerUps.ColorBomb;
 using Match3.Core.Systems.Projectiles;
 using Match3.Core.Systems.Scoring;
 using Match3.Core.Systems.Spawning;
@@ -51,7 +52,13 @@ public static class TestEngineFactory
         var groundSystem = new GroundSystem(objectiveSystem);
         var matchProcessor = new StandardMatchProcessor(
             score, coverSystem, groundSystem, BombEffectRegistry.CreateDefault());
-        var powerUpHandler = new PowerUpHandler(score);
+        var lockScheduler = new LockScheduler();
+        var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem, lockScheduler);
+        var colorBombSessionManager = new ColorBombSessionManager(null, coverSystem, groundSystem, objectiveSystem, lockScheduler);
+        var proj = projectileSystem ?? new ProjectileSystem();
+        var powerUpHandler = new PowerUpHandler(
+            score, new BombComboHandler(), BombEffectRegistry.CreateDefault(),
+            coverSystem, groundSystem, explosionSystem, proj, colorBombSessionManager, lockScheduler);
 
         return new SimulationEngine(
             state,
@@ -61,11 +68,14 @@ public static class TestEngineFactory
             matchFinder,
             matchProcessor,
             powerUpHandler,
-            projectileSystem,
+            proj,
             eventCollector,
-            deadlockDetector: deadlockDetector,
-            shuffleSystem: shuffleSystem,
-            objectiveSystem: objectiveSystem);
+            explosionSystem,
+            deadlockDetector,
+            shuffleSystem,
+            objectiveSystem,
+            colorBombSessionManager,
+            lockScheduler);
     }
 
     /// <summary>

@@ -43,6 +43,12 @@ public sealed record ProjectileLaunchedEvent : GameEvent
     /// </summary>
     public Vector2? PassengerOrigin { get; init; }
 
+    /// <summary>
+    /// Absolute diverge angle (degrees) for combo-launched UFOs.
+    /// When set, Choreographer uses this instead of computing a random angle.
+    /// </summary>
+    public float? ComboDivergeAngle { get; init; }
+
     /// <inheritdoc />
     public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
 }
