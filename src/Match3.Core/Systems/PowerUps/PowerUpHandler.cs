@@ -93,8 +93,7 @@ public class PowerUpHandler : IPowerUpHandler
                     BombTypeA = t1.Type,
                     BombTypeB = t2.Type,
                     PositionA = p1,
-                    PositionB = p2,
-                    AffectedPositions = new List<Position>()
+                    PositionB = p2
                 });
             }
 
@@ -326,6 +325,11 @@ public class PowerUpHandler : IPowerUpHandler
     public IPowerUpHandler WithLockScheduler(LockScheduler? lockScheduler)
     {
         return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, _projectileSystem, _colorBombSessionManager, lockScheduler);
+    }
+
+    public IPowerUpHandler WithColorBombSessionManager(IColorBombSessionManager? sessionManager)
+    {
+        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, _projectileSystem, sessionManager, _lockScheduler);
     }
 
     /// <summary>

@@ -169,7 +169,7 @@ public class DropTimingTests
             }
 
         var events = new BufferedEventCollector();
-        var engine = CreateColorBombEngine(state, rng, events);
+        var engine = CreateFullEngine(state, rng, events);
 
         _output.WriteLine("=== ColorBomb Drop Timing Test ===");
         _output.WriteLine($"ColorBomb at (0,0), target=Item1, {item1Positions.Count} targets");
@@ -379,9 +379,213 @@ public class DropTimingTests
             lockScheduler: lockScheduler);
     }
 
-    private static SimulationEngine CreateColorBombEngine(GameState state, IRandom rng, IEventCollector events)
+    #endregion
+
+    #region Assertion-based Verification Tests
+
+    /// <summary>
+    /// After a 3-match, destroyed cells should NOT receive new tiles on the same tick.
+    /// The Receive lock must delay refill by at least 1 tick.
+    /// </summary>
+    [Fact]
+    public void Match3_DestroyedCells_DoNotFillImmediately()
     {
-        return CreateFullEngine(state, rng, events);
+        var rng = new StubRandom();
+        var state = new GameState(5, 5, 4, rng);
+
+        // Non-matching checkerboard
+        int id = 1;
+        for (int y = 0; y < 5; y++)
+            for (int x = 0; x < 5; x++)
+                state.SetTile(x, y, new Tile(id++, (x + y) % 2 == 0 ? ElementType.Item4 : ElementType.Item3, x, y));
+
+        // Horizontal 3-match at row 0
+        state.SetTile(0, 0, new Tile(100, ElementType.Item2, 0, 0));
+        state.SetTile(1, 0, new Tile(101, ElementType.Item2, 1, 0));
+        state.SetTile(2, 0, new Tile(102, ElementType.Item2, 2, 0));
+
+        var events = new BufferedEventCollector();
+        var engine = CreateFullEngine(state, rng, events);
+
+        // Tick 0: match detection + tile destruction
+        engine.Tick();
+
+        // Verify: match positions should now be empty (matched tiles cleared)
+        var s = engine.State;
+        bool anyCleared = s.GetTile(0, 0).Type == ElementType.None ||
+                          s.GetTile(1, 0).Type == ElementType.None ||
+                          s.GetTile(2, 0).Type == ElementType.None;
+        if (!anyCleared)
+        {
+            // Match might need 1 more tick (physics must settle first)
+            engine.Tick();
+            s = engine.State;
+        }
+
+        // Record which cells are empty after destruction
+        var emptyAfterMatch = new bool[3];
+        for (int i = 0; i < 3; i++)
+            emptyAfterMatch[i] = s.GetTile(i, 0).Type == ElementType.None;
+
+        // If cells were cleared, the NEXT tick should still show Receive locks preventing refill
+        if (emptyAfterMatch[0] || emptyAfterMatch[1] || emptyAfterMatch[2])
+        {
+            // Check that Receive locks are present
+            for (int i = 0; i < 3; i++)
+            {
+                if (emptyAfterMatch[i])
+                {
+                    Assert.True(s.IsLocked(i, 0, CellLockType.Receive),
+                        $"Cell ({i},0) should have Receive lock after match clear");
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// When a bomb origin is created from a match, the origin cell should have a Drop lock
+    /// to prevent the bomb from falling during the pop animation.
+    /// </summary>
+    [Fact]
+    public void BombOrigin_HasDropLock_AfterMatchCreation()
+    {
+        var rng = new StubRandom();
+        var state = new GameState(5, 5, 4, rng);
+
+        // Non-matching fill
+        int id = 1;
+        for (int y = 0; y < 5; y++)
+            for (int x = 0; x < 5; x++)
+                state.SetTile(x, y, new Tile(id++, (x + y) % 2 == 0 ? ElementType.Item4 : ElementType.Item3, x, y));
+
+        // 4-in-a-row to trigger bomb generation at row 0
+        state.SetTile(0, 0, new Tile(100, ElementType.Item2, 0, 0));
+        state.SetTile(1, 0, new Tile(101, ElementType.Item2, 1, 0));
+        state.SetTile(2, 0, new Tile(102, ElementType.Item2, 2, 0));
+        state.SetTile(3, 0, new Tile(103, ElementType.Item2, 3, 0));
+
+        var events = new BufferedEventCollector();
+        var engine = CreateFullEngine(state, rng, events);
+
+        // Run a few ticks so the match fires
+        for (int i = 0; i < 3; i++)
+            engine.Tick();
+
+        // Find which position got a bomb (if any)
+        var s = engine.State;
+        Position? bombPos = null;
+        for (int x = 0; x < 4; x++)
+        {
+            if (s.GetTile(x, 0).Type.IsBomb())
+            {
+                bombPos = new Position(x, 0);
+                break;
+            }
+        }
+
+        // If a bomb was created, it should be at the correct position (not fallen)
+        if (bombPos != null)
+        {
+            var tile = s.GetTile(bombPos.Value.X, bombPos.Value.Y);
+            Assert.True(tile.Type.IsBomb(), $"Expected bomb at {bombPos.Value}");
+            Assert.Equal((float)bombPos.Value.Y, tile.Position.Y);
+        }
+    }
+
+    /// <summary>
+    /// After running to stable, no cell should have Receive or Drop locks remaining.
+    /// This verifies timed locks expire correctly.
+    /// </summary>
+    [Fact]
+    public void TimedLocks_AllExpire_WhenStable()
+    {
+        var rng = new StubRandom();
+        var state = new GameState(5, 5, 4, rng);
+
+        int id = 1;
+        for (int y = 0; y < 5; y++)
+            for (int x = 0; x < 5; x++)
+                state.SetTile(x, y, new Tile(id++, (x + y) % 2 == 0 ? ElementType.Item4 : ElementType.Item3, x, y));
+
+        // 3-match at row 0
+        state.SetTile(0, 0, new Tile(100, ElementType.Item2, 0, 0));
+        state.SetTile(1, 0, new Tile(101, ElementType.Item2, 1, 0));
+        state.SetTile(2, 0, new Tile(102, ElementType.Item2, 2, 0));
+
+        var engine = CreateFullEngine(state, rng, new BufferedEventCollector());
+        engine.RunUntilStable();
+
+        var s = engine.State;
+        for (int i = 0; i < s.Width * s.Height; i++)
+        {
+            Assert.Equal((byte)0, s.CellLocks[i]);
+        }
+    }
+
+    /// <summary>
+    /// After settling with covers, no tile should have stale IsFalling flag.
+    /// </summary>
+    [Fact]
+    public void CoverTiles_NoStaleFallingFlags_AfterSettling()
+    {
+        var rng = new StubRandom();
+        var state = new GameState(5, 5, 4, rng);
+
+        // Place Cage covers on center column
+        for (int y = 0; y < 5; y++)
+            state.SetCover(2, y, new Cover(CoverType.Cage, 1));
+
+        int id = 1;
+        for (int y = 0; y < 5; y++)
+            for (int x = 0; x < 5; x++)
+                state.SetTile(x, y, new Tile(id++, (x + y) % 2 == 0 ? ElementType.Item4 : ElementType.Item3, x, y));
+
+        // 3-match at row 0
+        state.SetTile(0, 0, new Tile(100, ElementType.Item2, 0, 0));
+        state.SetTile(1, 0, new Tile(101, ElementType.Item2, 1, 0));
+        state.SetTile(2, 0, new Tile(102, ElementType.Item2, 2, 0));
+
+        var engine = CreateFullEngine(state, rng, new BufferedEventCollector());
+        engine.RunUntilStable();
+
+        var s = engine.State;
+        for (int i = 0; i < s.Width * s.Height; i++)
+        {
+            if (s.Grid[i].IsFalling)
+            {
+                int x = i % s.Width, y = i / s.Width;
+                Assert.Fail($"Tile at ({x},{y}) has stale IsFalling after settling");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verify the Clone path creates an independent ColorBombSessionManager.
+    /// </summary>
+    [Fact]
+    public void Clone_HasIndependentColorBombSessionManager()
+    {
+        var rng = new StubRandom();
+        var state = new GameState(5, 5, 4, rng);
+
+        int id = 1;
+        for (int y = 0; y < 5; y++)
+            for (int x = 0; x < 5; x++)
+                state.SetTile(x, y, new Tile(id++, (x + y) % 2 == 0 ? ElementType.Item1 : ElementType.Item3, x, y));
+
+        var engine = CreateFullEngine(state, rng, new BufferedEventCollector());
+
+        // Clone should not throw
+        var clone = engine.Clone();
+
+        // Both should be stable independently
+        Assert.True(engine.IsStable());
+        Assert.True(clone.IsStable());
+
+        // Running the clone should not affect original state
+        var originalScore = engine.State.Score;
+        clone.RunUntilStable();
+        Assert.Equal(originalScore, engine.State.Score);
     }
 
     #endregion

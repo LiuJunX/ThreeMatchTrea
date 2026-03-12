@@ -285,7 +285,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
         // A tile with IsFalling needs at least one more tick for gravity to clear it
         if (tile.IsFalling) return false;
 
-        // Tiles blocked by static cover are considered stable (flag already cleared above)
+        // Tiles blocked by static cover are considered stable (IsFalling cleared during Update)
         if (!state.CanMove(x, y)) return true;
 
         return Math.Abs(tile.Velocity.Y) <= SnapThreshold &&

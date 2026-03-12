@@ -10,6 +10,7 @@
 [Oo]bj/
 build_log.txt
 *.log
+*.deps.json
 
 # NuGet
 *.lock.json

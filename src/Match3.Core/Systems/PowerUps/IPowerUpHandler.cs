@@ -1,6 +1,7 @@
 using Match3.Core.Events;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Layers;
+using Match3.Core.Systems.PowerUps.ColorBomb;
 using Match3.Core.Systems.Projectiles;
 
 namespace Match3.Core.Systems.PowerUps;
@@ -37,4 +38,9 @@ public interface IPowerUpHandler
     /// Create a copy of this handler using a different lock scheduler (for Clone scenarios).
     /// </summary>
     IPowerUpHandler WithLockScheduler(LockScheduler? lockScheduler);
+
+    /// <summary>
+    /// Create a copy of this handler using a different ColorBomb session manager (for Clone scenarios).
+    /// </summary>
+    IPowerUpHandler WithColorBombSessionManager(IColorBombSessionManager? sessionManager);
 }

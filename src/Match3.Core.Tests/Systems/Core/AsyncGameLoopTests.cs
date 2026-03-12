@@ -9,6 +9,7 @@ using Match3.Core.Systems.Input;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
+using Match3.Core.Systems.PowerUps.ColorBomb;
 using Match3.Core.Systems.Projectiles;
 using Match3.Core.Systems.Scoring;
 using Match3.Core.Systems.Spawning;
@@ -82,6 +83,7 @@ public class AsyncGameLoopTests
         public IPowerUpHandler WithExplosionSystem(IExplosionSystem? explosionSystem) => this;
         public IPowerUpHandler WithProjectileSystem(IProjectileSystem? projectileSystem) => this;
         public IPowerUpHandler WithLockScheduler(LockScheduler? lockScheduler) => this;
+        public IPowerUpHandler WithColorBombSessionManager(IColorBombSessionManager? sessionManager) => this;
     }
 
     #region Basic Update Tests
@@ -336,6 +338,7 @@ public class AsyncGameLoopTests
         public IPowerUpHandler WithExplosionSystem(IExplosionSystem? explosionSystem) => this;
         public IPowerUpHandler WithProjectileSystem(IProjectileSystem? projectileSystem) => this;
         public IPowerUpHandler WithLockScheduler(LockScheduler? lockScheduler) => this;
+        public IPowerUpHandler WithColorBombSessionManager(IColorBombSessionManager? sessionManager) => this;
     }
 
     #endregion

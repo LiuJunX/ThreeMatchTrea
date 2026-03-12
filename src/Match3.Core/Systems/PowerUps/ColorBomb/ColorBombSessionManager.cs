@@ -633,32 +633,6 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
     }
 
     /// <summary>
-    /// Release the first lock token matching a specific cell position.
-    /// Used for single-lock cleanup (e.g., beam target lost during flight, normal mode).
-    /// </summary>
-    private void ReleaseLockForPosition(ref GameState state, ColorBombSession session, Position pos)
-    {
-        if (_lockScheduler != null)
-        {
-            int cellIndex = state.Index(pos);
-            for (int i = session.LockTokens.Count - 1; i >= 0; i--)
-            {
-                if (session.LockTokens[i].CellIndex == cellIndex)
-                {
-                    _lockScheduler.Release(ref state, session.LockTokens[i]);
-                    session.LockTokens.RemoveAt(i);
-                    break;
-                }
-            }
-        }
-        else
-        {
-            if (session.LockedPositions.Remove(pos))
-                state.Unlock(pos, BeamTargetLock);
-        }
-    }
-
-    /// <summary>
     /// Release ALL lock tokens matching a specific cell position.
     /// Combo mode may have multiple tokens per cell (BeamTargetLock + Indestructible).
     /// </summary>

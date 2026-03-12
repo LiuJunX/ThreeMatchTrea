@@ -145,7 +145,7 @@ internal sealed class SimulationMatchHandler
             // Track objective progress
             _objectiveSystem?.OnTileDestroyed(ref state, tile.Type, currentTick, elapsedTime, eventCollector);
 
-            state.SetTile(pos.X, pos.Y, new Tile());
+            state.SetTile(pos.X, pos.Y, new Tile(0, ElementType.None, pos.X, pos.Y));
 
             // Apply timed Receive lock to prevent premature gravity fill
             _lockScheduler?.Acquire(ref state, pos, CellLockType.Receive, ReceiveLockTimings.ProjectileImpactClear);

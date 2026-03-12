@@ -296,9 +296,9 @@ public sealed class SimulationEngine : IDisposable
         _currentTick++;
         _elapsedTime += deltaTime;
 
-        // 6.5. Clear stale physics state on immovable tiles.
-        // IsTileStable considers immovable tiles (under covers/Drop locks) always stable
-        // without checking their physics state, so stale IsFalling/velocity can persist.
+        // 6.5. Clear stale physics state on immovable tiles (safety net).
+        // Gravity's ProcessColumn handles this inline, but systems after gravity
+        // (e.g., match processing) may create new tiles at immovable positions.
         ClearImmovableTilePhysicsState(ref state);
 
         State = state;
@@ -669,7 +669,11 @@ public sealed class SimulationEngine : IDisposable
         var cloneExplosion = new ExplosionSystem(cloneCover, cloneGround, _objectiveSystem, cloneLocks);
         var cloneProjectile = new ProjectileSystem();
         var cloneColorBomb = new ColorBombSessionManager(null, cloneCover, cloneGround, _objectiveSystem, cloneLocks);
-        var clonePowerUp = _powerUpHandler.WithExplosionSystem(cloneExplosion).WithProjectileSystem(cloneProjectile).WithLockScheduler(cloneLocks);
+        var clonePowerUp = _powerUpHandler
+            .WithExplosionSystem(cloneExplosion)
+            .WithProjectileSystem(cloneProjectile)
+            .WithLockScheduler(cloneLocks)
+            .WithColorBombSessionManager(cloneColorBomb);
 
         // Shared stateless systems: _matchFinder, _matchProcessor, _deadlockDetector,
         // _shuffleSystem, _objectiveSystem — safe to share (no mutable instance fields).
