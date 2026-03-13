@@ -2,6 +2,7 @@
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Generation;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
 
@@ -16,18 +17,7 @@ namespace Match3.Core.Tests.Systems.Generation;
 /// </summary>
 public class BoardInitializerTests
 {
-    private class StubRandom : IRandom
-    {
-        private int _counter = 0;
-
-        public float NextFloat() => 0f;
-        public int Next(int max) => _counter++ % max;
-        public int Next(int min, int max) => min + (_counter++ % (max - min));
-        public void SetState(ulong state) { _counter = (int)state; }
-        public ulong GetState() => (ulong)_counter;
-    }
-
-    private class StubTileGenerator : ITileGenerator
+    private class LocalStubTileGenerator : ITileGenerator
     {
         private int _counter = 0;
         private readonly ElementType[] _types = { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4 };
@@ -41,7 +31,7 @@ public class BoardInitializerTests
 
     private BoardInitializer CreateInitializer()
     {
-        return new BoardInitializer(new StubTileGenerator());
+        return new BoardInitializer(new LocalStubTileGenerator());
     }
 
     private BoardInitializer CreateInitializerWithRealGenerator(IRandom rng)
@@ -56,7 +46,7 @@ public class BoardInitializerTests
     {
         // Arrange
         var initializer = CreateInitializer();
-        var state = new GameState(3, 3, 6, new StubRandom());
+        var state = new GameState(3, 3, 6, new SequentialRandom());
         var levelConfig = new LevelConfig
         {
             Width = 3,
@@ -85,7 +75,7 @@ public class BoardInitializerTests
     {
         // Arrange
         var initializer = CreateInitializer();
-        var state = new GameState(3, 3, 6, new StubRandom());
+        var state = new GameState(3, 3, 6, new SequentialRandom());
         var levelConfig = new LevelConfig
         {
             Width = 3,
@@ -113,7 +103,7 @@ public class BoardInitializerTests
     {
         // Arrange
         var initializer = CreateInitializer();
-        var state = new GameState(3, 3, 6, new StubRandom());
+        var state = new GameState(3, 3, 6, new SequentialRandom());
         state.NextTileId = 1;
         var levelConfig = new LevelConfig
         {
@@ -147,7 +137,7 @@ public class BoardInitializerTests
     {
         // Arrange
         var initializer = CreateInitializer();
-        var state = new GameState(8, 8, 6, new StubRandom());
+        var state = new GameState(8, 8, 6, new SequentialRandom());
 
         // Act
         initializer.Initialize(ref state, levelConfig: null);
@@ -167,7 +157,7 @@ public class BoardInitializerTests
     public void Initialize_WithoutLevelConfig_NoImmediateMatches()
     {
         // Arrange: 使用真实的 TileGenerator
-        var rng = new StubRandom();
+        var rng = new SequentialRandom();
         var initializer = CreateInitializerWithRealGenerator(rng);
         var state = new GameState(8, 8, 6, rng);
 
@@ -213,7 +203,7 @@ public class BoardInitializerTests
     {
         // Arrange: 3x3 board with center cell as Void
         var initializer = CreateInitializer();
-        var state = new GameState(3, 3, 6, new StubRandom());
+        var state = new GameState(3, 3, 6, new SequentialRandom());
         var levelConfig = new LevelConfig(3, 3);
         levelConfig.Cells[4] = CellKind.Void; // center (1,1)
 
@@ -232,7 +222,7 @@ public class BoardInitializerTests
     {
         // Arrange: 3x3, grid=null, cells defines shape
         var initializer = CreateInitializer();
-        var state = new GameState(3, 3, 6, new StubRandom());
+        var state = new GameState(3, 3, 6, new SequentialRandom());
         var levelConfig = new LevelConfig(3, 3) { Grid = null! };
         // Top-left corner is Void
         levelConfig.Cells[0] = CellKind.Void;
@@ -252,7 +242,7 @@ public class BoardInitializerTests
     {
         // Arrange: 5x5 cross (corners are Void)
         var initializer = CreateInitializer();
-        var state = new GameState(5, 5, 6, new StubRandom());
+        var state = new GameState(5, 5, 6, new SequentialRandom());
         var cells = new CellKind[]
         {
             CellKind.Void, CellKind.Slot, CellKind.Slot, CellKind.Slot, CellKind.Void,
@@ -282,7 +272,7 @@ public class BoardInitializerTests
     {
         // Arrange
         var initializer = CreateInitializer();
-        var state = new GameState(3, 3, 6, new StubRandom());
+        var state = new GameState(3, 3, 6, new SequentialRandom());
         var levelConfig = new LevelConfig(3, 3) { Grid = null! };
         levelConfig.Cells[0] = CellKind.Void;
         levelConfig.Cells[8] = CellKind.Void;
@@ -305,7 +295,7 @@ public class BoardInitializerTests
     {
         // Arrange: 3x3 最小棋盘
         var initializer = CreateInitializer();
-        var state = new GameState(3, 3, 6, new StubRandom());
+        var state = new GameState(3, 3, 6, new SequentialRandom());
 
         // Act
         initializer.Initialize(ref state, levelConfig: null);
@@ -322,7 +312,7 @@ public class BoardInitializerTests
     {
         // Arrange: LevelConfig 比 state 小
         var initializer = CreateInitializer();
-        var state = new GameState(5, 5, 6, new StubRandom());
+        var state = new GameState(5, 5, 6, new SequentialRandom());
 
         // 先填充一些初始值
         for (int y = 0; y < 5; y++)

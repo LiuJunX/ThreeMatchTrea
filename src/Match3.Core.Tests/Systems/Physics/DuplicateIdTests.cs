@@ -1,22 +1,14 @@
-using System.Collections.Generic;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Physics;
+using Match3.Core.Tests.TestFixtures;
 using Xunit;
 
 namespace Match3.Core.Tests.Systems.Physics;
 
 public class DuplicateIdTests
 {
-    private class StubRandom : Match3.Random.IRandom
-    {
-        public float NextFloat() => 0.5f;
-        public int Next(int max) => 0;
-        public int Next(int min, int max) => min;
-        public void Shuffle<T>(IList<T> list) { }
-    }
-
     [Fact]
     public void TilesWithDuplicateIds_ShouldAllFall()
     {
@@ -29,7 +21,7 @@ public class DuplicateIdTests
         // If the system relies on Unique IDs, one of these might be skipped.
         
         var config = new Match3Config { GravitySpeed = 10f };
-        var rng = new StubRandom();
+        var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(2, 3, 5, rng);
         var gravity = new RealtimeGravitySystem(config, rng);
 

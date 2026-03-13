@@ -1,6 +1,7 @@
 ﻿using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Generation;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
 
@@ -15,34 +16,6 @@ namespace Match3.Core.Tests.Systems.Generation;
 /// </summary>
 public class StandardTileGeneratorTests
 {
-    private class StubRandom : IRandom
-    {
-        private int _returnValue;
-
-        public StubRandom(int returnValue = 0)
-        {
-            _returnValue = returnValue;
-        }
-
-        public void SetReturnValue(int value) => _returnValue = value;
-
-        public float NextFloat() => 0f;
-        public int Next(int max) => _returnValue % max;
-        public int Next(int min, int max) => min + (_returnValue % (max - min));
-        public void SetState(ulong state) { _returnValue = (int)state; }
-        public ulong GetState() => (ulong)_returnValue;
-    }
-
-    private class SequentialRandom : IRandom
-    {
-        private int _counter = 0;
-
-        public float NextFloat() => 0f;
-        public int Next(int max) => _counter++ % max;
-        public int Next(int min, int max) => min + (_counter++ % (max - min));
-        public void SetState(ulong state) { _counter = (int)state; }
-        public ulong GetState() => (ulong)_counter;
-    }
 
     private GameState CreateState(int width = 8, int height = 8)
     {
@@ -63,7 +36,7 @@ public class StandardTileGeneratorTests
     public void GenerateNonMatchingTile_EmptyPosition_ReturnsTile()
     {
         // Arrange
-        var generator = new StandardTileGenerator(new StubRandom(0));
+        var generator = new StandardTileGenerator(StubRandom.WithFixedValue(0));
         var state = CreateState();
 
         // Act
@@ -132,7 +105,7 @@ public class StandardTileGeneratorTests
     public void GenerateNonMatchingTile_NoMatchIfOnlyOneSameNeighbor()
     {
         // Arrange: 左边只有一个相同的
-        var generator = new StandardTileGenerator(new StubRandom(0)); // 总是返回 Red
+        var generator = new StandardTileGenerator(StubRandom.WithFixedValue(0)); // 总是返回 Red
         var state = CreateState();
         state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
         state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0)); // 不同颜色
@@ -152,7 +125,7 @@ public class StandardTileGeneratorTests
     public void GenerateNonMatchingTile_AtOrigin_NoNeighborCheck()
     {
         // Arrange: 在 (0, 0)，没有左边或上面的邻居
-        var generator = new StandardTileGenerator(new StubRandom(0));
+        var generator = new StandardTileGenerator(StubRandom.WithFixedValue(0));
         var state = CreateState();
 
         // Act
@@ -249,7 +222,7 @@ public class StandardTileGeneratorTests
     {
         // Arrange: 使用固定返回值的 RNG
         // _colors 数组: [0]=Red, [1]=Green, [2]=Blue, [3]=Yellow, [4]=Purple, [5]=Orange
-        var rng = new StubRandom(2); // 返回索引 2 -> Blue
+        var rng = StubRandom.WithFixedValue(2); // 返回索引 2 -> Blue
         var generator = new StandardTileGenerator(rng);
         var state = CreateState();
 
@@ -265,7 +238,7 @@ public class StandardTileGeneratorTests
     {
         // Arrange: 不提供 RNG
         var generator = new StandardTileGenerator();
-        var stateRng = new StubRandom(1); // 返回索引 1 -> Blue
+        var stateRng = StubRandom.WithFixedValue(1); // 返回索引 1 -> Blue
         var state = new GameState(3, 3, 6, stateRng);
         for (int y = 0; y < 3; y++)
             for (int x = 0; x < 3; x++)

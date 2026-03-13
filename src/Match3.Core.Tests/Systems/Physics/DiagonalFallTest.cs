@@ -2,6 +2,7 @@ using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Physics;
+using Match3.Core.Tests.TestFixtures;
 using System.Collections.Generic;
 using System.Text;
 using Xunit;
@@ -19,22 +20,14 @@ public class DiagonalFallTest
         _output = output;
     }
 
-    private class StubRandom : Match3.Random.IRandom
-    {
-        public float NextFloat() => 0.5f;
-        public int Next(int max) => 0; // Always return 0 (force left or consistent choice)
-        public int Next(int min, int max) => min; // Return min
-        public void Shuffle<T>(IList<T> list) { }
-    }
-
     [Fact]
     public void SlideAndFall_ShouldBeContinuous()
     {
-        var config = new Match3Config { 
+        var config = new Match3Config {
             GravitySpeed = 35f, // Use default
-            MaxFallSpeed = 20f 
+            MaxFallSpeed = 20f
         };
-        var rng = new StubRandom();
+        var rng = StubRandom.WithFixedValue(0);
         // Width 2, Height 5
         var state = new GameState(2, 5, 5, rng);
         var gravity = new RealtimeGravitySystem(config, rng);

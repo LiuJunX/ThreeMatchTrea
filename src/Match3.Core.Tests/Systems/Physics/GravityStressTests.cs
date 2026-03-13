@@ -12,6 +12,7 @@ using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Core.View;
 using Match3.Random;
 using Xunit;
@@ -28,30 +29,13 @@ public class GravityStressTests
         _output = output;
     }
 
-    private class StubTileGenerator : ITileGenerator
-    {
-        public ElementType GenerateNonMatchingTile(ref GameState state, int x, int y) => ElementType.Item3;
-    }
-
-    private class StubRandom : IRandom
-    {
-        public float NextFloat() => 0f;
-        public int Next(int max) => 0;
-        public int Next(int min, int max) => min;
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-        public bool NextBool() => false;
-        public T PickRandom<T>(System.Collections.Generic.IList<T> items) => items[0];
-        public void Shuffle<T>(System.Collections.Generic.IList<T> list) { }
-    }
-
     [Fact]
     public void ColumnFall_ShouldBeFastAndSmooth()
     {
         // Setup a tall grid
         int height = 10;
-        var state = new GameState(1, height, 3, new StubRandom());
-        var gravity = new RealtimeGravitySystem(new Match3Config(), new StubRandom());
+        var state = new GameState(1, height, 3, StubRandom.WithFixedValue(0));
+        var gravity = new RealtimeGravitySystem(new Match3Config(), StubRandom.WithFixedValue(0));
         
         // Fill top 3 with tiles, bottom 7 empty
         // Y=0,1,2 occupied. 3..9 empty.
@@ -108,8 +92,8 @@ public class GravityStressTests
     [Fact]
     public void VelocityInheritance_ShouldNotSlowDown_WhenStacked()
     {
-        var state = new GameState(1, 10, 3, new StubRandom());
-        var gravity = new RealtimeGravitySystem(new Match3Config(), new StubRandom());
+        var state = new GameState(1, 10, 3, StubRandom.WithFixedValue(0));
+        var gravity = new RealtimeGravitySystem(new Match3Config(), StubRandom.WithFixedValue(0));
 
         // Tile A (Bottom) falling at speed 10
         var tileA = new Tile(1, ElementType.Item1, 0, 5);
