@@ -66,7 +66,7 @@ namespace Match3.Unity.Views
 
         private void ApplyBeamAppearance(byte colorIndex)
         {
-            var color = GetBeamColor(colorIndex);
+            var color = BeamColorPalette.GetBeamColor(colorIndex);
             _renderer.sprite = SpriteFactory.GetColorSprite(color);
             _renderer.color = color;
             transform.localScale = Vector3.one * 0.3f;
@@ -78,20 +78,6 @@ namespace Match3.Unity.Views
             _trail.endColor = new Color(color.r, color.g, color.b, 0f);
         }
 
-        private static Color GetBeamColor(byte index)
-        {
-            return index switch
-            {
-                0 => new Color(1f, 0.3f, 0.3f),    // Red
-                1 => new Color(0.3f, 1f, 0.4f),     // Green
-                2 => new Color(0.3f, 0.5f, 1f),     // Blue
-                3 => new Color(1f, 0.95f, 0.3f),    // Yellow
-                4 => new Color(0.8f, 0.4f, 1f),     // Purple
-                5 => new Color(1f, 0.6f, 0.2f),     // Orange
-                _ => new Color(1f, 1f, 0.6f)
-            };
-        }
-
         public void UpdateFromVisual(ProjectileVisual visual, float cellSize, Vector2 origin, int height)
         {
             var worldPos = CoordinateConverter.GridToWorld(visual.Position, cellSize, origin, height);
@@ -99,12 +85,7 @@ namespace Match3.Unity.Views
             transform.rotation = Quaternion.Euler(0, 0, visual.Rotation);
             gameObject.SetActive(visual.IsVisible);
 
-            // Re-enable trail emission after first position update (prevents flash)
-            if (!_trail.emitting)
-            {
-                _trail.Clear();
-                _trail.emitting = true;
-            }
+            ProjectileLifecycleHelper.UpdateTrailEmission(_trail);
         }
 
         #region IPoolable
@@ -112,17 +93,13 @@ namespace Match3.Unity.Views
         public void OnSpawn()
         {
             ProjectileId = -1;
-            // Suppress trail until first UpdateFromVisual sets correct position
-            _trail.emitting = false;
-            _trail.Clear();
+            ProjectileLifecycleHelper.OnSpawn(_trail);
         }
 
         public void OnDespawn()
         {
             ProjectileId = -1;
-            gameObject.SetActive(false);
-            _trail.emitting = false;
-            _trail.Clear();
+            ProjectileLifecycleHelper.OnDespawn(gameObject, _trail);
         }
 
         #endregion
