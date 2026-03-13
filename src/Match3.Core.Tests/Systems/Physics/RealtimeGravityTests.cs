@@ -4,6 +4,7 @@ using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Tests.TestFixtures;
+using Match3.Core.Tests.TestHelpers;
 using Match3.Random;
 using Xunit;
 
@@ -31,21 +32,12 @@ public class RealtimeGravityTests
         physics.Update(ref state, 0.05f);
 
         // Assert - Find tile by ID since it may have moved to a new grid cell
-        var newTile = FindTileById(state, 100);
+        var newTile = SimulationTestHelper.FindTileById(in state, 100);
 
         // It should have moved down (Y increases)
         Assert.True(newTile.Position.Y > 0, $"Tile should have moved down. Pos: {newTile.Position.Y}");
         Assert.True(newTile.IsFalling, "Tile should be in Falling state");
         Assert.True(newTile.Velocity.Y > 0, "Tile should have downward velocity");
-    }
-
-    private static Tile FindTileById(GameState state, long id)
-    {
-        for (int i = 0; i < state.Grid.Length; i++)
-        {
-            if (state.Grid[i].Id == id) return state.Grid[i];
-        }
-        return new Tile(); // Should not happen
     }
 
     [Fact]

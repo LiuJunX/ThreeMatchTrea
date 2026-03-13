@@ -12,6 +12,7 @@ using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
 using Match3.Core.Tests.TestFixtures;
+using Match3.Core.Tests.TestHelpers;
 using Match3.Core.View;
 using Xunit;
 
@@ -44,8 +45,8 @@ public class GravityBugTests
         gravity.Update(ref state, 0.05f);
 
         // Find tiles by ID (they may have moved to new grid positions)
-        var tileA = FindTileById(state, 1);
-        var tileB = FindTileById(state, 2);
+        var tileA = SimulationTestHelper.FindTileById(in state, 1);
+        var tileB = SimulationTestHelper.FindTileById(in state, 2);
 
         // Check B
         Assert.True(tileB.IsFalling, "Tile B should be falling");
@@ -54,15 +55,6 @@ public class GravityBugTests
         // Check A
         Assert.True(tileA.IsFalling, "Tile A should be falling together with B");
         Assert.True(tileA.Position.Y > 0.0f, "Tile A should have moved down");
-    }
-
-    private static Tile FindTileById(GameState state, long id)
-    {
-        for (int i = 0; i < state.Grid.Length; i++)
-        {
-            if (state.Grid[i].Id == id) return state.Grid[i];
-        }
-        return new Tile(); // Should not happen
     }
 
     [Fact]

@@ -5,6 +5,7 @@ using Match3.Core.Models.Grid;
 using Match3.Core.Replay;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Tests.TestFixtures;
+using Match3.Core.Tests.TestHelpers;
 using Xunit;
 
 namespace Match3.Core.Tests.Systems.Physics;
@@ -33,15 +34,6 @@ public class HoleGravityTests
             physics.Update(ref state, dt);
             if (physics.IsStable(in state)) break;
         }
-    }
-
-    private static Tile FindTileById(in GameState state, int id)
-    {
-        for (int i = 0; i < state.Grid.Length; i++)
-        {
-            if (state.Grid[i].Id == id) return state.Grid[i];
-        }
-        return default;
     }
 
     #region Tile Falls Through Hole
@@ -148,7 +140,7 @@ public class HoleGravityTests
         Assert.True(physics.IsStable(in state));
 
         // Find the tile — it should not be falling
-        var tile = FindTileById(in state, 100);
+        var tile = SimulationTestHelper.FindTileById(in state, 100);
         Assert.False(tile.IsFalling);
         Assert.True(System.Math.Abs(tile.Velocity.Y) < 0.01f);
     }
@@ -525,7 +517,7 @@ public class HoleGravityTests
             physics.Update(ref state, dt);
 
             // Find tile 100 wherever it is in the grid
-            var tile = FindTileById(in state, 100);
+            var tile = SimulationTestHelper.FindTileById(in state, 100);
             if (tile.Type == ElementType.None) break;
 
             Assert.True(tile.Position.Y >= prevY - 0.01f,
@@ -613,7 +605,7 @@ public class HoleGravityTests
             physics.Update(ref state, dt);
 
             // Tile A (id=100) should never have Position.Y in the hole zone (rows 2-4)
-            var tileA = FindTileById(in state, 100);
+            var tileA = SimulationTestHelper.FindTileById(in state, 100);
             if (tileA.Type != ElementType.None)
             {
                 int roundedY = (int)System.Math.Floor(tileA.Position.Y + 0.5f);
@@ -635,7 +627,7 @@ public class HoleGravityTests
         Assert.Equal(101, finalB.Id);
 
         // Tile A should have settled above the hole (row 0 or 1) since rows 5-6 are full
-        var finalA = FindTileById(in state, 100);
+        var finalA = SimulationTestHelper.FindTileById(in state, 100);
         Assert.NotEqual(ElementType.None, finalA.Type);
     }
 
@@ -673,7 +665,7 @@ public class HoleGravityTests
         Assert.True(physics.IsStable(in state), "Board should stabilize after unsticking");
 
         // Tile should be at grid (0,0) with Position.Y ≈ 0
-        var tile = FindTileById(in state, 100);
+        var tile = SimulationTestHelper.FindTileById(in state, 100);
         Assert.True(System.Math.Abs(tile.Position.Y - 0.0f) < 0.1f,
             $"Stuck tile should have snapped back. Position.Y = {tile.Position.Y:F3}");
     }
