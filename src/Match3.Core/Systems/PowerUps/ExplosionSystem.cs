@@ -18,9 +18,11 @@ public class ExplosionSystem : IExplosionSystem
     private readonly IGroundSystem _groundSystem;
     private readonly ILevelObjectiveSystem? _objectiveSystem;
     private readonly LockScheduler? _lockScheduler;
+    private readonly ExplosionConfig _config;
 
-    // Config
-    public const float DefaultWaveInterval = 0.1f; // 100ms per wave
+    /// <summary>Default wave interval for generic explosions (seconds).</summary>
+    [System.Obsolete("Use ExplosionConfig.DefaultWaveInterval instead.")]
+    public const float DefaultWaveInterval = 0.1f;
 
     public ExplosionSystem()
         : this(new CoverSystem(), new GroundSystem(), null, null)
@@ -32,20 +34,24 @@ public class ExplosionSystem : IExplosionSystem
     {
     }
 
-    public ExplosionSystem(ICoverSystem coverSystem, IGroundSystem groundSystem, ILevelObjectiveSystem? objectiveSystem, LockScheduler? lockScheduler)
+    public ExplosionSystem(ICoverSystem coverSystem, IGroundSystem groundSystem, ILevelObjectiveSystem? objectiveSystem, LockScheduler? lockScheduler, ExplosionConfig? config = null)
     {
         _coverSystem = coverSystem;
         _groundSystem = groundSystem;
         _objectiveSystem = objectiveSystem;
         _lockScheduler = lockScheduler;
+        _config = config ?? new ExplosionConfig();
     }
+
+    /// <summary>Explosion timing configuration used by this system.</summary>
+    public ExplosionConfig Config => _config;
 
     public bool HasActiveExplosions => _activeExplosions.Count > 0;
 
     public void CreateExplosion(ref GameState state, Position origin, int radius)
     {
         var explosion = Pools.Obtain<Explosion>();
-        explosion.Initialize(origin, radius, DefaultWaveInterval);
+        explosion.Initialize(origin, radius, _config.DefaultWaveInterval);
 
         // Calculate affected area and lock tiles
         for (int y = origin.Y - radius; y <= origin.Y + radius; y++)
@@ -79,7 +85,7 @@ public class ExplosionSystem : IExplosionSystem
     }
 
     public void CreateTargetedExplosion(ref GameState state, Position origin, IEnumerable<Position> targets)
-        => CreateTargetedExplosion(ref state, origin, targets, DefaultWaveInterval);
+        => CreateTargetedExplosion(ref state, origin, targets, _config.DefaultWaveInterval);
 
     public void CreateTargetedExplosion(ref GameState state, Position origin, IEnumerable<Position> targets, float waveInterval)
         => CreateTargetedExplosion(ref state, origin, targets, waveInterval, 1f);
