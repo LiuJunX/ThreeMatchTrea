@@ -5,6 +5,7 @@ using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
 
@@ -30,10 +31,7 @@ public class StandardMatchProcessorTests
 
     private GameState CreateEmptyState(int width = 8, int height = 8)
     {
-        return new Match3.Core.Tests.TestFixtures.GameStateBuilder()
-            .WithSize(width, height)
-            .WithEmptyTiles()
-            .Build();
+        return GameStateBuilder.CreateEmptyState(width, height);
     }
 
     #region Basic ProcessMatches Tests

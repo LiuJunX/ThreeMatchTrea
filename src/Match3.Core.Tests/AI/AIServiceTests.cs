@@ -326,15 +326,7 @@ public class AIServiceTests
 
     private GameState CreateEmptyState()
     {
-        var state = new GameState(5, 5, 5, new StubRandom());
-        for (int y = 0; y < 5; y++)
-        {
-            for (int x = 0; x < 5; x++)
-            {
-                state.SetTile(x, y, new Tile(0, ElementType.None, x, y));
-            }
-        }
-        return state;
+        return GameStateBuilder.CreateEmptyState(5, 5);
     }
 
     private GameState CreateStateWithEmptyTile()

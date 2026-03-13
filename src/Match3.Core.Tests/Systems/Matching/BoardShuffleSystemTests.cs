@@ -5,6 +5,7 @@ using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Matching.Generation;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
 
@@ -97,15 +98,7 @@ public class BoardShuffleSystemTests
 
     private GameState CreateEmptyState(int width = 6, int height = 6)
     {
-        var state = new GameState(width, height, 6, new StubRandom());
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                state.SetTile(x, y, new Tile(y * width + x, ElementType.None, x, y));
-            }
-        }
-        return state;
+        return GameStateBuilder.CreateEmptyState(width, height);
     }
 
     /// <summary>
