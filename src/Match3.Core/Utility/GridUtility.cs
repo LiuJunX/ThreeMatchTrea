@@ -36,9 +36,9 @@ public static class GridUtility
     public static bool IsSwapValid(in GameState state, Position from, Position to)
     {
         // 边界检查
-        if (from.X < 0 || from.X >= state.Width || from.Y < 0 || from.Y >= state.Height)
+        if (!state.IsValid(from))
             return false;
-        if (to.X < 0 || to.X >= state.Width || to.Y < 0 || to.Y >= state.Height)
+        if (!state.IsValid(to))
             return false;
 
         var tileFrom = state.GetTile(from.X, from.Y);

@@ -480,7 +480,7 @@ public class PowerUpHandler : IPowerUpHandler
             {
                 var pos = queue.Dequeue();
 
-                if (pos.X < 0 || pos.X >= state.Width || pos.Y < 0 || pos.Y >= state.Height)
+                if (!state.IsValid(pos))
                     continue;
 
                 if (processed.Contains(pos))

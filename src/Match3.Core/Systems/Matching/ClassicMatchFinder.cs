@@ -216,7 +216,7 @@ public class ClassicMatchFinder : IMatchFinder
 
     private void CheckNeighbor(in GameState state, int x, int y, ElementType type, HashSet<Position> component, Queue<Position> queue)
     {
-        if (x < 0 || x >= state.Width || y < 0 || y >= state.Height) return;
+        if (!state.IsValid(x, y)) return;
 
         // Check if cover blocks matching at this position
         if (!state.CanMatch(x, y)) return;

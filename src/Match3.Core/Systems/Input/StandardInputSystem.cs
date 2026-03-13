@@ -123,7 +123,7 @@ public class StandardInputSystem : IInputSystem
 
     public bool IsValidPosition(in GameState state, Position p)
     {
-        return p.X >= 0 && p.X < state.Width && p.Y >= 0 && p.Y < state.Height;
+        return state.IsValid(p);
     }
 
     public Position GetSwipeTarget(Position from, Direction direction)
