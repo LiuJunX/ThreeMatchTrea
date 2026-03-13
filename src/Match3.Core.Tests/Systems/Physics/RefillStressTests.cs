@@ -13,6 +13,7 @@ using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
 using Match3.Core.Systems.Spawning;
 using Match3.Core.Tests.TestFixtures;
+using Match3.Core.Tests.TestHelpers;
 using Match3.Core.View;
 using Xunit;
 using Xunit.Abstractions;
@@ -26,19 +27,6 @@ public class RefillStressTests
     public RefillStressTests(ITestOutputHelper output)
     {
         _output = output;
-    }
-
-    private Tile GetTileById(GameState state, long id)
-    {
-        for (int y = 0; y < state.Height; y++)
-        {
-            for (int x = 0; x < state.Width; x++)
-            {
-                var t = state.GetTile(x, y);
-                if (t.Id == id) return t;
-            }
-        }
-        return default;
     }
 
     [Fact]

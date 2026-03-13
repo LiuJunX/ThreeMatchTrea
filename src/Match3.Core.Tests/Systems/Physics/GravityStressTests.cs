@@ -13,6 +13,7 @@ using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
 using Match3.Core.Tests.TestFixtures;
+using Match3.Core.Tests.TestHelpers;
 using Match3.Core.View;
 using Match3.Random;
 using Xunit;
@@ -57,9 +58,9 @@ public class GravityStressTests
         {
             gravity.Update(ref state, dt);
             
-            var t0 = GetTileById(state, 1);
-            var t1 = GetTileById(state, 2);
-            var t2 = GetTileById(state, 3);
+            var t0 = SimulationTestHelper.FindTileById(in state, 1);
+            var t1 = SimulationTestHelper.FindTileById(in state, 2);
+            var t2 = SimulationTestHelper.FindTileById(in state, 3);
             
             // sb.AppendLine($"Frame {i}: T2(Bot)={t2.Position.Y:F2}(v={t2.Velocity.Y:F2}) T1(Mid)={t1.Position.Y:F2}(v={t1.Velocity.Y:F2}) T0(Top)={t0.Position.Y:F2}(v={t0.Velocity.Y:F2})");
             
@@ -77,15 +78,15 @@ public class GravityStressTests
             }
         }
         
-        var finalT2 = GetTileById(state, 3);
+        var finalT2 = SimulationTestHelper.FindTileById(in state, 3);
         // Should be at bottom (9)
         Assert.Equal(9.0f, finalT2.Position.Y, 0.1f);
         
         // Others should be stacked on top
-        var finalT1 = GetTileById(state, 2);
+        var finalT1 = SimulationTestHelper.FindTileById(in state, 2);
         Assert.Equal(8.0f, finalT1.Position.Y, 0.1f);
         
-        var finalT0 = GetTileById(state, 1);
+        var finalT0 = SimulationTestHelper.FindTileById(in state, 1);
         Assert.Equal(7.0f, finalT0.Position.Y, 0.1f);
     }
 
@@ -132,13 +133,5 @@ public class GravityStressTests
         Assert.True(newB.IsFalling);
     }
 
-    private Tile GetTileById(GameState state, long id)
-    {
-        for (int i = 0; i < state.Grid.Length; i++)
-        {
-            if (state.Grid[i].Id == id) return state.Grid[i];
-        }
-        return new Tile(); // Should not happen
-    }
 }
 
