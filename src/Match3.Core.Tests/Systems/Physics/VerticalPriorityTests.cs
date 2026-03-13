@@ -1,25 +1,14 @@
-using System.Collections.Generic;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Physics;
+using Match3.Core.Tests.TestFixtures;
 using Xunit;
 
 namespace Match3.Core.Tests.Systems.Physics;
 
 public class VerticalPriorityTests
 {
-    private class ControlledRandom : Match3.Random.IRandom
-    {
-        private readonly Queue<int> _nextResults = new Queue<int>();
-        
-        public void EnqueueNext(int value) => _nextResults.Enqueue(value);
-
-        public float NextFloat() => 0.5f;
-        public int Next(int max) => _nextResults.Count > 0 ? _nextResults.Dequeue() : 0;
-        public int Next(int min, int max) => min + (_nextResults.Count > 0 ? _nextResults.Dequeue() : 0);
-        public void Shuffle<T>(IList<T> list) { }
-    }
 
     [Fact]
     public void VerticalFall_ShouldPrevent_DiagonalSlideIntoSameSlot()
@@ -36,7 +25,7 @@ public class VerticalPriorityTests
         // to ensure the logic actively prevents the slide even if it gets "first dibs".
         
         var config = new Match3Config { GravitySpeed = 10f };
-        var rng = new ControlledRandom();
+        var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(3, 2, 5, rng);
         var gravity = new RealtimeGravitySystem(config, rng);
 
@@ -59,8 +48,8 @@ public class VerticalPriorityTests
         // Start: [0, 1, 2]
         // k must be 2 -> Swap(2, 2) -> [0, 1, 2]
         // k must be 1 -> Swap(1, 1) -> [0, 1, 2]
-        rng.EnqueueNext(2);
-        rng.EnqueueNext(1);
+        rng.EnqueueValues(2);
+        rng.EnqueueValues(1);
 
         // Also diagonal slide choice (left vs right) requires random
         // If TileA(0,0) tries to slide, it checks (1,1).

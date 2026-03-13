@@ -1,31 +1,14 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using Match3.Core.Config;
+﻿using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Physics;
-using Match3.Random;
+using Match3.Core.Tests.TestFixtures;
 using Xunit;
 
 namespace Match3.Core.Tests.Systems.Physics;
 
 public class RaceConditionTests
 {
-    private class ControlledRandom : IRandom
-    {
-        private readonly Queue<int> _nextValues = new Queue<int>();
-        
-        public void EnqueueNext(int value) => _nextValues.Enqueue(value);
-        
-        public float NextFloat() => 0f;
-        public int Next(int max) => _nextValues.Count > 0 ? _nextValues.Dequeue() : 0;
-        public int Next(int min, int max) => min + (_nextValues.Count > 0 ? _nextValues.Dequeue() : 0);
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-        public bool NextBool() => false;
-        public T PickRandom<T>(IList<T> items) => items[0];
-        public void Shuffle<T>(IList<T> list) { }
-    }
 
     [Fact]
     public void VerticalAndDiagonal_ShouldNotClaimSameSlot()
@@ -39,7 +22,7 @@ public class RaceConditionTests
         // (2, 1) = Blocked (Force B to slide only right if valid)
         
         // Arrange
-        var rng = new ControlledRandom();
+        var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(3, 3, 5, rng); // Fixed: Width=3, Height=3
         var gravity = new RealtimeGravitySystem(new Match3Config(), rng);
         
@@ -91,8 +74,8 @@ public class RaceConditionTests
         // n=2 (indices 0..2). Next(0, 3).
         // n=1. Next(0, 2).
         
-        rng.EnqueueNext(0); // Swap 0 and 2 -> [2, 1, 0]
-        rng.EnqueueNext(0); // Swap 0 and 1 -> [1, 2, 0]
+        rng.EnqueueValues(0); // Swap 0 and 2 -> [2, 1, 0]
+        rng.EnqueueValues(0); // Swap 0 and 1 -> [1, 2, 0]
         
         // Also need RNG for Diagonal choice?
         // B at (0,0). Block at (0,1).
@@ -128,7 +111,7 @@ public class RaceConditionTests
         // Then Col 1 is processed. If no check, tile moves again (Double Gravity/Move).
         
         // Setup 2x5
-        var rng = new ControlledRandom();
+        var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(2, 5, 3, rng);
         var gravity = new RealtimeGravitySystem(new Match3Config { GravitySpeed = 10f, InitialFallSpeed = 0f }, rng);
         
@@ -151,7 +134,7 @@ public class RaceConditionTests
         // Below target is (1, 3) (Empty)
         
         // Ensure Col 0 processed before Col 1.
-        rng.EnqueueNext(1); 
+        rng.EnqueueValues(1); 
         
         // Act
         gravity.Update(ref state, 0.02f);
