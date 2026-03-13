@@ -465,9 +465,11 @@ public sealed class Player
                     else
                         moveT = (t - stayFrac) / (arriveFrac - stayFrac);
 
-                    // Retarget segments: smoothstep (slow start to match "struggling" arc blend)
+                    // Retarget segments: ease-out (full speed at entry, decelerate to land)
                     // Initial/diverge launches: smoothstep (accelerate from origin, decelerate to target)
-                    float eased = moveT * moveT * (3f - 2f * moveT); // smoothstep for both
+                    float eased = ufo.MomentumControl.HasValue
+                        ? 1f - (1f - moveT) * (1f - moveT)  // ease-out quadratic
+                        : moveT * moveT * (3f - 2f * moveT); // smoothstep
 
                     Vector2 ufoPos;
                     if (ufo.DivergeControl.HasValue && ufo.ApproachControl.HasValue)
@@ -681,8 +683,10 @@ public sealed class Player
                 else
                     moveT = (t - stayFrac) / (arriveFrac - stayFrac);
 
-                // Match easing to UpdateCommand: smoothstep for all segments
-                float eased = moveT * moveT * (3f - 2f * moveT);
+                // Match easing to UpdateCommand: smoothstep for initial/diverge, ease-out for retarget
+                float eased = cmd.MomentumControl.HasValue
+                    ? 1f - (1f - moveT) * (1f - moveT)   // ease-out quadratic (retarget)
+                    : moveT * moveT * (3f - 2f * moveT);  // smoothstep (initial/diverge)
                 Vector2 currentPos;
                 if (cmd.DivergeControl.HasValue && cmd.ApproachControl.HasValue)
                 {
@@ -706,10 +710,10 @@ public sealed class Player
                 MarkTilesAnimating(activeUfo, false);
                 _activeCommands.RemoveAt(i);
 
-                // Compute duration from actual visual distance (slower for "struggling" feel)
+                // Compute duration from actual visual distance
                 float visualDistance = Vector2.Distance(currentPos, retarget.NewTarget);
                 float newDuration = visualDistance > 0
-                    ? visualDistance / UfoConstants.FlightSpeed * UfoConstants.RetargetDurationMultiplier
+                    ? visualDistance / UfoConstants.FlightSpeed
                     : 0.01f;
 
                 // Momentum control point: extend old flight direction to create a curved path.
@@ -731,8 +735,6 @@ public sealed class Player
                 {
                     var oldNorm = oldDirVec / oldLen;
                     float strength = UfoConstants.MomentumStrength(oldDirVec, retarget.NewTarget - currentPos);
-                    // Near-arrival retargets: reduce momentum so UFO doesn't overshoot
-                    strength *= (1f - moveT);
                     momentum = currentPos + oldNorm * strength;
                 }
 

@@ -507,21 +507,11 @@ namespace Match3.Unity.Views
                 // Raw sine arc from progress
                 float rawArc = Mathf.Sin(progress / arriveFrac * Mathf.PI);
 
-                // Apply retarget blend: exaggerated "struggling" pull-up
+                // Apply retarget blend: smooth transition from snapshot to new arc
                 if (_retargetBlend > 0f)
                 {
-                    _retargetBlend = Mathf.Max(0f, _retargetBlend - dt / 0.8f);
-                    // Quadratic ease-in: brief hesitation then accelerates
-                    float p = 1f - _retargetBlend; // 0→1 progress
-                    float eff = 1f - p * p;
-
-                    // Dip below: UFO gets pushed DOWN before being yanked up.
-                    // Stronger when it was closer to target (lower arc = more struggle).
-                    float dipStrength = (1f - Mathf.Max(_ufoArcSnapshot, 0f)) * 0.4f;
-                    float dipCurve = _retargetBlend * _retargetBlend * (1f - _retargetBlend) * 4f;
-                    float snapshotWithDip = _ufoArcSnapshot - dipStrength * dipCurve;
-
-                    _ufoArcCurrent = Mathf.Lerp(rawArc, snapshotWithDip, eff);
+                    _retargetBlend = Mathf.Max(0f, _retargetBlend - dt / 0.4f);
+                    _ufoArcCurrent = Mathf.Lerp(rawArc, _ufoArcSnapshot, _retargetBlend);
                 }
                 else
                 {
@@ -529,8 +519,7 @@ namespace Match3.Unity.Views
                 }
 
                 yOffset = UfoArcY * cellSize * _ufoArcCurrent;
-                // Dip can make arc negative — only affect Y offset (push down), not scale
-                scaleMul = 1f + (UfoArcScale - 1f) * Mathf.Max(0f, _ufoArcCurrent);
+                scaleMul = 1f + (UfoArcScale - 1f) * _ufoArcCurrent;
             }
             else
             {
