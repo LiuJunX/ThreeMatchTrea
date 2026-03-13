@@ -29,15 +29,7 @@ public class DeadlockDetectionSystemTests
 
     private GameState CreateEmptyState(int width = 6, int height = 6)
     {
-        var state = new GameState(width, height, 6, new StubRandom());
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                state.SetTile(x, y, new Tile(y * width + x, ElementType.None, x, y));
-            }
-        }
-        return state;
+        return GameStateBuilder.CreateEmptyState(width, height);
     }
 
     /// <summary>

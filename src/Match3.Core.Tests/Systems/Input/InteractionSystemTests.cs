@@ -1,11 +1,8 @@
-﻿using System;
-using Match3.Core.Models.Enums;
+﻿using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Input;
 using Match3.Core.Tests.TestFixtures;
-using Match3.Core.Utility;
-using Match3.Random;
 using Xunit;
 
 namespace Match3.Core.Tests.Systems.Input;
@@ -28,14 +25,12 @@ public class InteractionSystemTests
     /// <summary>
     /// 创建无选中状态的测试棋盘（填充真实棋子，CanInteract 可通过）
     /// </summary>
-    private GameState CreateEmptyState(int width = 8, int height = 8)
+    private static GameState CreateFilledState(int width = 8, int height = 8)
     {
-        var state = new GameState(width, height, 6, new StubRandom());
-        state.SelectedPosition = Position.Invalid;
-        for (int y = 0; y < height; y++)
-            for (int x = 0; x < width; x++)
-                state.SetTile(x, y, new Tile(y * width + x + 1, ElementType.Item1, x, y));
-        return state;
+        return new GameStateBuilder()
+            .WithSize(width, height)
+            .WithAllTiles(ElementType.Item1)
+            .Build();
     }
 
     #region TryHandleTap Tests - Selection
@@ -45,7 +40,7 @@ public class InteractionSystemTests
     {
         // Arrange
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
         var position = new Position(3, 3);
 
         // Act
@@ -62,7 +57,7 @@ public class InteractionSystemTests
     {
         // Arrange
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
         var position = new Position(3, 3);
 
         // 首次点击选中
@@ -82,7 +77,7 @@ public class InteractionSystemTests
     {
         // Arrange
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
         var pos1 = new Position(3, 3);
         var pos2 = new Position(4, 3); // 右邻居
 
@@ -105,7 +100,7 @@ public class InteractionSystemTests
     {
         // Arrange
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
         var pos1 = new Position(3, 3);
         var pos2 = new Position(6, 6); // 不是邻居
 
@@ -130,7 +125,7 @@ public class InteractionSystemTests
     {
         // Arrange
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
         var position = new Position(3, 3);
 
         // Act
@@ -147,7 +142,7 @@ public class InteractionSystemTests
     {
         // Arrange
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
         var position = new Position(-1, 0); // 无效位置
 
         // Act
@@ -163,7 +158,7 @@ public class InteractionSystemTests
     {
         // Arrange
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
         var position = new Position(100, 100); // 超出边界
 
         // Act
@@ -183,7 +178,7 @@ public class InteractionSystemTests
     {
         // Arrange
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
         var from = new Position(3, 3);
 
         // Act
@@ -201,7 +196,7 @@ public class InteractionSystemTests
     {
         // Arrange
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
         state.SelectedPosition = new Position(1, 1); // 有现有选择
         var from = new Position(3, 3);
 
@@ -217,7 +212,7 @@ public class InteractionSystemTests
     {
         // Arrange
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
         var from = new Position(3, 3);
 
         // Act
@@ -233,7 +228,7 @@ public class InteractionSystemTests
     {
         // Arrange
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
         var from = new Position(-1, 0);
 
         // Act
@@ -249,7 +244,7 @@ public class InteractionSystemTests
     {
         // Arrange
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
         var from = new Position(0, 0);
 
         // Act: 向左滑动会超出边界
@@ -265,7 +260,7 @@ public class InteractionSystemTests
     {
         // Arrange
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
         var center = new Position(3, 3);
 
         // Act & Assert - Right
@@ -305,7 +300,7 @@ public class InteractionSystemTests
 
         foreach (var neighbor in neighbors)
         {
-            var state = CreateEmptyState();
+            var state = CreateFilledState();
             system.TryHandleTap(ref state, center, true, out _); // 选中中心
             bool result = system.TryHandleTap(ref state, neighbor, true, out var move);
 
@@ -319,7 +314,7 @@ public class InteractionSystemTests
     {
         // Arrange
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
         var center = new Position(3, 3);
         var diagonal = new Position(4, 4); // 对角线
 
@@ -344,7 +339,7 @@ public class InteractionSystemTests
     {
         // Arrange
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
 
         // Act
         system.TryHandleTap(ref state, new Position(3, 3), true, out _);
@@ -358,7 +353,7 @@ public class InteractionSystemTests
     {
         // Arrange
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
 
         system.TryHandleTap(ref state, new Position(3, 3), true, out _);
 
@@ -374,7 +369,7 @@ public class InteractionSystemTests
     {
         // Arrange
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
 
         system.TryHandleTap(ref state, new Position(3, 3), true, out _);
 
@@ -390,7 +385,7 @@ public class InteractionSystemTests
     {
         // Arrange
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
 
         // Act
         system.TryHandleSwipe(ref state, new Position(3, 3), Direction.Right, true, out _);
@@ -408,7 +403,7 @@ public class InteractionSystemTests
     {
         // Arrange: 第一个选中的棋子有 Cover → 不能选中
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
         var position = new Position(3, 3);
 
         // All cover types block swap
@@ -428,7 +423,7 @@ public class InteractionSystemTests
     {
         // Arrange: 已选中一个无 Cover 的棋子，邻居有 Cover → 选择变更
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
         var pos1 = new Position(3, 3);
         var pos2 = new Position(4, 3);
 
@@ -451,7 +446,7 @@ public class InteractionSystemTests
     {
         // Arrange: Bubble（动态 Cover）也阻断交换（所有 Cover 都 BlocksSwap）
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
         var position = new Position(3, 3);
 
         state.SetCover(position, new Cover(CoverType.Bubble, 1, true));
@@ -470,7 +465,7 @@ public class InteractionSystemTests
     {
         // Arrange: 滑动源有 Cover
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
         var from = new Position(3, 3);
 
         state.SetCover(from, new Cover(CoverType.Cage, 1));
@@ -490,7 +485,7 @@ public class InteractionSystemTests
     {
         // Arrange: 滑动目标有 Cover, 源需要有真实棋子
         var system = CreateInteractionSystem();
-        var state = CreateEmptyState();
+        var state = CreateFilledState();
         var from = new Position(3, 3);
         var target = new Position(4, 3); // Right neighbor
 

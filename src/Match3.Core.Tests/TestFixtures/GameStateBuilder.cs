@@ -195,6 +195,23 @@ public class GameStateBuilder
             .Build();
     }
 
+    /// <summary>
+    /// Creates an empty state with all None tiles and a custom random generator.
+    /// </summary>
+    public static GameState CreateEmptyState(int width, int height, IRandom? random)
+    {
+        var builder = new GameStateBuilder()
+            .WithSize(width, height)
+            .WithEmptyTiles();
+
+        if (random != null)
+        {
+            builder.WithRandom(random);
+        }
+
+        return builder.Build();
+    }
+
     #region Batch Tile Helpers
 
     /// <summary>

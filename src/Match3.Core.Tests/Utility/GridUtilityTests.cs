@@ -27,11 +27,6 @@ public class GridUtilityTests
             .Build();
     }
 
-    private GameState CreateEmptyState(int width = 8, int height = 8)
-    {
-        return GameStateBuilder.CreateEmptyState(width, height);
-    }
-
     #endregion
 
     #region IsSwapValid - Adjacent Valid Positions
@@ -140,7 +135,7 @@ public class GridUtilityTests
     public void IsSwapValid_BothTilesAreNone_ReturnsFalse()
     {
         // Arrange
-        var state = CreateEmptyState();
+        var state = GameStateBuilder.CreateEmptyState();
 
         // Act
         bool result = GridUtility.IsSwapValid(in state, new Position(0, 0), new Position(1, 0));

@@ -533,11 +533,7 @@ public class DoubleColorBombTests : IDisposable
 
     private GameState CreateEmptyState(int width, int height)
     {
-        var state = new GameState(width, height, 6, new StubRandom());
-        for (int y = 0; y < height; y++)
-            for (int x = 0; x < width; x++)
-                state.SetTile(x, y, new Tile(0, ElementType.None, x, y));
-        return state;
+        return GameStateBuilder.CreateEmptyState(width, height);
     }
 
     private int CountNonEmptyTiles(GameState state)

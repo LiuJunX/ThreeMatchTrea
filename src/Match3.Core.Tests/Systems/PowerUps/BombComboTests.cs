@@ -3,6 +3,7 @@ using System.Linq;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.PowerUps;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
 
@@ -66,16 +67,7 @@ public class BombComboTests
 
     private GameState CreateEmptyState(int width = 8, int height = 8, IRandom? rng = null)
     {
-        rng ??= new StubRandom();
-        var state = new GameState(width, height, 6, rng);
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                state.SetTile(x, y, new Tile(0, ElementType.None, x, y));
-            }
-        }
-        return state;
+        return GameStateBuilder.CreateEmptyState(width, height, rng);
     }
 
     private int CountNonEmptyTiles(GameState state)
