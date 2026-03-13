@@ -12,11 +12,7 @@ public class UfoEffect : IBombEffect
     public void Apply(in GameState state, Position origin, HashSet<Position> affectedTiles)
     {
         // UFO 起飞时：以自身为中心最小十字消除（上下左右各1格）
-        affectedTiles.Add(origin); // 中心
-        if (origin.X > 0) affectedTiles.Add(new Position(origin.X - 1, origin.Y)); // 左
-        if (origin.X < state.Width - 1) affectedTiles.Add(new Position(origin.X + 1, origin.Y)); // 右
-        if (origin.Y > 0) affectedTiles.Add(new Position(origin.X, origin.Y - 1)); // 上
-        if (origin.Y < state.Height - 1) affectedTiles.Add(new Position(origin.X, origin.Y + 1)); // 下
+        BombComboHelpers.ApplySmallCross(in state, origin, affectedTiles);
 
         // Remote target handled by ProjectileSystem (deferred destruction with dynamic tracking)
     }

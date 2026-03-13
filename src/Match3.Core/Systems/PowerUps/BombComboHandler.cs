@@ -309,16 +309,7 @@ public class BombComboHandler
         var targetColor = t1.Type == ElementType.ColorBomb ? t2.Type : t1.Type;
 
         // 消除所有该颜色的方块
-        for (int y = 0; y < state.Height; y++)
-        {
-            for (int x = 0; x < state.Width; x++)
-            {
-                if (state.GetType(x, y) == targetColor)
-                {
-                    affected.Add(new Position(x, y));
-                }
-            }
-        }
+        BombComboHelpers.CollectPositionsOfType(in state, targetColor, affected);
 
         // 添加彩球和被交换方块的位置
         affected.Add(p1);
