@@ -23,7 +23,7 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
     private readonly ICoverSystem _coverSystem;
     private readonly IGroundSystem _groundSystem;
     private readonly ILevelObjectiveSystem? _objectiveSystem;
-    private readonly LockScheduler? _lockScheduler;
+    private readonly LockScheduler _lockScheduler;
     private readonly List<ColorBombSession> _sessions = new();
     private readonly HashSet<ElementType> _reservedColors = new();
     private int _nextSessionId;
@@ -37,6 +37,17 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
     private const CellLockType BeamTargetLock =
         CellLockType.Drop | CellLockType.Receive | CellLockType.Swap | CellLockType.Matching | CellLockType.Targeting;
 
+    /// <summary>
+    /// Creates a new ColorBombSessionManager.
+    /// </summary>
+    /// <param name="config">Optional configuration; defaults to <see cref="ColorBombConfig"/> defaults.</param>
+    /// <param name="coverSystem">Cover system for protection checks; defaults to a new <see cref="CoverSystem"/>.</param>
+    /// <param name="groundSystem">Ground system for ground-layer damage; defaults to a new <see cref="GroundSystem"/>.</param>
+    /// <param name="objectiveSystem">Optional objective system for goal tracking.</param>
+    /// <param name="lockScheduler">
+    /// Required lock scheduler for cell lock lifecycle management.
+    /// Use <see cref="NullLockScheduler.Instance"/> in tests that do not need locking behavior.
+    /// </param>
     public ColorBombSessionManager(ColorBombConfig? config = null,
         ICoverSystem? coverSystem = null,
         IGroundSystem? groundSystem = null,
@@ -47,7 +58,7 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
         _coverSystem = coverSystem ?? new CoverSystem();
         _groundSystem = groundSystem ?? new GroundSystem();
         _objectiveSystem = objectiveSystem;
-        _lockScheduler = lockScheduler;
+        _lockScheduler = lockScheduler ?? NullLockScheduler.Instance;
     }
 
     public bool HasActiveSessions => _sessions.Count > 0;
@@ -103,16 +114,8 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
 
         // Lock bomb origin with Receive — prevents drops into the bomb position
         // during the entire session. Released in ExecuteBatchDestroy/ExecuteBatchActivate.
-        if (_lockScheduler != null)
-        {
-            var token = _lockScheduler.Acquire(ref state, origin, CellLockType.Receive);
-            session.LockTokens.Add(token);
-        }
-        else
-        {
-            state.Lock(origin, CellLockType.Receive);
-            session.LockedPositions.Add(origin);
-        }
+        var token = _lockScheduler.Acquire(ref state, origin, CellLockType.Receive);
+        session.LockTokens.Add(token);
 
         // Shuffle targets randomly
         ShuffleTargets(session.PendingTargets, 0, state.Random);
@@ -338,16 +341,8 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
         }
 
         // Acquire lock when firing beam (prevents target from being moved/matched/targeted)
-        if (_lockScheduler != null)
-        {
-            var token = _lockScheduler.Acquire(ref state, target.Position, BeamTargetLock);
-            session.LockTokens.Add(token);
-        }
-        else
-        {
-            state.Lock(target.Position, BeamTargetLock);
-            session.LockedPositions.Add(target.Position);
-        }
+        var lockToken = _lockScheduler.Acquire(ref state, target.Position, BeamTargetLock);
+        session.LockTokens.Add(lockToken);
 
         // Calculate flight time from distance
         float dx = target.Position.X - session.BombPosition.X;
@@ -408,15 +403,8 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
                             { Position = tile.Position });
 
                         // Add Indestructible lock to prevent explosion chain-trigger
-                        if (_lockScheduler != null)
-                        {
-                            var token = _lockScheduler.Acquire(ref state, beam.Position, CellLockType.Indestructible);
-                            session.LockTokens.Add(token);
-                        }
-                        else
-                        {
-                            state.Lock(beam.Position, CellLockType.Indestructible);
-                        }
+                        var indestructibleToken = _lockScheduler.Acquire(ref state, beam.Position, CellLockType.Indestructible);
+                        session.LockTokens.Add(indestructibleToken);
 
                         // Emit transform event
                         if (events.IsEnabled)
@@ -559,12 +547,9 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
         ReleaseAllSessionLocks(ref state, session);
 
         // Apply timed Receive locks for destroyed positions (post-destruction grace period)
-        if (_lockScheduler != null)
+        foreach (var pos in destroyedPositions)
         {
-            foreach (var pos in destroyedPositions)
-            {
-                _lockScheduler.Acquire(ref state, pos, CellLockType.Receive, ReceiveLockTimings.ColorBombBatchClear);
-            }
+            _lockScheduler.Acquire(ref state, pos, CellLockType.Receive, ReceiveLockTimings.ColorBombBatchClear);
         }
 
         session.ArrivedTargets.Clear();
@@ -644,26 +629,13 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
     /// </summary>
     private void ReleaseAllLocksForPosition(ref GameState state, ColorBombSession session, Position pos)
     {
-        if (_lockScheduler != null)
+        int cellIndex = state.Index(pos);
+        for (int i = session.LockTokens.Count - 1; i >= 0; i--)
         {
-            int cellIndex = state.Index(pos);
-            for (int i = session.LockTokens.Count - 1; i >= 0; i--)
+            if (session.LockTokens[i].CellIndex == cellIndex)
             {
-                if (session.LockTokens[i].CellIndex == cellIndex)
-                {
-                    _lockScheduler.Release(ref state, session.LockTokens[i]);
-                    session.LockTokens.RemoveAt(i);
-                }
-            }
-        }
-        else
-        {
-            if (session.LockedPositions.Remove(pos))
-            {
-                state.Unlock(pos, BeamTargetLock);
-                // Combo mode also has Indestructible lock
-                if (session.ComboBombType != ElementType.None)
-                    state.Unlock(pos, CellLockType.Indestructible);
+                _lockScheduler.Release(ref state, session.LockTokens[i]);
+                session.LockTokens.RemoveAt(i);
             }
         }
     }
@@ -673,22 +645,9 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
     /// </summary>
     private void ReleaseAllSessionLocks(ref GameState state, ColorBombSession session)
     {
-        if (_lockScheduler != null)
-        {
-            foreach (var token in session.LockTokens)
-                _lockScheduler.Release(ref state, token);
-            session.LockTokens.Clear();
-        }
-        else
-        {
-            var unlockFlags = BeamTargetLock;
-            if (session.ComboBombType != ElementType.None)
-                unlockFlags |= CellLockType.Indestructible;
-
-            foreach (var pos in session.LockedPositions)
-                state.Unlock(pos, unlockFlags);
-            session.LockedPositions.Clear();
-        }
+        foreach (var token in session.LockTokens)
+            _lockScheduler.Release(ref state, token);
+        session.LockTokens.Clear();
     }
 
     #endregion
