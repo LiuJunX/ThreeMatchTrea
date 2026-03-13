@@ -5,6 +5,7 @@ using Match3.Core.Events;
 using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.PowerUps;
 using Match3.Core.Utility.Pools;
 
 namespace Match3.Core.Systems.Projectiles;
@@ -107,7 +108,7 @@ public sealed class UfoProjectile : Projectile
         if (remainingTime > UfoConstants.LockInTime && TargetGridPosition.HasValue)
         {
             var tp = TargetGridPosition.Value;
-            if (tp.X >= 0 && tp.X < state.Width && tp.Y >= 0 && tp.Y < state.Height)
+            if (state.IsValid(tp))
             {
                 var tile = state.GetTile(tp.X, tp.Y);
                 if (tile.Type == ElementType.None)
@@ -214,13 +215,7 @@ public sealed class UfoProjectile : Projectile
                 break;
 
             case UfoPayload.Area5x5:
-                for (int dy = -2; dy <= 2; dy++)
-                    for (int dx = -2; dx <= 2; dx++)
-                    {
-                        int nx = target.X + dx, ny = target.Y + dy;
-                        if (nx >= 0 && nx < state.Width && ny >= 0 && ny < state.Height)
-                            affected.Add(new Position(nx, ny));
-                    }
+                BombComboHelpers.ApplyArea(in state, target, 2, affected);
                 break;
 
             default:

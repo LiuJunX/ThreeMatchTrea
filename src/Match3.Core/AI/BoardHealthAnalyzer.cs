@@ -78,7 +78,7 @@ internal sealed class BoardHealthAnalyzer
         foreach (var (dx, dy) in directions)
         {
             int nx = x + dx, ny = y + dy;
-            if (nx >= 0 && nx < state.Width && ny >= 0 && ny < state.Height)
+            if (state.IsValid(nx, ny))
             {
                 var neighbor = state.GetTile(nx, ny);
                 if (neighbor.Type == type)
