@@ -23,29 +23,6 @@ public class MoveSelectorTests
         _output = output;
     }
 
-    private class StubRandom : IRandom
-    {
-        private int _counter;
-        private readonly int[] _sequence;
-
-        public StubRandom(params int[] sequence)
-        {
-            _sequence = sequence.Length > 0 ? sequence : new[] { 0 };
-        }
-
-        public float NextFloat() => 0f;
-        public int Next(int max) => Next(0, max);
-        public int Next(int min, int max)
-        {
-            if (_sequence.Length == 0) return min;
-            var val = _sequence[_counter % _sequence.Length];
-            _counter++;
-            return Math.Max(min, Math.Min(max - 1, val));
-        }
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-    }
-
     private GameState CreateEmptyState(int width = 8, int height = 8, IRandom? random = null)
     {
         return GameStateBuilder.CreateEmptyState(width, height, random);

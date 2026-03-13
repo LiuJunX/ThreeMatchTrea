@@ -26,32 +26,9 @@ namespace Match3.Core.Tests.Systems.PowerUps;
 /// </summary>
 public class BombComboTests
 {
-    private class StubRandom : IRandom
-    {
-        private readonly Queue<int> _values = new();
-        private int _defaultValue = 0;
-
-        public StubRandom(int defaultValue = 0)
-        {
-            _defaultValue = defaultValue;
-        }
-
-        public void EnqueueValues(params int[] values)
-        {
-            foreach (var v in values)
-                _values.Enqueue(v);
-        }
-
-        public float NextFloat() => 0f;
-        public int Next(int max) => _values.Count > 0 ? _values.Dequeue() % max : _defaultValue % max;
-        public int Next(int min, int max) => min + (_values.Count > 0 ? _values.Dequeue() % (max - min) : _defaultValue % (max - min));
-        public void SetState(ulong state) { _defaultValue = (int)state; }
-        public ulong GetState() => (ulong)_defaultValue;
-    }
-
     private GameState CreateFilledState(int width = 8, int height = 8, IRandom? rng = null)
     {
-        rng ??= new StubRandom();
+        rng ??= StubRandom.WithFixedValue(0);
         var state = new GameState(width, height, 6, rng);
         var types = new[] { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4 };
         int id = 1;
@@ -534,7 +511,7 @@ public class BombComboTests
     public void UfoPlusColorBomb_TransformsAndLaunches()
     {
         // Arrange
-        var rng = new StubRandom();
+        var rng = StubRandom.WithFixedValue(0);
         rng.EnqueueValues(0, 1, 2); // 多个UFO的随机目标
         var state = CreateEmptyState(rng: rng);
         var combo = new BombComboHandler();
@@ -566,7 +543,7 @@ public class BombComboTests
     public void ColorBombPlusUfo_SameEffect()
     {
         // Arrange: 顺序反过来
-        var rng = new StubRandom();
+        var rng = StubRandom.WithFixedValue(0);
         rng.EnqueueValues(0, 1, 2);
         var state = CreateEmptyState(rng: rng);
         var combo = new BombComboHandler();

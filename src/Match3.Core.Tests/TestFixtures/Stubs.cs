@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
@@ -18,26 +19,75 @@ namespace Match3.Core.Tests.TestFixtures;
 
 /// <summary>
 /// A predictable random implementation for deterministic tests.
+/// <para>Modes of operation (highest to lowest priority):</para>
+/// <list type="number">
+///   <item>Queue — values added via <see cref="EnqueueValues"/> are dequeued first.</item>
+///   <item>Sequence — values passed via the constructor are cycled.</item>
+///   <item>Fallback — an incrementing state counter produces varying values.</item>
+/// </list>
 /// </summary>
 public class StubRandom : IRandom
 {
     private int _counter;
     private readonly int[] _sequence;
     private ulong _state = 12345;
+    private readonly Queue<int> _queue = new();
+
+    /// <summary>
+    /// Gets or sets a fixed return value used by the fallback path.
+    /// When set, the fallback path returns <c>min + (ReturnValue % range)</c>
+    /// instead of using the incrementing state counter.
+    /// </summary>
+    public int ReturnValue
+    {
+        get => _returnValue;
+        set
+        {
+            _returnValue = value;
+            _useReturnValue = true;
+        }
+    }
+
+    private int _returnValue;
+    private bool _useReturnValue;
 
     /// <summary>
     /// Creates a StubRandom that returns values from a sequence.
-    /// If no sequence is provided, returns 0 for all calls.
+    /// If no sequence is provided, uses the fallback path (incrementing state).
     /// </summary>
     public StubRandom(params int[] sequence)
     {
         _sequence = sequence.Length > 0 ? sequence : Array.Empty<int>();
     }
 
+    /// <summary>
+    /// Creates a StubRandom with a fixed return value and no sequence.
+    /// Equivalent to creating <c>new StubRandom()</c> then setting <see cref="ReturnValue"/>.
+    /// </summary>
+    public static StubRandom WithFixedValue(int value)
+    {
+        var stub = new StubRandom();
+        stub.ReturnValue = value;
+        return stub;
+    }
+
+    /// <summary>
+    /// Enqueues values that will be consumed before the sequence or fallback path.
+    /// </summary>
+    public void EnqueueValues(params int[] values)
+    {
+        foreach (var v in values)
+            _queue.Enqueue(v);
+    }
+
     public float NextFloat()
     {
+        if (_queue.Count > 0)
+            return _queue.Dequeue() / 100f;
         if (_sequence.Length > 0)
             return _sequence[_counter++ % _sequence.Length] / 100f;
+        if (_useReturnValue)
+            return 0f;
         return (float)(_state++ % 1000) / 1000f;
     }
 
@@ -46,16 +96,44 @@ public class StubRandom : IRandom
     public int Next(int min, int max)
     {
         if (max <= min) return min;
+        if (_queue.Count > 0)
+        {
+            var raw = _queue.Dequeue();
+            return min + (raw % (max - min));
+        }
         if (_sequence.Length > 0)
         {
             var val = _sequence[_counter++ % _sequence.Length];
             return Math.Max(min, Math.Min(max - 1, val));
         }
+        if (_useReturnValue)
+            return min + (_returnValue % (max - min));
         return min + (int)(_state++ % (ulong)(max - min));
     }
 
     public void SetState(ulong state) => _state = state;
     public ulong GetState() => _state;
+}
+
+/// <summary>
+/// A sequential random that returns <c>min + (_counter++ % range)</c>.
+/// Useful when tests need deterministic, monotonically-varying values.
+/// </summary>
+public class SequentialRandom : IRandom
+{
+    private int _counter;
+
+    public float NextFloat() => 0f;
+    public int Next(int max) => Next(0, max);
+
+    public int Next(int min, int max)
+    {
+        if (max <= min) return min;
+        return min + (_counter++ % (max - min));
+    }
+
+    public void SetState(ulong state) => _counter = (int)state;
+    public ulong GetState() => (ulong)_counter;
 }
 
 /// <summary>

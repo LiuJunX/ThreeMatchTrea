@@ -6,7 +6,6 @@ using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Matching.Generation;
 using Match3.Core.Tests.TestFixtures;
-using Match3.Random;
 using Xunit;
 
 namespace Match3.Core.Tests.Systems.Matching;
@@ -22,27 +21,6 @@ namespace Match3.Core.Tests.Systems.Matching;
 /// </summary>
 public class BoardShuffleSystemTests
 {
-    private class StubRandom : IRandom
-    {
-        private int _callCount = 0;
-
-        public float NextFloat() => 0f;
-
-        public int Next(int max)
-        {
-            _callCount++;
-            return _callCount % max;
-        }
-
-        public int Next(int min, int max)
-        {
-            _callCount++;
-            return min + (_callCount % (max - min));
-        }
-
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-    }
 
     /// <summary>
     /// Mock deadlock detector that can be configured to return specific results.

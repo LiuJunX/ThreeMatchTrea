@@ -12,6 +12,7 @@ using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
 using Match3.Core.Systems.Spawning;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Core.View;
 using Xunit;
 using Xunit.Abstractions;
@@ -25,23 +26,6 @@ public class RefillStressTests
     public RefillStressTests(ITestOutputHelper output)
     {
         _output = output;
-    }
-
-    private class StubSpawnModel : ISpawnModel
-    {
-        public ElementType Predict(ref GameState state, int spawnX, in SpawnContext context) => ElementType.Item3;
-    }
-
-    private class StubRandom : Match3.Random.IRandom
-    {
-        public float NextFloat() => 0f;
-        public int Next(int max) => 0;
-        public int Next(int min, int max) => min;
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-        public bool NextBool() => false;
-        public T PickRandom<T>(System.Collections.Generic.IList<T> items) => items[0];
-        public void Shuffle<T>(System.Collections.Generic.IList<T> list) { }
     }
 
     private Tile GetTileById(GameState state, long id)
@@ -62,8 +46,8 @@ public class RefillStressTests
     {
         // 1. Setup empty board
         int height = 5;
-        var state = new GameState(1, height, 3, new StubRandom());
-        var refill = new RealtimeRefillSystem(new StubSpawnModel());
+        var state = new GameState(1, height, 3, StubRandom.WithFixedValue(0));
+        var refill = new RealtimeRefillSystem(new StubSpawnModel(ElementType.Item3));
         
         // 2. Run refill once
         refill.Update(ref state);
@@ -87,8 +71,8 @@ public class RefillStressTests
     {
         // 1. Setup board with a falling tile at (0, 1)
         int height = 5;
-        var state = new GameState(1, height, 3, new StubRandom());
-        var refill = new RealtimeRefillSystem(new StubSpawnModel());
+        var state = new GameState(1, height, 3, StubRandom.WithFixedValue(0));
+        var refill = new RealtimeRefillSystem(new StubSpawnModel(ElementType.Item3));
 
         // Place a tile at (0, 1) that has fallen slightly
         // Logical position is (0, 1), Physical position is 0.5f
@@ -116,9 +100,9 @@ public class RefillStressTests
     {
         // 1. Setup empty board
         int height = 10;
-        var state = new GameState(1, height, 3, new StubRandom());
-        var refill = new RealtimeRefillSystem(new StubSpawnModel());
-        var gravity = new RealtimeGravitySystem(new Match3Config(), new StubRandom());
+        var state = new GameState(1, height, 3, StubRandom.WithFixedValue(0));
+        var refill = new RealtimeRefillSystem(new StubSpawnModel(ElementType.Item3));
+        var gravity = new RealtimeGravitySystem(new Match3Config(), StubRandom.WithFixedValue(0));
 
         // 2. Simulate loop
         float dt = 0.016f;
@@ -148,9 +132,9 @@ public class RefillStressTests
     {
         // 1. Setup board with a falling tile at (0, 1)
         int height = 5;
-        var state = new GameState(1, height, 3, new StubRandom());
-        var refill = new RealtimeRefillSystem(new StubSpawnModel());
-        var gravity = new RealtimeGravitySystem(new Match3Config(), new StubRandom());
+        var state = new GameState(1, height, 3, StubRandom.WithFixedValue(0));
+        var refill = new RealtimeRefillSystem(new StubSpawnModel(ElementType.Item3));
+        var gravity = new RealtimeGravitySystem(new Match3Config(), StubRandom.WithFixedValue(0));
 
         // Place a tile at (0, 1) that has already crossed 0.5 cells
         // Position.Y = 1.6 means it has moved 0.6 cells from row 1
@@ -202,12 +186,12 @@ public class RefillStressTests
     public void Refill_WithRuleBasedSpawnModel_UsesSpawnContext()
     {
         // Arrange: Create state with difficulty settings
-        var state = new GameState(3, 3, 6, new StubRandom());
+        var state = new GameState(3, 3, 6, StubRandom.WithFixedValue(0));
         state.TargetDifficulty = 0.5f;
         state.MoveLimit = 20;
         state.MoveCount = 5;
 
-        var spawnModel = new RuleBasedSpawnModel(new StubRandom());
+        var spawnModel = new RuleBasedSpawnModel(StubRandom.WithFixedValue(0));
         var refill = new RealtimeRefillSystem(spawnModel);
 
         // Act: Run refill
@@ -226,7 +210,7 @@ public class RefillStressTests
     public void Refill_WithRuleBasedSpawnModel_RemainingMovesCalculatedCorrectly()
     {
         // Arrange: MoveLimit=20, MoveCount=18 => RemainingMoves=2 (should trigger Help)
-        var state = new GameState(5, 5, 6, new StubRandom());
+        var state = new GameState(5, 5, 6, StubRandom.WithFixedValue(0));
         state.TargetDifficulty = 0.5f;
         state.MoveLimit = 20;
         state.MoveCount = 18;
@@ -236,7 +220,7 @@ public class RefillStressTests
         state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
         state.SetTile(2, 0, new Tile(0, ElementType.None, 2, 0)); // Empty spawn point
 
-        var spawnModel = new RuleBasedSpawnModel(new StubRandom());
+        var spawnModel = new RuleBasedSpawnModel(StubRandom.WithFixedValue(0));
         var refill = new RealtimeRefillSystem(spawnModel);
 
         // Act

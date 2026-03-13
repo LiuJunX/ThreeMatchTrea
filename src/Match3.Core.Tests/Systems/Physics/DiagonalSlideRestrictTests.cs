@@ -2,21 +2,13 @@ using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Physics;
-using System.Collections.Generic;
+using Match3.Core.Tests.TestFixtures;
 using Xunit;
 
 namespace Match3.Core.Tests.Systems.Physics;
 
 public class DiagonalSlideRestrictTests
 {
-    private class StubRandom : Match3.Random.IRandom
-    {
-        public float NextFloat() => 0.5f;
-        public int Next(int max) => 0;
-        public int Next(int min, int max) => min;
-        public void Shuffle<T>(IList<T> list) { }
-    }
-
     [Fact]
     public void NormalTile_ShouldNot_SlideOffOtherNormalTile()
     {
@@ -29,7 +21,7 @@ public class DiagonalSlideRestrictTests
         // Normal tiles should stack, not behave like liquid.
         
         var config = new Match3Config { GravitySpeed = 10f };
-        var rng = new StubRandom();
+        var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(2, 2, 5, rng);
         var gravity = new RealtimeGravitySystem(config, rng);
 
@@ -69,7 +61,7 @@ public class DiagonalSlideRestrictTests
         // TileA SHOULD slide into Col 0 because it's blocked by an obstacle.
         
         var config = new Match3Config { GravitySpeed = 10f };
-        var rng = new StubRandom();
+        var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(2, 2, 5, rng);
         var gravity = new RealtimeGravitySystem(config, rng);
 

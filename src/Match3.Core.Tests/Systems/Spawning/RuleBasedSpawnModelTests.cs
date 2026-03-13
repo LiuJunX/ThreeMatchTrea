@@ -1,6 +1,7 @@
 ﻿using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Spawning;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
 
@@ -12,19 +13,6 @@ namespace Match3.Core.Tests.Systems.Spawning;
 /// </summary>
 public class RuleBasedSpawnModelTests
 {
-    private class StubRandom : IRandom
-    {
-        private int _value;
-        public StubRandom(int value = 0) => _value = value;
-        public void SetValue(int value) => _value = value;
-        public int Next(int min, int max) => min + (_value % (max - min));
-    }
-
-    private class SequentialRandom : IRandom
-    {
-        private int _counter = 0;
-        public int Next(int min, int max) => min + (_counter++ % (max - min));
-    }
 
     private GameState CreateState(int width = 8, int height = 8)
     {
@@ -57,7 +45,7 @@ public class RuleBasedSpawnModelTests
     public void Predict_ZeroElementTypes_ReturnsNone()
     {
         var model = new RuleBasedSpawnModel();
-        var state = new GameState(3, 3, 0, new StubRandom());
+        var state = new GameState(3, 3, 0, StubRandom.WithFixedValue(0));
         var context = SpawnContext.Default;
 
         var type = model.Predict(ref state, 0, in context);
@@ -226,7 +214,7 @@ public class RuleBasedSpawnModelTests
 
         for (int i = 0; i < samples; i++)
         {
-            var model = new RuleBasedSpawnModel(new StubRandom(i));
+            var model = new RuleBasedSpawnModel(StubRandom.WithFixedValue(i));
             var type = model.Predict(ref state, 0, in context);
             if (type == ElementType.Item1) redCount++;
         }
@@ -294,7 +282,7 @@ public class RuleBasedSpawnModelTests
     [Fact]
     public void Predict_ChallengeMode_DoesNotSpawnMostCommon()
     {
-        var model = new RuleBasedSpawnModel(new StubRandom(0));
+        var model = new RuleBasedSpawnModel(StubRandom.WithFixedValue(0));
         var state = CreateState(5, 5);
 
         // Red is most common (4 tiles), others have 1 each = 9 total
@@ -336,7 +324,7 @@ public class RuleBasedSpawnModelTests
     [Fact]
     public void Predict_ColumnTopIsSameColor_AvoidsRepeat()
     {
-        var model = new RuleBasedSpawnModel(new StubRandom(0));
+        var model = new RuleBasedSpawnModel(StubRandom.WithFixedValue(0));
         var state = CreateState(5, 5);
 
         // Column 2: top tile is Blue, and Blue would also match (Help picks Blue)

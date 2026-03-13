@@ -2,6 +2,7 @@
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Physics;
+using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
 
@@ -9,24 +10,13 @@ namespace Match3.Core.Tests.Systems.Physics;
 
 public class GravityTargetResolverTests
 {
-    private class StubRandom : IRandom
-    {
-        public int ReturnValue { get; set; } = 0;
-
-        public float NextFloat() => 0f;
-        public int Next(int max) => ReturnValue % max;
-        public int Next(int min, int max) => min + (ReturnValue % (max - min));
-        public void SetState(ulong state) { }
-        public ulong GetState() => 0;
-    }
-
     #region Vertical Movement Tests
 
     [Fact]
     public void DetermineTarget_EmptyBelow_ShouldReturnLowestEmpty()
     {
         // Arrange
-        var random = new StubRandom();
+        var random = StubRandom.WithFixedValue(0);
         var resolver = new GravityTargetResolver(random);
         var state = new GameState(3, 5, 5, random);
         ClearBoard(ref state);
@@ -48,7 +38,7 @@ public class GravityTargetResolverTests
     public void DetermineTarget_BlockedBelow_ShouldStayPut()
     {
         // Arrange
-        var random = new StubRandom();
+        var random = StubRandom.WithFixedValue(0);
         var resolver = new GravityTargetResolver(random);
         var state = new GameState(3, 3, 5, random);
         ClearBoard(ref state);
@@ -71,7 +61,7 @@ public class GravityTargetResolverTests
     public void DetermineTarget_PartiallyEmpty_ShouldFindCorrectFloor()
     {
         // Arrange
-        var random = new StubRandom();
+        var random = StubRandom.WithFixedValue(0);
         var resolver = new GravityTargetResolver(random);
         var state = new GameState(3, 5, 5, random);
         ClearBoard(ref state);
@@ -94,7 +84,7 @@ public class GravityTargetResolverTests
     public void DetermineTarget_AtBottom_ShouldStayPut()
     {
         // Arrange
-        var random = new StubRandom();
+        var random = StubRandom.WithFixedValue(0);
         var resolver = new GravityTargetResolver(random);
         var state = new GameState(3, 3, 5, random);
         ClearBoard(ref state);
@@ -119,7 +109,7 @@ public class GravityTargetResolverTests
     public void DetermineTarget_FallingTileBelow_ShouldFollowWhenFalling()
     {
         // Arrange
-        var random = new StubRandom();
+        var random = StubRandom.WithFixedValue(0);
         var resolver = new GravityTargetResolver(random);
         var state = new GameState(3, 5, 5, random);
         ClearBoard(ref state);
@@ -152,7 +142,7 @@ public class GravityTargetResolverTests
     public void DetermineTarget_FallingTileBelowNotCleared_ShouldWait()
     {
         // Arrange
-        var random = new StubRandom();
+        var random = StubRandom.WithFixedValue(0);
         var resolver = new GravityTargetResolver(random);
         var state = new GameState(3, 5, 5, random);
         ClearBoard(ref state);
@@ -188,7 +178,7 @@ public class GravityTargetResolverTests
     public void DetermineTarget_SuspendedBelow_CanSlideLeft_ShouldSlideLeft()
     {
         // Arrange
-        var random = new StubRandom { ReturnValue = 0 }; // Will choose left
+        var random = StubRandom.WithFixedValue(0); // Will choose left
         var resolver = new GravityTargetResolver(random);
         var state = new GameState(3, 3, 5, random);
         ClearBoard(ref state);
@@ -217,7 +207,7 @@ public class GravityTargetResolverTests
     public void DetermineTarget_SuspendedBelow_CanSlideRight_ShouldSlideRight()
     {
         // Arrange
-        var random = new StubRandom { ReturnValue = 1 }; // Will choose right
+        var random = StubRandom.WithFixedValue(1); // Will choose right
         var resolver = new GravityTargetResolver(random);
         var state = new GameState(3, 3, 5, random);
         ClearBoard(ref state);
@@ -247,7 +237,7 @@ public class GravityTargetResolverTests
     public void DetermineTarget_BothDiagonalsOpen_ShouldRandomlyChoose()
     {
         // Arrange - First call returns left (0)
-        var random = new StubRandom { ReturnValue = 0 };
+        var random = StubRandom.WithFixedValue(0);
         var resolver = new GravityTargetResolver(random);
         var state = new GameState(3, 3, 5, random);
         ClearBoard(ref state);
@@ -279,7 +269,7 @@ public class GravityTargetResolverTests
     public void DetermineTarget_DiagonalBlocked_OverheadNotClear_ShouldNotSlide()
     {
         // Arrange
-        var random = new StubRandom();
+        var random = StubRandom.WithFixedValue(0);
         var resolver = new GravityTargetResolver(random);
         var state = new GameState(3, 3, 5, random);
         ClearBoard(ref state);
@@ -310,7 +300,7 @@ public class GravityTargetResolverTests
     public void DetermineTarget_AtLeftEdge_ShouldOnlyConsiderRight()
     {
         // Arrange
-        var random = new StubRandom();
+        var random = StubRandom.WithFixedValue(0);
         var resolver = new GravityTargetResolver(random);
         var state = new GameState(3, 3, 5, random);
         ClearBoard(ref state);
@@ -337,7 +327,7 @@ public class GravityTargetResolverTests
     public void DetermineTarget_AtRightEdge_ShouldOnlyConsiderLeft()
     {
         // Arrange
-        var random = new StubRandom();
+        var random = StubRandom.WithFixedValue(0);
         var resolver = new GravityTargetResolver(random);
         var state = new GameState(3, 3, 5, random);
         ClearBoard(ref state);
@@ -368,7 +358,7 @@ public class GravityTargetResolverTests
     public void DetermineTarget_MultipleCallsWithoutClear_ShouldRespectReservations()
     {
         // Arrange
-        var random = new StubRandom();
+        var random = StubRandom.WithFixedValue(0);
         var resolver = new GravityTargetResolver(random);
         var state = new GameState(3, 5, 5, random);
         ClearBoard(ref state);
@@ -396,7 +386,7 @@ public class GravityTargetResolverTests
     public void DetermineTarget_SameColumn_ShouldStackReservations()
     {
         // Arrange
-        var random = new StubRandom();
+        var random = StubRandom.WithFixedValue(0);
         var resolver = new GravityTargetResolver(random);
         var state = new GameState(1, 5, 5, random);
         ClearBoard(ref state);
@@ -421,7 +411,7 @@ public class GravityTargetResolverTests
     public void ClearReservations_ShouldAllowReuse()
     {
         // Arrange
-        var random = new StubRandom();
+        var random = StubRandom.WithFixedValue(0);
         var resolver = new GravityTargetResolver(random);
         var state = new GameState(1, 5, 5, random);
         ClearBoard(ref state);
@@ -447,7 +437,7 @@ public class GravityTargetResolverTests
     public void DetermineTarget_SingleCellBoard_ShouldStayPut()
     {
         // Arrange
-        var random = new StubRandom();
+        var random = StubRandom.WithFixedValue(0);
         var resolver = new GravityTargetResolver(random);
         var state = new GameState(1, 1, 5, random);
         state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
@@ -468,7 +458,7 @@ public class GravityTargetResolverTests
     public void DetermineTarget_AllColumns_ShouldWork(int column)
     {
         // Arrange
-        var random = new StubRandom();
+        var random = StubRandom.WithFixedValue(0);
         var resolver = new GravityTargetResolver(random);
         var state = new GameState(10, 5, 5, random);
         ClearBoard(ref state);
@@ -492,7 +482,7 @@ public class GravityTargetResolverTests
     public void DetermineTarget_TargetOccupiedByNonFallingTile_StopsAbove()
     {
         // Arrange: 目标格被静止棋子占据，tile 应停在其上方
-        var random = new StubRandom();
+        var random = StubRandom.WithFixedValue(0);
         var resolver = new GravityTargetResolver(random);
         var state = new GameState(1, 5, 5, random);
         ClearBoard(ref state);
@@ -515,7 +505,7 @@ public class GravityTargetResolverTests
     public void DetermineTarget_DiagonalTargetOccupied_NoSlide()
     {
         // Arrange: 直落和两个斜滑目标都被占，不能移动
-        var random = new StubRandom();
+        var random = StubRandom.WithFixedValue(0);
         var resolver = new GravityTargetResolver(random);
         var state = new GameState(3, 3, 5, random);
         ClearBoard(ref state);

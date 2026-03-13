@@ -21,27 +21,9 @@ namespace Match3.Core.Tests.Systems.PowerUps;
 /// </summary>
 public class BombEffectTests
 {
-    private class StubRandom : IRandom
-    {
-        private int _returnValue = 0;
-
-        public StubRandom(int returnValue = 0)
-        {
-            _returnValue = returnValue;
-        }
-
-        public void SetReturnValue(int value) => _returnValue = value;
-
-        public float NextFloat() => 0f;
-        public int Next(int max) => _returnValue % max;
-        public int Next(int min, int max) => min + (_returnValue % (max - min));
-        public void SetState(ulong state) { _returnValue = (int)state; }
-        public ulong GetState() => (ulong)_returnValue;
-    }
-
     private GameState CreateFilledState(int width = 8, int height = 8)
     {
-        var state = new GameState(width, height, 6, new StubRandom());
+        var state = new GameState(width, height, 6, StubRandom.WithFixedValue(0));
         var types = new[] { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4 };
         int id = 1;
         for (int y = 0; y < height; y++)
@@ -132,7 +114,7 @@ public class BombEffectTests
     public void HorizontalRocket_Apply_SmallBoard()
     {
         // Arrange: 3x3 棋盘
-        var rng = new StubRandom();
+        var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(3, 3, 6, rng);
         for (int y = 0; y < 3; y++)
             for (int x = 0; x < 3; x++)
@@ -157,7 +139,7 @@ public class BombEffectTests
     public void HorizontalRocket_Apply_WideBoard()
     {
         // Arrange: 10x5 棋盘
-        var rng = new StubRandom();
+        var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(10, 5, 6, rng);
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 10; x++)
@@ -253,7 +235,7 @@ public class BombEffectTests
     public void VerticalRocket_Apply_SmallBoard()
     {
         // Arrange: 3x3 棋盘
-        var rng = new StubRandom();
+        var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(3, 3, 6, rng);
         for (int y = 0; y < 3; y++)
             for (int x = 0; x < 3; x++)
@@ -278,7 +260,7 @@ public class BombEffectTests
     public void VerticalRocket_Apply_TallBoard()
     {
         // Arrange: 5x10 棋盘
-        var rng = new StubRandom();
+        var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(5, 10, 6, rng);
         for (int y = 0; y < 10; y++)
             for (int x = 0; x < 5; x++)
@@ -477,7 +459,7 @@ public class BombEffectTests
     public void SquareBomb_Apply_SmallBoard_CoversEntireBoard()
     {
         // Arrange: 在 3x3 棋盘上
-        var rng = new StubRandom();
+        var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(3, 3, 6, rng);
         for (int y = 0; y < 3; y++)
             for (int x = 0; x < 3; x++)
@@ -728,7 +710,7 @@ public class BombEffectTests
     public void UfoEffect_Apply_CreatesSmallCrossPattern()
     {
         // Arrange
-        var rng = new StubRandom(0);
+        var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(8, 8, 6, rng);
         var types = new[] { ElementType.Item1, ElementType.Item3, ElementType.Item2, ElementType.Item4 };
         int id = 1;
@@ -761,7 +743,7 @@ public class BombEffectTests
     public void UfoEffect_Apply_AtCorner_ClipsSmallCross()
     {
         // Arrange: UFO 在左上角
-        var rng = new StubRandom(0);
+        var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(5, 5, 6, rng);
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 5; x++)
@@ -785,7 +767,7 @@ public class BombEffectTests
     public void UfoEffect_Apply_NoRandomTarget_OnlySmallCross()
     {
         // Arrange: 只有小十字范围内有方块
-        var rng = new StubRandom(0);
+        var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(5, 5, 6, rng);
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 5; x++)
@@ -813,7 +795,7 @@ public class BombEffectTests
     public void UfoEffect_Apply_AtBottomRightCorner_ClipsSmallCross()
     {
         // Arrange: UFO 在右下角
-        var rng = new StubRandom(0);
+        var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(5, 5, 6, rng);
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 5; x++)
@@ -837,7 +819,7 @@ public class BombEffectTests
     public void UfoEffect_Apply_AtTopRightCorner_ClipsSmallCross()
     {
         // Arrange: UFO 在右上角
-        var rng = new StubRandom(0);
+        var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(5, 5, 6, rng);
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 5; x++)
@@ -861,7 +843,7 @@ public class BombEffectTests
     public void UfoEffect_Apply_AtBottomLeftCorner_ClipsSmallCross()
     {
         // Arrange: UFO 在左下角
-        var rng = new StubRandom(0);
+        var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(5, 5, 6, rng);
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 5; x++)
@@ -885,7 +867,7 @@ public class BombEffectTests
     public void UfoEffect_Apply_AtEdge_ClipsSmallCross()
     {
         // Arrange: UFO 在顶边中间
-        var rng = new StubRandom(0);
+        var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(5, 5, 6, rng);
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 5; x++)
@@ -910,7 +892,7 @@ public class BombEffectTests
     public void UfoEffect_Apply_RandomTargetSelection()
     {
         // Arrange: 测试不同的随机目标选择
-        var rng = new StubRandom(5); // 不同的随机值
+        var rng = StubRandom.WithFixedValue(5); // 不同的随机值
         var state = new GameState(5, 5, 6, rng);
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 5; x++)
@@ -936,7 +918,7 @@ public class BombEffectTests
     public void UfoEffect_Apply_EmptyBoard_OnlySmallCrossPositions()
     {
         // Arrange: 空棋盘，小十字位置也是空的
-        var rng = new StubRandom(0);
+        var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(5, 5, 6, rng);
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 5; x++)
@@ -1092,7 +1074,7 @@ public class BombEffectTests
     public void AllEffects_Apply_SmallBoard_HandlesGracefully()
     {
         // Arrange: 最小 3x3 棋盘
-        var rng = new StubRandom();
+        var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(3, 3, 6, rng);
         for (int y = 0; y < 3; y++)
             for (int x = 0; x < 3; x++)
