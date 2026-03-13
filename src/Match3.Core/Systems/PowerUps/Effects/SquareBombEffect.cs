@@ -16,7 +16,7 @@ public class SquareBombEffect : IBombEffect
         {
             for (int x = origin.X - radius; x <= origin.X + radius; x++)
             {
-                if (x >= 0 && x < state.Width && y >= 0 && y < state.Height)
+                if (state.IsValid(x, y))
                 {
                     affectedTiles.Add(new Position(x, y));
                 }

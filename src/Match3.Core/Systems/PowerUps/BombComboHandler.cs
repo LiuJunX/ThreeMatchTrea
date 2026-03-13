@@ -147,7 +147,7 @@ public class BombComboHandler
         for (int dy = -1; dy <= 1; dy++)
         {
             int y = center.Y + dy;
-            if (y >= 0 && y < state.Height)
+            if (state.IsValid(center.X, y))
             {
                 for (int x = 0; x < state.Width; x++)
                     affected.Add(new Position(x, y));
@@ -158,7 +158,7 @@ public class BombComboHandler
         for (int dx = -1; dx <= 1; dx++)
         {
             int x = center.X + dx;
-            if (x >= 0 && x < state.Width)
+            if (state.IsValid(x, center.Y))
             {
                 for (int y = 0; y < state.Height; y++)
                     affected.Add(new Position(x, y));

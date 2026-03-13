@@ -48,14 +48,11 @@ public class ExplosionSystem : IExplosionSystem
         explosion.Initialize(origin, radius, DefaultWaveInterval);
 
         // Calculate affected area and lock tiles
-        int width = state.Width;
-        int height = state.Height;
-
         for (int y = origin.Y - radius; y <= origin.Y + radius; y++)
         {
             for (int x = origin.X - radius; x <= origin.X + radius; x++)
             {
-                if (x >= 0 && x < width && y >= 0 && y < height)
+                if (state.IsValid(x, y))
                 {
                     var pos = new Position(x, y);
                     explosion.AffectedArea.Add(pos);
@@ -113,7 +110,7 @@ public class ExplosionSystem : IExplosionSystem
         {
             explosion.AffectedArea.Add(pos);
 
-            if (pos.X >= 0 && pos.X < state.Width && pos.Y >= 0 && pos.Y < state.Height)
+            if (state.IsValid(pos.X, pos.Y))
             {
                 // Lock ALL target positions (including None tiles cleared by ClearBombAttribute)
                 // to prevent premature gravity fill during multi-wave explosions.

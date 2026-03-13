@@ -34,7 +34,7 @@ internal static class BombComboHelpers
             {
                 int x = center.X + dx;
                 int y = center.Y + dy;
-                if (x >= 0 && x < state.Width && y >= 0 && y < state.Height)
+                if (state.IsValid(x, y))
                 {
                     affected.Add(new Position(x, y));
                 }

@@ -206,7 +206,7 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
 
     private bool CanMoveTo(ref GameState state, int x, int y)
     {
-        return IsInsideGrid(state, x, y) &&
+        return state.IsValid(x, y) &&
                !state.IsHole(x, y) &&
                state.GetTile(x, y).Type == ElementType.None &&
                state.CanReceive(x, y) &&
@@ -216,11 +216,6 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
     private bool IsOverheadClear(ref GameState state, int targetX, int targetY)
     {
         return state.GetTile(targetX, targetY).Type == ElementType.None;
-    }
-
-    private static bool IsInsideGrid(GameState state, int x, int y)
-    {
-        return x >= 0 && x < state.Width && y >= 0 && y < state.Height;
     }
 
     private void ReserveSlot(int x, int y, int width)
