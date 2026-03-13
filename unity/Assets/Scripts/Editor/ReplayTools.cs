@@ -1,5 +1,4 @@
 using System.IO;
-using System.Linq;
 using Match3.Core.Replay;
 using Match3.Unity.Bridge;
 using Match3.Unity.Controllers;
@@ -149,22 +148,7 @@ namespace Match3.Unity.Editor
 
         private static GameRecording LoadLatestRecording()
         {
-            var files = Match3Bridge.GetRecordingFiles();
-            if (files.Length == 0) return null;
-
-            var latest = files
-                .Select(f => new FileInfo(f))
-                .Where(f => f.Name != "index.txt")
-                .OrderByDescending(f => f.LastWriteTimeUtc)
-                .FirstOrDefault();
-
-            if (latest == null) return null;
-
-            var json = File.ReadAllText(latest.FullName);
-            var recording = GameRecordingSerializer.FromJson(json);
-            if (recording != null)
-                Debug.Log($"[Replay] Loading latest: {latest.Name}");
-            return recording;
+            return Match3Bridge.LoadLatestRecording();
         }
     }
 }

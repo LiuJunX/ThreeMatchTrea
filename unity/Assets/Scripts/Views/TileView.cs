@@ -63,7 +63,7 @@ namespace Match3.Unity.Views
         /// <summary>
         /// Update tile from visual state.
         /// </summary>
-        public void UpdateFromVisual(TileVisual visual, float cellSize, Vector2 origin, int height)
+        public void UpdateFromVisual(TileVisual visual, float cellSize, Vector2 origin, int height, float dt)
         {
             var isAnimated = visual.IsBeingAnimated;
 
@@ -87,7 +87,7 @@ namespace Match3.Unity.Views
 
             // Landing bounce
             {
-                var (newBounce, squash) = TileAnimationHelper.CalculateBounceSquash(_bounceTime, Time.deltaTime);
+                var (newBounce, squash) = TileAnimationHelper.CalculateBounceSquash(_bounceTime, dt);
                 _bounceTime = newBounce;
                 if (squash != 0f)
                 {
@@ -99,7 +99,7 @@ namespace Match3.Unity.Views
             // Hint animation (selection overrides hint)
             if (_isHinted && !_isHighlighted)
             {
-                var (newHint, pulse, phase) = TileAnimationHelper.CalculateHintPulse(_hintTime, Time.deltaTime, _hintType);
+                var (newHint, pulse, phase) = TileAnimationHelper.CalculateHintPulse(_hintTime, dt, _hintType);
                 _hintTime = newHint;
                 finalScale *= pulse;
 
@@ -120,7 +120,7 @@ namespace Match3.Unity.Views
             // Selection pulse
             if (_isHighlighted)
             {
-                _highlightTime += Time.deltaTime;
+                _highlightTime += dt;
                 var pulse = TileAnimationHelper.CalculateSelectionPulse(_highlightTime);
                 finalScale *= pulse;
             }

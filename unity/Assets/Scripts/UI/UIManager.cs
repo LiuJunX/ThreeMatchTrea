@@ -15,9 +15,11 @@ namespace Match3.Unity.UI
         private TopPanel _topPanel;
         private BottomPanel _bottomPanel;
         private ResultPanel _resultPanel;
+        private ReplayPanel _replayPanel;
 
         private Match3Bridge _bridge;
         private bool _initialized;
+        private bool _quitWasVisible;
 
         // Cached delegates for proper unsubscription
         private Action<float> _onSpeedChangedHandler;
@@ -93,6 +95,12 @@ namespace Match3.Unity.UI
             _bottomPanel.OnSpeedChanged += _onSpeedChangedHandler;
             _bottomPanel.OnPauseToggled += _onPauseToggledHandler;
             _bottomPanel.OnAutoPlayToggled += _onAutoPlayToggledHandler;
+
+            // Create replay panel (hidden by default)
+            var replayPanelGo = new GameObject("ReplayPanel");
+            replayPanelGo.transform.SetParent(_canvas.transform, false);
+            _replayPanel = replayPanelGo.AddComponent<ReplayPanel>();
+            _replayPanel.Initialize();
 
             // Create result panel (hidden by default)
             var resultPanelGo = new GameObject("ResultPanel");
@@ -176,6 +184,11 @@ namespace Match3.Unity.UI
         public TopPanel TopPanel => _topPanel;
 
         /// <summary>
+        /// Access the replay panel for external wiring.
+        /// </summary>
+        public ReplayPanel ReplayPanel => _replayPanel;
+
+        /// <summary>
         /// Update moves remaining display.
         /// </summary>
         public void UpdateMoves(int remaining)
@@ -213,6 +226,28 @@ namespace Match3.Unity.UI
         public void HideResult()
         {
             _resultPanel?.Hide();
+        }
+
+        /// <summary>
+        /// Enter replay mode: hide game UI, show replay UI.
+        /// </summary>
+        public void EnterReplayMode()
+        {
+            _quitWasVisible = _topPanel != null && _topPanel.IsQuitButtonVisible;
+            _bottomPanel?.gameObject.SetActive(false);
+            _topPanel?.SetQuitButtonVisible(false);
+            _replayPanel?.ResetState();
+            _replayPanel?.Show();
+        }
+
+        /// <summary>
+        /// Exit replay mode: restore game UI, hide replay UI.
+        /// </summary>
+        public void ExitReplayMode()
+        {
+            _replayPanel?.Hide();
+            _bottomPanel?.gameObject.SetActive(true);
+            _topPanel?.SetQuitButtonVisible(_quitWasVisible);
         }
 
         /// <summary>

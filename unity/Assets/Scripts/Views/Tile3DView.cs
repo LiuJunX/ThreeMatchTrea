@@ -159,7 +159,7 @@ namespace Match3.Unity.Views
         /// <summary>
         /// Update tile from visual state.
         /// </summary>
-        public void UpdateFromVisual(TileVisual visual, float cellSize, Vector2 origin, int height)
+        public void UpdateFromVisual(TileVisual visual, float cellSize, Vector2 origin, int height, float dt)
         {
             var isAnimated = visual.IsBeingAnimated;
 
@@ -176,7 +176,7 @@ namespace Match3.Unity.Views
             // UFO flight: delegate all visuals to dedicated method
             if (visual.UfoFlightProgress >= 0f)
             {
-                ApplyUfoFlight(visual, worldPos, cellSize);
+                ApplyUfoFlight(visual, worldPos, cellSize, dt);
                 return;
             }
 
@@ -194,7 +194,7 @@ namespace Match3.Unity.Views
 
             if (_isHighlighted)
             {
-                _highlightTime = (_highlightTime + Time.deltaTime) % 628f; // wrap to avoid float precision loss
+                _highlightTime = (_highlightTime + dt) % 628f; // wrap to avoid float precision loss
                 // 选中呼吸：相对棋盘的上下（沿棋盘法线 Z 轴轻微浮动）
                 var floatZ = Mathf.Sin(_highlightTime * 5f) * 0.04f * cellSize;
                 pos.z += floatZ;
@@ -212,7 +212,7 @@ namespace Match3.Unity.Views
 
             // Landing bounce
             {
-                var (newBounce, squash) = TileAnimationHelper.CalculateBounceSquash(_bounceTime, Time.deltaTime);
+                var (newBounce, squash) = TileAnimationHelper.CalculateBounceSquash(_bounceTime, dt);
                 _bounceTime = newBounce;
                 if (squash != 0f)
                 {
@@ -225,7 +225,7 @@ namespace Match3.Unity.Views
             // Hint animation (selection overrides hint)
             if (_isHinted && !_isHighlighted)
             {
-                var (newHint, pulse, phase) = TileAnimationHelper.CalculateHintPulse(_hintTime, Time.deltaTime, _hintType);
+                var (newHint, pulse, phase) = TileAnimationHelper.CalculateHintPulse(_hintTime, dt, _hintType);
                 _hintTime = newHint;
                 finalScale *= pulse;
 
@@ -263,7 +263,7 @@ namespace Match3.Unity.Views
 
                 // 3D mode: Y-axis rotation
                 var rot = transform.localEulerAngles;
-                rot.y += 30f * Time.deltaTime;
+                rot.y += 30f * dt;
                 transform.localEulerAngles = rot;
             }
 
@@ -455,10 +455,9 @@ namespace Match3.Unity.Views
         private const float UfoTiltScale = 12f;
         private const float UfoMaxTilt = 50f;
 
-        private void ApplyUfoFlight(TileVisual visual, Vector3 worldPos, float cellSize)
+        private void ApplyUfoFlight(TileVisual visual, Vector3 worldPos, float cellSize, float dt)
         {
             float progress = visual.UfoFlightProgress; // 0→1
-            float dt = Time.deltaTime;
 
             // Initialize on first frame
             if (!_ufoFlying)
@@ -508,11 +507,21 @@ namespace Match3.Unity.Views
                 // Raw sine arc from progress
                 float rawArc = Mathf.Sin(progress / arriveFrac * Mathf.PI);
 
-                // Apply retarget blend: smooth transition from snapshot to new arc
+                // Apply retarget blend: exaggerated "struggling" pull-up
                 if (_retargetBlend > 0f)
                 {
-                    _retargetBlend = Mathf.Max(0f, _retargetBlend - dt / 0.4f);
-                    _ufoArcCurrent = Mathf.Lerp(rawArc, _ufoArcSnapshot, _retargetBlend);
+                    _retargetBlend = Mathf.Max(0f, _retargetBlend - dt / 0.8f);
+                    // Quadratic ease-in: brief hesitation then accelerates
+                    float p = 1f - _retargetBlend; // 0→1 progress
+                    float eff = 1f - p * p;
+
+                    // Dip below: UFO gets pushed DOWN before being yanked up.
+                    // Stronger when it was closer to target (lower arc = more struggle).
+                    float dipStrength = (1f - Mathf.Max(_ufoArcSnapshot, 0f)) * 0.4f;
+                    float dipCurve = _retargetBlend * _retargetBlend * (1f - _retargetBlend) * 4f;
+                    float snapshotWithDip = _ufoArcSnapshot - dipStrength * dipCurve;
+
+                    _ufoArcCurrent = Mathf.Lerp(rawArc, snapshotWithDip, eff);
                 }
                 else
                 {
@@ -520,7 +529,8 @@ namespace Match3.Unity.Views
                 }
 
                 yOffset = UfoArcY * cellSize * _ufoArcCurrent;
-                scaleMul = 1f + (UfoArcScale - 1f) * _ufoArcCurrent;
+                // Dip can make arc negative — only affect Y offset (push down), not scale
+                scaleMul = 1f + (UfoArcScale - 1f) * Mathf.Max(0f, _ufoArcCurrent);
             }
             else
             {

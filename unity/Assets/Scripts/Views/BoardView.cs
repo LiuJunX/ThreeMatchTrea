@@ -101,7 +101,7 @@ namespace Match3.Unity.Views
         /// Render the current visual state.
         /// Called every frame by GameController.
         /// </summary>
-        public void Render(VisualState state)
+        public void Render(VisualState state, float dt)
         {
             if (state == null) return;
 
@@ -132,7 +132,7 @@ namespace Match3.Unity.Views
                 }
 
                 // Update tile view from visual state
-                tileView.UpdateFromVisual(visual, cellSize, origin, height);
+                tileView.UpdateFromVisual(visual, cellSize, origin, height, dt);
             }
 
             // Remove tiles that are no longer active

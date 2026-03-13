@@ -10,7 +10,7 @@ namespace Match3.Unity.Views
     {
         int ActiveTileCount { get; }
         void Initialize(Match3Bridge bridge);
-        void Render(VisualState state);
+        void Render(VisualState state, float dt);
         void Clear();
     }
 }

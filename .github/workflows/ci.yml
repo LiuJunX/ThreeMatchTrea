@@ -41,3 +41,38 @@ jobs:
           name: test-results
           path: '**/TestResults/*.trx'
           retention-days: 7
+
+  lint-unity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Time.deltaTime usage in Unity scripts
+        run: |
+          # Views and Controllers should receive dt as a parameter, not read
+          # Time.deltaTime directly. Known exceptions are listed below.
+          # If you need to add a new exception, update this allowlist and
+          # explain why in your PR description.
+          ALLOWLIST=(
+            # GameController: sole entry point that computes viewDt
+            "Controllers/GameController.cs"
+            # Pure cosmetic, pause-independent
+            "Views/BoardLightingController.cs"
+            "Views/VirtualLightSource.cs"
+            # Camera shake uses its own timer
+            "Controllers/CameraShakeController.cs"
+          )
+
+          GREP_PATTERN=""
+          for f in "${ALLOWLIST[@]}"; do
+            GREP_PATTERN="$GREP_PATTERN|$f"
+          done
+          GREP_PATTERN="${GREP_PATTERN:1}" # strip leading |
+
+          HITS=$(grep -rn "Time\.deltaTime" unity/Assets/Scripts/ | grep -Ev "$GREP_PATTERN" || true)
+          if [ -n "$HITS" ]; then
+            echo "::error::New Time.deltaTime usage found outside allowlist. Use viewDt or pass dt as parameter instead."
+            echo "$HITS"
+            exit 1
+          fi
+          echo "No new Time.deltaTime usage found outside allowlist."

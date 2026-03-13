@@ -128,10 +128,17 @@ namespace Match3.Unity.Bridge
 
         private float _gameSpeed = 1.0f;
         private bool _isPaused;
+        private float _lastScaledDelta;
         private bool _isAutoPlaying;
         private int _lastMovesRemaining = -1;
         private int _lastScore = -1;
         private bool _gameEndFired;
+
+        /// <summary>
+        /// Speed-scaled delta time from the last Tick. 0 when paused.
+        /// Use this for view-layer updates that should match simulation speed.
+        /// </summary>
+        public float ScaledDeltaTime => _lastScaledDelta;
 
         /// <summary>
         /// Game simulation speed multiplier (0.1x - 5.0x).
@@ -385,17 +392,22 @@ namespace Match3.Unity.Bridge
         public void Tick(float deltaTime)
         {
             if (!_initialized) return;
-            if (_isPaused) return;
+            if (_isPaused) { _lastScaledDelta = 0f; return; }
 
             if (_isReplaying)
             {
                 // Replay has its own speed control (ReplayController.PlaybackSpeed),
                 // bypass _gameSpeed to avoid double-scaling.
+                bool replayActive = _replayController?.State == ReplayState.Playing;
+                _lastScaledDelta = replayActive
+                    ? deltaTime * _replayController.PlaybackSpeed
+                    : 0f;
                 TickReplay(deltaTime);
             }
             else
             {
                 var scaledDelta = deltaTime * _gameSpeed;
+                _lastScaledDelta = scaledDelta;
                 TickNormal(scaledDelta);
             }
         }
@@ -932,12 +944,6 @@ namespace Match3.Unity.Bridge
         {
             if (recording == null) return;
 
-            // Auto-save current game recording before entering replay
-            if (_recorder != null && _recorder.IsRecording && _session != null)
-            {
-                AutoSaveRecording();
-            }
-
             StopReplay();
 
             // Dispose the previous game session to free resources
@@ -1019,6 +1025,39 @@ namespace Match3.Unity.Bridge
             var dir = RecordingBasePath;
             if (!Directory.Exists(dir)) return Array.Empty<string>();
             return Directory.GetFiles(dir, "*.json", SearchOption.TopDirectoryOnly);
+        }
+
+        /// <summary>
+        /// Loads the most recent recording from the ring buffer.
+        /// Returns null if no recordings exist.
+        /// </summary>
+        public static GameRecording LoadLatestRecording()
+        {
+            var dir = RecordingBasePath;
+            if (!Directory.Exists(dir)) return null;
+
+            var indexPath = Path.Combine(dir, "index.txt");
+            int nextSlot = 0;
+            if (File.Exists(indexPath))
+                int.TryParse(File.ReadAllText(indexPath).Trim(), out nextSlot);
+
+            int latestSlot = (nextSlot - 1 + RingBufferSize) % RingBufferSize;
+            var latestPath = Path.Combine(dir, $"recording_{latestSlot}.json");
+
+            if (!File.Exists(latestPath))
+            {
+                var files = Directory.GetFiles(dir, "recording_*.json");
+                if (files.Length == 0) return null;
+                Array.Sort(files, (a, b) =>
+                    File.GetLastWriteTimeUtc(b).CompareTo(File.GetLastWriteTimeUtc(a)));
+                latestPath = files[0];
+            }
+
+            var json = File.ReadAllText(latestPath);
+            var recording = GameRecordingSerializer.FromJson(json);
+            if (recording != null)
+                Debug.Log($"[Recording] Loaded latest: {Path.GetFileName(latestPath)}");
+            return recording;
         }
 
         #endregion

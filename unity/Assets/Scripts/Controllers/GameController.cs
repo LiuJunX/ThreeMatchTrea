@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Match3.Core.Models.Grid;
+using Match3.Core.Replay;
 using Match3.Core.Systems.Selection;
 using Match3.Presentation;
 using Match3.Unity.Bridge;
@@ -45,6 +46,22 @@ namespace Match3.Unity.Controllers
         private Action _onPauseToggledHandler;
         private Action _onAutoPlayToggledHandler;
         private Action _onRestartClickedHandler;
+
+        // Replay UI delegates
+        private Action<float> _onReplaySpeedChangedHandler;
+        private Action _onReplayPauseToggledHandler;
+        private Action _onReplayExitHandler;
+        private Action _onReplayRestartHandler;
+
+        // Current replay recording (for restart support)
+        private GameRecording _currentReplayRecording;
+        private bool _replayCompletedShown;
+
+        // Remember level context for restoring after replay exit
+        private string _currentLevelId;
+
+        // Speed steps for keyboard control (both normal and replay modes)
+        private static readonly float[] SpeedSteps = { 0.5f, 1.0f, 1.5f, 2.0f, 3.0f, 5.0f };
 
         [Header("Auto Initialize")]
         [SerializeField] private bool _autoInitialize;
@@ -205,6 +222,33 @@ namespace Match3.Unity.Controllers
             _uiManager.OnPauseToggled += _onPauseToggledHandler;
             _uiManager.OnAutoPlayToggled += _onAutoPlayToggledHandler;
             _uiManager.OnRestartClicked += _onRestartClickedHandler;
+
+            // Wire replay panel callbacks
+            var replayPanel = _uiManager.ReplayPanel;
+            if (replayPanel != null)
+            {
+                _onReplaySpeedChangedHandler = speed =>
+                {
+                    var ctrl = _bridge.ReplayCtrl;
+                    if (ctrl != null) ctrl.PlaybackSpeed = speed;
+                };
+                _onReplayPauseToggledHandler = () =>
+                {
+                    var ctrl = _bridge.ReplayCtrl;
+                    if (ctrl != null)
+                    {
+                        ctrl.TogglePause();
+                        replayPanel.SetPaused(ctrl.State == ReplayState.Paused);
+                    }
+                };
+                _onReplayExitHandler = ExitReplay;
+                _onReplayRestartHandler = RestartReplay;
+
+                replayPanel.OnSpeedChanged += _onReplaySpeedChangedHandler;
+                replayPanel.OnPauseToggled += _onReplayPauseToggledHandler;
+                replayPanel.OnExitClicked += _onReplayExitHandler;
+                replayPanel.OnRestartClicked += _onReplayRestartHandler;
+            }
         }
 
         /// <summary>
@@ -262,6 +306,7 @@ namespace Match3.Unity.Controllers
                 Reset();
             }
 
+            _currentLevelId = levelId;
             _boardView ??= CreateBoardView();
 
             _bridge.Initialize(seed, levelId);
@@ -309,12 +354,42 @@ namespace Match3.Unity.Controllers
         }
 
         /// <summary>
+        /// Restart the game, preserving level context if one was active.
+        /// </summary>
+        private void RestartWithLevel()
+        {
+            var newSeed = System.Environment.TickCount;
+
+            if (_currentLevelId != null)
+            {
+                Reset();
+                InitializeWithLevel(_currentLevelId, newSeed);
+            }
+            else
+            {
+                var width = _bridge.Width;
+                var height = _bridge.Height;
+                Reset();
+                Initialize(width, height, newSeed);
+            }
+
+            var cameraSetup = FindObjectOfType<CameraSetup>();
+            if (cameraSetup != null)
+                cameraSetup.SetupCamera();
+
+            Debug.Log($"Game restarted with seed: {newSeed}, level: {_currentLevelId ?? "(none)"}");
+        }
+
+        /// <summary>
         /// Start replay mode with a recording.
         /// Reuses existing BoardView and rendering pipeline.
         /// </summary>
-        public void StartReplay(Match3.Core.Replay.GameRecording recording)
+        public void StartReplay(GameRecording recording)
         {
             if (recording == null) return;
+
+            _currentReplayRecording = recording;
+            _replayCompletedShown = false;
 
             // Disable input during replay
             if (_inputController != null)
@@ -324,6 +399,9 @@ namespace Match3.Unity.Controllers
 
             // Create board view if needed
             _boardView ??= CreateBoardView();
+
+            // Clear stale tile views before starting new replay
+            _boardView.Clear();
 
             // Start replay on bridge
             _bridge.StartReplay(recording);
@@ -336,6 +414,10 @@ namespace Match3.Unity.Controllers
             var cameraSetup = FindObjectOfType<CameraSetup>();
             if (cameraSetup != null)
                 cameraSetup.SetupCamera();
+
+            // Enter replay UI mode
+            _uiManager?.EnterReplayMode();
+            _uiManager?.ReplayPanel?.SetBookmarks(recording.Bookmarks, recording.DurationTicks);
 
             _initialized = true;
         }
@@ -350,11 +432,17 @@ namespace Match3.Unity.Controllers
                 _bridge.AddBookmark();
             }
 
-            // Handle replay keyboard controls
-            if (_bridge.IsReplaying)
+            // F6: replay latest recording
+            if (!_bridge.IsReplaying && Input.GetKeyDown(KeyCode.F6))
             {
-                HandleReplayInput();
+                ReplayLatest();
             }
+
+            // Handle keyboard controls (both modes)
+            if (_bridge.IsReplaying)
+                HandleReplayInput();
+            else
+                HandleNormalKeyboardInput();
 
             // Restore camera before input processing (InputController.Update runs in same frame)
             _shakeController.Restore();
@@ -362,28 +450,30 @@ namespace Match3.Unity.Controllers
             // Tick simulation
             _bridge.Tick(Time.deltaTime);
 
+            float viewDt = _bridge.ScaledDeltaTime;
+
             var state = _bridge.VisualState;
             if (state == null) return;
 
             // Render board
-            _boardView.Render(state);
+            _boardView.Render(state, viewDt);
 
             // Update hint system (disabled during replay)
             if (_hintController != null && !_bridge.IsReplaying)
             {
                 bool gameInProgress = _bridge.CurrentState.LevelStatus == Core.Models.Enums.LevelStatus.InProgress;
-                bool canHint = !_bridge.IsPaused && !_bridge.IsAutoPlaying && gameInProgress;
+                bool canHint = viewDt > 0f && !_bridge.IsAutoPlaying && gameInProgress;
                 _hintController.SetEnabled(canHint);
                 if (canHint)
-                    _hintController.Update(Time.deltaTime);
-                ApplyHintToView(_hintController.CurrentHint);
+                    _hintController.Update(viewDt);
+                ApplyHintToView(_hintController.CurrentHint, viewDt);
             }
 
             // Update effects
             _effectManager.UpdateEffects(state);
 
             // Update fly-to-objective animations
-            _objectiveDisplay?.UpdateFlies(Time.deltaTime);
+            _objectiveDisplay?.UpdateFlies(viewDt);
 
             // Screen shake: only trigger on rising edge of effect count
             _shakeController.UpdateEffectCount(state);
@@ -396,28 +486,125 @@ namespace Match3.Unity.Controllers
 
             // Space: toggle pause
             if (Input.GetKeyDown(KeyCode.Space))
-                ctrl.TogglePause();
-
-            // Right arrow: step forward (auto-pauses)
-            if (Input.GetKeyDown(KeyCode.RightArrow))
             {
-                ctrl.Pause();
-                ctrl.StepForward();
+                // If completed, restart instead of toggling pause
+                if (ctrl.State == ReplayState.Completed)
+                {
+                    RestartReplay();
+                    return;
+                }
+                ctrl.TogglePause();
+                _uiManager?.ReplayPanel?.SetPaused(ctrl.State == ReplayState.Paused);
             }
 
-            // 1/2/3: speed control
-            if (Input.GetKeyDown(KeyCode.Alpha1)) ctrl.PlaybackSpeed = 1f;
-            if (Input.GetKeyDown(KeyCode.Alpha2)) ctrl.PlaybackSpeed = 2f;
-            if (Input.GetKeyDown(KeyCode.Alpha3)) ctrl.PlaybackSpeed = 4f;
-
-            // Escape: stop replay and restart game
-            if (Input.GetKeyDown(KeyCode.Escape))
+            // Left/Right arrows: adjust speed
+            if (Input.GetKeyDown(KeyCode.RightArrow))
             {
-                _bridge.StopReplay();
-                if (_inputController != null)
-                    _inputController.enabled = true;
-                Debug.Log("[Replay] Stopped by user. Restarting game...");
-                RestartGame();
+                var newSpeed = StepSpeed(ctrl.PlaybackSpeed, +1);
+                ctrl.PlaybackSpeed = newSpeed;
+                _uiManager?.ReplayPanel?.SetSpeed(newSpeed);
+            }
+            if (Input.GetKeyDown(KeyCode.LeftArrow))
+            {
+                var newSpeed = StepSpeed(ctrl.PlaybackSpeed, -1);
+                ctrl.PlaybackSpeed = newSpeed;
+                _uiManager?.ReplayPanel?.SetSpeed(newSpeed);
+            }
+
+            // Escape: exit replay
+            if (Input.GetKeyDown(KeyCode.Escape))
+                ExitReplay();
+
+            // R: restart replay
+            if (Input.GetKeyDown(KeyCode.R))
+                RestartReplay();
+
+            // Update replay panel progress
+            var replayPanel = _uiManager?.ReplayPanel;
+            if (replayPanel != null)
+            {
+                replayPanel.UpdateProgress(ctrl.Progress);
+
+                // Show completed state once
+                if (!_replayCompletedShown && ctrl.State == ReplayState.Completed)
+                {
+                    _replayCompletedShown = true;
+                    replayPanel.SetCompleted();
+                }
+            }
+        }
+
+        private void HandleNormalKeyboardInput()
+        {
+            // Space: toggle pause
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                _bridge.IsPaused = !_bridge.IsPaused;
+                _uiManager?.SetPaused(_bridge.IsPaused);
+            }
+
+            // Left/Right arrows: adjust game speed
+            if (Input.GetKeyDown(KeyCode.RightArrow))
+            {
+                var newSpeed = StepSpeed(_bridge.GameSpeed, +1);
+                _bridge.GameSpeed = newSpeed;
+            }
+            if (Input.GetKeyDown(KeyCode.LeftArrow))
+            {
+                var newSpeed = StepSpeed(_bridge.GameSpeed, -1);
+                _bridge.GameSpeed = newSpeed;
+            }
+        }
+
+        private void ExitReplay()
+        {
+            _bridge.StopReplay();
+            _uiManager?.ExitReplayMode();
+            if (_inputController != null)
+                _inputController.enabled = true;
+            _currentReplayRecording = null;
+            Debug.Log("[Replay] Stopped by user. Restarting game...");
+            RestartWithLevel();
+        }
+
+        private void RestartReplay()
+        {
+            if (_currentReplayRecording == null) return;
+            Debug.Log("[Replay] Restarting...");
+            _replayCompletedShown = false;
+            _boardView?.Clear();
+            _bridge.StartReplay(_currentReplayRecording);
+            _boardView.Initialize(_bridge);
+            _effectManager.Initialize(_bridge);
+            _uiManager?.ReplayPanel?.ResetState();
+
+            var cameraSetup = FindObjectOfType<CameraSetup>();
+            if (cameraSetup != null)
+                cameraSetup.SetupCamera();
+        }
+
+        private void ReplayLatest()
+        {
+            var recording = Match3Bridge.LoadLatestRecording();
+            if (recording == null) { Debug.LogWarning("[Replay] No recordings found."); return; }
+            StartReplay(recording);
+        }
+
+        private static float StepSpeed(float current, int direction)
+        {
+            if (direction > 0)
+            {
+                for (int i = 0; i < SpeedSteps.Length; i++)
+                    if (SpeedSteps[i] > current + 0.01f)
+                        return SpeedSteps[i];
+                return SpeedSteps[SpeedSteps.Length - 1];
+            }
+            else
+            {
+                for (int i = SpeedSteps.Length - 1; i >= 0; i--)
+                    if (SpeedSteps[i] < current - 0.01f)
+                        return SpeedSteps[i];
+                return SpeedSteps[0];
             }
         }
 
@@ -429,15 +616,11 @@ namespace Match3.Unity.Controllers
 
         #region Debug Overlay
 
-        private GUIStyle _bookmarkButtonStyle;
-
         private void OnGUI()
         {
             if (!_initialized || !_bridge.IsInitialized) return;
 
-            if (_bridge.IsReplaying)
-                DrawReplayOverlay();
-            else
+            if (!_bridge.IsReplaying)
                 DrawGameOverlay();
         }
 
@@ -449,30 +632,6 @@ namespace Match3.Unity.Controllers
             {
                 _bridge.AddBookmark();
             }
-        }
-
-        private void DrawReplayOverlay()
-        {
-            var ctrl = _bridge.ReplayCtrl;
-            if (ctrl == null) return;
-
-            // Status bar at top
-            var stateText = ctrl.State.ToString();
-            var progress = ctrl.Progress;
-            var tickInfo = $"Tick {ctrl.CurrentTick}/{ctrl.TotalTicks}";
-            var speedInfo = $"{ctrl.PlaybackSpeed}x";
-            var cmdInfo = $"Cmd {ctrl.CommandsExecuted}/{ctrl.TotalCommands}";
-
-            GUI.Box(new Rect(0, 40, Screen.width, 30), "");
-            GUI.Label(new Rect(10, 45, 200, 20), $"REPLAY  [{stateText}]  {speedInfo}  {tickInfo}  {cmdInfo}");
-
-            // Progress bar
-            GUI.Box(new Rect(0, 70, Screen.width, 8), "");
-            GUI.DrawTexture(new Rect(0, 70, Screen.width * progress, 8), Texture2D.whiteTexture);
-
-            // Controls hint at bottom
-            GUI.Label(new Rect(10, Screen.height - 25, Screen.width, 20),
-                "Space=Pause  →=Step  1/2/3=Speed  Esc=Exit");
         }
 
         #endregion
@@ -545,6 +704,15 @@ namespace Match3.Unity.Controllers
                 _uiManager.OnAutoPlayToggled -= _onAutoPlayToggledHandler;
                 _uiManager.OnRestartClicked -= _onRestartClickedHandler;
 
+                var replayPanel = _uiManager.ReplayPanel;
+                if (replayPanel != null)
+                {
+                    replayPanel.OnSpeedChanged -= _onReplaySpeedChangedHandler;
+                    replayPanel.OnPauseToggled -= _onReplayPauseToggledHandler;
+                    replayPanel.OnExitClicked -= _onReplayExitHandler;
+                    replayPanel.OnRestartClicked -= _onReplayRestartHandler;
+                }
+
                 Destroy(_uiManager.gameObject);
                 _uiManager = null;
             }
@@ -555,7 +723,7 @@ namespace Match3.Unity.Controllers
             _hintController?.OnUserInput();
         }
 
-        private void ApplyHintToView(HintResult hint)
+        private void ApplyHintToView(HintResult hint, float dt)
         {
             var gen = _hintController.HintGeneration;
             bool hintChanged = gen != _lastHintGeneration;
@@ -570,7 +738,7 @@ namespace Match3.Unity.Controllers
                 ClearHintOutlines();
                 _lastHintGeneration = gen;
                 // Fade out hint light
-                UpdateHintLight(null, hint, hintChanged);
+                UpdateHintLight(null, hint, hintChanged, dt);
                 return;
             }
 
@@ -605,11 +773,11 @@ namespace Match3.Unity.Controllers
             // Update hint light position every frame + fade in
             if (_boardView is Board3DView board3DView && board3DView.TryGetTileView(hint.TileId, out var tile))
             {
-                UpdateHintLight(tile, hint, hintChanged);
+                UpdateHintLight(tile, hint, hintChanged, dt);
             }
         }
 
-        private void UpdateHintLight(Tile3DView tile, HintResult hint, bool colorChanged)
+        private void UpdateHintLight(Tile3DView tile, HintResult hint, bool colorChanged, float dt)
         {
             if (!(_boardView is Board3DView board3DView)) return;
             var hintLight = board3DView.GetLightingController()?.HintLight;
@@ -621,7 +789,7 @@ namespace Match3.Unity.Controllers
             float target;
             if (active)
             {
-                _hintLightTime += Time.deltaTime;
+                _hintLightTime += dt;
                 if (hint.Type == HintAnimationType.BombPulse)
                 {
                     var pulse = Mathf.Lerp(0.3f, 1f, (Mathf.Sin(_hintLightTime * 2f * Mathf.PI * 2f) + 1f) * 0.5f);
@@ -638,7 +806,7 @@ namespace Match3.Unity.Controllers
             }
 
             // Smooth tracking: fade in follows pulse, fade out decays from current value
-            _hintLightIntensity = Mathf.Lerp(_hintLightIntensity, target, HintLightFadeSpeed * Time.deltaTime);
+            _hintLightIntensity = Mathf.Lerp(_hintLightIntensity, target, HintLightFadeSpeed * dt);
             if (_hintLightIntensity < 0.01f) { _hintLightIntensity = 0f; _hintLightTime = 0f; }
 
             var intensity = _hintLightIntensity;

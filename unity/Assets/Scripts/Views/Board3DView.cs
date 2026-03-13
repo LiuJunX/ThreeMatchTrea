@@ -310,7 +310,7 @@ namespace Match3.Unity.Views
             return _vignetteTexture;
         }
 
-        public void Render(VisualState state)
+        public void Render(VisualState state, float dt)
         {
             if (state == null) return;
 
@@ -348,7 +348,7 @@ namespace Match3.Unity.Views
                     _activeTiles[tileId] = tileView;
                 }
 
-                tileView.UpdateFromVisual(visual, cellSize, origin, height);
+                tileView.UpdateFromVisual(visual, cellSize, origin, height, dt);
             }
 
             // Remove tiles that are no longer active

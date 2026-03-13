@@ -124,6 +124,11 @@ namespace Match3.Unity.UI
         }
 
         /// <summary>
+        /// Whether the quit button is currently visible.
+        /// </summary>
+        public bool IsQuitButtonVisible => _quitButton != null && _quitButton.gameObject.activeSelf;
+
+        /// <summary>
         /// Show or hide the quit button (used by flow mode).
         /// </summary>
         public void SetQuitButtonVisible(bool visible)

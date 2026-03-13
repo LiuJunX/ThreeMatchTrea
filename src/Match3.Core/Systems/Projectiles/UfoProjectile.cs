@@ -170,10 +170,10 @@ public sealed class UfoProjectile : Projectile
         _phaseStartTime = _elapsedTime;
         Position = currentPos;
 
-        // Recalculate total duration: current time + remaining flight
+        // Recalculate total duration: current time + remaining flight (with retarget slowdown)
         var newTargetVec = new Vector2(newTarget.Value.X, newTarget.Value.Y);
         float newDistance = Vector2.Distance(currentPos, newTargetVec);
-        float remainingTime = newDistance > 0 ? newDistance / _speed : 0.01f;
+        float remainingTime = newDistance > 0 ? newDistance / _speed * UfoConstants.RetargetDurationMultiplier : 0.01f;
         _totalDuration = _elapsedTime + remainingTime;
 
         if (events.IsEnabled)

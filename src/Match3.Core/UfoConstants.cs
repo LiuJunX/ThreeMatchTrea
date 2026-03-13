@@ -28,6 +28,9 @@ public static class UfoConstants
     /// <summary>Extra momentum distance added when retargeting in opposite direction.</summary>
     public const float MomentumReverseBonus = 0.7f;
 
+    /// <summary>Duration multiplier for retarget flight (slower = more "struggling" feel).</summary>
+    public const float RetargetDurationMultiplier = 1.5f;
+
     // --- Diverge (random takeoff angle) ---
 
     /// <summary>Minimum diverge angle relative to target direction (degrees).</summary>
