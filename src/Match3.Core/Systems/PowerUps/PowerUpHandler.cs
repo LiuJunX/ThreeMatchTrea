@@ -342,22 +342,34 @@ public class PowerUpHandler : IPowerUpHandler
         }
     }
 
-    public IPowerUpHandler WithExplosionSystem(IExplosionSystem? explosionSystem)
+    /// <summary>
+    /// Create a copy of this handler using a different explosion system (for Clone scenarios).
+    /// </summary>
+    public PowerUpHandler WithExplosionSystem(IExplosionSystem? explosionSystem)
     {
         return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, explosionSystem, _projectileSystem, _colorBombSessionManager, _lockScheduler);
     }
 
-    public IPowerUpHandler WithProjectileSystem(IProjectileSystem? projectileSystem)
+    /// <summary>
+    /// Create a copy of this handler using a different projectile system (for Clone scenarios).
+    /// </summary>
+    public PowerUpHandler WithProjectileSystem(IProjectileSystem? projectileSystem)
     {
         return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, projectileSystem, _colorBombSessionManager, _lockScheduler);
     }
 
-    public IPowerUpHandler WithLockScheduler(LockScheduler? lockScheduler)
+    /// <summary>
+    /// Create a copy of this handler using a different lock scheduler (for Clone scenarios).
+    /// </summary>
+    public PowerUpHandler WithLockScheduler(LockScheduler? lockScheduler)
     {
         return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, _projectileSystem, _colorBombSessionManager, lockScheduler);
     }
 
-    public IPowerUpHandler WithColorBombSessionManager(IColorBombSessionManager? sessionManager)
+    /// <summary>
+    /// Create a copy of this handler using a different ColorBomb session manager (for Clone scenarios).
+    /// </summary>
+    public PowerUpHandler WithColorBombSessionManager(IColorBombSessionManager? sessionManager)
     {
         return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, _projectileSystem, sessionManager, _lockScheduler);
     }

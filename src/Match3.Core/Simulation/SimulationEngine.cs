@@ -528,11 +528,12 @@ public sealed class SimulationEngine : IDisposable
         var cloneExplosion = new ExplosionSystem(cloneCover, cloneGround, _objectiveSystem, cloneLocks);
         var cloneProjectile = new ProjectileSystem();
         var cloneColorBomb = new ColorBombSessionManager(null, cloneCover, cloneGround, _objectiveSystem, cloneLocks);
-        var clonePowerUp = _powerUpHandler
-            .WithExplosionSystem(cloneExplosion)
-            .WithProjectileSystem(cloneProjectile)
-            .WithLockScheduler(cloneLocks)
-            .WithColorBombSessionManager(cloneColorBomb);
+        var clonePowerUp = PowerUpHandlerFactory.CloneForSimulation(
+            (PowerUpHandler)_powerUpHandler,
+            cloneExplosion,
+            cloneProjectile,
+            cloneLocks,
+            cloneColorBomb);
 
         // Shared stateless systems: _matchFinder, _matchProcessor, _deadlockDetector,
         // _shuffleSystem, _objectiveSystem — safe to share (no mutable instance fields).
