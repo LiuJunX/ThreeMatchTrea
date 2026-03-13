@@ -189,7 +189,8 @@ public class PowerUpHandler : IPowerUpHandler
                     // UFO + UFO: 3 projectiles
                     if (t1.Type == ElementType.Ufo && t2.Type == ElementType.Ufo)
                     {
-                        LaunchUfoComboProjectiles(ref state, t1.Id, t2.Id, p1, p2, tick, simTime, events);
+                        UfoLaunchHelper.LaunchUfoComboProjectiles(
+                            _projectileSystem, ref state, t1.Id, t2.Id, p1, p2, tick, simTime, events);
                     }
                     // UFO + Rocket: 1 projectile with Row/Column payload, rocket dragged behind
                     else if ((t1.Type.IsUfo() && t2.Type.IsRocket()) || (t1.Type.IsRocket() && t2.Type.IsUfo()))
@@ -200,7 +201,8 @@ public class PowerUpHandler : IPowerUpHandler
                         var otherPos = t1.Type.IsUfo() ? p2 : p1;
                         var payload = otherTile.Type == ElementType.HorizontalRocket
                             ? UfoPayload.Row : UfoPayload.Column;
-                        LaunchUfoPayloadProjectile(ref state, ufoTile.Id, ufoPos, payload, tick, simTime, events,
+                        UfoLaunchHelper.LaunchUfoPayloadProjectile(
+                            _projectileSystem, ref state, ufoTile.Id, ufoPos, payload, tick, simTime, events,
                             passengerTileId: otherTile.Id, passengerPos: otherPos);
                     }
                     // UFO + Square: 1 projectile with Area5x5 payload, square dragged behind
@@ -210,7 +212,8 @@ public class PowerUpHandler : IPowerUpHandler
                         var otherTile = t1.Type.IsUfo() ? t2 : t1;
                         var ufoPos = t1.Type.IsUfo() ? p1 : p2;
                         var otherPos = t1.Type.IsUfo() ? p2 : p1;
-                        LaunchUfoPayloadProjectile(ref state, ufoTile.Id, ufoPos, UfoPayload.Area5x5, tick, simTime, events,
+                        UfoLaunchHelper.LaunchUfoPayloadProjectile(
+                            _projectileSystem, ref state, ufoTile.Id, ufoPos, UfoPayload.Area5x5, tick, simTime, events,
                             passengerTileId: otherTile.Id, passengerPos: otherPos);
                     }
                 }
@@ -357,76 +360,6 @@ public class PowerUpHandler : IPowerUpHandler
     public IPowerUpHandler WithColorBombSessionManager(IColorBombSessionManager? sessionManager)
     {
         return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, _projectileSystem, sessionManager, _lockScheduler);
-    }
-
-    /// <summary>
-    /// Launch 3 UFO projectiles for UFO+UFO combo.
-    /// First 2 reuse the original UFO tile visuals; 3rd spawns a new visual.
-    /// </summary>
-    private void LaunchUfoComboProjectiles(
-        ref GameState state, int tileId1, int tileId2,
-        Position p1, Position p2,
-        int tick, float simTime, IEventCollector events)
-    {
-        // Random base angle for 180° fan spread (different each swap)
-        float baseAngle = state.Random.Next(0, 360);
-
-        // UFO 1: from p1 (reuses existing tile visual)
-        var target1 = UfoEffect.PickRemoteTarget(in state, p1);
-        if (target1.HasValue)
-        {
-            var proj = new UfoProjectile(
-                _projectileSystem!.GenerateProjectileId(), p1, target1.Value)
-            { SourceTileId = tileId1, ComboDivergeAngle = baseAngle };
-            _projectileSystem.Launch(proj, tick, simTime, events);
-        }
-
-        // UFO 2: from p2 (reuses existing tile visual)
-        var target2 = UfoEffect.PickRemoteTarget(in state, p2);
-        if (target2.HasValue)
-        {
-            var proj = new UfoProjectile(
-                _projectileSystem!.GenerateProjectileId(), p2, target2.Value)
-            { SourceTileId = tileId2, ComboDivergeAngle = baseAngle + 90f };
-            _projectileSystem.Launch(proj, tick, simTime, events);
-        }
-
-        // UFO 3: from p1 (spawns a new tile visual via Choreographer)
-        var target3 = UfoEffect.PickRemoteTarget(in state, p1);
-        if (target3.HasValue)
-        {
-            int syntheticTileId = state.NextTileId++;
-            var proj = new UfoProjectile(
-                _projectileSystem!.GenerateProjectileId(), p1, target3.Value)
-            { SourceTileId = syntheticTileId, SpawnVisual = true, ComboDivergeAngle = baseAngle + 180f };
-            _projectileSystem.Launch(proj, tick, simTime, events);
-        }
-    }
-
-    /// <summary>
-    /// Launch a single UFO projectile with an enhanced payload (Rocket row/column or Square 5×5).
-    /// Reuses the existing UFO tile visual for the flight animation.
-    /// The passenger bomb's tile visual follows the UFO during flight.
-    /// </summary>
-    private void LaunchUfoPayloadProjectile(
-        ref GameState state, int ufoTileId, Position ufoPos,
-        UfoPayload payload,
-        int tick, float simTime, IEventCollector events,
-        int? passengerTileId = null, Position? passengerPos = null)
-    {
-        var target = UfoEffect.PickRemoteTarget(in state, ufoPos);
-        if (target.HasValue)
-        {
-            var proj = new UfoProjectile(
-                _projectileSystem!.GenerateProjectileId(), ufoPos, target.Value)
-            {
-                SourceTileId = ufoTileId,
-                Payload = payload,
-                PassengerTileId = passengerTileId,
-                PassengerOrigin = passengerPos
-            };
-            _projectileSystem.Launch(proj, tick, simTime, events);
-        }
     }
 
     /// <summary>
