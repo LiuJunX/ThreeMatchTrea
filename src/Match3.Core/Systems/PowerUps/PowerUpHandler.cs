@@ -23,6 +23,7 @@ public class PowerUpHandler : IPowerUpHandler
     private readonly IProjectileSystem? _projectileSystem;
     private readonly IColorBombSessionManager? _colorBombSessionManager;
     private readonly LockScheduler? _lockScheduler;
+    private readonly ExplosionConfig _explosionConfig;
 
     public PowerUpHandler(IScoreSystem scoreSystem)
         : this(scoreSystem, new BombComboHandler(), BombEffectRegistry.CreateDefault(),
@@ -39,7 +40,8 @@ public class PowerUpHandler : IPowerUpHandler
         IExplosionSystem? explosionSystem = null,
         IProjectileSystem? projectileSystem = null,
         IColorBombSessionManager? colorBombSessionManager = null,
-        LockScheduler? lockScheduler = null)
+        LockScheduler? lockScheduler = null,
+        ExplosionConfig? explosionConfig = null)
     {
         _scoreSystem = scoreSystem;
         _comboHandler = comboHandler;
@@ -50,6 +52,7 @@ public class PowerUpHandler : IPowerUpHandler
         _projectileSystem = projectileSystem;
         _colorBombSessionManager = colorBombSessionManager;
         _lockScheduler = lockScheduler;
+        _explosionConfig = explosionConfig ?? new ExplosionConfig();
     }
 
     public void ProcessSpecialMove(ref GameState state, Position p1, Position p2, out int points)
@@ -57,6 +60,21 @@ public class PowerUpHandler : IPowerUpHandler
         ProcessSpecialMove(ref state, p1, p2, 0, 0f, NullEventCollector.Instance, out points);
     }
 
+    /// <summary>
+    /// Processes a special move (bomb swap) between two positions.
+    /// </summary>
+    /// <remarks>
+    /// <para><strong>Combo detection priority:</strong></para>
+    /// <list type="number">
+    /// <item>ColorBomb + other bomb (non-ColorBomb) — routed to session-based beam flow</item>
+    /// <item>ColorBomb + normal tile — routed to session-based flow with target color</item>
+    /// <item><see cref="BombComboHandler"/> — handles all remaining combos including ColorBomb + ColorBomb</item>
+    /// </list>
+    /// <para><strong>Activation flow:</strong>
+    /// detect combo → emit <see cref="Events.BombComboEvent"/> →
+    /// clear bomb attributes via <c>ClearBombAttribute</c> →
+    /// create explosion / session → launch UFO projectiles (if applicable).</para>
+    /// </remarks>
     public void ProcessSpecialMove(
         ref GameState state,
         Position p1,
@@ -167,7 +185,7 @@ public class PowerUpHandler : IPowerUpHandler
                     {
                         // ColorBomb + normal tile: longer receive lock for beam animation
                         _explosionSystem.CreateTargetedExplosion(ref state, p1, affected,
-                            ExplosionSystem.DefaultWaveInterval, 1f,
+                            _explosionConfig.DefaultWaveInterval, 1f,
                             ReceiveLockTimings.ColorBombBatchClear);
                     }
                     else
@@ -285,9 +303,11 @@ public class PowerUpHandler : IPowerUpHandler
                     // Rockets spread 2x faster than other bombs
                     bool isRocket = t.Type == ElementType.HorizontalRocket || t.Type == ElementType.VerticalRocket;
                     if (isRocket)
-                        _explosionSystem.CreateTargetedExplosion(ref state, p, affected, 0.04f, 0.8f);
+                        _explosionSystem.CreateTargetedExplosion(ref state, p, affected,
+                            _explosionConfig.RocketWaveInterval, _explosionConfig.RocketAcceleration);
                     else if (t.Type.IsAreaBomb())
-                        _explosionSystem.CreateTargetedExplosion(ref state, p, affected, 0.05f, 0.85f);
+                        _explosionSystem.CreateTargetedExplosion(ref state, p, affected,
+                            _explosionConfig.AreaBombWaveInterval, _explosionConfig.AreaBombAcceleration);
                     else
                         _explosionSystem.CreateTargetedExplosion(ref state, p, affected);
                 }
@@ -347,7 +367,7 @@ public class PowerUpHandler : IPowerUpHandler
     /// </summary>
     public PowerUpHandler WithExplosionSystem(IExplosionSystem? explosionSystem)
     {
-        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, explosionSystem, _projectileSystem, _colorBombSessionManager, _lockScheduler);
+        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, explosionSystem, _projectileSystem, _colorBombSessionManager, _lockScheduler, _explosionConfig);
     }
 
     /// <summary>
@@ -355,7 +375,7 @@ public class PowerUpHandler : IPowerUpHandler
     /// </summary>
     public PowerUpHandler WithProjectileSystem(IProjectileSystem? projectileSystem)
     {
-        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, projectileSystem, _colorBombSessionManager, _lockScheduler);
+        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, projectileSystem, _colorBombSessionManager, _lockScheduler, _explosionConfig);
     }
 
     /// <summary>
@@ -363,7 +383,7 @@ public class PowerUpHandler : IPowerUpHandler
     /// </summary>
     public PowerUpHandler WithLockScheduler(LockScheduler? lockScheduler)
     {
-        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, _projectileSystem, _colorBombSessionManager, lockScheduler);
+        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, _projectileSystem, _colorBombSessionManager, lockScheduler, _explosionConfig);
     }
 
     /// <summary>
@@ -371,7 +391,7 @@ public class PowerUpHandler : IPowerUpHandler
     /// </summary>
     public PowerUpHandler WithColorBombSessionManager(IColorBombSessionManager? sessionManager)
     {
-        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, _projectileSystem, sessionManager, _lockScheduler);
+        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, _projectileSystem, sessionManager, _lockScheduler, _explosionConfig);
     }
 
     /// <summary>
