@@ -7,8 +7,13 @@ namespace Match3.Core.Models.Grid;
 /// <summary>
 /// Centralized lock lifecycle manager. Provides idempotent release and timed auto-release.
 /// All cell lock acquisition in the simulation should go through this class.
+///
+/// Lock lifecycle: callers <see cref="Acquire(ref GameState, Position, CellLockType)"/> a token,
+/// which increments ref-counts on the target cell. The caller later calls
+/// <see cref="Release(ref GameState, LockToken)"/> to decrement those ref-counts.
+/// Timed overloads auto-release after a duration via <see cref="Tick"/>.
 /// </summary>
-public sealed class LockScheduler
+public class LockScheduler
 {
     private int _nextId;
     private readonly HashSet<int> _activeIds = new();
@@ -34,7 +39,7 @@ public sealed class LockScheduler
     /// <summary>
     /// Acquire a manual lock on a cell. Caller is responsible for calling Release.
     /// </summary>
-    public LockToken Acquire(ref GameState state, Position pos, CellLockType types)
+    public virtual LockToken Acquire(ref GameState state, Position pos, CellLockType types)
     {
         int id = ++_nextId;
         int idx = state.Index(pos);
@@ -46,7 +51,7 @@ public sealed class LockScheduler
     /// <summary>
     /// Acquire a timed lock on a cell. Automatically released after duration expires.
     /// </summary>
-    public LockToken Acquire(ref GameState state, Position pos, CellLockType types, float duration)
+    public virtual LockToken Acquire(ref GameState state, Position pos, CellLockType types, float duration)
     {
         var token = Acquire(ref state, pos, types);
         EnsureTimedCapacity();
@@ -59,7 +64,7 @@ public sealed class LockScheduler
     /// <summary>
     /// Idempotent release. Safe to call multiple times with the same token.
     /// </summary>
-    public void Release(ref GameState state, LockToken token)
+    public virtual void Release(ref GameState state, LockToken token)
     {
         if (!token.IsValid) return;
         if (!_activeIds.Remove(token.Id)) return;
@@ -69,7 +74,7 @@ public sealed class LockScheduler
     /// <summary>
     /// Process timed lock expiry. Call once per simulation tick.
     /// </summary>
-    public void Tick(ref GameState state, float dt)
+    public virtual void Tick(ref GameState state, float dt)
     {
         for (int i = _timedCount - 1; i >= 0; i--)
         {
