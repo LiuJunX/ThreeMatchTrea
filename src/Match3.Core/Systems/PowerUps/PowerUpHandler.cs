@@ -362,7 +362,11 @@ public class PowerUpHandler : IPowerUpHandler
                     p,
                     remoteTarget.Value)
                 {
-                    SourceTileId = ufoTileId
+                    SourceTileId = ufoTileId,
+                    // Chain-triggered UFOs: tile was already eliminated by CellEliminator
+                    // (DestroyTileCommand + RemoveTileCommand), so UfoChoreographer must
+                    // spawn a fresh tile visual for the flight animation.
+                    SpawnVisual = isChainReaction
                 };
                 _projectileSystem.Launch(projectile, tick, simTime, events);
             }
