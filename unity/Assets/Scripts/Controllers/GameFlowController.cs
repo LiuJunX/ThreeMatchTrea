@@ -76,12 +76,12 @@ namespace Match3.Unity.Controllers
             mainCamera.backgroundColor = new Color(0.15f, 0.15f, 0.2f);
             mainCamera.clearFlags = CameraClearFlags.SolidColor;
 
-            // URP MSAA
+            // URP MSAA 2x (render scale 2.0 handles most aliasing)
             var rpAsset = GraphicsSettings.currentRenderPipeline;
             if (rpAsset != null)
             {
                 var msaaProp = rpAsset.GetType().GetProperty("msaaSampleCount");
-                msaaProp?.SetValue(rpAsset, 4);
+                msaaProp?.SetValue(rpAsset, 2);
             }
 
             // SMAA
