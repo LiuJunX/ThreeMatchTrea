@@ -284,13 +284,34 @@ public class PowerUpHandler : IPowerUpHandler
             return;
         }
 
-        bool isUfo = t.Type.IsUfo();
-        int ufoTileId = t.Id;
+        // Clear bomb attribute to prevent re-activation
+        ConsumeBomb(ref state, p, tick, simTime, events);
+
+        ExecuteBombActivation(ref state, p, t, tick, simTime, events, isChainReaction);
+    }
+
+    /// <inheritdoc />
+    public void ActivateChainBomb(ref GameState state, Position p, Tile bombTile,
+        int tick, float simTime, IEventCollector events)
+    {
+        // Tile already eliminated by CellEliminator in ExplosionSystem.ProcessWave —
+        // skip tile read and ConsumeBomb, go straight to activation.
+        ExecuteBombActivation(ref state, p, bombTile, tick, simTime, events, isChainReaction: true);
+    }
+
+    /// <summary>
+    /// Shared activation logic: apply effect → emit event → create explosion → launch UFO projectile.
+    /// </summary>
+    private void ExecuteBombActivation(ref GameState state, Position p, Tile bombTile,
+        int tick, float simTime, IEventCollector events, bool isChainReaction)
+    {
+        bool isUfo = bombTile.Type.IsUfo();
+        int ufoTileId = bombTile.Id;
 
         var affected = Pools.ObtainHashSet<Position>();
         try
         {
-            if (_effectRegistry.TryGetEffect(t.Type, out var effect))
+            if (_effectRegistry.TryGetEffect(bombTile.Type, out var effect))
             {
                 effect!.Apply(in state, p, affected);
                 affected.Add(p); // Ensure origin is in the affected set
@@ -302,25 +323,22 @@ public class PowerUpHandler : IPowerUpHandler
                     {
                         Tick = tick,
                         SimulationTime = simTime,
-                        TileId = t.Id,
+                        TileId = bombTile.Id,
                         Position = p,
-                        BombType = t.Type,
+                        BombType = bombTile.Type,
                         AffectedPositions = new List<Position>(affected),
                         IsChainReaction = isChainReaction
                     });
                 }
 
-                // Clear bomb attribute to prevent re-activation
-                ConsumeBomb(ref state, p, tick, simTime, events);
-
-                // Create explosion — ExplosionSystem handles wave propagation and chain reactions internally
+                // Create explosion — ExplosionSystem handles wave propagation
                 if (_explosionSystem != null)
                 {
-                    bool isRocket = t.Type == ElementType.HorizontalRocket || t.Type == ElementType.VerticalRocket;
+                    bool isRocket = bombTile.Type == ElementType.HorizontalRocket || bombTile.Type == ElementType.VerticalRocket;
                     if (isRocket)
                         _explosionSystem.CreateTargetedExplosion(ref state, p, affected,
                             _explosionConfig.RocketWaveInterval, _explosionConfig.RocketAcceleration);
-                    else if (t.Type.IsAreaBomb())
+                    else if (bombTile.Type.IsAreaBomb())
                         _explosionSystem.CreateTargetedExplosion(ref state, p, affected,
                             _explosionConfig.AreaBombWaveInterval, _explosionConfig.AreaBombAcceleration);
                     else

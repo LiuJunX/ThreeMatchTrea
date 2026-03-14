@@ -172,7 +172,7 @@ public class PowerUpHandlerExplosionTests
         }
 
         public int Update(ref GameState state, float deltaTime, int tick, float simTime,
-            IEventCollector eventCollector) => 0;
+            IEventCollector eventCollector, List<(Position Pos, Tile Tile)>? triggeredBombs = null) => 0;
 
         public void Reset() { }
     }

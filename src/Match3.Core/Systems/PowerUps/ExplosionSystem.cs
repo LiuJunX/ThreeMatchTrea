@@ -150,7 +150,8 @@ public class ExplosionSystem : IExplosionSystem
         float deltaTime,
         int tick,
         float simTime,
-        IEventCollector eventCollector)
+        IEventCollector eventCollector,
+        List<(Position Pos, Tile Tile)>? triggeredBombs = null)
     {
         _explosionsToRemove.Clear();
         _chainReactionCount = 0;
@@ -162,7 +163,7 @@ public class ExplosionSystem : IExplosionSystem
             while (explosion.Timer >= explosion.WaveInterval && !explosion.IsFinished)
             {
                 explosion.Timer -= explosion.WaveInterval;
-                ProcessWave(ref state, explosion, tick, simTime, eventCollector);
+                ProcessWave(ref state, explosion, tick, simTime, eventCollector, triggeredBombs);
 
                 if (explosion.Acceleration != 1f)
                     explosion.WaveInterval *= explosion.Acceleration;
@@ -210,7 +211,8 @@ public class ExplosionSystem : IExplosionSystem
         Explosion explosion,
         int tick,
         float simTime,
-        IEventCollector eventCollector)
+        IEventCollector eventCollector,
+        List<(Position Pos, Tile Tile)>? triggeredBombs)
     {
         int currentWave = explosion.CurrentWaveRadius;
 
@@ -237,7 +239,17 @@ public class ExplosionSystem : IExplosionSystem
                 if (result.Tile.Type.IsBomb()
                     && !(pos.X == explosion.Origin.X && pos.Y == explosion.Origin.Y))
                 {
-                    StartChainExplosion(ref state, pos, result.Tile, tick, simTime, eventCollector);
+                    if (triggeredBombs != null)
+                    {
+                        // Output to orchestrator for unified activation path
+                        triggeredBombs.Add((pos, result.Tile));
+                        _chainReactionCount++;
+                    }
+                    else
+                    {
+                        // Backward compat: handle chain internally
+                        StartChainExplosion(ref state, pos, result.Tile, tick, simTime, eventCollector);
+                    }
                 }
             }
         }

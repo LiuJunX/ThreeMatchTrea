@@ -79,7 +79,9 @@ public class AsyncGameLoopTests
             ActivateBombCalled = true;
             LastActivatedPosition = p;
         }
-        
+
+        public void ActivateChainBomb(ref GameState state, Position p, Tile bombTile, int tick, float simTime, IEventCollector events) { }
+
         public IPowerUpHandler WithExplosionSystem(IExplosionSystem? explosionSystem) => this;
         public IPowerUpHandler WithProjectileSystem(IProjectileSystem? projectileSystem) => this;
         public IPowerUpHandler WithLockScheduler(LockScheduler? lockScheduler) => this;
@@ -329,6 +331,8 @@ public class AsyncGameLoopTests
             ActivateBombCalled = true;
             LastActivatedPosition = p;
         }
+
+        public void ActivateChainBomb(ref GameState state, Position p, Tile bombTile, int tick, float simTime, IEventCollector events) { }
 
         public void HandlePowerUp(ref GameState state, Position p, ElementType bomb) { }
         public bool TryActivate(ref GameState state, Position p) => false;

@@ -165,6 +165,56 @@ public class SimulationOrchestratorChainTests
         Assert.Equal(ElementType.None, state.GetTile(targetPos.X, targetPos.Y).Type);
     }
 
+    [Fact]
+    public void UpdateExplosions_UfoCaughtInWave_LaunchesProjectile()
+    {
+        // Arrange: UFO at (6,5), explosion origin at (5,5)
+        var events = new StubEventCollector();
+        var state = CreateFilledState();
+
+        var ufoTile = new Tile(300, ElementType.Ufo, 6, 5);
+        state.SetTile(6, 5, ufoTile);
+
+        var explosionSystem = new ExplosionSystem();
+        var coverSystem = new CoverSystem();
+        var groundSystem = new GroundSystem();
+        var projectileSystem = new ProjectileSystem();
+        var powerUpHandler = new PowerUpHandler(
+            new StubScoreSystem(),
+            new BombComboHandler(),
+            BombEffectRegistry.CreateDefault(),
+            coverSystem,
+            groundSystem,
+            explosionSystem,
+            projectileSystem);
+
+        var orchestrator = new SimulationOrchestrator(
+            new StubPhysics(),
+            new StubRefill(),
+            new ClassicMatchFinder(new BombGenerator()),
+            new StandardMatchProcessor(new StubScoreSystem(), coverSystem, groundSystem, BombEffectRegistry.CreateDefault()),
+            powerUpHandler,
+            projectileSystem: projectileSystem,
+            explosionSystem: explosionSystem);
+
+        explosionSystem.CreateExplosion(ref state, new Position(5, 5), 2);
+
+        // Wave 0: center (5,5)
+        orchestrator.UpdateExplosions(ref state, 0.1f, 10, 5.0f, events);
+
+        // Wave 1: hits UFO at (6,5) — should route through ActivateChainBomb and launch projectile
+        orchestrator.UpdateExplosions(ref state, 0.1f, 11, 5.1f, events);
+
+        // Assert: BombActivatedEvent emitted for the UFO
+        var bombEvents = events.EmittedEvents.OfType<BombActivatedEvent>().ToList();
+        Assert.True(bombEvents.Count > 0, "UFO chain reaction should emit BombActivatedEvent");
+        Assert.Equal(ElementType.Ufo, bombEvents[0].BombType);
+
+        // Assert: UFO projectile launched
+        Assert.True(projectileSystem.HasActiveProjectiles,
+            "UFO caught in explosion wave should launch a projectile via unified ActivateChainBomb path");
+    }
+
     #region Helpers
 
     private static GameState CreateFilledState(int width = 10, int height = 10)

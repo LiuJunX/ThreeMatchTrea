@@ -35,4 +35,12 @@ public interface IPowerUpHandler
     /// </summary>
     void ActivateBomb(ref GameState state, Position p, int tick, float simTime, IEventCollector events,
         bool isChainReaction = false);
+
+    /// <summary>
+    /// Activate a bomb that was already eliminated by an explosion wave.
+    /// The tile has been cleared from the grid, so activation uses the provided <paramref name="bombTile"/>
+    /// instead of reading from state. Skips ConsumeBomb (already done by CellEliminator).
+    /// </summary>
+    void ActivateChainBomb(ref GameState state, Position p, Tile bombTile,
+        int tick, float simTime, IEventCollector events);
 }

@@ -125,6 +125,44 @@ public class ExplosionSystemTests : IDisposable
     }
 
     [Fact]
+    public void Update_WithTriggeredBombsList_CollectsBombsInsteadOfChaining()
+    {
+        // Arrange
+        var state = CreateGameState(10, 10);
+        var origin = new Position(5, 5);
+        var bombPos = new Position(6, 5); // Distance 1
+
+        var bombTile = new Tile(100, ElementType.HorizontalRocket, bombPos.X, bombPos.Y);
+        state.SetTile(bombPos.X, bombPos.Y, bombTile);
+
+        _sut.CreateExplosion(ref state, origin, 2);
+
+        // Wave 0: center
+        var triggeredBombs = new List<(Position Pos, Tile Tile)>();
+        _sut.Update(ref state, 0.1f, 1, 1f, _eventCollector, triggeredBombs);
+
+        Assert.Empty(triggeredBombs); // bomb not reached yet
+
+        // Wave 1: hits bomb at (6,5)
+        triggeredBombs.Clear();
+        _sut.Update(ref state, 0.1f, 2, 1.1f, _eventCollector, triggeredBombs);
+
+        // Assert: bomb collected in list, NOT internally chain-reacted
+        Assert.Single(triggeredBombs);
+        Assert.Equal(bombPos, triggeredBombs[0].Pos);
+        Assert.Equal(ElementType.HorizontalRocket, triggeredBombs[0].Tile.Type);
+        Assert.Equal(100, triggeredBombs[0].Tile.Id);
+
+        // Tile should still be eliminated from the grid
+        Assert.Equal(ElementType.None, state.GetTile(bombPos.X, bombPos.Y).Type);
+
+        // No internal chain explosion should have been created (only the original explosion remains)
+        // After wave 2, the original explosion finishes
+        _sut.Update(ref state, 0.1f, 3, 1.2f, _eventCollector);
+        Assert.False(_sut.HasActiveExplosions);
+    }
+
+    [Fact]
     public void Update_DestroysTile_WhenWaveReachesIt()
     {
         // Arrange
