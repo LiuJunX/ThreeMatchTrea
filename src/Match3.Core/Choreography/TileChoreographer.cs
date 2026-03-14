@@ -51,17 +51,13 @@ internal sealed class TileChoreographer
         float startTime = _ctx.GetStartTime(evt);
         var position = new Vector2(evt.GridPosition.X, evt.GridPosition.Y);
 
-        // ConsumeBomb: bomb's visual effects are already driven by BombActivatedEvent/BombComboEvent.
-        // Skip destroy animation and show effect — only emit RemoveTileCommand.
+        // ConsumeBomb: bomb tile is being activated (UFO flight, ColorBomb session, etc.).
+        // Do NOT emit RemoveTileCommand here — the tile's lifecycle is managed by the
+        // downstream choreographer (UfoChoreographer at impact, ColorBombChoreographer at
+        // batch destroy). For rockets/area bombs (no animation refs), the tile is naturally
+        // cleaned up by SyncFallingTilesFromGameState when it sees type=None + not animated.
         if (evt.Reason == ElimSource.ConsumeBomb)
         {
-            _ctx.Commands.Add(new RemoveTileCommand
-            {
-                TileId = evt.TileId,
-                StartTime = startTime,
-                Duration = 0,
-                Priority = 10
-            });
             return;
         }
 
