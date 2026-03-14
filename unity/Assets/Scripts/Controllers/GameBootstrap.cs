@@ -86,18 +86,17 @@ namespace Match3.Unity.Controllers
                     msaaProp.SetValue(rpAsset, 2);
             }
 
-            // SMAA + post-processing (via reflection to avoid URP assembly reference)
+            // Add SMAA for specular/shader aliasing (MSAA only handles geometry edges)
             var camData = mainCamera.GetComponent("UniversalAdditionalCameraData");
             if (camData != null)
             {
-                var t = camData.GetType();
-                t.GetProperty("antialiasing")?.SetValue(camData, 2);       // SMAA
-                t.GetProperty("antialiasingQuality")?.SetValue(camData, 2); // High
-                t.GetProperty("renderPostProcessing")?.SetValue(camData, true);
+                var aaMode = camData.GetType().GetProperty("antialiasing");
+                var aaQuality = camData.GetType().GetProperty("antialiasingQuality");
+                if (aaMode != null)
+                    aaMode.SetValue(camData, 2); // 2 = SMAA
+                if (aaQuality != null)
+                    aaQuality.SetValue(camData, 2); // 2 = High
             }
-
-            // Global Volume with Bloom
-            PostProcessHelper.SetupBloom();
         }
     }
 }
