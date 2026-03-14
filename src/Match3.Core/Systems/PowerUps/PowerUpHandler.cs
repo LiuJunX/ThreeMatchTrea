@@ -212,15 +212,11 @@ public class PowerUpHandler : IPowerUpHandler
                         _explosionSystem.CreateTargetedExplosion(ref state, p1, affected);
                     }
                 }
-                else
-                {
-                    // Fallback: instant destruction (backward-compatible test path)
-                    ClearAffectedTiles(ref state, affected, tick, simTime, events);
-                }
+                // Note: ExplosionSystem is expected to always be present.
+                // Tests should provide one via WithExplosionSystem().
 
                 // UFO combos: launch projectiles for remote targets.
-                // ClearBombAttribute preserved tile IDs (set to None), so Choreographer
-                // can animate the existing tile visuals flying to their targets.
+                // Choreographer reads tile IDs from ProjectileLaunchedEvent, not grid state.
                 if (_projectileSystem != null)
                 {
                     // UFO + UFO: 3 projectiles
@@ -317,9 +313,9 @@ public class PowerUpHandler : IPowerUpHandler
                 // Clear bomb attribute to prevent re-activation
                 ClearBombAttribute(ref state, p);
 
+                // Create explosion — ExplosionSystem handles wave propagation and chain reactions internally
                 if (_explosionSystem != null)
                 {
-                    // Rockets spread 2x faster than other bombs
                     bool isRocket = t.Type == ElementType.HorizontalRocket || t.Type == ElementType.VerticalRocket;
                     if (isRocket)
                         _explosionSystem.CreateTargetedExplosion(ref state, p, affected,
@@ -329,18 +325,6 @@ public class PowerUpHandler : IPowerUpHandler
                             _explosionConfig.AreaBombWaveInterval, _explosionConfig.AreaBombAcceleration);
                     else
                         _explosionSystem.CreateTargetedExplosion(ref state, p, affected);
-                }
-                else
-                {
-                    // Fallback: instant destruction (backward compatible)
-                    ClearAffectedTiles(ref state, affected, tick, simTime, events);
-
-                    // Ensure the bomb itself is cleared
-                    var currentT = state.GetTile(p.X, p.Y);
-                    if (currentT.Type != ElementType.None)
-                    {
-                        _cellEliminator.Eliminate(ref state, p, ElimSource.Bomb, tick, simTime, events);
-                    }
                 }
             }
         }
@@ -413,84 +397,16 @@ public class PowerUpHandler : IPowerUpHandler
     /// <summary>
     /// Clears the bomb attribute from a tile to prevent double explosion during combo processing.
     /// Applies a timed Receive lock to prevent premature gravity fill.
+    /// Tile ID is not preserved — downstream systems (Choreographer) read IDs from events, not grid state.
     /// </summary>
     private void ClearBombAttribute(ref GameState state, Position p)
     {
         var tile = state.GetTile(p.X, p.Y);
         if (tile.Type.IsBomb())
         {
-            state.SetTile(p.X, p.Y, new Tile(tile.Id, ElementType.None, p.X, p.Y) { Position = tile.Position });
+            state.SetTile(p.X, p.Y, new Tile(0, ElementType.None, p.X, p.Y));
             _lockScheduler?.Acquire(ref state, p, CellLockType.Receive, ReceiveLockTimings.BombActivateClear);
         }
     }
 
-    /// <summary>
-    /// Clears all affected tiles (supports chain explosions using queue to avoid recursion)
-    /// </summary>
-    private void ClearAffectedTiles(
-        ref GameState state,
-        HashSet<Position> affected,
-        int tick,
-        float simTime,
-        IEventCollector events)
-    {
-        var queue = Pools.ObtainQueue<Position>();
-        var chainEffect = Pools.ObtainHashSet<Position>();
-        var processed = Pools.ObtainHashSet<Position>();
-        try
-        {
-            // Initialize queue
-            foreach (var pos in affected)
-            {
-                queue.Enqueue(pos);
-            }
-
-            // BFS process all tiles (including chain explosions)
-            while (queue.Count > 0)
-            {
-                var pos = queue.Dequeue();
-
-                if (!state.IsValid(pos))
-                    continue;
-
-                if (processed.Contains(pos))
-                    continue;
-
-                processed.Add(pos);
-
-                var tile = state.GetTile(pos.X, pos.Y);
-
-                if (tile.Type == ElementType.None)
-                    continue;
-
-                // Unified elimination (captures tile type before clearing)
-                var result = _cellEliminator.Eliminate(ref state, pos, ElimSource.Bomb, tick, simTime, events);
-
-                if (result == EliminateResult.Eliminated)
-                {
-                    // Bomb chain reaction — only if actually eliminated
-                    if (tile.Type.IsBomb() && _effectRegistry.TryGetEffect(tile.Type, out var effect))
-                    {
-                        chainEffect.Clear();
-                        effect!.Apply(in state, pos, chainEffect);
-
-                        foreach (var chainPos in chainEffect)
-                        {
-                            if (!processed.Contains(chainPos))
-                                queue.Enqueue(chainPos);
-                        }
-                    }
-
-                    // Apply timed Receive lock to prevent premature gravity fill
-                    _lockScheduler?.Acquire(ref state, pos, CellLockType.Receive, ReceiveLockTimings.BombActivateClear);
-                }
-            }
-        }
-        finally
-        {
-            Pools.Release(processed);
-            Pools.Release(chainEffect);
-            Pools.Release(queue);
-        }
-    }
 }
