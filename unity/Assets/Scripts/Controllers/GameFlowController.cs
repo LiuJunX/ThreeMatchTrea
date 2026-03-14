@@ -5,7 +5,6 @@ using Match3.Unity.Services;
 using Match3.Unity.UI;
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
 
 namespace Match3.Unity.Controllers
 {
@@ -85,30 +84,18 @@ namespace Match3.Unity.Controllers
                 msaaProp?.SetValue(rpAsset, 2);
             }
 
-            // SMAA + post-processing
-            var camData = mainCamera.GetComponent<UniversalAdditionalCameraData>();
+            // SMAA + post-processing (via reflection to avoid URP assembly reference)
+            var camData = mainCamera.GetComponent("UniversalAdditionalCameraData");
             if (camData != null)
             {
-                camData.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
-                camData.antialiasingQuality = AntialiasingQuality.High;
-                camData.renderPostProcessing = true;
+                var t = camData.GetType();
+                t.GetProperty("antialiasing")?.SetValue(camData, 2);       // SMAA
+                t.GetProperty("antialiasingQuality")?.SetValue(camData, 2); // High
+                t.GetProperty("renderPostProcessing")?.SetValue(camData, true);
             }
 
             // Global Volume with Bloom
-            SetupBloom();
-        }
-
-        private static void SetupBloom()
-        {
-            var volumeGo = new GameObject("PostProcessVolume");
-            var volume = volumeGo.AddComponent<Volume>();
-            volume.isGlobal = true;
-            volume.profile = ScriptableObject.CreateInstance<VolumeProfile>();
-
-            var bloom = volume.profile.Add<Bloom>();
-            bloom.threshold.value = 0.9f;
-            bloom.intensity.value = 0.4f;
-            bloom.scatter.value = 0.7f;
+            PostProcessHelper.SetupBloom();
         }
 
         private void CreateGameController()
