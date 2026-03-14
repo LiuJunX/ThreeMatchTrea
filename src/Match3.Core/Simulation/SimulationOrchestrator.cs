@@ -1,6 +1,7 @@
 using Match3.Core.Choreography;
 using Match3.Core.Events;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Objectives;
@@ -38,7 +39,8 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
         ILevelObjectiveSystem? objectiveSystem = null,
         IColorBombSessionManager? colorBombSessionManager = null,
         LockScheduler? lockScheduler = null,
-        ChoreographyConfig? choreographyConfig = null)
+        ChoreographyConfig? choreographyConfig = null,
+        ICellEliminator? cellEliminator = null)
     {
         _physics = physics;
         _refill = refill;
@@ -47,7 +49,7 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
         _powerUpHandler = powerUpHandler;
         _objectiveSystem = objectiveSystem;
         _colorBombSessionManager = colorBombSessionManager;
-        _matchHandler = new SimulationMatchHandler(matchFinder, matchProcessor, objectiveSystem, lockScheduler, choreographyConfig);
+        _matchHandler = new SimulationMatchHandler(matchFinder, matchProcessor, cellEliminator, objectiveSystem, lockScheduler, choreographyConfig);
     }
 
     /// <inheritdoc />

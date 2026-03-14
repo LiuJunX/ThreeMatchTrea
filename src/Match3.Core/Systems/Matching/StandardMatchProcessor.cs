@@ -4,6 +4,7 @@ using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
@@ -17,19 +18,28 @@ namespace Match3.Core.Systems.Matching;
 public class StandardMatchProcessor : IMatchProcessor
 {
     private readonly IScoreSystem _scoreSystem;
-    private readonly ICoverSystem _coverSystem;
-    private readonly IGroundSystem _groundSystem;
-    private readonly BombEffectRegistry _bombRegistry; // Was IBombRegistry, but based on search it is a class BombEffectRegistry
+    private readonly ICellEliminator _cellEliminator;
+    private readonly BombEffectRegistry _bombRegistry;
 
+    /// <summary>
+    /// Backward-compatible constructor — creates a <see cref="CellEliminator"/> internally.
+    /// </summary>
     public StandardMatchProcessor(
         IScoreSystem scoreSystem,
         ICoverSystem coverSystem,
         IGroundSystem groundSystem,
         BombEffectRegistry bombRegistry)
+        : this(scoreSystem, new CellEliminator(coverSystem, groundSystem), bombRegistry)
+    {
+    }
+
+    public StandardMatchProcessor(
+        IScoreSystem scoreSystem,
+        ICellEliminator cellEliminator,
+        BombEffectRegistry bombRegistry)
     {
         _scoreSystem = scoreSystem;
-        _coverSystem = coverSystem;
-        _groundSystem = groundSystem;
+        _cellEliminator = cellEliminator;
         _bombRegistry = bombRegistry;
     }
 
@@ -86,20 +96,15 @@ public class StandardMatchProcessor : IMatchProcessor
                 if (cleared.Contains(p)) continue;
 
                 var t = state.GetTile(p.X, p.Y);
-                if (t.Type == ElementType.None) continue;
+                if (t.Type == ElementType.None) { cleared.Add(p); continue; }
 
-                // Check cover layer first
-                if (_coverSystem.IsTileProtected(in state, p))
-                {
-                    // Damage the cover, tile is protected this round
-                    _coverSystem.TryDamageCover(ref state, p, tick, simTime, events);
-                    cleared.Add(p); // Mark as processed to avoid re-processing
-                    continue;
-                }
-
+                // Unified elimination (captures tile type before clearing)
+                var result = _cellEliminator.Eliminate(ref state, p, DestroyReason.Match, tick, simTime, events);
                 cleared.Add(p);
 
-                if (t.Type.IsBomb())
+                // Bomb chain reaction — only if the bomb was actually eliminated
+                // (cover-protected or indestructible bombs must not trigger chain)
+                if (result == EliminateResult.Eliminated && t.Type.IsBomb())
                 {
                     if (_bombRegistry.TryGetEffect(t.Type, out var effect))
                     {
@@ -113,26 +118,6 @@ public class StandardMatchProcessor : IMatchProcessor
                         }
                     }
                 }
-
-                // Emit tile destroyed event
-                if (events.IsEnabled)
-                {
-                    events.Emit(new TileDestroyedEvent
-                    {
-                        Tick = tick,
-                        SimulationTime = simTime,
-                        TileId = t.Id,
-                        GridPosition = p,
-                        Type = t.Type,
-                        Reason = DestroyReason.Match
-                    });
-                }
-
-                // Clear the tile
-                state.SetTile(p.X, p.Y, new Tile(0, ElementType.None, p.X, p.Y));
-
-                // Notify ground layer
-                _groundSystem.OnTileDestroyed(ref state, p, tick, simTime, events);
             }
         }
         finally

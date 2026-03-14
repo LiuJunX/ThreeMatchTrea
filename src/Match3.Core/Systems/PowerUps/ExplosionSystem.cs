@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.Objectives;
 using Match3.Core.Utility.Pools;
@@ -17,9 +18,6 @@ public class ExplosionSystem : IExplosionSystem
 {
     private readonly List<Explosion> _activeExplosions = new();
     private readonly List<Explosion> _explosionsToRemove = new();
-    private readonly ICoverSystem _coverSystem;
-    private readonly IGroundSystem _groundSystem;
-    private readonly ILevelObjectiveSystem? _objectiveSystem;
     private readonly LockScheduler? _lockScheduler;
     private readonly WavePropagation _wavePropagation;
     private readonly ExplosionConfig _config;
@@ -38,13 +36,18 @@ public class ExplosionSystem : IExplosionSystem
     {
     }
 
+    /// <summary>
+    /// Backward-compatible constructor — creates a <see cref="CellEliminator"/> internally.
+    /// </summary>
     public ExplosionSystem(ICoverSystem coverSystem, IGroundSystem groundSystem, ILevelObjectiveSystem? objectiveSystem, LockScheduler? lockScheduler, ExplosionConfig? config = null)
+        : this(new CellEliminator(coverSystem, groundSystem, objectiveSystem), coverSystem, groundSystem, objectiveSystem, lockScheduler, config)
     {
-        _coverSystem = coverSystem;
-        _groundSystem = groundSystem;
-        _objectiveSystem = objectiveSystem;
+    }
+
+    public ExplosionSystem(ICellEliminator cellEliminator, ICoverSystem coverSystem, IGroundSystem groundSystem, ILevelObjectiveSystem? objectiveSystem, LockScheduler? lockScheduler, ExplosionConfig? config = null)
+    {
         _lockScheduler = lockScheduler;
-        _wavePropagation = new WavePropagation(coverSystem, groundSystem, objectiveSystem, lockScheduler);
+        _wavePropagation = new WavePropagation(cellEliminator, lockScheduler);
         _config = config ?? new ExplosionConfig();
     }
 

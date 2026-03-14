@@ -3,6 +3,7 @@ using Match3.Core.Choreography;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Objectives;
@@ -32,6 +33,7 @@ public sealed class SimulationEngine : IDisposable
     private readonly IDeadlockDetectionSystem? _deadlockDetector;
     private readonly IBoardShuffleSystem? _shuffleSystem;
     private readonly ILevelObjectiveSystem? _objectiveSystem;
+    private readonly ICellEliminator? _cellEliminator;
     private readonly LockScheduler _lockScheduler;
     private readonly ChoreographyConfig? _choreographyConfig;
 
@@ -108,7 +110,8 @@ public sealed class SimulationEngine : IDisposable
         ILevelObjectiveSystem? objectiveSystem = null,
         IColorBombSessionManager? colorBombSessionManager = null,
         LockScheduler? lockScheduler = null,
-        ChoreographyConfig? choreographyConfig = null)
+        ChoreographyConfig? choreographyConfig = null,
+        ICellEliminator? cellEliminator = null)
     {
         State = initialState;
         _config = config ?? new SimulationConfig();
@@ -118,6 +121,7 @@ public sealed class SimulationEngine : IDisposable
         _matchProcessor = matchProcessor ?? throw new ArgumentNullException(nameof(matchProcessor));
         _powerUpHandler = powerUpHandler ?? throw new ArgumentNullException(nameof(powerUpHandler));
         _eventCollector = eventCollector ?? NullEventCollector.Instance;
+        _cellEliminator = cellEliminator;
         _objectiveSystem = objectiveSystem;
         _lockScheduler = lockScheduler ?? new LockScheduler();
         _choreographyConfig = choreographyConfig;
@@ -135,7 +139,8 @@ public sealed class SimulationEngine : IDisposable
             objectiveSystem,
             colorBombSessionManager,
             _lockScheduler,
-            choreographyConfig);
+            choreographyConfig,
+            cellEliminator);
 
         // Initialize shared swap operations with instant context
         var swapContext = new InstantSwapContext(SwapAnimationDuration);
@@ -525,7 +530,8 @@ public sealed class SimulationEngine : IDisposable
         var cloneLocks = _lockScheduler.Clone();
         var cloneCover = new CoverSystem(_objectiveSystem);
         var cloneGround = new GroundSystem(_objectiveSystem);
-        var cloneExplosion = new ExplosionSystem(cloneCover, cloneGround, _objectiveSystem, cloneLocks);
+        var cloneCellEliminator = new CellEliminator(cloneCover, cloneGround, _objectiveSystem);
+        var cloneExplosion = new ExplosionSystem(cloneCellEliminator, cloneCover, cloneGround, _objectiveSystem, cloneLocks);
         var cloneProjectile = new ProjectileSystem();
         var cloneColorBomb = new ColorBombSessionManager(null, cloneCover, cloneGround, _objectiveSystem, cloneLocks);
         var clonePowerUp = PowerUpHandlerFactory.CloneForSimulation(
@@ -554,7 +560,8 @@ public sealed class SimulationEngine : IDisposable
             _objectiveSystem,
             cloneColorBomb,
             cloneLocks,
-            _choreographyConfig
+            _choreographyConfig,
+            cloneCellEliminator
         );
     }
 

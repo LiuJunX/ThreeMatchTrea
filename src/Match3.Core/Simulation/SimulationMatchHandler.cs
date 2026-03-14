@@ -5,7 +5,7 @@ using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
-using Match3.Core.Systems.Layers;
+using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Objectives;
 using Match3.Core.Utility.Pools;
@@ -20,6 +20,7 @@ internal sealed class SimulationMatchHandler
 {
     private readonly IMatchFinder _matchFinder;
     private readonly IMatchProcessor _matchProcessor;
+    private readonly ICellEliminator? _cellEliminator;
     private readonly ILevelObjectiveSystem? _objectiveSystem;
     private readonly LockScheduler? _lockScheduler;
 
@@ -33,15 +34,30 @@ internal sealed class SimulationMatchHandler
     /// <summary>Buffer between bomb DropLock expiry and ReceiveLock expiry (seconds).</summary>
     private const float BombReceiveLockBuffer = 0.05f;
 
+    /// <summary>
+    /// Backward-compatible constructor — ProcessProjectileImpacts uses inline ceremony.
+    /// </summary>
     public SimulationMatchHandler(
         IMatchFinder matchFinder,
         IMatchProcessor matchProcessor,
         ILevelObjectiveSystem? objectiveSystem = null,
         LockScheduler? lockScheduler = null,
         ChoreographyConfig? choreographyConfig = null)
+        : this(matchFinder, matchProcessor, null, objectiveSystem, lockScheduler, choreographyConfig)
+    {
+    }
+
+    public SimulationMatchHandler(
+        IMatchFinder matchFinder,
+        IMatchProcessor matchProcessor,
+        ICellEliminator? cellEliminator,
+        ILevelObjectiveSystem? objectiveSystem = null,
+        LockScheduler? lockScheduler = null,
+        ChoreographyConfig? choreographyConfig = null)
     {
         _matchFinder = matchFinder;
         _matchProcessor = matchProcessor;
+        _cellEliminator = cellEliminator;
         _objectiveSystem = objectiveSystem;
         _lockScheduler = lockScheduler;
 
@@ -131,9 +147,6 @@ internal sealed class SimulationMatchHandler
             var tile = state.GetTile(pos.X, pos.Y);
             if (tile.Type == ElementType.None) continue;
 
-            // Respect Indestructible lock (e.g., combo-transformed bombs awaiting batch activation)
-            if (!state.CanDestroy(pos)) continue;
-
             // Bombs are triggered, not destroyed — let ActivateBomb handle them
             if (tile.Type.IsBomb())
             {
@@ -141,27 +154,37 @@ internal sealed class SimulationMatchHandler
                 continue;
             }
 
-            if (eventCollector.IsEnabled)
+            if (_cellEliminator != null)
             {
-                eventCollector.Emit(new TileDestroyedEvent
-                {
-                    Tick = currentTick,
-                    SimulationTime = elapsedTime,
-                    TileId = tile.Id,
-                    GridPosition = pos,
-                    Type = tile.Type,
-                    Reason = DestroyReason.Projectile,
-                    IsGoal = _objectiveSystem != null && _objectiveSystem.IsTarget(state, ObjectiveTargetLayer.Tile, (int)tile.Type)
-                });
+                // Unified elimination (adds Cover + Ground handling that was previously missing)
+                var result = _cellEliminator.Eliminate(ref state, pos, DestroyReason.Projectile, currentTick, elapsedTime, eventCollector);
+
+                if (result == EliminateResult.Eliminated)
+                    _lockScheduler?.Acquire(ref state, pos, CellLockType.Receive, ReceiveLockTimings.ProjectileImpactClear);
             }
+            else
+            {
+                // Legacy inline path (backward compatibility for old constructor)
+                if (!state.CanDestroy(pos)) continue;
 
-            // Track objective progress
-            _objectiveSystem?.OnTileDestroyed(ref state, tile.Type, currentTick, elapsedTime, eventCollector);
+                if (eventCollector.IsEnabled)
+                {
+                    eventCollector.Emit(new TileDestroyedEvent
+                    {
+                        Tick = currentTick,
+                        SimulationTime = elapsedTime,
+                        TileId = tile.Id,
+                        GridPosition = pos,
+                        Type = tile.Type,
+                        Reason = DestroyReason.Projectile,
+                        IsGoal = _objectiveSystem != null && _objectiveSystem.IsTarget(state, ObjectiveTargetLayer.Tile, (int)tile.Type)
+                    });
+                }
 
-            state.SetTile(pos.X, pos.Y, new Tile(0, ElementType.None, pos.X, pos.Y));
-
-            // Apply timed Receive lock to prevent premature gravity fill
-            _lockScheduler?.Acquire(ref state, pos, CellLockType.Receive, ReceiveLockTimings.ProjectileImpactClear);
+                _objectiveSystem?.OnTileDestroyed(ref state, tile.Type, currentTick, elapsedTime, eventCollector);
+                state.SetTile(pos.X, pos.Y, new Tile(0, ElementType.None, pos.X, pos.Y));
+                _lockScheduler?.Acquire(ref state, pos, CellLockType.Receive, ReceiveLockTimings.ProjectileImpactClear);
+            }
         }
     }
 

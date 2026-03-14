@@ -3,6 +3,7 @@ using Match3.Core.Config;
 using Match3.Core.Events;
 using Match3.Core.Models.Grid;
 using Match3.Core.Simulation;
+using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Generation;
 using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.Matching;
@@ -124,7 +125,8 @@ public sealed class GameServiceFactory : IGameServiceFactory
         var lockScheduler = new LockScheduler();
         var coverSystem = new CoverSystem(objectiveSystem);
         var groundSystem = new GroundSystem(objectiveSystem);
-        var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem, lockScheduler);
+        var cellEliminator = new CellEliminator(coverSystem, groundSystem, objectiveSystem);
+        var explosionSystem = new ExplosionSystem(cellEliminator, coverSystem, groundSystem, objectiveSystem, lockScheduler);
         var colorBombSessionManager = new ColorBombSessionManager(null, coverSystem, groundSystem, objectiveSystem, lockScheduler);
         var basePowerUp = (PowerUpHandler)_powerUpFactory(scoreSystem);
         var powerUpHandler = basePowerUp
@@ -157,7 +159,8 @@ public sealed class GameServiceFactory : IGameServiceFactory
             shuffleSystem,
             objectiveSystem,
             colorBombSessionManager,
-            lockScheduler);
+            lockScheduler,
+            cellEliminator: cellEliminator);
     }
 
     /// <inheritdoc />

@@ -3,6 +3,7 @@ using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Simulation;
+using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Matching.Generation;
@@ -50,10 +51,11 @@ public static class TestEngineFactory
         var objectiveSystem = new LevelObjectiveSystem();
         var coverSystem = new CoverSystem(objectiveSystem);
         var groundSystem = new GroundSystem(objectiveSystem);
+        var cellEliminator = new CellEliminator(coverSystem, groundSystem, objectiveSystem);
         var matchProcessor = new StandardMatchProcessor(
-            score, coverSystem, groundSystem, BombEffectRegistry.CreateDefault());
+            score, cellEliminator, BombEffectRegistry.CreateDefault());
         var lockScheduler = new LockScheduler();
-        var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem, lockScheduler);
+        var explosionSystem = new ExplosionSystem(cellEliminator, coverSystem, groundSystem, objectiveSystem, lockScheduler);
         var colorBombSessionManager = new ColorBombSessionManager(null, coverSystem, groundSystem, objectiveSystem, lockScheduler);
         var proj = projectileSystem ?? new ProjectileSystem();
         var powerUpHandler = new PowerUpHandler(
@@ -75,7 +77,8 @@ public static class TestEngineFactory
             shuffleSystem,
             objectiveSystem,
             colorBombSessionManager,
-            lockScheduler);
+            lockScheduler,
+            cellEliminator: cellEliminator);
     }
 
     /// <summary>

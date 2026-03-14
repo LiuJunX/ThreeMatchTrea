@@ -4,8 +4,7 @@ using Match3.Core.Events;
 using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
-using Match3.Core.Systems.Layers;
-using Match3.Core.Systems.Objectives;
+using Match3.Core.Systems.Elimination;
 
 namespace Match3.Core.Systems.PowerUps;
 
@@ -17,27 +16,26 @@ namespace Match3.Core.Systems.PowerUps;
 /// </summary>
 internal sealed class WavePropagation
 {
-    private readonly ICoverSystem _coverSystem;
-    private readonly IGroundSystem _groundSystem;
-    private readonly ILevelObjectiveSystem? _objectiveSystem;
+    private readonly ICellEliminator _cellEliminator;
     private readonly LockScheduler? _lockScheduler;
 
     /// <summary>
-    /// Creates a new <see cref="WavePropagation"/> instance.
+    /// Backward-compatible constructor — creates a <see cref="CellEliminator"/> internally.
     /// </summary>
-    /// <param name="coverSystem">Cover layer system for protection checks.</param>
-    /// <param name="groundSystem">Ground layer system for damage notification.</param>
-    /// <param name="objectiveSystem">Optional objective system for goal tracking.</param>
-    /// <param name="lockScheduler">Optional lock scheduler for cell lock management.</param>
     internal WavePropagation(
-        ICoverSystem coverSystem,
-        IGroundSystem groundSystem,
-        ILevelObjectiveSystem? objectiveSystem,
+        Layers.ICoverSystem coverSystem,
+        Layers.IGroundSystem groundSystem,
+        Objectives.ILevelObjectiveSystem? objectiveSystem,
+        LockScheduler? lockScheduler)
+        : this(new CellEliminator(coverSystem, groundSystem, objectiveSystem), lockScheduler)
+    {
+    }
+
+    internal WavePropagation(
+        ICellEliminator cellEliminator,
         LockScheduler? lockScheduler)
     {
-        _coverSystem = coverSystem;
-        _groundSystem = groundSystem;
-        _objectiveSystem = objectiveSystem;
+        _cellEliminator = cellEliminator;
         _lockScheduler = lockScheduler;
     }
 
@@ -73,72 +71,27 @@ internal sealed class WavePropagation
 
             if (dist == currentWave)
             {
-                // Check cover layer first
-                if (_coverSystem.IsTileProtected(in state, pos))
-                {
-                    // Damage the cover, tile is protected this round
-                    _coverSystem.TryDamageCover(ref state, pos, tick, simTime, eventCollector);
-
-                    // Release lock for this cell (cover absorbed the hit)
-                    ReleaseLockForCell(ref state, explosion, pos);
-                    continue;
-                }
-
-                // Check Indestructible lock — tile survives the wave
-                if (!state.CanDestroy(pos))
-                {
-                    ReleaseLockForCell(ref state, explosion, pos);
-                    continue;
-                }
-
                 var tile = state.GetTile(pos.X, pos.Y);
 
-                // If tile exists
-                if (tile.Type != ElementType.None)
+                // Bomb chain reaction: trigger bomb, don't destroy (skip origin).
+                // Respect indestructible lock — protected bombs should not be triggered.
+                if (tile.Type.IsBomb() && !(pos.X == explosion.Origin.X && pos.Y == explosion.Origin.Y))
                 {
-                    // Check for chain reaction (Bombs)
-                    // If it's a bomb and NOT the origin (which is the source of this explosion), trigger it
-                    if (tile.Type.IsBomb() && !(pos.X == explosion.Origin.X && pos.Y == explosion.Origin.Y))
-                    {
+                    if (state.CanDestroy(pos))
                         triggeredBombs.Add(pos);
-                        // Release lock but don't destroy - let triggered activation handle it
-                        ReleaseLockForCell(ref state, explosion, pos);
-                        continue;
-                    }
-
-                    // Emit event
-                    if (eventCollector.IsEnabled)
-                    {
-                        eventCollector.Emit(new TileDestroyedEvent
-                        {
-                            Tick = tick,
-                            SimulationTime = simTime,
-                            TileId = tile.Id,
-                            GridPosition = pos,
-                            Type = tile.Type,
-                            Reason = DestroyReason.BombEffect,
-                            IsGoal = _objectiveSystem != null && _objectiveSystem.IsTarget(in state, ObjectiveTargetLayer.Tile, (int)tile.Type)
-                        });
-                    }
-
-                    // Track objective progress before destroying
-                    _objectiveSystem?.OnTileDestroyed(ref state, tile.Type, tick, simTime, eventCollector);
-
-                    // Destroy (Set to None) — Drop lock is released since tile is gone
-                    state.SetTile(pos.X, pos.Y, new Tile(0, ElementType.None, pos.X, pos.Y));
                     ReleaseLockForCell(ref state, explosion, pos);
+                    continue;
+                }
 
+                // Unified elimination
+                var result = _cellEliminator.Eliminate(ref state, pos, DestroyReason.BombEffect, tick, simTime, eventCollector);
+                ReleaseLockForCell(ref state, explosion, pos);
+
+                if (result == EliminateResult.Eliminated)
+                {
                     // Apply timed Receive lock to prevent premature gravity fill
                     if (_lockScheduler != null)
                         _lockScheduler.Acquire(ref state, pos, CellLockType.Receive, explosion.ReceiveLockDuration);
-
-                    // Notify ground layer
-                    _groundSystem.OnTileDestroyed(ref state, pos, tick, simTime, eventCollector);
-                }
-                else
-                {
-                    // Empty cell — release any lock that may have been acquired
-                    ReleaseLockForCell(ref state, explosion, pos);
                 }
             }
         }

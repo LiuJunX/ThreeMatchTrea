@@ -3,6 +3,7 @@ using Match3.Core.Events;
 using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.PowerUps.ColorBomb;
 using Match3.Core.Systems.PowerUps.Effects;
@@ -17,8 +18,7 @@ public class PowerUpHandler : IPowerUpHandler
     private readonly IScoreSystem _scoreSystem;
     private readonly BombComboHandler _comboHandler;
     private readonly BombEffectRegistry _effectRegistry;
-    private readonly ICoverSystem _coverSystem;
-    private readonly IGroundSystem _groundSystem;
+    private readonly ICellEliminator _cellEliminator;
     private readonly IExplosionSystem? _explosionSystem;
     private readonly IProjectileSystem? _projectileSystem;
     private readonly IColorBombSessionManager? _colorBombSessionManager;
@@ -31,6 +31,9 @@ public class PowerUpHandler : IPowerUpHandler
     {
     }
 
+    /// <summary>
+    /// Backward-compatible constructor — creates a <see cref="CellEliminator"/> internally.
+    /// </summary>
     public PowerUpHandler(
         IScoreSystem scoreSystem,
         BombComboHandler comboHandler,
@@ -42,12 +45,28 @@ public class PowerUpHandler : IPowerUpHandler
         IColorBombSessionManager? colorBombSessionManager = null,
         LockScheduler? lockScheduler = null,
         ExplosionConfig? explosionConfig = null)
+        : this(scoreSystem, comboHandler, effectRegistry,
+               new CellEliminator(coverSystem, groundSystem),
+               explosionSystem, projectileSystem, colorBombSessionManager,
+               lockScheduler, explosionConfig)
+    {
+    }
+
+    public PowerUpHandler(
+        IScoreSystem scoreSystem,
+        BombComboHandler comboHandler,
+        BombEffectRegistry effectRegistry,
+        ICellEliminator cellEliminator,
+        IExplosionSystem? explosionSystem = null,
+        IProjectileSystem? projectileSystem = null,
+        IColorBombSessionManager? colorBombSessionManager = null,
+        LockScheduler? lockScheduler = null,
+        ExplosionConfig? explosionConfig = null)
     {
         _scoreSystem = scoreSystem;
         _comboHandler = comboHandler;
         _effectRegistry = effectRegistry;
-        _coverSystem = coverSystem;
-        _groundSystem = groundSystem;
+        _cellEliminator = cellEliminator;
         _explosionSystem = explosionSystem;
         _projectileSystem = projectileSystem;
         _colorBombSessionManager = colorBombSessionManager;
@@ -320,21 +339,7 @@ public class PowerUpHandler : IPowerUpHandler
                     var currentT = state.GetTile(p.X, p.Y);
                     if (currentT.Type != ElementType.None)
                     {
-                        if (events.IsEnabled)
-                        {
-                            events.Emit(new TileDestroyedEvent
-                            {
-                                Tick = tick,
-                                SimulationTime = simTime,
-                                TileId = currentT.Id,
-                                GridPosition = p,
-                                Type = currentT.Type,
-                                Reason = DestroyReason.BombEffect
-                            });
-                        }
-
-                        state.SetTile(p.X, p.Y, new Tile(0, ElementType.None, p.X, p.Y));
-                        _groundSystem.OnTileDestroyed(ref state, p, tick, simTime, events);
+                        _cellEliminator.Eliminate(ref state, p, DestroyReason.BombEffect, tick, simTime, events);
                     }
                 }
             }
@@ -367,7 +372,7 @@ public class PowerUpHandler : IPowerUpHandler
     /// </summary>
     public PowerUpHandler WithExplosionSystem(IExplosionSystem? explosionSystem)
     {
-        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, explosionSystem, _projectileSystem, _colorBombSessionManager, _lockScheduler, _explosionConfig);
+        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _cellEliminator, explosionSystem, _projectileSystem, _colorBombSessionManager, _lockScheduler, _explosionConfig);
     }
 
     /// <summary>
@@ -375,7 +380,7 @@ public class PowerUpHandler : IPowerUpHandler
     /// </summary>
     public PowerUpHandler WithProjectileSystem(IProjectileSystem? projectileSystem)
     {
-        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, projectileSystem, _colorBombSessionManager, _lockScheduler, _explosionConfig);
+        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _cellEliminator, _explosionSystem, projectileSystem, _colorBombSessionManager, _lockScheduler, _explosionConfig);
     }
 
     /// <summary>
@@ -383,7 +388,7 @@ public class PowerUpHandler : IPowerUpHandler
     /// </summary>
     public PowerUpHandler WithLockScheduler(LockScheduler? lockScheduler)
     {
-        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, _projectileSystem, _colorBombSessionManager, lockScheduler, _explosionConfig);
+        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _cellEliminator, _explosionSystem, _projectileSystem, _colorBombSessionManager, lockScheduler, _explosionConfig);
     }
 
     /// <summary>
@@ -391,7 +396,7 @@ public class PowerUpHandler : IPowerUpHandler
     /// </summary>
     public PowerUpHandler WithColorBombSessionManager(IColorBombSessionManager? sessionManager)
     {
-        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, _projectileSystem, sessionManager, _lockScheduler, _explosionConfig);
+        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _cellEliminator, _explosionSystem, _projectileSystem, sessionManager, _lockScheduler, _explosionConfig);
     }
 
     /// <summary>
@@ -453,56 +458,32 @@ public class PowerUpHandler : IPowerUpHandler
 
                 processed.Add(pos);
 
-                // Check cover layer first
-                if (_coverSystem.IsTileProtected(in state, pos))
-                {
-                    // Damage the cover, tile is protected this round
-                    _coverSystem.TryDamageCover(ref state, pos, tick, simTime, events);
-                    continue;
-                }
-
                 var tile = state.GetTile(pos.X, pos.Y);
 
-                // Already empty, skip
                 if (tile.Type == ElementType.None)
                     continue;
 
-                // If it's a bomb, trigger chain explosion
-                if (tile.Type.IsBomb() && _effectRegistry.TryGetEffect(tile.Type, out var effect))
-                {
-                    chainEffect.Clear();
-                    effect!.Apply(in state, pos, chainEffect);
+                // Unified elimination (captures tile type before clearing)
+                var result = _cellEliminator.Eliminate(ref state, pos, DestroyReason.BombEffect, tick, simTime, events);
 
-                    // Add chain positions to queue
-                    foreach (var chainPos in chainEffect)
+                if (result == EliminateResult.Eliminated)
+                {
+                    // Bomb chain reaction — only if actually eliminated
+                    if (tile.Type.IsBomb() && _effectRegistry.TryGetEffect(tile.Type, out var effect))
                     {
-                        if (!processed.Contains(chainPos))
-                            queue.Enqueue(chainPos);
+                        chainEffect.Clear();
+                        effect!.Apply(in state, pos, chainEffect);
+
+                        foreach (var chainPos in chainEffect)
+                        {
+                            if (!processed.Contains(chainPos))
+                                queue.Enqueue(chainPos);
+                        }
                     }
+
+                    // Apply timed Receive lock to prevent premature gravity fill
+                    _lockScheduler?.Acquire(ref state, pos, CellLockType.Receive, ReceiveLockTimings.BombActivateClear);
                 }
-
-                // Emit event
-                if (events.IsEnabled)
-                {
-                    events.Emit(new TileDestroyedEvent
-                    {
-                        Tick = tick,
-                        SimulationTime = simTime,
-                        TileId = tile.Id,
-                        GridPosition = pos,
-                        Type = tile.Type,
-                        Reason = DestroyReason.BombEffect
-                    });
-                }
-
-                // Clear the tile
-                state.SetTile(pos.X, pos.Y, new Tile(0, ElementType.None, pos.X, pos.Y));
-
-                // Apply timed Receive lock to prevent premature gravity fill
-                _lockScheduler?.Acquire(ref state, pos, CellLockType.Receive, ReceiveLockTimings.BombActivateClear);
-
-                // Notify ground layer
-                _groundSystem.OnTileDestroyed(ref state, pos, tick, simTime, events);
             }
         }
         finally
