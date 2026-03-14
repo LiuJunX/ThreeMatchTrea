@@ -40,7 +40,7 @@ internal sealed class ChoreographerContext
     /// Visual-only beam projectile IDs (negative to avoid collision with Core projectile IDs).
     /// Decremented for each new beam spawned.
     /// </summary>
-    internal int NextBeamId;
+    internal int NextBeamId = -1;
 
     /// <summary>
     /// Color bomb beam hit times -- maps target grid position to beam arrival time.

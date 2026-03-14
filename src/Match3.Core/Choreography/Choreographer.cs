@@ -71,7 +71,8 @@ public sealed class Choreographer : IEventVisitor
     {
         _ctx.Commands.Clear();
         _ctx.BaseTime = baseTime;
-        _ctx.NextBeamId = -1;
+        // Note: NextBeamId is NOT reset here — it must persist across batches
+        // to avoid ID collisions when ColorBomb sessions fire beams across multiple ticks.
         // Note: BeamHitTimes is NOT cleared here — it must persist across batches
         // because ExplosionSystem emits BombActivatedEvent and TileDestroyedEvents
         // in separate ticks. Entries are consumed (Remove) in EmitBeamTargetDestroy.
