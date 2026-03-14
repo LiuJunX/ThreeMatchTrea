@@ -5,6 +5,7 @@ using Match3.Unity.Services;
 using Match3.Unity.UI;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 namespace Match3.Unity.Controllers
 {
@@ -84,15 +85,25 @@ namespace Match3.Unity.Controllers
                 msaaProp?.SetValue(rpAsset, 2);
             }
 
-            // SMAA
-            var camData = mainCamera.GetComponent("UniversalAdditionalCameraData");
+            // SMAA + post-processing
+            var camData = mainCamera.GetComponent<UniversalAdditionalCameraData>();
             if (camData != null)
             {
-                var aaMode = camData.GetType().GetProperty("antialiasing");
-                var aaQuality = camData.GetType().GetProperty("antialiasingQuality");
-                aaMode?.SetValue(camData, 2);
-                aaQuality?.SetValue(camData, 2);
+                camData.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
+                camData.antialiasingQuality = AntialiasingQuality.High;
+                camData.renderPostProcessing = true;
             }
+
+            // Global Volume with Bloom
+            var volumeGo = new GameObject("PostProcessVolume");
+            var volume = volumeGo.AddComponent<Volume>();
+            volume.isGlobal = true;
+            volume.profile = ScriptableObject.CreateInstance<VolumeProfile>();
+
+            var bloom = volume.profile.Add<Bloom>();
+            bloom.threshold.value = 0.9f;
+            bloom.intensity.value = 0.4f;
+            bloom.scatter.value = 0.7f;
         }
 
         private void CreateGameController()
