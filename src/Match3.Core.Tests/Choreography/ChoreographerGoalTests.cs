@@ -30,7 +30,7 @@ public class ChoreographerGoalTests
             TileId = 1,
             GridPosition = new Position(0, 0),
             Type = ElementType.Item1,
-            Reason = DestroyReason.Match,
+            Reason = ElimSource.Match,
             IsGoal = true
         };
 
@@ -55,7 +55,7 @@ public class ChoreographerGoalTests
             TileId = 1,
             GridPosition = new Position(0, 0),
             Type = ElementType.Item1,
-            Reason = DestroyReason.Match,
+            Reason = ElimSource.Match,
             IsGoal = false
         };
 

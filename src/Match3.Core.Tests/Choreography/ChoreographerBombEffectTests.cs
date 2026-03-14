@@ -225,13 +225,13 @@ public class ChoreographerBombEffectTests
             new TileDestroyedEvent
             {
                 TileId = 10, GridPosition = new Position(4, 3),
-                Type = ElementType.Item1, Reason = DestroyReason.BombEffect,
+                Type = ElementType.Item1, Reason = ElimSource.Bomb,
                 SimulationTime = 1.0f
             },
             new TileDestroyedEvent
             {
                 TileId = 11, GridPosition = new Position(7, 3),
-                Type = ElementType.Item1, Reason = DestroyReason.BombEffect,
+                Type = ElementType.Item1, Reason = ElimSource.Bomb,
                 SimulationTime = 1.0f
             }
         };
@@ -444,7 +444,7 @@ public class ChoreographerBombEffectTests
                 TileId = 10,
                 GridPosition = new Position(5, 3),
                 Type = ElementType.Item1,
-                Reason = DestroyReason.BombEffect,
+                Reason = ElimSource.Bomb,
                 SimulationTime = 0f
             }
         };

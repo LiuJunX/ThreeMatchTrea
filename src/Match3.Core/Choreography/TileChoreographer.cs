@@ -106,10 +106,11 @@ internal sealed class TileChoreographer
             {
                 string effectType = evt.Reason switch
                 {
-                    DestroyReason.Match => "match_pop",
-                    DestroyReason.BombEffect => "explosion",
-                    DestroyReason.Projectile => "projectile_hit",
-                    DestroyReason.ChainReaction => "chain_pop",
+                    ElimSource.Match => "match_pop",
+                    ElimSource.Bomb => "explosion",
+                    ElimSource.Projectile => "projectile_hit",
+                    ElimSource.ChainReaction => "chain_pop",
+                    ElimSource.ColorBomb => "explosion",
                     _ => "pop"
                 };
 

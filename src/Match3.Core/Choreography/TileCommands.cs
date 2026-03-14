@@ -52,8 +52,8 @@ public sealed record DestroyTileCommand : RenderCommand
     /// <summary>Position where destruction occurs.</summary>
     public Vector2 Position { get; init; }
 
-    /// <summary>Reason for destruction (affects visual effect).</summary>
-    public DestroyReason Reason { get; init; }
+    /// <summary>Source of elimination (affects visual effect).</summary>
+    public ElimSource Reason { get; init; }
 }
 
 /// <summary>

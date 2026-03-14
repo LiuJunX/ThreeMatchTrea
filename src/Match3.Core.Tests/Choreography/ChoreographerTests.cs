@@ -22,7 +22,7 @@ public class ChoreographerTests
                 TileId = 1,
                 GridPosition = new Position(3, 4),
                 Type = ElementType.Item1,
-                Reason = DestroyReason.Match,
+                Reason = ElimSource.Match,
                 SimulationTime = 0.5f
             }
         };
@@ -297,7 +297,7 @@ public class ChoreographerTests
                 TileId = 1,
                 GridPosition = new Position(3, 0),
                 Type = ElementType.Item1,
-                Reason = DestroyReason.Match,
+                Reason = ElimSource.Match,
                 SimulationTime = 0f
             },
             new TileSpawnedEvent
@@ -377,7 +377,7 @@ public class ChoreographerTests
                 TileId = 1,
                 GridPosition = new Position(2, 4),
                 Type = ElementType.Item1,
-                Reason = DestroyReason.Match,
+                Reason = ElimSource.Match,
                 SimulationTime = 0f
             },
             new TileMovedEvent
@@ -409,7 +409,7 @@ public class ChoreographerTests
                 TileId = 1,
                 GridPosition = new Position(3, 4),
                 Type = ElementType.Item1,
-                Reason = DestroyReason.Match,
+                Reason = ElimSource.Match,
                 SimulationTime = 0f
             },
             new TileSpawnedEvent
@@ -779,7 +779,7 @@ public class ChoreographerTests
             {
                 TileId = 99,
                 GridPosition = target,
-                Reason = DestroyReason.BombEffect,
+                Reason = ElimSource.Bomb,
                 SimulationTime = 0.016f
             }
         };
@@ -1025,7 +1025,7 @@ public class ChoreographerTests
                 TileId = 3,
                 GridPosition = new Position(5, 4),
                 Type = ElementType.Item1,
-                Reason = DestroyReason.Match,
+                Reason = ElimSource.Match,
                 SimulationTime = 5.1f // Second event at t=5.1 (0.1s later)
             }
         };

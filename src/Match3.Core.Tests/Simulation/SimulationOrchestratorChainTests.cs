@@ -162,7 +162,7 @@ public class SimulationOrchestratorChainTests
         // Normal tile should be destroyed (not activated)
         var destroyed = events.EmittedEvents.OfType<TileDestroyedEvent>().ToList();
         Assert.True(destroyed.Count > 0, "UFO hitting a normal tile should emit TileDestroyedEvent");
-        Assert.Equal(DestroyReason.Projectile, destroyed[0].Reason);
+        Assert.Equal(ElimSource.Projectile, destroyed[0].Reason);
 
         // Tile should be cleared
         Assert.Equal(ElementType.None, state.GetTile(targetPos.X, targetPos.Y).Type);

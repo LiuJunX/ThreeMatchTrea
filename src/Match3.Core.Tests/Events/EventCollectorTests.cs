@@ -28,7 +28,7 @@ public class EventCollectorTests
             TileId = 1,
             GridPosition = new Position(0, 0),
             Type = Match3.Core.Models.Enums.ElementType.Item1,
-            Reason = DestroyReason.Match
+            Reason = ElimSource.Match
         };
 
         // Should not throw
@@ -67,7 +67,7 @@ public class EventCollectorTests
             TileId = 1,
             GridPosition = new Position(0, 0),
             Type = Match3.Core.Models.Enums.ElementType.Item1,
-            Reason = DestroyReason.Match
+            Reason = ElimSource.Match
         };
 
         collector.Emit(evt);

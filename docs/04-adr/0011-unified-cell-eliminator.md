@@ -54,6 +54,7 @@ Guard(empty) → Cover → Indestructible → Event(+IsGoal) → Objective → M
 
 * 炸弹连锁判断仍由调用方负责（需在 `Eliminate()` 之后根据返回值和原始 tile type 决定是否触发）
 * 旧构造函数内部创建的 CellEliminator 无 `ILevelObjectiveSystem`，fallback 路径不追踪目标（仅影响无 ExplosionSystem 的测试场景）
+* `DestroyReason` 枚举粒度不足 → 已在 [ADR-0012](0012-elim-source.md) 中演进为 `ElimSource`
 
 ## Validation
 

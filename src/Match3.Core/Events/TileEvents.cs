@@ -40,8 +40,8 @@ public sealed record TileDestroyedEvent : GameEvent
     /// <summary>Type of the destroyed tile.</summary>
     public ElementType Type { get; init; }
 
-    /// <summary>Reason for destruction.</summary>
-    public DestroyReason Reason { get; init; }
+    /// <summary>Source of elimination.</summary>
+    public ElimSource Reason { get; init; }
 
     /// <summary>
     /// If set, this tile should merge toward the target position

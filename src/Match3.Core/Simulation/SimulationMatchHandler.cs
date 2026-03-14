@@ -157,7 +157,7 @@ internal sealed class SimulationMatchHandler
             if (_cellEliminator != null)
             {
                 // Unified elimination (adds Cover + Ground handling that was previously missing)
-                var result = _cellEliminator.Eliminate(ref state, pos, DestroyReason.Projectile, currentTick, elapsedTime, eventCollector);
+                var result = _cellEliminator.Eliminate(ref state, pos, ElimSource.Projectile, currentTick, elapsedTime, eventCollector);
 
                 if (result == EliminateResult.Eliminated)
                     _lockScheduler?.Acquire(ref state, pos, CellLockType.Receive, ReceiveLockTimings.ProjectileImpactClear);
@@ -176,7 +176,7 @@ internal sealed class SimulationMatchHandler
                         TileId = tile.Id,
                         GridPosition = pos,
                         Type = tile.Type,
-                        Reason = DestroyReason.Projectile,
+                        Reason = ElimSource.Projectile,
                         IsGoal = _objectiveSystem != null && _objectiveSystem.IsTarget(state, ObjectiveTargetLayer.Tile, (int)tile.Type)
                     });
                 }
@@ -280,7 +280,7 @@ internal sealed class SimulationMatchHandler
                         TileId = tile.Id,
                         GridPosition = pos,
                         Type = tile.Type,
-                        Reason = DestroyReason.Match,
+                        Reason = ElimSource.Match,
                         MergeTarget = group.SpawnBombType != ElementType.None ? group.BombOrigin : null,
                         IsGoal = _objectiveSystem != null && _objectiveSystem.IsTarget(state, ObjectiveTargetLayer.Tile, (int)tile.Type)
                     });

@@ -25,7 +25,7 @@ public class CellEliminatorTests
         var eliminator = new CellEliminator(new CoverSystem(), new GroundSystem());
 
         var result = eliminator.Eliminate(
-            ref state, new Position(1, 1), DestroyReason.Match, 0, 0f, NullEventCollector.Instance);
+            ref state, new Position(1, 1), ElimSource.Match, 0, 0f, NullEventCollector.Instance);
 
         Assert.Equal(EliminateResult.Blocked, result);
     }
@@ -40,7 +40,7 @@ public class CellEliminatorTests
         var eliminator = new CellEliminator(new CoverSystem(), new GroundSystem());
 
         var result = eliminator.Eliminate(
-            ref state, new Position(1, 1), DestroyReason.BombEffect, 0, 0f, NullEventCollector.Instance);
+            ref state, new Position(1, 1), ElimSource.Bomb, 0, 0f, NullEventCollector.Instance);
 
         Assert.Equal(EliminateResult.Absorbed, result);
         // Tile should survive
@@ -59,7 +59,7 @@ public class CellEliminatorTests
         var eliminator = new CellEliminator(new CoverSystem(), new GroundSystem());
 
         var result = eliminator.Eliminate(
-            ref state, new Position(1, 1), DestroyReason.Match, 0, 0f, NullEventCollector.Instance);
+            ref state, new Position(1, 1), ElimSource.Match, 0, 0f, NullEventCollector.Instance);
 
         Assert.Equal(EliminateResult.Blocked, result);
         // Tile should survive
@@ -79,7 +79,7 @@ public class CellEliminatorTests
 
         var events = new BufferedEventCollector();
         var result = eliminator.Eliminate(
-            ref state, new Position(1, 1), DestroyReason.Match, 5, 1.5f, events);
+            ref state, new Position(1, 1), ElimSource.Match, 5, 1.5f, events);
 
         Assert.Equal(EliminateResult.Eliminated, result);
         // Tile should be cleared
@@ -101,7 +101,7 @@ public class CellEliminatorTests
         var events = new BufferedEventCollector();
 
         eliminator.Eliminate(
-            ref state, new Position(1, 1), DestroyReason.Projectile, 10, 2.5f, events);
+            ref state, new Position(1, 1), ElimSource.Projectile, 10, 2.5f, events);
 
         var allEvents = events.GetEvents();
         var tde = Assert.Single(allEvents, e => e is TileDestroyedEvent) as TileDestroyedEvent;
@@ -109,7 +109,7 @@ public class CellEliminatorTests
         Assert.Equal(42, tde!.TileId);
         Assert.Equal(new Position(1, 1), tde.GridPosition);
         Assert.Equal(ElementType.Item3, tde.Type);
-        Assert.Equal(DestroyReason.Projectile, tde.Reason);
+        Assert.Equal(ElimSource.Projectile, tde.Reason);
         Assert.Equal(10, tde.Tick);
         Assert.Equal(2.5f, tde.SimulationTime);
     }
@@ -123,7 +123,7 @@ public class CellEliminatorTests
         var eliminator = new CellEliminator(new CoverSystem(), new GroundSystem());
 
         var result = eliminator.Eliminate(
-            ref state, new Position(1, 1), DestroyReason.Match, 0, 0f, NullEventCollector.Instance);
+            ref state, new Position(1, 1), ElimSource.Match, 0, 0f, NullEventCollector.Instance);
 
         // Should still eliminate successfully
         Assert.Equal(EliminateResult.Eliminated, result);
@@ -140,7 +140,7 @@ public class CellEliminatorTests
         var eliminator = new CellEliminator(new CoverSystem(), new GroundSystem());
 
         var result = eliminator.Eliminate(
-            ref state, new Position(1, 1), DestroyReason.Match, 0, 0f, NullEventCollector.Instance);
+            ref state, new Position(1, 1), ElimSource.Match, 0, 0f, NullEventCollector.Instance);
 
         Assert.Equal(EliminateResult.Absorbed, result);
         // Tile survives

@@ -312,7 +312,7 @@ public class ColorBombSessionManagerTests
 
         // All TileDestroyedEvents should come AFTER the batch event
         var destroyEvents = _events.Events.OfType<TileDestroyedEvent>()
-            .Where(e => e.Reason == DestroyReason.BombEffect);
+            .Where(e => e.Reason == ElimSource.ColorBomb);
         foreach (var de in destroyEvents)
         {
             int deIndex = _events.Events.ToList().IndexOf(de);

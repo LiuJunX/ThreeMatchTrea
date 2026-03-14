@@ -107,7 +107,7 @@ internal sealed class ColorBombBatchProcessor
                         TileId = tile.Id,
                         GridPosition = pos,
                         Type = tile.Type,
-                        Reason = DestroyReason.BombEffect,
+                        Reason = ElimSource.ColorBomb,
                         IsGoal = _objectiveSystem != null &&
                                  _objectiveSystem.IsTarget(in state, ObjectiveTargetLayer.Tile, (int)tile.Type)
                     });

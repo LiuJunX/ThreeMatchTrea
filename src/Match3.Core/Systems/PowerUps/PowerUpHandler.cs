@@ -339,7 +339,7 @@ public class PowerUpHandler : IPowerUpHandler
                     var currentT = state.GetTile(p.X, p.Y);
                     if (currentT.Type != ElementType.None)
                     {
-                        _cellEliminator.Eliminate(ref state, p, DestroyReason.BombEffect, tick, simTime, events);
+                        _cellEliminator.Eliminate(ref state, p, ElimSource.Bomb, tick, simTime, events);
                     }
                 }
             }
@@ -464,7 +464,7 @@ public class PowerUpHandler : IPowerUpHandler
                     continue;
 
                 // Unified elimination (captures tile type before clearing)
-                var result = _cellEliminator.Eliminate(ref state, pos, DestroyReason.BombEffect, tick, simTime, events);
+                var result = _cellEliminator.Eliminate(ref state, pos, ElimSource.Bomb, tick, simTime, events);
 
                 if (result == EliminateResult.Eliminated)
                 {

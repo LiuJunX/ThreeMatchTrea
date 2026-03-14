@@ -40,7 +40,7 @@ public class PlayerDestroyAnimationTests
         {
             TileId = tileId,
             Position = new Vector2(0, 0),
-            Reason = DestroyReason.Match,
+            Reason = ElimSource.Match,
             StartTime = 0.1f,
             Duration = destroyDuration,
             Priority = 0

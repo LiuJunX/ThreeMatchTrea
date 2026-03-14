@@ -29,7 +29,7 @@ public sealed class CellEliminator : ICellEliminator
 
     /// <inheritdoc />
     public EliminateResult Eliminate(
-        ref GameState state, Position pos, DestroyReason reason,
+        ref GameState state, Position pos, ElimSource reason,
         int tick, float simTime, IEventCollector events)
     {
         // Guard: empty cell

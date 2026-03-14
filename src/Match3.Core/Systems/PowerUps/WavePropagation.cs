@@ -84,7 +84,7 @@ internal sealed class WavePropagation
                 }
 
                 // Unified elimination
-                var result = _cellEliminator.Eliminate(ref state, pos, DestroyReason.BombEffect, tick, simTime, eventCollector);
+                var result = _cellEliminator.Eliminate(ref state, pos, ElimSource.Bomb, tick, simTime, eventCollector);
                 ReleaseLockForCell(ref state, explosion, pos);
 
                 if (result == EliminateResult.Eliminated)

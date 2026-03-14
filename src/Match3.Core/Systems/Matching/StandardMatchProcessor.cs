@@ -99,7 +99,7 @@ public class StandardMatchProcessor : IMatchProcessor
                 if (t.Type == ElementType.None) { cleared.Add(p); continue; }
 
                 // Unified elimination (captures tile type before clearing)
-                var result = _cellEliminator.Eliminate(ref state, p, DestroyReason.Match, tick, simTime, events);
+                var result = _cellEliminator.Eliminate(ref state, p, ElimSource.Match, tick, simTime, events);
                 cleared.Add(p);
 
                 // Bomb chain reaction — only if the bomb was actually eliminated

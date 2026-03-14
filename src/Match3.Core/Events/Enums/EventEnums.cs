@@ -22,21 +22,27 @@ public enum MoveReason
 }
 
 /// <summary>
-/// Reason for tile destruction.
+/// Source of tile elimination — identifies what caused the destruction.
 /// </summary>
-public enum DestroyReason
+public enum ElimSource
 {
-    /// <summary>Tile was part of a match.</summary>
+    /// <summary>Tile was part of a three-or-more match.</summary>
     Match,
 
-    /// <summary>Tile was destroyed by bomb effect.</summary>
-    BombEffect,
+    /// <summary>Tile was destroyed by a bomb blast (row/column/radial).</summary>
+    Bomb,
 
-    /// <summary>Tile was hit by a projectile.</summary>
+    /// <summary>Tile was hit by a projectile (UFO / homing missile).</summary>
     Projectile,
 
-    /// <summary>Tile was destroyed by chain reaction.</summary>
-    ChainReaction
+    /// <summary>Tile was destroyed by chain reaction propagation.</summary>
+    ChainReaction,
+
+    /// <summary>Tile was destroyed by a color-bomb activation.</summary>
+    ColorBomb,
+
+    /// <summary>Tile was destroyed by a side item / booster.</summary>
+    SideItem
 }
 
 /// <summary>

@@ -44,21 +44,21 @@ public class MergeToBombChoreographerTests
             new TileDestroyedEvent
             {
                 TileId = 10, GridPosition = new Position(1, 2),
-                Type = ElementType.Item1, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = ElimSource.Match,
                 MergeTarget = new Position(2, 2),
                 SimulationTime = 0f
             },
             new TileDestroyedEvent
             {
                 TileId = 30, GridPosition = new Position(3, 2),
-                Type = ElementType.Item1, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = ElimSource.Match,
                 MergeTarget = new Position(2, 2),
                 SimulationTime = 0f
             },
             new TileDestroyedEvent
             {
                 TileId = 40, GridPosition = new Position(4, 2),
-                Type = ElementType.Item1, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = ElimSource.Match,
                 MergeTarget = new Position(2, 2),
                 SimulationTime = 0f
             },
@@ -110,7 +110,7 @@ public class MergeToBombChoreographerTests
             new TileDestroyedEvent
             {
                 TileId = 10, GridPosition = new Position(3, 2),
-                Type = ElementType.Item1, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = ElimSource.Match,
                 MergeTarget = new Position(1, 2),
                 SimulationTime = 0f
             }
@@ -135,7 +135,7 @@ public class MergeToBombChoreographerTests
             new TileDestroyedEvent
             {
                 TileId = 10, GridPosition = new Position(3, 2),
-                Type = ElementType.Item1, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = ElimSource.Match,
                 MergeTarget = new Position(1, 2),
                 SimulationTime = 0f
             }
@@ -164,7 +164,7 @@ public class MergeToBombChoreographerTests
             new TileDestroyedEvent
             {
                 TileId = 10, GridPosition = new Position(3, 2),
-                Type = ElementType.Item1, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = ElimSource.Match,
                 MergeTarget = new Position(1, 2),
                 SimulationTime = 0f
             },
@@ -281,7 +281,7 @@ public class MergeToBombChoreographerTests
             new TileDestroyedEvent
             {
                 TileId = 10, GridPosition = new Position(3, 2),
-                Type = ElementType.Item1, Reason = DestroyReason.Match,
+                Type = ElementType.Item1, Reason = ElimSource.Match,
                 MergeTarget = new Position(1, 2),
                 SimulationTime = 0f
             },

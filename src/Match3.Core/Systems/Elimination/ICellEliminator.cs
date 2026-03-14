@@ -15,6 +15,6 @@ public interface ICellEliminator
     /// Attempt to eliminate the tile at <paramref name="pos"/>.
     /// </summary>
     EliminateResult Eliminate(
-        ref GameState state, Position pos, DestroyReason reason,
+        ref GameState state, Position pos, ElimSource reason,
         int tick, float simTime, IEventCollector events);
 }
