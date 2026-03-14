@@ -6,7 +6,7 @@ Shader "Match3/TileLit"
         _Metallic ("Metallic", Range(0,1)) = 0.05
         _Smoothness ("Smoothness", Range(0,1)) = 0.62
         [HDR] _EmissionColor ("Emission", Color) = (0,0,0,0)
-        _EdgeSoftness ("Edge Softness", Range(0, 1)) = 0.3
+        _EdgeSoftness ("Edge Softness", Range(0, 1)) = 0.15
         _ClipYMin ("Clip Y Min", Float) = -9999
         _ClipYMax ("Clip Y Max", Float) =  9999
     }

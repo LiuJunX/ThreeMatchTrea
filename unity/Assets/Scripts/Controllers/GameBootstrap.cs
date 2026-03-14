@@ -83,7 +83,7 @@ namespace Match3.Unity.Controllers
             {
                 var msaaProp = rpAsset.GetType().GetProperty("msaaSampleCount");
                 if (msaaProp != null)
-                    msaaProp.SetValue(rpAsset, 1);
+                    msaaProp.SetValue(rpAsset, 2);
             }
 
             // Add SMAA for specular/shader aliasing (MSAA only handles geometry edges)

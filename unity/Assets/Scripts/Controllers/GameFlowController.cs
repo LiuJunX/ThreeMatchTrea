@@ -81,7 +81,7 @@ namespace Match3.Unity.Controllers
             if (rpAsset != null)
             {
                 var msaaProp = rpAsset.GetType().GetProperty("msaaSampleCount");
-                msaaProp?.SetValue(rpAsset, 1);
+                msaaProp?.SetValue(rpAsset, 2);
             }
 
             // SMAA
