@@ -6,6 +6,8 @@ Shader "Match3/TileLit"
         _Metallic ("Metallic", Range(0,1)) = 0.05
         _Smoothness ("Smoothness", Range(0,1)) = 0.62
         [HDR] _EmissionColor ("Emission", Color) = (0,0,0,0)
+        [HDR] _FresnelColor ("Fresnel Glow", Color) = (0,0,0,0)
+        _FresnelPower ("Fresnel Power", Range(1, 8)) = 3
         _EdgeSoftness ("Edge Softness", Range(0, 1)) = 0.15
         _ClipYMin ("Clip Y Min", Float) = -9999
         _ClipYMax ("Clip Y Max", Float) =  9999
@@ -47,6 +49,8 @@ Shader "Match3/TileLit"
                 half  _Metallic;
                 half  _Smoothness;
                 half4 _EmissionColor;
+                half4 _FresnelColor;
+                half  _FresnelPower;
                 half  _EdgeSoftness;
                 float _ClipYMin;
                 float _ClipYMax;
@@ -108,12 +112,16 @@ Shader "Match3/TileLit"
                 half fresnel = saturate(dot(inputData.normalWS, inputData.viewDirectionWS));
                 half edgeAlpha = smoothstep(0, _EdgeSoftness, fresnel);
 
+                // Fresnel glow: bright rim when _FresnelColor is non-black
+                half fresnelGlow = pow(1 - fresnel, _FresnelPower);
+                half3 totalEmission = _EmissionColor.rgb + _FresnelColor.rgb * fresnelGlow;
+
                 SurfaceData surfaceData = (SurfaceData)0;
                 surfaceData.albedo     = _BaseColor.rgb;
                 surfaceData.metallic   = _Metallic;
                 surfaceData.smoothness = _Smoothness;
                 surfaceData.normalTS   = half3(0, 0, 1);
-                surfaceData.emission   = _EmissionColor.rgb;
+                surfaceData.emission   = totalEmission;
                 surfaceData.occlusion  = 1;
                 surfaceData.alpha      = edgeAlpha;
 
@@ -150,6 +158,8 @@ Shader "Match3/TileLit"
                 half  _Metallic;
                 half  _Smoothness;
                 half4 _EmissionColor;
+                half4 _FresnelColor;
+                half  _FresnelPower;
                 half  _EdgeSoftness;
                 float _ClipYMin;
                 float _ClipYMax;
@@ -223,6 +233,8 @@ Shader "Match3/TileLit"
                 half  _Metallic;
                 half  _Smoothness;
                 half4 _EmissionColor;
+                half4 _FresnelColor;
+                half  _FresnelPower;
                 half  _EdgeSoftness;
                 float _ClipYMin;
                 float _ClipYMax;
@@ -275,6 +287,8 @@ Shader "Match3/TileLit"
                 half  _Metallic;
                 half  _Smoothness;
                 half4 _EmissionColor;
+                half4 _FresnelColor;
+                half  _FresnelPower;
                 half  _EdgeSoftness;
                 float _ClipYMin;
                 float _ClipYMax;
