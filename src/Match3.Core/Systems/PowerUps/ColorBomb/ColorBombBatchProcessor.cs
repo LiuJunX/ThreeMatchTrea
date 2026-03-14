@@ -5,7 +5,6 @@ using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.Objectives;
-using Match3.Core.Utility.Pools;
 
 namespace Match3.Core.Systems.PowerUps.ColorBomb;
 
@@ -52,88 +51,79 @@ internal sealed class ColorBombBatchProcessor
     internal void ExecuteBatchDestroy(ref GameState state, ColorBombSession session,
         int tick, float simTime, IEventCollector events)
     {
-        var destroyedPositions = Pools.ObtainList<Position>(session.ArrivedTargets.Count);
-        var destroyedTileIds = Pools.ObtainList<int>(session.ArrivedTargets.Count);
-        try
+        var destroyedPositions = new List<Position>(session.ArrivedTargets.Count);
+        var destroyedTileIds = new List<int>(session.ArrivedTargets.Count);
+
+        // First pass: collect valid targets, handle covers
+        foreach (var target in session.ArrivedTargets)
         {
-            // First pass: collect valid targets, handle covers
-            foreach (var target in session.ArrivedTargets)
+            var tile = state.GetTile(target.Position.X, target.Position.Y);
+            if (tile.Id != target.TileId || tile.Type == ElementType.None)
+                continue;
+
+            // Check cover
+            if (_coverSystem.IsTileProtected(in state, target.Position))
             {
-                var tile = state.GetTile(target.Position.X, target.Position.Y);
-                if (tile.Id != target.TileId || tile.Type == ElementType.None)
-                    continue;
-
-                // Check cover
-                if (_coverSystem.IsTileProtected(in state, target.Position))
-                {
-                    _coverSystem.TryDamageCover(ref state, target.Position, tick, simTime, events);
-                    continue;
-                }
-
-                destroyedPositions.Add(target.Position);
-                destroyedTileIds.Add(tile.Id);
+                _coverSystem.TryDamageCover(ref state, target.Position, tick, simTime, events);
+                continue;
             }
 
-            // Emit batch destroy event FIRST — Choreographer uses this to synchronize
-            // _beamHitTimes before TileDestroyedEvents are processed.
-            // Event snapshots the lists because BufferedEventCollector stores events
-            // beyond this method's lifetime.
+            destroyedPositions.Add(target.Position);
+            destroyedTileIds.Add(tile.Id);
+        }
+
+        // Emit batch destroy event FIRST — Choreographer uses this to synchronize
+        // _beamHitTimes before TileDestroyedEvents are processed
+        if (events.IsEnabled)
+        {
+            events.Emit(new ColorBombBatchDestroyEvent
+            {
+                Tick = tick,
+                SimulationTime = simTime,
+                BombTileId = session.BombTileId,
+                BombPosition = session.BombPosition,
+                DestroyedPositions = destroyedPositions,
+                DestroyedTileIds = destroyedTileIds
+            });
+        }
+
+        // Second pass: destroy tiles and emit per-tile events
+        for (int i = 0; i < destroyedPositions.Count; i++)
+        {
+            var pos = destroyedPositions[i];
+            var tile = state.GetTile(pos.X, pos.Y);
+            if (tile.Type == ElementType.None) continue;
+
             if (events.IsEnabled)
             {
-                events.Emit(new ColorBombBatchDestroyEvent
+                events.Emit(new TileDestroyedEvent
                 {
                     Tick = tick,
                     SimulationTime = simTime,
-                    BombTileId = session.BombTileId,
-                    BombPosition = session.BombPosition,
-                    DestroyedPositions = new List<Position>(destroyedPositions),
-                    DestroyedTileIds = new List<int>(destroyedTileIds)
+                    TileId = tile.Id,
+                    GridPosition = pos,
+                    Type = tile.Type,
+                    Reason = DestroyReason.BombEffect,
+                    IsGoal = _objectiveSystem != null &&
+                             _objectiveSystem.IsTarget(in state, ObjectiveTargetLayer.Tile, (int)tile.Type)
                 });
             }
 
-            // Second pass: destroy tiles and emit per-tile events
-            for (int i = 0; i < destroyedPositions.Count; i++)
-            {
-                var pos = destroyedPositions[i];
-                var tile = state.GetTile(pos.X, pos.Y);
-                if (tile.Type == ElementType.None) continue;
-
-                if (events.IsEnabled)
-                {
-                    events.Emit(new TileDestroyedEvent
-                    {
-                        Tick = tick,
-                        SimulationTime = simTime,
-                        TileId = tile.Id,
-                        GridPosition = pos,
-                        Type = tile.Type,
-                        Reason = DestroyReason.BombEffect,
-                        IsGoal = _objectiveSystem != null &&
-                                 _objectiveSystem.IsTarget(in state, ObjectiveTargetLayer.Tile, (int)tile.Type)
-                    });
-                }
-
-                _objectiveSystem?.OnTileDestroyed(ref state, tile.Type, tick, simTime, events);
-                state.SetTile(pos.X, pos.Y, new Tile(0, ElementType.None, pos.X, pos.Y));
-                _groundSystem.OnTileDestroyed(ref state, pos, tick, simTime, events);
-            }
-
-            // Release all remaining session locks
-            ReleaseAllSessionLocks(ref state, session);
-
-            // Apply timed Receive locks for destroyed positions (post-destruction grace period)
-            foreach (var pos in destroyedPositions)
-            {
-                _lockScheduler.Acquire(ref state, pos, CellLockType.Receive, ReceiveLockTimings.ColorBombBatchClear);
-            }
-
-            session.ArrivedTargets.Clear();
+            _objectiveSystem?.OnTileDestroyed(ref state, tile.Type, tick, simTime, events);
+            state.SetTile(pos.X, pos.Y, new Tile(0, ElementType.None, pos.X, pos.Y));
+            _groundSystem.OnTileDestroyed(ref state, pos, tick, simTime, events);
         }
-        finally
+
+        // Release all remaining session locks
+        ReleaseAllSessionLocks(ref state, session);
+
+        // Apply timed Receive locks for destroyed positions (post-destruction grace period)
+        foreach (var pos in destroyedPositions)
         {
-            Pools.Release(destroyedTileIds);
-            Pools.Release(destroyedPositions);
+            _lockScheduler.Acquire(ref state, pos, CellLockType.Receive, ReceiveLockTimings.ColorBombBatchClear);
         }
+
+        session.ArrivedTargets.Clear();
     }
 
     /// <summary>
@@ -150,55 +140,46 @@ internal sealed class ColorBombBatchProcessor
     internal void ExecuteBatchActivate(ref GameState state, ColorBombSession session,
         int tick, float simTime, IEventCollector events, List<Position>? triggeredBombs)
     {
-        var activatedPositions = Pools.ObtainList<Position>(session.ArrivedTargets.Count);
-        var activatedTileIds = Pools.ObtainList<int>(session.ArrivedTargets.Count);
-        try
+        var activatedPositions = new List<Position>(session.ArrivedTargets.Count);
+        var activatedTileIds = new List<int>(session.ArrivedTargets.Count);
+
+        // Collect valid transformed bombs
+        foreach (var target in session.ArrivedTargets)
         {
-            // Collect valid transformed bombs
-            foreach (var target in session.ArrivedTargets)
-            {
-                var tile = state.GetTile(target.Position.X, target.Position.Y);
-                if (tile.Id != target.TileId || tile.Type == ElementType.None)
-                    continue;
+            var tile = state.GetTile(target.Position.X, target.Position.Y);
+            if (tile.Id != target.TileId || tile.Type == ElementType.None)
+                continue;
 
-                activatedPositions.Add(target.Position);
-                activatedTileIds.Add(tile.Id);
-            }
-
-            // Emit batch activate event.
-            // Event snapshots the lists because BufferedEventCollector stores events
-            // beyond this method's lifetime.
-            if (events.IsEnabled)
-            {
-                events.Emit(new ColorBombComboBatchActivateEvent
-                {
-                    Tick = tick,
-                    SimulationTime = simTime,
-                    BombTileId = session.BombTileId,
-                    BombPosition = session.BombPosition,
-                    ComboBombType = session.ComboBombType,
-                    ActivatedPositions = new List<Position>(activatedPositions),
-                    ActivatedTileIds = new List<int>(activatedTileIds)
-                });
-            }
-
-            // Release ALL session locks (BeamTargetLock + Indestructible) before activation
-            ReleaseAllSessionLocks(ref state, session);
-
-            // Output bomb positions — orchestrator will call ActivateBomb for each
-            if (triggeredBombs != null)
-            {
-                foreach (var pos in activatedPositions)
-                    triggeredBombs.Add(pos);
-            }
-
-            session.ArrivedTargets.Clear();
+            activatedPositions.Add(target.Position);
+            activatedTileIds.Add(tile.Id);
         }
-        finally
+
+        // Emit batch activate event
+        if (events.IsEnabled)
         {
-            Pools.Release(activatedTileIds);
-            Pools.Release(activatedPositions);
+            events.Emit(new ColorBombComboBatchActivateEvent
+            {
+                Tick = tick,
+                SimulationTime = simTime,
+                BombTileId = session.BombTileId,
+                BombPosition = session.BombPosition,
+                ComboBombType = session.ComboBombType,
+                ActivatedPositions = activatedPositions,
+                ActivatedTileIds = activatedTileIds
+            });
         }
+
+        // Release ALL session locks (BeamTargetLock + Indestructible) before activation
+        ReleaseAllSessionLocks(ref state, session);
+
+        // Output bomb positions — orchestrator will call ActivateBomb for each
+        if (triggeredBombs != null)
+        {
+            foreach (var pos in activatedPositions)
+                triggeredBombs.Add(pos);
+        }
+
+        session.ArrivedTargets.Clear();
     }
 
     /// <summary>
