@@ -1,5 +1,7 @@
-﻿using Match3.Core.Models.Enums;
+using Match3.Core.Events;
+using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
 using Match3.Core.Tests.TestFixtures;
@@ -18,9 +20,25 @@ namespace Match3.Core.Tests.Systems.PowerUps;
 /// </summary>
 public class PowerUpHandlerTests
 {
+    private readonly ExplosionSystem _explosionSystem = new(new CoverSystem(), new GroundSystem());
+
     private PowerUpHandler CreateHandler()
     {
-        return new PowerUpHandler(new StubScoreSystem());
+        return new PowerUpHandler(new StubScoreSystem())
+            .WithExplosionSystem(_explosionSystem);
+    }
+
+    private void ActivateBombAndRunExplosion(PowerUpHandler handler, ref GameState state, Position pos)
+    {
+        var eventCollector = new StubEventCollector();
+        handler.ActivateBomb(ref state, pos, 0, 0f, eventCollector);
+        RunExplosionToCompletion(ref state, eventCollector);
+    }
+
+    private void RunExplosionToCompletion(ref GameState state, StubEventCollector eventCollector)
+    {
+        for (int i = 0; i < 100 && _explosionSystem.HasActiveExplosions; i++)
+            _explosionSystem.Update(ref state, 0.05f, 10 + i, 0.05f * i, eventCollector);
     }
 
     private GameState CreateFilledState(int width = 8, int height = 8)
@@ -55,7 +73,7 @@ public class PowerUpHandlerTests
         state.SetTile(3, 3, bombTile);
 
         // Act
-        handler.ActivateBomb(ref state, new Position(3, 3));
+        ActivateBombAndRunExplosion(handler, ref state, new Position(3, 3));
 
         // Assert: 整行应该被清除
         for (int x = 0; x < 8; x++)
@@ -74,7 +92,7 @@ public class PowerUpHandlerTests
         state.SetTile(3, 3, bombTile);
 
         // Act
-        handler.ActivateBomb(ref state, new Position(3, 3));
+        ActivateBombAndRunExplosion(handler, ref state, new Position(3, 3));
 
         // Assert: 整列应该被清除
         for (int y = 0; y < 8; y++)
@@ -93,7 +111,7 @@ public class PowerUpHandlerTests
         state.SetTile(4, 4, bombTile);
 
         // Act
-        handler.ActivateBomb(ref state, new Position(4, 4));
+        ActivateBombAndRunExplosion(handler, ref state, new Position(4, 4));
 
         // Assert: 5x5 区域应该被清除（半径 2）
         for (int dy = -2; dy <= 2; dy++)
@@ -133,7 +151,7 @@ public class PowerUpHandlerTests
         state.SetTile(7, 2, new Tile(8, ElementType.Item3, 7, 2));
 
         // Act
-        handler.ActivateBomb(ref state, new Position(3, 3));
+        ActivateBombAndRunExplosion(handler, ref state, new Position(3, 3));
 
         // Assert: 红色（最多的颜色）应该被清除，蓝色保留
         Assert.Equal(ElementType.None, state.GetTile(0, 0).Type);
@@ -166,7 +184,7 @@ public class PowerUpHandlerTests
             if (state.Grid[i].Type != ElementType.None) initialCount++;
 
         // Act
-        handler.ActivateBomb(ref state, new Position(3, 3));
+        ActivateBombAndRunExplosion(handler, ref state, new Position(3, 3));
 
         // Assert: 应该清除炸弹本身和至少一个随机 tile
         int finalCount = 0;
@@ -194,10 +212,10 @@ public class PowerUpHandlerTests
 
     #endregion
 
-    #region ProcessSpecialMove Tests - Rainbow Combos
+    #region ProcessBombSwap Tests - Rainbow Combos
 
     [Fact]
-    public void ProcessSpecialMove_RainbowPlusRainbow_ClearsAll()
+    public void ProcessBombSwap_RainbowPlusRainbow_ClearsAll()
     {
         // Arrange
         var handler = CreateHandler();
@@ -208,7 +226,9 @@ public class PowerUpHandlerTests
         state.SetTile(4, 3, rainbow2);
 
         // Act
-        handler.ProcessSpecialMove(ref state, new Position(3, 3), new Position(4, 3), out int points);
+        var eventCollector = new StubEventCollector();
+        handler.ProcessBombSwap(ref state, new Position(3, 3), new Position(4, 3), 0, 0f, eventCollector, out int points);
+        RunExplosionToCompletion(ref state, eventCollector);
 
         // Assert: 全部清除
         for (int y = 0; y < 8; y++)
@@ -221,7 +241,7 @@ public class PowerUpHandlerTests
     }
 
     [Fact]
-    public void ProcessSpecialMove_RainbowPlusNormalTile_ClearsColor()
+    public void ProcessBombSwap_RainbowPlusNormalTile_ClearsColor()
     {
         // Arrange
         var handler = CreateHandler();
@@ -236,7 +256,9 @@ public class PowerUpHandlerTests
         state.SetTile(7, 7, new Tile(103, ElementType.Item1, 7, 7));
 
         // Act
-        handler.ProcessSpecialMove(ref state, new Position(3, 3), new Position(4, 3), out int points);
+        var eventCollector = new StubEventCollector();
+        handler.ProcessBombSwap(ref state, new Position(3, 3), new Position(4, 3), 0, 0f, eventCollector, out int points);
+        RunExplosionToCompletion(ref state, eventCollector);
 
         // Assert: 红色应该被清除，彩虹和目标位置也被清除
         Assert.Equal(ElementType.None, state.GetTile(0, 0).Type);
@@ -246,7 +268,7 @@ public class PowerUpHandlerTests
     }
 
     [Fact]
-    public void ProcessSpecialMove_RainbowPlusBomb_TransformsAndExplodes()
+    public void ProcessBombSwap_RainbowPlusBomb_TransformsAndExplodes()
     {
         // Arrange
         var handler = CreateHandler();
@@ -262,7 +284,7 @@ public class PowerUpHandlerTests
         state.SetTile(1, 1, new Tile(103, ElementType.Item1, 1, 1));
 
         // Act
-        handler.ProcessSpecialMove(ref state, new Position(3, 3), new Position(4, 3), out int points);
+        handler.ProcessBombSwap(ref state, new Position(3, 3), new Position(4, 3), out int points);
 
         // Assert: 红色方块应该变成炸弹并爆炸
         // 彩虹和炸弹位置被清除
@@ -272,10 +294,10 @@ public class PowerUpHandlerTests
 
     #endregion
 
-    #region ProcessSpecialMove Tests - Bomb Combos
+    #region ProcessBombSwap Tests - Bomb Combos
 
     [Fact]
-    public void ProcessSpecialMove_LineBombPlusLineBomb_ClearsRowAndColumn()
+    public void ProcessBombSwap_LineBombPlusLineBomb_ClearsRowAndColumn()
     {
         // Arrange
         var handler = CreateHandler();
@@ -286,7 +308,9 @@ public class PowerUpHandlerTests
         state.SetTile(4, 3, vBomb);
 
         // Act
-        handler.ProcessSpecialMove(ref state, new Position(3, 3), new Position(4, 3), out int points);
+        var eventCollector = new StubEventCollector();
+        handler.ProcessBombSwap(ref state, new Position(3, 3), new Position(4, 3), 0, 0f, eventCollector, out int points);
+        RunExplosionToCompletion(ref state, eventCollector);
 
         // Assert: 行和列应该被清除
         // 检查 y=3 这一行
@@ -302,7 +326,7 @@ public class PowerUpHandlerTests
     }
 
     [Fact]
-    public void ProcessSpecialMove_AreaBombPlusAreaBomb_ClearsLargeArea()
+    public void ProcessBombSwap_AreaBombPlusAreaBomb_ClearsLargeArea()
     {
         // Arrange
         var handler = CreateHandler();
@@ -313,7 +337,7 @@ public class PowerUpHandlerTests
         state.SetTile(4, 3, bomb2);
 
         // Act
-        handler.ProcessSpecialMove(ref state, new Position(3, 3), new Position(4, 3), out int points);
+        handler.ProcessBombSwap(ref state, new Position(3, 3), new Position(4, 3), out int points);
 
         // Assert: 两个炸弹位置应该被清除
         Assert.Equal(ElementType.None, state.GetTile(3, 3).Type);
@@ -321,7 +345,7 @@ public class PowerUpHandlerTests
     }
 
     [Fact]
-    public void ProcessSpecialMove_NoBombs_ReturnsZeroPoints()
+    public void ProcessBombSwap_NoBombs_ReturnsZeroPoints()
     {
         // Arrange
         var handler = CreateHandler();
@@ -329,18 +353,16 @@ public class PowerUpHandlerTests
         // 两个普通 tile
 
         // Act
-        handler.ProcessSpecialMove(ref state, new Position(3, 3), new Position(4, 3), out int points);
+        handler.ProcessBombSwap(ref state, new Position(3, 3), new Position(4, 3), out int points);
 
         // Assert
         Assert.Equal(0, points);
     }
 
     [Fact]
-    public void ProcessSpecialMove_TwoHorizontalRockets_ClearsOnlyOneRowAndOneColumn()
+    public void ProcessBombSwap_TwoHorizontalRockets_ClearsOnlyOneRowAndOneColumn()
     {
         // Arrange: 两个水平火箭交换
-        // Bug: 之前会触发重复爆炸，导致消除2行1列
-        // Fix: 组合后清除炸弹属性，只消除1行1列
         var handler = CreateHandler();
         var state = CreateFilledState();
         var p1 = new Position(3, 4);
@@ -352,7 +374,9 @@ public class PowerUpHandlerTests
         state.SetTile(p2.X, p2.Y, hBomb2);
 
         // Act
-        handler.ProcessSpecialMove(ref state, p1, p2, out _);
+        var eventCollector = new StubEventCollector();
+        handler.ProcessBombSwap(ref state, p1, p2, 0, 0f, eventCollector, out _);
+        RunExplosionToCompletion(ref state, eventCollector);
 
         // Assert: 统计被消除的格子数
         // 十字形 = 1行(8格) + 1列(8格) - 1交点 = 15格
@@ -371,7 +395,7 @@ public class PowerUpHandlerTests
     }
 
     [Fact]
-    public void ProcessSpecialMove_TwoVerticalRockets_ClearsOnlyOneRowAndOneColumn()
+    public void ProcessBombSwap_TwoVerticalRockets_ClearsOnlyOneRowAndOneColumn()
     {
         // Arrange: 两个垂直火箭交换
         var handler = CreateHandler();
@@ -385,7 +409,9 @@ public class PowerUpHandlerTests
         state.SetTile(p2.X, p2.Y, vBomb2);
 
         // Act
-        handler.ProcessSpecialMove(ref state, p1, p2, out _);
+        var eventCollector = new StubEventCollector();
+        handler.ProcessBombSwap(ref state, p1, p2, 0, 0f, eventCollector, out _);
+        RunExplosionToCompletion(ref state, eventCollector);
 
         // Assert: 十字形 = 15格
         int clearedCount = 0;
@@ -402,7 +428,7 @@ public class PowerUpHandlerTests
     }
 
     [Fact]
-    public void ProcessSpecialMove_HorizontalPlusVerticalRocket_ClearsOnlyOneRowAndOneColumn()
+    public void ProcessBombSwap_HorizontalPlusVerticalRocket_ClearsOnlyOneRowAndOneColumn()
     {
         // Arrange: 水平 + 垂直火箭交换
         var handler = CreateHandler();
@@ -416,7 +442,9 @@ public class PowerUpHandlerTests
         state.SetTile(p2.X, p2.Y, vBomb);
 
         // Act
-        handler.ProcessSpecialMove(ref state, p1, p2, out _);
+        var eventCollector = new StubEventCollector();
+        handler.ProcessBombSwap(ref state, p1, p2, 0, 0f, eventCollector, out _);
+        RunExplosionToCompletion(ref state, eventCollector);
 
         // Assert: 十字形 = 15格
         int clearedCount = 0;
@@ -464,7 +492,7 @@ public class PowerUpHandlerTests
         state.SetTile(6, 3, vBomb);
 
         // Act
-        handler.ActivateBomb(ref state, new Position(3, 3));
+        ActivateBombAndRunExplosion(handler, ref state, new Position(3, 3));
 
         // Assert: 横向火箭消除整行
         for (int x = 0; x < 8; x++)
@@ -494,7 +522,7 @@ public class PowerUpHandlerTests
         state.SetTile(3, 4, hBomb);
 
         // Act
-        handler.ActivateBomb(ref state, new Position(4, 4));
+        ActivateBombAndRunExplosion(handler, ref state, new Position(4, 4));
 
         // Assert: 5x5 区域被清除，横向火箭触发后整行 y=4 被清除
         for (int x = 0; x < 8; x++)
@@ -506,7 +534,7 @@ public class PowerUpHandlerTests
     [Fact]
     public void ActivateBomb_ChainExplosion_ThreeLevelChain()
     {
-        // Arrange: 三级连锁 - H火箭 → V火箭 → 方块炸弹
+        // Arrange: 三级连锁 - H火箭 -> V火箭 -> 方块炸弹
         var handler = CreateHandler();
         var state = CreateFilledState();
 
@@ -523,7 +551,7 @@ public class PowerUpHandlerTests
         state.SetTile(5, 6, squareBomb);
 
         // Act
-        handler.ActivateBomb(ref state, new Position(2, 3));
+        ActivateBombAndRunExplosion(handler, ref state, new Position(2, 3));
 
         // Assert:
         // 1. 横向火箭消除 y=3 整行
@@ -556,12 +584,12 @@ public class PowerUpHandlerTests
         state.SetTile(0, 0, bombTile);
 
         // Act & Assert: 不应该抛出异常
-        var ex = Record.Exception(() => handler.ActivateBomb(ref state, new Position(0, 0)));
+        var ex = Record.Exception(() => ActivateBombAndRunExplosion(handler, ref state, new Position(0, 0)));
         Assert.Null(ex);
     }
 
     [Fact]
-    public void ProcessSpecialMove_RainbowPlusNone_DoesNothing()
+    public void ProcessBombSwap_RainbowPlusNone_DoesNothing()
     {
         // Arrange: Rainbow + None tile
         var handler = CreateHandler();
@@ -571,14 +599,14 @@ public class PowerUpHandlerTests
         // (4, 3) 是 None
 
         // Act
-        handler.ProcessSpecialMove(ref state, new Position(3, 3), new Position(4, 3), out int points);
+        handler.ProcessBombSwap(ref state, new Position(3, 3), new Position(4, 3), out int points);
 
         // Assert: 不应该崩溃
         Assert.Equal(0, points);
     }
 
     [Fact]
-    public void ProcessSpecialMove_RainbowPlusRainbow_ClearsSourcePositions()
+    public void ProcessBombSwap_RainbowPlusRainbow_ClearsSourcePositions()
     {
         // Arrange
         var handler = CreateHandler();
@@ -589,7 +617,9 @@ public class PowerUpHandlerTests
         state.SetTile(4, 3, rainbow2);
 
         // Act
-        handler.ProcessSpecialMove(ref state, new Position(3, 3), new Position(4, 3), out _);
+        var eventCollector = new StubEventCollector();
+        handler.ProcessBombSwap(ref state, new Position(3, 3), new Position(4, 3), 0, 0f, eventCollector, out _);
+        RunExplosionToCompletion(ref state, eventCollector);
 
         // Assert: 源位置应该被清除
         Assert.Equal(ElementType.None, state.GetTile(3, 3).Type);
@@ -598,4 +628,3 @@ public class PowerUpHandlerTests
 
     #endregion
 }
-

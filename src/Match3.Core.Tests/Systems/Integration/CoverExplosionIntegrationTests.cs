@@ -8,6 +8,7 @@ using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Core;
 using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.Matching;
+using Match3.Core.Systems.Objectives;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
@@ -69,13 +70,21 @@ public class CoverExplosionIntegrationTests
         state.SetTile(4, 0, new Tile(5, ElementType.Item4, 4, 0));
 
         var scoreSystem = new StubScoreSystem();
-        var powerUpHandler = new PowerUpHandler(scoreSystem);
+        var objectiveSystem = new LevelObjectiveSystem();
+        var coverSystem = new CoverSystem(objectiveSystem);
+        var groundSystem = new GroundSystem(objectiveSystem);
+        var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem);
+        var powerUpHandler = new PowerUpHandler(scoreSystem)
+            .WithExplosionSystem(explosionSystem);
+        var eventCollector = new StubEventCollector();
 
         _output.WriteLine("初始状态:");
         PrintRow(ref state, 0);
 
-        // Act: 激活水平炸弹
-        powerUpHandler.ActivateBomb(ref state, new Position(1, 0));
+        // Act: 激活水平炸弹, then run explosion waves
+        powerUpHandler.ActivateBomb(ref state, new Position(1, 0), 1, 0f, eventCollector);
+        for (int i = 0; i < 30 && explosionSystem.HasActiveExplosions; i++)
+            explosionSystem.Update(ref state, 0.05f, 2 + i, 0.05f * i, eventCollector);
 
         _output.WriteLine("爆炸后:");
         PrintRow(ref state, 0);
@@ -124,13 +133,21 @@ public class CoverExplosionIntegrationTests
         state.SetTile(0, 3, new Tile(4, ElementType.Item2, 0, 3));
 
         var scoreSystem = new StubScoreSystem();
-        var powerUpHandler = new PowerUpHandler(scoreSystem);
+        var objectiveSystem = new LevelObjectiveSystem();
+        var coverSystem = new CoverSystem(objectiveSystem);
+        var groundSystem = new GroundSystem(objectiveSystem);
+        var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem);
+        var powerUpHandler = new PowerUpHandler(scoreSystem)
+            .WithExplosionSystem(explosionSystem);
+        var eventCollector = new StubEventCollector();
 
         _output.WriteLine("初始状态:");
         PrintColumn(ref state, 0);
 
-        // Act: 激活垂直炸弹
-        powerUpHandler.ActivateBomb(ref state, new Position(0, 1));
+        // Act: 激活垂直炸弹, then run explosion waves
+        powerUpHandler.ActivateBomb(ref state, new Position(0, 1), 1, 0f, eventCollector);
+        for (int i = 0; i < 30 && explosionSystem.HasActiveExplosions; i++)
+            explosionSystem.Update(ref state, 0.05f, 2 + i, 0.05f * i, eventCollector);
 
         _output.WriteLine("爆炸后:");
         PrintColumn(ref state, 0);
@@ -184,13 +201,21 @@ public class CoverExplosionIntegrationTests
         state.SetCover(new Position(2, 2), new Cover(CoverType.Chain, health: 1));
 
         var scoreSystem = new StubScoreSystem();
-        var powerUpHandler = new PowerUpHandler(scoreSystem);
+        var objectiveSystem = new LevelObjectiveSystem();
+        var coverSystem = new CoverSystem(objectiveSystem);
+        var groundSystem = new GroundSystem(objectiveSystem);
+        var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem);
+        var powerUpHandler = new PowerUpHandler(scoreSystem)
+            .WithExplosionSystem(explosionSystem);
+        var eventCollector = new StubEventCollector();
 
         _output.WriteLine("初始状态:");
         PrintBoard(ref state);
 
-        // Act: 激活 Wrapped 炸弹
-        powerUpHandler.ActivateBomb(ref state, new Position(1, 1));
+        // Act: 激活 Wrapped 炸弹, then run explosion waves
+        powerUpHandler.ActivateBomb(ref state, new Position(1, 1), 1, 0f, eventCollector);
+        for (int i = 0; i < 30 && explosionSystem.HasActiveExplosions; i++)
+            explosionSystem.Update(ref state, 0.05f, 2 + i, 0.05f * i, eventCollector);
 
         _output.WriteLine("爆炸后:");
         PrintBoard(ref state);
@@ -394,7 +419,13 @@ public class CoverExplosionIntegrationTests
         state.SetTile(2, 2, new Tile(9, ElementType.Item4, 2, 2));
 
         var scoreSystem = new StubScoreSystem();
-        var powerUpHandler = new PowerUpHandler(scoreSystem);
+        var objectiveSystem = new LevelObjectiveSystem();
+        var coverSystem = new CoverSystem(objectiveSystem);
+        var groundSystem = new GroundSystem(objectiveSystem);
+        var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem);
+        var powerUpHandler = new PowerUpHandler(scoreSystem)
+            .WithExplosionSystem(explosionSystem);
+        var eventCollector = new StubEventCollector();
         var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };
         var gravitySystem = new RealtimeGravitySystem(config, rng);
         var animationSystem = new AnimationSystem(config);
@@ -408,8 +439,10 @@ public class CoverExplosionIntegrationTests
         _output.WriteLine("初始状态:");
         PrintBoard(ref state);
 
-        // Act 1: 激活水平炸弹
-        powerUpHandler.ActivateBomb(ref state, new Position(1, 1));
+        // Act 1: 激活水平炸弹, then run explosion waves
+        powerUpHandler.ActivateBomb(ref state, new Position(1, 1), 1, 0f, eventCollector);
+        for (int i = 0; i < 30 && explosionSystem.HasActiveExplosions; i++)
+            explosionSystem.Update(ref state, 0.05f, 2 + i, 0.05f * i, eventCollector);
 
         _output.WriteLine("爆炸后:");
         PrintBoard(ref state);

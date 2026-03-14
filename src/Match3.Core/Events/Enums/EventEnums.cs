@@ -42,7 +42,10 @@ public enum ElimSource
     ColorBomb,
 
     /// <summary>Tile was destroyed by a side item / booster.</summary>
-    SideItem
+    SideItem,
+
+    /// <summary>Bomb was voluntarily consumed (activated by player tap/swap or combo).</summary>
+    ConsumeBomb
 }
 
 /// <summary>

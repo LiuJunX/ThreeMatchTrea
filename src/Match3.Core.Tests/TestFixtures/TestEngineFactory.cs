@@ -55,8 +55,8 @@ public static class TestEngineFactory
         var matchProcessor = new StandardMatchProcessor(
             score, cellEliminator, BombEffectRegistry.CreateDefault());
         var lockScheduler = new LockScheduler();
-        var explosionSystem = new ExplosionSystem(cellEliminator, coverSystem, groundSystem, objectiveSystem, lockScheduler);
-        var colorBombSessionManager = new ColorBombSessionManager(null, coverSystem, groundSystem, objectiveSystem, lockScheduler);
+        var explosionSystem = new ExplosionSystem(cellEliminator, BombEffectRegistry.CreateDefault(), lockScheduler);
+        var colorBombSessionManager = new ColorBombSessionManager(null, cellEliminator, lockScheduler);
         var proj = projectileSystem ?? new ProjectileSystem();
         var powerUpHandler = new PowerUpHandler(
             score, new BombComboHandler(), BombEffectRegistry.CreateDefault(),

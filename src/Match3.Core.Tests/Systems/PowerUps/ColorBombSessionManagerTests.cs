@@ -3,6 +3,7 @@ using Match3.Core.Events;
 using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.PowerUps.ColorBomb;
@@ -526,7 +527,7 @@ public class ColorBombSessionManagerTests
     public void BatchDestroy_CoverAbsorbsHit()
     {
         var coverSystem = new CoverSystem();
-        var manager = new ColorBombSessionManager(_config, coverSystem);
+        var manager = new ColorBombSessionManager(_config, new CellEliminator(coverSystem, new GroundSystem()));
         var state = CreateState(3, 1);
         state.SetTile(0, 0, new Tile(100, ElementType.None, 0, 0));
         state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
@@ -1034,7 +1035,7 @@ public class ColorBombSessionManagerTests
     public void CoverOnTarget_MultiLayer_FirstHitAbsorbedSecondDestroys()
     {
         var coverSystem = new CoverSystem();
-        var manager = new ColorBombSessionManager(_config, coverSystem);
+        var manager = new ColorBombSessionManager(_config, new CellEliminator(coverSystem, new GroundSystem()));
         var state = CreateState(3, 1);
 
         state.SetTile(0, 0, new Tile(100, ElementType.None, 0, 0));
@@ -1103,7 +1104,7 @@ public class ColorBombSessionManagerTests
     {
         var coverSystem = new CoverSystem();
         var groundSystem = new GroundSystem();
-        var sessionManager = new ColorBombSessionManager(_config, coverSystem, groundSystem);
+        var sessionManager = new ColorBombSessionManager(_config, new CellEliminator(coverSystem, groundSystem));
 
         var handler = new PowerUpHandler(
             new StubScoreSystem(),
@@ -1122,7 +1123,7 @@ public class ColorBombSessionManagerTests
         // Should route to session, not instant destruction
         Assert.True(sessionManager.HasActiveSessions);
 
-        // Bomb tile should be cleared (ClearBombAttribute sets to None)
+        // Bomb tile should be cleared (ConsumeBomb sets to None)
         Assert.Equal(ElementType.None, state.GetTile(2, 2).Type);
 
         // Session should target Item1

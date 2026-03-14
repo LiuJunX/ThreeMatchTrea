@@ -51,6 +51,20 @@ internal sealed class TileChoreographer
         float startTime = _ctx.GetStartTime(evt);
         var position = new Vector2(evt.GridPosition.X, evt.GridPosition.Y);
 
+        // ConsumeBomb: bomb's visual effects are already driven by BombActivatedEvent/BombComboEvent.
+        // Skip destroy animation and show effect — only emit RemoveTileCommand.
+        if (evt.Reason == ElimSource.ConsumeBomb)
+        {
+            _ctx.Commands.Add(new RemoveTileCommand
+            {
+                TileId = evt.TileId,
+                StartTime = startTime,
+                Duration = 0,
+                Priority = 10
+            });
+            return;
+        }
+
         if (evt.MergeTarget.HasValue)
         {
             // Merge animation: move to bomb origin (no scaling -- keep original size)

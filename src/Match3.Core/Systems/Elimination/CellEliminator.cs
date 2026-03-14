@@ -37,11 +37,16 @@ public sealed class CellEliminator : ICellEliminator
         if (tile.Type == ElementType.None)
             return EliminateResult.Blocked;
 
+        // ColorBomb immunity: immune to collateral damage (bombs, chain reactions, etc.).
+        // ConsumeBomb bypasses this — the bomb is being voluntarily activated by player tap/swap or combo.
+        if (tile.Type == ElementType.ColorBomb && reason != ElimSource.ConsumeBomb)
+            return EliminateResult.Immune(tile);
+
         // Cover: absorb hit
         if (_coverSystem.IsTileProtected(in state, pos))
         {
             _coverSystem.TryDamageCover(ref state, pos, tick, simTime, events);
-            return EliminateResult.Absorbed;
+            return EliminateResult.Absorbed(tile);
         }
 
         // Indestructible lock
@@ -73,6 +78,6 @@ public sealed class CellEliminator : ICellEliminator
         // Ground notification
         _groundSystem.OnTileDestroyed(ref state, pos, tick, simTime, events);
 
-        return EliminateResult.Eliminated;
+        return EliminateResult.Eliminated(tile);
     }
 }

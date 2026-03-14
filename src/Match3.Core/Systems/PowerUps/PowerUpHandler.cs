@@ -74,13 +74,13 @@ public class PowerUpHandler : IPowerUpHandler
         _explosionConfig = explosionConfig ?? new ExplosionConfig();
     }
 
-    public void ProcessSpecialMove(ref GameState state, Position p1, Position p2, out int points)
+    public void ProcessBombSwap(ref GameState state, Position p1, Position p2, out int points)
     {
-        ProcessSpecialMove(ref state, p1, p2, 0, 0f, NullEventCollector.Instance, out points);
+        ProcessBombSwap(ref state, p1, p2, 0, 0f, NullEventCollector.Instance, out points);
     }
 
     /// <summary>
-    /// Processes a special move (bomb swap) between two positions.
+    /// Processes a bomb swap between two positions.
     /// </summary>
     /// <remarks>
     /// <para><strong>Combo detection priority:</strong></para>
@@ -91,10 +91,10 @@ public class PowerUpHandler : IPowerUpHandler
     /// </list>
     /// <para><strong>Activation flow:</strong>
     /// detect combo → emit <see cref="Events.BombComboEvent"/> →
-    /// clear bomb attributes via <c>ClearBombAttribute</c> →
+    /// consume bomb tiles via <c>ConsumeBomb</c> →
     /// create explosion / session → launch UFO projectiles (if applicable).</para>
     /// </remarks>
-    public void ProcessSpecialMove(
+    public void ProcessBombSwap(
         ref GameState state,
         Position p1,
         Position p2,
@@ -135,8 +135,8 @@ public class PowerUpHandler : IPowerUpHandler
             }
 
             // Clear both bomb attributes
-            ClearBombAttribute(ref state, p1);
-            ClearBombAttribute(ref state, p2);
+            ConsumeBomb(ref state, p1, tick, simTime, events);
+            ConsumeBomb(ref state, p2, tick, simTime, events);
 
             // Create combo session — beams fly to each target color tile,
             // transform on arrival, batch activate all transformed bombs at the end
@@ -153,7 +153,7 @@ public class PowerUpHandler : IPowerUpHandler
             var colorBombTile = t1.Type.IsColorBomb() ? t1 : t2;
             var normalTile = t1.Type.IsColorBomb() ? t2 : t1;
 
-            ClearBombAttribute(ref state, colorBombPos);
+            ConsumeBomb(ref state, colorBombPos, tick, simTime, events);
 
             _colorBombSessionManager.CreateSession(
                 ref state, colorBombPos, colorBombTile.Id, normalTile.Type, tick, simTime, events);
@@ -186,8 +186,8 @@ public class PowerUpHandler : IPowerUpHandler
 
                 // Clear bomb attributes from combo participants to prevent double explosion
                 // The combo effect already accounts for both bombs' effects
-                ClearBombAttribute(ref state, p1);
-                ClearBombAttribute(ref state, p2);
+                ConsumeBomb(ref state, p1, tick, simTime, events);
+                ConsumeBomb(ref state, p2, tick, simTime, events);
 
                 if (_explosionSystem != null)
                 {
@@ -279,7 +279,7 @@ public class PowerUpHandler : IPowerUpHandler
         if (t.Type == ElementType.ColorBomb && _colorBombSessionManager != null && !isChainReaction)
         {
             int bombTileId = t.Id;
-            ClearBombAttribute(ref state, p);
+            ConsumeBomb(ref state, p, tick, simTime, events);
             _colorBombSessionManager.CreateSession(ref state, p, bombTileId, tick, simTime, events);
             return;
         }
@@ -311,7 +311,7 @@ public class PowerUpHandler : IPowerUpHandler
                 }
 
                 // Clear bomb attribute to prevent re-activation
-                ClearBombAttribute(ref state, p);
+                ConsumeBomb(ref state, p, tick, simTime, events);
 
                 // Create explosion — ExplosionSystem handles wave propagation and chain reactions internally
                 if (_explosionSystem != null)
@@ -395,16 +395,16 @@ public class PowerUpHandler : IPowerUpHandler
     }
 
     /// <summary>
-    /// Clears the bomb attribute from a tile to prevent double explosion during combo processing.
+    /// Consumes a bomb tile via CellEliminator to ensure Cover/Ground/Objective handling.
     /// Applies a timed Receive lock to prevent premature gravity fill.
-    /// Tile ID is not preserved — downstream systems (Choreographer) read IDs from events, not grid state.
     /// </summary>
-    private void ClearBombAttribute(ref GameState state, Position p)
+    private void ConsumeBomb(ref GameState state, Position p,
+        int tick, float simTime, IEventCollector events)
     {
         var tile = state.GetTile(p.X, p.Y);
         if (tile.Type.IsBomb())
         {
-            state.SetTile(p.X, p.Y, new Tile(0, ElementType.None, p.X, p.Y));
+            _cellEliminator.Eliminate(ref state, p, ElimSource.ConsumeBomb, tick, simTime, events);
             _lockScheduler?.Acquire(ref state, p, CellLockType.Receive, ReceiveLockTimings.BombActivateClear);
         }
     }

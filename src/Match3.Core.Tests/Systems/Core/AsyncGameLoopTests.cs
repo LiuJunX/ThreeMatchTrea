@@ -71,8 +71,8 @@ public class AsyncGameLoopTests
         public void ActivateBomb(ref GameState state, Position p, int tick, float simTime, IEventCollector events) { }
         public void HandlePowerUp(ref GameState state, Position p, ElementType bomb) { }
         public bool TryActivate(ref GameState state, Position p) => false;
-        public void ProcessSpecialMove(ref GameState state, Position a, Position b, out int score) { score = 0; }
-        public void ProcessSpecialMove(ref GameState state, Position a, Position b, int tick, float simTime, IEventCollector events, out int score) { score = 0; }
+        public void ProcessBombSwap(ref GameState state, Position a, Position b, out int score) { score = 0; }
+        public void ProcessBombSwap(ref GameState state, Position a, Position b, int tick, float simTime, IEventCollector events, out int score) { score = 0; }
         
         public void ActivateBomb(ref GameState state, Position p, int tick, float simTime, IEventCollector events, bool isChainReaction)
         {
@@ -332,8 +332,8 @@ public class AsyncGameLoopTests
 
         public void HandlePowerUp(ref GameState state, Position p, ElementType bomb) { }
         public bool TryActivate(ref GameState state, Position p) => false;
-        public void ProcessSpecialMove(ref GameState state, Position a, Position b, out int score) { score = 0; }
-        public void ProcessSpecialMove(ref GameState state, Position a, Position b, int tick, float simTime, IEventCollector events, out int score) { score = 0; }
+        public void ProcessBombSwap(ref GameState state, Position a, Position b, out int score) { score = 0; }
+        public void ProcessBombSwap(ref GameState state, Position a, Position b, int tick, float simTime, IEventCollector events, out int score) { score = 0; }
 
         public IPowerUpHandler WithExplosionSystem(IExplosionSystem? explosionSystem) => this;
         public IPowerUpHandler WithProjectileSystem(IProjectileSystem? projectileSystem) => this;

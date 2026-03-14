@@ -21,13 +21,12 @@ public class CellEliminatorTests
     public void EmptyCell_ReturnsBlocked()
     {
         var state = CreateState();
-        // Cell (1,1) has no tile (default is Type=None)
         var eliminator = new CellEliminator(new CoverSystem(), new GroundSystem());
 
         var result = eliminator.Eliminate(
             ref state, new Position(1, 1), ElimSource.Match, 0, 0f, NullEventCollector.Instance);
 
-        Assert.Equal(EliminateResult.Blocked, result);
+        Assert.Equal(EliminateOutcome.Blocked, result.Outcome);
     }
 
     [Fact]
@@ -42,7 +41,8 @@ public class CellEliminatorTests
         var result = eliminator.Eliminate(
             ref state, new Position(1, 1), ElimSource.Bomb, 0, 0f, NullEventCollector.Instance);
 
-        Assert.Equal(EliminateResult.Absorbed, result);
+        Assert.Equal(EliminateOutcome.Absorbed, result.Outcome);
+        Assert.Equal(ElementType.Item1, result.Tile.Type);
         // Tile should survive
         Assert.Equal(ElementType.Item1, state.GetTile(1, 1).Type);
         // Cover should be destroyed (HP was 1)
@@ -61,7 +61,7 @@ public class CellEliminatorTests
         var result = eliminator.Eliminate(
             ref state, new Position(1, 1), ElimSource.Match, 0, 0f, NullEventCollector.Instance);
 
-        Assert.Equal(EliminateResult.Blocked, result);
+        Assert.Equal(EliminateOutcome.Blocked, result.Outcome);
         // Tile should survive
         Assert.Equal(ElementType.Item1, state.GetTile(1, 1).Type);
     }
@@ -81,7 +81,9 @@ public class CellEliminatorTests
         var result = eliminator.Eliminate(
             ref state, new Position(1, 1), ElimSource.Match, 5, 1.5f, events);
 
-        Assert.Equal(EliminateResult.Eliminated, result);
+        Assert.Equal(EliminateOutcome.Eliminated, result.Outcome);
+        Assert.Equal(ElementType.Item3, result.Tile.Type);
+        Assert.Equal(42, result.Tile.Id);
         // Tile should be cleared
         Assert.Equal(ElementType.None, state.GetTile(1, 1).Type);
         // Ground should be damaged (HP was 1 → destroyed)
@@ -125,8 +127,7 @@ public class CellEliminatorTests
         var result = eliminator.Eliminate(
             ref state, new Position(1, 1), ElimSource.Match, 0, 0f, NullEventCollector.Instance);
 
-        // Should still eliminate successfully
-        Assert.Equal(EliminateResult.Eliminated, result);
+        Assert.Equal(EliminateOutcome.Eliminated, result.Outcome);
         Assert.Equal(ElementType.None, state.GetTile(1, 1).Type);
     }
 
@@ -142,11 +143,48 @@ public class CellEliminatorTests
         var result = eliminator.Eliminate(
             ref state, new Position(1, 1), ElimSource.Match, 0, 0f, NullEventCollector.Instance);
 
-        Assert.Equal(EliminateResult.Absorbed, result);
+        Assert.Equal(EliminateOutcome.Absorbed, result.Outcome);
         // Tile survives
         Assert.Equal(ElementType.Item1, state.GetTile(1, 1).Type);
         // Cover survives with 1 HP
         Assert.Equal(CoverType.Cage, state.GetCover(1, 1).Type);
         Assert.Equal(1, state.GetCover(1, 1).Health);
+    }
+
+    [Fact]
+    public void ColorBomb_ReturnsImmune()
+    {
+        var state = CreateState();
+        state.SetTile(1, 1, new Tile(99, ElementType.ColorBomb, 1, 1));
+
+        var eliminator = new CellEliminator(new CoverSystem(), new GroundSystem());
+
+        var result = eliminator.Eliminate(
+            ref state, new Position(1, 1), ElimSource.Match, 0, 0f, NullEventCollector.Instance);
+
+        Assert.Equal(EliminateOutcome.Immune, result.Outcome);
+        Assert.Equal(ElementType.ColorBomb, result.Tile.Type);
+        Assert.Equal(99, result.Tile.Id);
+        // Tile should survive
+        Assert.Equal(ElementType.ColorBomb, state.GetTile(1, 1).Type);
+    }
+
+    [Fact]
+    public void ColorBomb_ImmuneToAllElimSources()
+    {
+        var state = CreateState();
+        var eliminator = new CellEliminator(new CoverSystem(), new GroundSystem());
+
+        var sources = new[] { ElimSource.Match, ElimSource.Bomb, ElimSource.Projectile, ElimSource.ChainReaction };
+        foreach (var source in sources)
+        {
+            state.SetTile(1, 1, new Tile(1, ElementType.ColorBomb, 1, 1));
+
+            var result = eliminator.Eliminate(
+                ref state, new Position(1, 1), source, 0, 0f, NullEventCollector.Instance);
+
+            Assert.Equal(EliminateOutcome.Immune, result.Outcome);
+            Assert.Equal(ElementType.ColorBomb, state.GetTile(1, 1).Type);
+        }
     }
 }

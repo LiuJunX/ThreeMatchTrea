@@ -6,6 +6,7 @@ namespace Match3.Core.Systems.PowerUps;
 
 /// <summary>
 /// Represents an active explosion that expands in waves.
+/// No pre-locking — cells are locked only when the wave reaches them.
 /// </summary>
 public class Explosion
 {
@@ -34,24 +35,11 @@ public class Explosion
     /// </summary>
     public HashSet<Position> AffectedArea;
 
-    /// <summary>
-    /// Lock tokens acquired for suspended tiles. Released when wave processes the tile.
-    /// </summary>
-    public List<LockToken> LockTokens;
-
-    /// <summary>
-    /// Positions that were actually locked by this explosion (used for null-scheduler path).
-    /// Prevents spurious unlock of cells that were empty at creation time.
-    /// </summary>
-    public HashSet<Position> LockedPositions;
-
     public bool IsFinished => CurrentWaveRadius > MaxRadius;
 
     public Explosion()
     {
         AffectedArea = Pools.ObtainHashSet<Position>();
-        LockTokens = Pools.ObtainList<LockToken>();
-        LockedPositions = Pools.ObtainHashSet<Position>();
     }
 
     public void Initialize(Position origin, int radius, float interval, float acceleration = 1f)
@@ -64,14 +52,10 @@ public class Explosion
         CurrentWaveRadius = 0;
         Timer = 0f;
         AffectedArea.Clear();
-        LockTokens.Clear();
-        LockedPositions.Clear();
     }
 
     public void Release()
     {
         AffectedArea.Clear();
-        LockTokens.Clear();
-        LockedPositions.Clear();
     }
 }

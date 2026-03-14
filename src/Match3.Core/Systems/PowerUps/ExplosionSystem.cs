@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Match3.Core.Events;
+using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Elimination;
@@ -12,85 +13,79 @@ namespace Match3.Core.Systems.PowerUps;
 
 /// <summary>
 /// Manages explosion lifecycles: creation, wave timing, and cleanup.
-/// Delegates per-wave tile processing to <see cref="WavePropagation"/>.
+/// No pre-locking — cells are locked only when the wave actually hits them.
+/// When a wave hits a bomb, it is eliminated and immediately starts a new wave front.
 /// </summary>
 public class ExplosionSystem : IExplosionSystem
 {
     private readonly List<Explosion> _activeExplosions = new();
     private readonly List<Explosion> _explosionsToRemove = new();
+    private readonly List<Explosion> _pendingExplosions = new();
+    private readonly ICellEliminator _cellEliminator;
+    private readonly BombEffectRegistry _bombEffectRegistry;
     private readonly LockScheduler? _lockScheduler;
-    private readonly WavePropagation _wavePropagation;
     private readonly ExplosionConfig _config;
 
-    /// <summary>Default wave interval for generic explosions (seconds).</summary>
-    [System.Obsolete("Use ExplosionConfig.DefaultWaveInterval instead.")]
-    public const float DefaultWaveInterval = 0.1f;
-
     public ExplosionSystem()
-        : this(new CoverSystem(), new GroundSystem(), null, null)
+        : this(
+            new CellEliminator(new CoverSystem(), new GroundSystem()),
+            BombEffectRegistry.CreateDefault(),
+            null)
     {
     }
 
     public ExplosionSystem(ICoverSystem coverSystem, IGroundSystem groundSystem, ILevelObjectiveSystem? objectiveSystem = null)
-        : this(coverSystem, groundSystem, objectiveSystem, null)
+        : this(
+            new CellEliminator(coverSystem, groundSystem, objectiveSystem),
+            BombEffectRegistry.CreateDefault(),
+            null)
     {
     }
 
-    /// <summary>
-    /// Backward-compatible constructor — creates a <see cref="CellEliminator"/> internally.
-    /// </summary>
-    public ExplosionSystem(ICoverSystem coverSystem, IGroundSystem groundSystem, ILevelObjectiveSystem? objectiveSystem, LockScheduler? lockScheduler, ExplosionConfig? config = null)
-        : this(new CellEliminator(coverSystem, groundSystem, objectiveSystem), coverSystem, groundSystem, objectiveSystem, lockScheduler, config)
+    public ExplosionSystem(
+        ICoverSystem coverSystem, IGroundSystem groundSystem,
+        ILevelObjectiveSystem? objectiveSystem, LockScheduler? lockScheduler,
+        ExplosionConfig? config = null)
+        : this(
+            new CellEliminator(coverSystem, groundSystem, objectiveSystem),
+            BombEffectRegistry.CreateDefault(),
+            lockScheduler,
+            config)
     {
     }
 
-    public ExplosionSystem(ICellEliminator cellEliminator, ICoverSystem coverSystem, IGroundSystem groundSystem, ILevelObjectiveSystem? objectiveSystem, LockScheduler? lockScheduler, ExplosionConfig? config = null)
+    public ExplosionSystem(
+        ICellEliminator cellEliminator,
+        BombEffectRegistry bombEffectRegistry,
+        LockScheduler? lockScheduler,
+        ExplosionConfig? config = null)
     {
+        _cellEliminator = cellEliminator;
+        _bombEffectRegistry = bombEffectRegistry;
         _lockScheduler = lockScheduler;
-        _wavePropagation = new WavePropagation(cellEliminator, lockScheduler);
         _config = config ?? new ExplosionConfig();
     }
 
     /// <summary>Explosion timing configuration used by this system.</summary>
     public ExplosionConfig Config => _config;
 
-
     public bool HasActiveExplosions => _activeExplosions.Count > 0;
 
     /// <summary>
     /// Creates a square explosion centered on <paramref name="origin"/> with the given radius.
-    /// Locks all affected tiles to prevent gravity until the wave reaches them.
+    /// No pre-locking — cells are processed when the wave reaches them.
     /// </summary>
     public void CreateExplosion(ref GameState state, Position origin, int radius)
     {
         var explosion = Pools.Obtain<Explosion>();
         explosion.Initialize(origin, radius, _config.DefaultWaveInterval);
 
-        // Calculate affected area and lock tiles
         for (int y = origin.Y - radius; y <= origin.Y + radius; y++)
         {
             for (int x = origin.X - radius; x <= origin.X + radius; x++)
             {
                 if (state.IsValid(x, y))
-                {
-                    var pos = new Position(x, y);
-                    explosion.AffectedArea.Add(pos);
-
-                    var tile = state.GetTile(x, y);
-                    if (tile.Type != ElementType.None)
-                    {
-                        if (_lockScheduler != null)
-                        {
-                            var token = _lockScheduler.Acquire(ref state, pos, CellLockType.Drop);
-                            explosion.LockTokens.Add(token);
-                        }
-                        else
-                        {
-                            state.Lock(pos, CellLockType.Drop);
-                            explosion.LockedPositions.Add(pos);
-                        }
-                    }
-                }
+                    explosion.AffectedArea.Add(new Position(x, y));
             }
         }
 
@@ -111,11 +106,10 @@ public class ExplosionSystem : IExplosionSystem
 
     /// <summary>
     /// Creates a targeted explosion affecting only the specified positions.
-    /// Locks all target cells and computes the max Chebyshev radius for wave scheduling.
+    /// No pre-locking — cells are processed when the wave reaches them.
     /// </summary>
     public void CreateTargetedExplosion(ref GameState state, Position origin, IEnumerable<Position> targets, float waveInterval, float acceleration, float receiveLockDuration)
     {
-        // 1. Calculate MaxRadius
         int maxRadius = 0;
         foreach (var pos in targets)
         {
@@ -126,48 +120,27 @@ public class ExplosionSystem : IExplosionSystem
             if (dist > maxRadius) maxRadius = dist;
         }
 
-        // 2. Initialize Explosion
         var explosion = Pools.Obtain<Explosion>();
         explosion.Initialize(origin, maxRadius, waveInterval, acceleration);
         explosion.ReceiveLockDuration = receiveLockDuration;
 
-        // 3. Populate AffectedArea and lock tiles
         foreach (var pos in targets)
-        {
             explosion.AffectedArea.Add(pos);
-
-            if (state.IsValid(pos.X, pos.Y))
-            {
-                // Lock ALL target positions (including None tiles cleared by ClearBombAttribute)
-                // to prevent premature gravity fill during multi-wave explosions.
-                // ProcessWave releases the lock when the wave reaches each position.
-                if (_lockScheduler != null)
-                {
-                    var token = _lockScheduler.Acquire(ref state, pos, CellLockType.Drop);
-                    explosion.LockTokens.Add(token);
-                }
-                else
-                {
-                    state.Lock(pos, CellLockType.Drop);
-                    explosion.LockedPositions.Add(pos);
-                }
-            }
-        }
 
         _activeExplosions.Add(explosion);
     }
 
     /// <summary>
     /// Advances all active explosions by <paramref name="deltaTime"/>, processing
-    /// as many waves as time allows. Finished explosions are cleaned up.
+    /// as many waves as time allows. When a wave hits a bomb, it is eliminated
+    /// and a new wave front is started immediately. Finished explosions are cleaned up.
     /// </summary>
     public void Update(
         ref GameState state,
         float deltaTime,
         int tick,
         float simTime,
-        IEventCollector eventCollector,
-        List<Position> triggeredBombs)
+        IEventCollector eventCollector)
     {
         _explosionsToRemove.Clear();
 
@@ -175,21 +148,17 @@ public class ExplosionSystem : IExplosionSystem
         {
             explosion.Timer += deltaTime;
 
-            // Process as many waves as time allows (to handle lag spikes)
             while (explosion.Timer >= explosion.WaveInterval && !explosion.IsFinished)
             {
                 explosion.Timer -= explosion.WaveInterval;
-                _wavePropagation.ProcessWave(ref state, explosion, tick, simTime, eventCollector, triggeredBombs);
+                ProcessWave(ref state, explosion, tick, simTime, eventCollector);
 
-                // Apply acceleration: shrink interval for next wave
                 if (explosion.Acceleration != 1f)
                     explosion.WaveInterval *= explosion.Acceleration;
             }
 
             if (explosion.IsFinished)
-            {
                 _explosionsToRemove.Add(explosion);
-            }
         }
 
         foreach (var ex in _explosionsToRemove)
@@ -197,6 +166,13 @@ public class ExplosionSystem : IExplosionSystem
             _activeExplosions.Remove(ex);
             ex.Release();
             Pools.Release(ex);
+        }
+
+        // Add any explosions created during this tick (chain reactions)
+        if (_pendingExplosions.Count > 0)
+        {
+            _activeExplosions.AddRange(_pendingExplosions);
+            _pendingExplosions.Clear();
         }
     }
 
@@ -209,5 +185,120 @@ public class ExplosionSystem : IExplosionSystem
             Pools.Release(ex);
         }
         _activeExplosions.Clear();
+        _pendingExplosions.Clear();
+    }
+
+    /// <summary>
+    /// Process a single wave: eliminate all cells at the current Chebyshev distance.
+    /// Bombs are eliminated and immediately start new wave fronts.
+    /// </summary>
+    private void ProcessWave(
+        ref GameState state,
+        Explosion explosion,
+        int tick,
+        float simTime,
+        IEventCollector eventCollector)
+    {
+        int currentWave = explosion.CurrentWaveRadius;
+
+        foreach (var pos in explosion.AffectedArea)
+        {
+            int dist = Math.Max(
+                Math.Abs(pos.X - explosion.Origin.X),
+                Math.Abs(pos.Y - explosion.Origin.Y)
+            );
+
+            if (dist != currentWave) continue;
+
+            var result = _cellEliminator.Eliminate(ref state, pos, ElimSource.Bomb, tick, simTime, eventCollector);
+
+            if (result.Outcome == EliminateOutcome.Eliminated)
+            {
+                _lockScheduler?.Acquire(ref state, pos, CellLockType.Receive, explosion.ReceiveLockDuration);
+
+                // Chain reaction: eliminated bomb starts a new wave front
+                if (result.Tile.Type.IsBomb()
+                    && !(pos.X == explosion.Origin.X && pos.Y == explosion.Origin.Y))
+                {
+                    StartChainExplosion(ref state, pos, result.Tile, tick, simTime, eventCollector);
+                }
+            }
+        }
+
+        explosion.CurrentWaveRadius++;
+    }
+
+    /// <summary>
+    /// Creates a new explosion for a bomb that was hit by a wave.
+    /// Emits BombActivatedEvent and computes the effect area.
+    /// </summary>
+    private void StartChainExplosion(
+        ref GameState state, Position pos, Tile bombTile,
+        int tick, float simTime, IEventCollector eventCollector)
+    {
+        if (!_bombEffectRegistry.TryGetEffect(bombTile.Type, out var effect))
+            return;
+
+        var affected = Pools.ObtainHashSet<Position>();
+        try
+        {
+            effect!.Apply(in state, pos, affected);
+            affected.Add(pos);
+
+            if (eventCollector.IsEnabled)
+            {
+                eventCollector.Emit(new BombActivatedEvent
+                {
+                    Tick = tick,
+                    SimulationTime = simTime,
+                    TileId = bombTile.Id,
+                    Position = pos,
+                    BombType = bombTile.Type,
+                    AffectedPositions = new List<Position>(affected),
+                    IsChainReaction = true
+                });
+            }
+
+            // Determine wave interval based on bomb type
+            float waveInterval;
+            float acceleration;
+            if (bombTile.Type == ElementType.HorizontalRocket || bombTile.Type == ElementType.VerticalRocket)
+            {
+                waveInterval = _config.RocketWaveInterval;
+                acceleration = _config.RocketAcceleration;
+            }
+            else if (bombTile.Type.IsAreaBomb())
+            {
+                waveInterval = _config.AreaBombWaveInterval;
+                acceleration = _config.AreaBombAcceleration;
+            }
+            else
+            {
+                waveInterval = _config.DefaultWaveInterval;
+                acceleration = 1f;
+            }
+
+            // Calculate max radius
+            int maxRadius = 0;
+            foreach (var p in affected)
+            {
+                int dist = Math.Max(Math.Abs(p.X - pos.X), Math.Abs(p.Y - pos.Y));
+                if (dist > maxRadius) maxRadius = dist;
+            }
+
+            var chainExplosion = Pools.Obtain<Explosion>();
+            chainExplosion.Initialize(pos, maxRadius, waveInterval, acceleration);
+            chainExplosion.ReceiveLockDuration = ReceiveLockTimings.ExplosionClear;
+
+            foreach (var p in affected)
+                chainExplosion.AffectedArea.Add(p);
+
+            // Add to pending list (processed next tick, not recursively)
+            _pendingExplosions.Add(chainExplosion);
+        }
+        finally
+        {
+            Pools.Release(affected);
+        }
     }
 }

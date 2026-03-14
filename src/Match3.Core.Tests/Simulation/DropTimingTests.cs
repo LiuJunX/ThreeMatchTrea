@@ -5,6 +5,7 @@ using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Simulation;
+using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Matching.Generation;
@@ -359,7 +360,8 @@ public class DropTimingTests
         var matchProcessor = new StandardMatchProcessor(score, coverSystem, groundSystem, BombEffectRegistry.CreateDefault());
         var lockScheduler = new LockScheduler();
         var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem, lockScheduler);
-        var sessionManager = new ColorBombSessionManager(null, coverSystem, groundSystem, objectiveSystem, lockScheduler);
+        var cellEliminator = new CellEliminator(coverSystem, groundSystem, objectiveSystem);
+        var sessionManager = new ColorBombSessionManager(null, cellEliminator, lockScheduler);
         var powerUpHandler = new PowerUpHandler(score, new BombComboHandler(), BombEffectRegistry.CreateDefault(),
             coverSystem, groundSystem, explosionSystem: explosionSystem, colorBombSessionManager: sessionManager,
             lockScheduler: lockScheduler);

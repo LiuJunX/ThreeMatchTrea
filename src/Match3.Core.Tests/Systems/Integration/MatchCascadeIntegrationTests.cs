@@ -1,11 +1,13 @@
 ﻿using System.Collections.Generic;
 using System.Numerics;
 using Match3.Core.Config;
+using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Core;
 using Match3.Core.Systems.Generation;
+using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Matching.Generation;
 using Match3.Core.Systems.Physics;
@@ -245,15 +247,21 @@ public class MatchCascadeIntegrationTests
             }
         }
 
-        // 创建系统
+        // 创建系统 -- ExplosionSystem is now required for wave-based destruction
         var scoreSystem = new StubScoreSystem();
-        var bombRegistry = BombEffectRegistry.CreateDefault();
-        var powerUpHandler = new PowerUpHandler(scoreSystem);
+        var explosionSystem = new ExplosionSystem(new CoverSystem(), new GroundSystem());
+        var powerUpHandler = new PowerUpHandler(scoreSystem)
+            .WithExplosionSystem(explosionSystem);
+        var eventCollector = new StubEventCollector();
         var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };
         var gravitySystem = new RealtimeGravitySystem(config, rng);
 
-        // Act 1: 激活炸弹
-        powerUpHandler.ActivateBomb(ref state, new Position(2, 2));
+        // Act 1: 激活炸弹 (creates explosion, clears bomb attribute)
+        powerUpHandler.ActivateBomb(ref state, new Position(2, 2), 1, 0f, eventCollector);
+
+        // Act 2: 运行爆炸波次到完成
+        for (int i = 0; i < 30 && explosionSystem.HasActiveExplosions; i++)
+            explosionSystem.Update(ref state, 0.05f, 2 + i, 0.05f * i, eventCollector);
 
         // 验证整行被清除
         for (int x = 0; x < 5; x++)
@@ -261,7 +269,7 @@ public class MatchCascadeIntegrationTests
             Assert.Equal(ElementType.None, state.GetTile(x, 2).Type);
         }
 
-        // Act 2: 运行重力
+        // Act 3: 运行重力
         float dt = 1.0f / 60.0f;
         for (int frame = 0; frame < 60; frame++)
         {
@@ -269,7 +277,6 @@ public class MatchCascadeIntegrationTests
         }
 
         // Assert: 上方的方块应该下落填充空位
-        // 第 2 行现在应该是原来第 1 行的方块
         _output.WriteLine("After explosion and gravity:");
         for (int y = 0; y < 4; y++)
         {
@@ -647,7 +654,10 @@ public class MatchCascadeIntegrationTests
         state.SetTile(2, 3, new Tile(12, ElementType.Item3, 2, 3));
 
         var scoreSystem = new StubScoreSystem();
-        var powerUpHandler = new PowerUpHandler(scoreSystem);
+        var explosionSystem = new ExplosionSystem(new CoverSystem(), new GroundSystem());
+        var powerUpHandler = new PowerUpHandler(scoreSystem)
+            .WithExplosionSystem(explosionSystem);
+        var eventCollector = new StubEventCollector();
         var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };
         var gravitySystem = new RealtimeGravitySystem(config, rng);
         var animationSystem = new AnimationSystem(config);
@@ -659,8 +669,12 @@ public class MatchCascadeIntegrationTests
         var greenId = state.GetTile(1, 0).Id;
         var blueId = state.GetTile(2, 0).Id;
 
-        // Act 1: 激活炸弹
-        powerUpHandler.ActivateBomb(ref state, new Position(1, 1));
+        // Act 1: 激活炸弹 (creates explosion, clears bomb attribute)
+        powerUpHandler.ActivateBomb(ref state, new Position(1, 1), 1, 0f, eventCollector);
+
+        // Act 2: 运行爆炸波次到完成
+        for (int i = 0; i < 30 && explosionSystem.HasActiveExplosions; i++)
+            explosionSystem.Update(ref state, 0.05f, 2 + i, 0.05f * i, eventCollector);
 
         // 验证整行被清除
         Assert.Equal(ElementType.None, state.GetTile(0, 1).Type);
@@ -670,7 +684,7 @@ public class MatchCascadeIntegrationTests
         _output.WriteLine("炸弹爆炸后:");
         PrintBoard(ref state);
 
-        // Act 2: 运行重力+动画
+        // Act 3: 运行重力+动画 (gravity can run freely, no Drop locks)
         int frameCount = helper.UpdateUntilStable(ref state, gravitySystem, animationSystem, maxFrames: 120);
 
         _output.WriteLine($"动画完成: {frameCount} 帧");

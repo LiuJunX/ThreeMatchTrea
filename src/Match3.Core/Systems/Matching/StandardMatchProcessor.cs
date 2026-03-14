@@ -104,9 +104,9 @@ public class StandardMatchProcessor : IMatchProcessor
 
                 // Bomb chain reaction — only if the bomb was actually eliminated
                 // (cover-protected or indestructible bombs must not trigger chain)
-                if (result == EliminateResult.Eliminated && t.Type.IsBomb())
+                if (result.Outcome == EliminateOutcome.Eliminated && result.Tile.Type.IsBomb())
                 {
-                    if (_bombRegistry.TryGetEffect(t.Type, out var effect))
+                    if (_bombRegistry.TryGetEffect(result.Tile.Type, out var effect))
                     {
                         explosionRange.Clear();
                         effect!.Apply(in state, p, explosionRange);

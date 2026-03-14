@@ -74,25 +74,6 @@ public class PowerUpHandlerExplosionTests
     }
 
     [Fact]
-    public void ActivateBomb_WithoutExplosionSystem_FallsBackToInstantClear()
-    {
-        // No explosion system (null) — backward compatible path
-        var handler = CreateHandler(explosionSystem: null);
-        var state = CreateFilledState();
-
-        var bombTile = new Tile(100, ElementType.HorizontalRocket, 3, 3);
-        state.SetTile(3, 3, bombTile);
-
-        handler.ActivateBomb(ref state, new Position(3, 3), 1, 1f, _events);
-
-        // Entire row should be cleared immediately
-        for (int x = 0; x < 8; x++)
-        {
-            Assert.Equal(ElementType.None, state.GetTile(x, 3).Type);
-        }
-    }
-
-    [Fact]
     public void ActivateBomb_NoBomb_DoesNothing()
     {
         var explosion = new SpyExplosionSystem();
@@ -124,8 +105,11 @@ public class PowerUpHandlerExplosionTests
         // Only bomb attribute is cleared
         // Note: nearby tiles may be suspended by ExplosionSystem.CreateTargetedExplosion
         Assert.Equal(ElementType.None, state.GetTile(4, 4).Type);
-        // No TileDestroyedEvent should be emitted (that's ExplosionSystem's job)
-        Assert.DoesNotContain(_events.Events, e => e is TileDestroyedEvent);
+        // Only the bomb tile itself emits TileDestroyedEvent (ConsumeBomb) — blast radius tiles are ExplosionSystem's job
+        var destroyEvents = _events.Events.OfType<TileDestroyedEvent>().ToList();
+        Assert.Single(destroyEvents);
+        Assert.Equal(ElimSource.ConsumeBomb, destroyEvents[0].Reason);
+        Assert.Equal(new Position(4, 4), destroyEvents[0].GridPosition);
     }
 
     #region Helpers
@@ -188,7 +172,7 @@ public class PowerUpHandlerExplosionTests
         }
 
         public void Update(ref GameState state, float deltaTime, int tick, float simTime,
-            IEventCollector eventCollector, List<Position> triggeredBombs) { }
+            IEventCollector eventCollector) { }
 
         public void Reset() { }
     }

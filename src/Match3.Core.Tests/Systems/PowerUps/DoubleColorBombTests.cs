@@ -61,15 +61,14 @@ public class DoubleColorBombTests : IDisposable
         state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.ColorBomb, p2.X, p2.Y));
 
         var handler = CreateHandlerWithExplosion();
-        handler.ProcessSpecialMove(ref state, p1, p2, 1, 0f, _eventCollector, out _);
+        handler.ProcessBombSwap(ref state, p1, p2, 1, 0f, _eventCollector, out _);
 
         // Assert: explosion was created (tiles are suspended)
         Assert.True(_explosionSystem.HasActiveExplosions);
 
         // Verify wave timing matches constants by advancing exactly one WipeInterval
-        var triggeredBombs = new List<Position>();
         _explosionSystem.Update(ref state, DoubleColorBombConstants.WipeInterval, 2, 0.04f,
-            _eventCollector, triggeredBombs);
+            _eventCollector);
 
         // Wave 0 should have processed (tiles at distance 0 from p2 destroyed)
         var originTile = state.GetTile(p2.X, p2.Y);
@@ -138,22 +137,13 @@ public class DoubleColorBombTests : IDisposable
         var handler = CreateHandlerWithExplosionAndSession(sessionManager);
 
         // Act: process the double ColorBomb combo
-        handler.ProcessSpecialMove(ref state, p1, p2, 1, 0f, _eventCollector, out _);
+        handler.ProcessBombSwap(ref state, p1, p2, 1, 0f, _eventCollector, out _);
 
-        // Advance explosion waves until the third bomb is hit
-        var triggeredBombs = new List<Position>();
+        // Advance explosion waves — ExplosionSystem handles chain reactions internally
         for (int i = 0; i < 20; i++)
         {
             _explosionSystem.Update(ref state, 0.05f, 2 + i, 0.05f * i,
-                _eventCollector, triggeredBombs);
-
-            // If the third bomb was triggered, activate it as chain reaction
-            foreach (var pos in triggeredBombs)
-            {
-                handler.ActivateBomb(ref state, pos, 2 + i, 0.05f * i,
-                    _eventCollector, isChainReaction: true);
-            }
-            triggeredBombs.Clear();
+                _eventCollector);
 
             if (!_explosionSystem.HasActiveExplosions)
                 break;
@@ -181,16 +171,14 @@ public class DoubleColorBombTests : IDisposable
         // Create explosion centered at origin
         _explosionSystem.CreateExplosion(ref state, origin, 2);
 
-        // Verify tile is suspended initially
-        Assert.True(state.IsLocked(protectedPos.X, protectedPos.Y, CellLockType.Drop));
-
-        var triggeredBombs = new List<Position>();
+        // No pre-locking -- tiles are not Drop-locked at creation time
+        Assert.False(state.IsLocked(protectedPos.X, protectedPos.Y, CellLockType.Drop));
 
         // Act: advance wave 0 (origin)
-        _explosionSystem.Update(ref state, 0.1f, 1, 0f, _eventCollector, triggeredBombs);
+        _explosionSystem.Update(ref state, 0.1f, 1, 0f, _eventCollector);
 
         // Act: advance wave 1 (hits the protected tile)
-        _explosionSystem.Update(ref state, 0.1f, 2, 0.1f, _eventCollector, triggeredBombs);
+        _explosionSystem.Update(ref state, 0.1f, 2, 0.1f, _eventCollector);
 
         // Assert: protected tile survives
         var tile = state.GetTile(protectedPos.X, protectedPos.Y);
@@ -213,15 +201,10 @@ public class DoubleColorBombTests : IDisposable
 
         _explosionSystem.CreateExplosion(ref state, origin, 2);
 
-        var triggeredBombs = new List<Position>();
-
         // Wave 0
-        _explosionSystem.Update(ref state, 0.1f, 1, 0f, _eventCollector, triggeredBombs);
+        _explosionSystem.Update(ref state, 0.1f, 1, 0f, _eventCollector);
         // Wave 1 (hits the indestructible bomb)
-        _explosionSystem.Update(ref state, 0.1f, 2, 0.1f, _eventCollector, triggeredBombs);
-
-        // Assert: bomb should NOT be triggered
-        Assert.Empty(triggeredBombs);
+        _explosionSystem.Update(ref state, 0.1f, 2, 0.1f, _eventCollector);
         // Bomb still exists
         Assert.Equal(ElementType.HorizontalRocket, state.GetTile(bombPos.X, bombPos.Y).Type);
     }
@@ -242,7 +225,7 @@ public class DoubleColorBombTests : IDisposable
         var handler = CreateHandlerWithExplosion();
 
         // Act
-        handler.ProcessSpecialMove(ref state, p1, p2, 1, 0f, _eventCollector, out _);
+        handler.ProcessBombSwap(ref state, p1, p2, 1, 0f, _eventCollector, out _);
 
         // Run all explosion waves to completion
         RunExplosionToCompletion(ref state);
@@ -350,30 +333,20 @@ public class DoubleColorBombTests : IDisposable
             new Tile(102, ElementType.HorizontalRocket, rocketPos.X, rocketPos.Y));
 
         var handler = CreateHandlerWithExplosion();
-        handler.ProcessSpecialMove(ref state, p1, p2, 1, 0f, _eventCollector, out _);
+        handler.ProcessBombSwap(ref state, p1, p2, 1, 0f, _eventCollector, out _);
 
-        // Run waves and handle chain reactions
-        var triggeredBombs = new List<Position>();
-        bool rocketTriggered = false;
+        // Run waves — ExplosionSystem handles chain reactions internally
         for (int i = 0; i < 30; i++)
         {
             _explosionSystem.Update(ref state, 0.05f, 2 + i, 0.05f * i,
-                _eventCollector, triggeredBombs);
-
-            foreach (var pos in triggeredBombs)
-            {
-                if (pos.Equals(rocketPos))
-                    rocketTriggered = true;
-                handler.ActivateBomb(ref state, pos, 2 + i, 0.05f * i,
-                    _eventCollector, isChainReaction: true);
-            }
-            triggeredBombs.Clear();
+                _eventCollector);
 
             if (!_explosionSystem.HasActiveExplosions) break;
         }
 
-        // Assert: rocket was chain-triggered
-        Assert.True(rocketTriggered);
+        // Assert: rocket was chain-triggered (BombActivatedEvent emitted internally)
+        Assert.Contains(_eventCollector.Events, e => e is BombActivatedEvent bae
+            && bae.Position.Equals(rocketPos));
     }
 
     [Fact]
@@ -569,12 +542,10 @@ public class DoubleColorBombTests : IDisposable
 
     private void RunExplosionToCompletion(ref GameState state)
     {
-        var triggeredBombs = new List<Position>();
         for (int i = 0; i < 100 && _explosionSystem.HasActiveExplosions; i++)
         {
             _explosionSystem.Update(ref state, 0.05f, 10 + i, 0.05f * i,
-                _eventCollector, triggeredBombs);
-            triggeredBombs.Clear();
+                _eventCollector);
         }
     }
 

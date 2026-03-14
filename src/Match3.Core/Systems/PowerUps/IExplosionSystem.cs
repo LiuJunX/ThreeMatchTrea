@@ -1,6 +1,5 @@
 using Match3.Core.Events;
 using Match3.Core.Models.Grid;
-using Match3.Core.Models.Gameplay;
 
 namespace Match3.Core.Systems.PowerUps;
 
@@ -17,9 +16,8 @@ public interface IExplosionSystem
         float deltaTime,
         int tick,
         float simTime,
-        IEventCollector eventCollector,
-        System.Collections.Generic.List<Position> triggeredBombs);
-        
+        IEventCollector eventCollector);
+
     bool HasActiveExplosions { get; }
     void Reset();
 }

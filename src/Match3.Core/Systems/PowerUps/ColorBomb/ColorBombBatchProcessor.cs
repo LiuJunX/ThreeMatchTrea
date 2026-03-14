@@ -3,8 +3,8 @@ using Match3.Core.Events;
 using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Layers;
-using Match3.Core.Systems.Objectives;
 using Match3.Core.Utility.Pools;
 
 namespace Match3.Core.Systems.PowerUps.ColorBomb;
@@ -15,27 +15,19 @@ namespace Match3.Core.Systems.PowerUps.ColorBomb;
 /// </summary>
 internal sealed class ColorBombBatchProcessor
 {
-    private readonly ICoverSystem _coverSystem;
-    private readonly IGroundSystem _groundSystem;
-    private readonly ILevelObjectiveSystem? _objectiveSystem;
+    private readonly ICellEliminator _cellEliminator;
     private readonly LockScheduler _lockScheduler;
 
     /// <summary>
     /// Creates a new <see cref="ColorBombBatchProcessor"/>.
     /// </summary>
-    /// <param name="coverSystem">Cover system for protection checks.</param>
-    /// <param name="groundSystem">Ground system for ground-layer damage.</param>
-    /// <param name="objectiveSystem">Optional objective system for goal tracking.</param>
+    /// <param name="cellEliminator">Unified cell elimination pipeline.</param>
     /// <param name="lockScheduler">Lock scheduler for cell lock lifecycle management.</param>
     public ColorBombBatchProcessor(
-        ICoverSystem coverSystem,
-        IGroundSystem groundSystem,
-        ILevelObjectiveSystem? objectiveSystem,
+        ICellEliminator cellEliminator,
         LockScheduler lockScheduler)
     {
-        _coverSystem = coverSystem;
-        _groundSystem = groundSystem;
-        _objectiveSystem = objectiveSystem;
+        _cellEliminator = cellEliminator;
         _lockScheduler = lockScheduler;
     }
 
@@ -56,17 +48,23 @@ internal sealed class ColorBombBatchProcessor
         var destroyedTileIds = Pools.ObtainList<int>(session.ArrivedTargets.Count);
         try
         {
-            // First pass: collect valid targets, handle covers
+            // First pass: attempt elimination for each target via CellEliminator.
+            // Cover-protected targets are handled (Absorbed), others are collected
+            // for the batch event. Elimination is deferred until after the batch
+            // event because Choreographer requires it before TileDestroyedEvents.
             foreach (var target in session.ArrivedTargets)
             {
                 var tile = state.GetTile(target.Position.X, target.Position.Y);
                 if (tile.Id != target.TileId || tile.Type == ElementType.None)
                     continue;
 
-                // Check cover
-                if (_coverSystem.IsTileProtected(in state, target.Position))
+                // CellEliminator handles cover damage internally.
+                // We call Eliminate here for covered targets to absorb the hit;
+                // non-covered targets are deferred to pass 2.
+                var cover = state.GetCover(target.Position);
+                if (cover.Type != CoverType.None && cover.Health > 0)
                 {
-                    _coverSystem.TryDamageCover(ref state, target.Position, tick, simTime, events);
+                    _cellEliminator.Eliminate(ref state, target.Position, ElimSource.ColorBomb, tick, simTime, events);
                     continue;
                 }
 
@@ -91,31 +89,10 @@ internal sealed class ColorBombBatchProcessor
                 });
             }
 
-            // Second pass: destroy tiles and emit per-tile events
-            for (int i = 0; i < destroyedPositions.Count; i++)
+            // Second pass: destroy tiles via CellEliminator (event, objective, clear, ground)
+            foreach (var pos in destroyedPositions)
             {
-                var pos = destroyedPositions[i];
-                var tile = state.GetTile(pos.X, pos.Y);
-                if (tile.Type == ElementType.None) continue;
-
-                if (events.IsEnabled)
-                {
-                    events.Emit(new TileDestroyedEvent
-                    {
-                        Tick = tick,
-                        SimulationTime = simTime,
-                        TileId = tile.Id,
-                        GridPosition = pos,
-                        Type = tile.Type,
-                        Reason = ElimSource.ColorBomb,
-                        IsGoal = _objectiveSystem != null &&
-                                 _objectiveSystem.IsTarget(in state, ObjectiveTargetLayer.Tile, (int)tile.Type)
-                    });
-                }
-
-                _objectiveSystem?.OnTileDestroyed(ref state, tile.Type, tick, simTime, events);
-                state.SetTile(pos.X, pos.Y, new Tile(0, ElementType.None, pos.X, pos.Y));
-                _groundSystem.OnTileDestroyed(ref state, pos, tick, simTime, events);
+                _cellEliminator.Eliminate(ref state, pos, ElimSource.ColorBomb, tick, simTime, events);
             }
 
             // Release all remaining session locks

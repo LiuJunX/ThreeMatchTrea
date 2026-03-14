@@ -192,7 +192,7 @@ internal sealed class ColorBombChoreographer
             });
         }
 
-        // Remove each transformed bomb tile (ClearBombAttribute set them to None)
+        // Remove each transformed bomb tile (ConsumeBomb set them to None)
         foreach (var tileId in evt.ActivatedTileIds)
         {
             _ctx.Commands.Add(new RemoveTileCommand

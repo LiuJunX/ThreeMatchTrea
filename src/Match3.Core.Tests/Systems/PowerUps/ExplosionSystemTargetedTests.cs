@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Match3.Core.Events;
 using Match3.Core.Events.Enums;
@@ -29,7 +29,7 @@ public class ExplosionSystemTargetedTests : IDisposable
     }
 
     [Fact]
-    public void CreateTargetedExplosion_SuspendsOnlyTargetTiles()
+    public void CreateTargetedExplosion_RegistersActiveExplosion_NoPrelocking()
     {
         // Arrange
         var state = CreateGameState(10, 10);
@@ -44,18 +44,16 @@ public class ExplosionSystemTargetedTests : IDisposable
         // Act
         _sut.CreateTargetedExplosion(ref state, origin, targets);
 
-        // Assert
+        // Assert: explosion registered, no pre-locking
         Assert.True(_sut.HasActiveExplosions);
 
-        // Verify targets are suspended
+        // No Drop locks should be placed (pre-locking removed)
         foreach (var pos in targets)
         {
-            Assert.True(state.IsLocked(pos.X, pos.Y, CellLockType.Drop), $"Target at {pos} should be suspended");
+            Assert.False(state.IsLocked(pos.X, pos.Y, CellLockType.Drop), $"Target at {pos} should NOT have Drop lock");
         }
-
-        // Verify others are NOT suspended
-        Assert.False(state.IsLocked(5, 5, CellLockType.Drop), "Origin should not be suspended unless in targets");
-        Assert.False(state.IsLocked(0, 0, CellLockType.Drop), "Random tile should not be suspended");
+        Assert.False(state.IsLocked(5, 5, CellLockType.Drop), "Origin should not have Drop lock");
+        Assert.False(state.IsLocked(0, 0, CellLockType.Drop), "Random tile should not have Drop lock");
     }
 
     [Fact]
@@ -72,32 +70,30 @@ public class ExplosionSystemTargetedTests : IDisposable
         };
 
         _sut.CreateTargetedExplosion(ref state, origin, targets);
-        var triggeredBombs = new List<Position>();
-        float deltaTime = 0.1f; 
+        float deltaTime = 0.1f;
 
-        // Act 1: Wave 0 (Distance 0)
-        _sut.Update(ref state, deltaTime, 1, 1f, _eventCollector, triggeredBombs);
-        
+        // Act 1: Wave 0 (Distance 0) -- no targets at distance 0
+        _sut.Update(ref state, deltaTime, 1, 1f, _eventCollector);
+
         // Assert 1: Nothing cleared yet (targets start at Distance 1)
         Assert.NotEqual(ElementType.None, state.GetTile(5, 6).Type);
-        Assert.True(state.IsLocked(5, 6, CellLockType.Drop));
 
         // Act 2: Wave 1 (Distance 1)
-        _sut.Update(ref state, deltaTime, 2, 1.1f, _eventCollector, triggeredBombs);
+        _sut.Update(ref state, deltaTime, 2, 1.1f, _eventCollector);
 
         // Assert 2: Target at Distance 1 cleared
         Assert.Equal(ElementType.None, state.GetTile(5, 6).Type);
         Assert.NotEqual(ElementType.None, state.GetTile(5, 7).Type);
 
         // Act 3: Wave 2 (Distance 2)
-        _sut.Update(ref state, deltaTime, 3, 1.2f, _eventCollector, triggeredBombs);
+        _sut.Update(ref state, deltaTime, 3, 1.2f, _eventCollector);
 
         // Assert 3: Target at Distance 2 cleared
         Assert.Equal(ElementType.None, state.GetTile(5, 7).Type);
         Assert.NotEqual(ElementType.None, state.GetTile(5, 8).Type);
 
         // Act 4: Wave 3 (Distance 3)
-        _sut.Update(ref state, deltaTime, 4, 1.3f, _eventCollector, triggeredBombs);
+        _sut.Update(ref state, deltaTime, 4, 1.3f, _eventCollector);
 
         // Assert 4: Target at Distance 3 cleared
         Assert.Equal(ElementType.None, state.GetTile(5, 8).Type);
@@ -119,20 +115,19 @@ public class ExplosionSystemTargetedTests : IDisposable
         };
 
         _sut.CreateTargetedExplosion(ref state, origin, targets, 0.1f, 0.5f);
-        var triggeredBombs = new List<Position>();
 
         // Wave 0 at t=0.1
-        _sut.Update(ref state, 0.1f, 1, 1f, _eventCollector, triggeredBombs);
+        _sut.Update(ref state, 0.1f, 1, 1f, _eventCollector);
         // Wave 1 at t=0.1 (interval shrinks to 0.05 after wave 0)
-        _sut.Update(ref state, 0.05f, 2, 1.05f, _eventCollector, triggeredBombs);
+        _sut.Update(ref state, 0.05f, 2, 1.05f, _eventCollector);
         Assert.Equal(ElementType.None, state.GetTile(5, 6).Type); // dist 1 cleared
 
         // Wave 2 at interval 0.025
-        _sut.Update(ref state, 0.025f, 3, 1.075f, _eventCollector, triggeredBombs);
+        _sut.Update(ref state, 0.025f, 3, 1.075f, _eventCollector);
         Assert.Equal(ElementType.None, state.GetTile(5, 7).Type); // dist 2 cleared
 
         // Wave 3 at interval 0.0125
-        _sut.Update(ref state, 0.0125f, 4, 1.0875f, _eventCollector, triggeredBombs);
+        _sut.Update(ref state, 0.0125f, 4, 1.0875f, _eventCollector);
         Assert.Equal(ElementType.None, state.GetTile(5, 8).Type); // dist 3 cleared
 
         Assert.False(_sut.HasActiveExplosions);
@@ -152,4 +147,3 @@ public class ExplosionSystemTargetedTests : IDisposable
     }
 
 }
-

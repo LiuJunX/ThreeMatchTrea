@@ -500,7 +500,7 @@ public interface IPowerUpHandler
     /// <summary>
     /// 处理特殊移动（两个位置的炸弹组合）
     /// </summary>
-    void ProcessSpecialMove(ref GameState state, Position p1, Position p2, out int points);
+    void ProcessBombSwap(ref GameState state, Position p1, Position p2, out int points);
 
     /// <summary>
     /// 激活单个炸弹
@@ -589,7 +589,7 @@ var handler = new PowerUpHandler(scoreSystem, comboHandler, registry);
 
 ```csharp
 // 玩家交换两个相邻的炸弹
-handler.ProcessSpecialMove(ref state, pos1, pos2, out int points);
+handler.ProcessBombSwap(ref state, pos1, pos2, out int points);
 ```
 
 ### 激活单个炸弹

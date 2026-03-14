@@ -126,8 +126,8 @@ public sealed class GameServiceFactory : IGameServiceFactory
         var coverSystem = new CoverSystem(objectiveSystem);
         var groundSystem = new GroundSystem(objectiveSystem);
         var cellEliminator = new CellEliminator(coverSystem, groundSystem, objectiveSystem);
-        var explosionSystem = new ExplosionSystem(cellEliminator, coverSystem, groundSystem, objectiveSystem, lockScheduler);
-        var colorBombSessionManager = new ColorBombSessionManager(null, coverSystem, groundSystem, objectiveSystem, lockScheduler);
+        var explosionSystem = new ExplosionSystem(cellEliminator, bombRegistry, lockScheduler);
+        var colorBombSessionManager = new ColorBombSessionManager(null, cellEliminator, lockScheduler);
         var basePowerUp = (PowerUpHandler)_powerUpFactory(scoreSystem);
         var powerUpHandler = basePowerUp
             .WithExplosionSystem(explosionSystem)

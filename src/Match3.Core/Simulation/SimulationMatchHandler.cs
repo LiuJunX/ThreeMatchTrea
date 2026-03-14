@@ -159,7 +159,7 @@ internal sealed class SimulationMatchHandler
                 // Unified elimination (adds Cover + Ground handling that was previously missing)
                 var result = _cellEliminator.Eliminate(ref state, pos, ElimSource.Projectile, currentTick, elapsedTime, eventCollector);
 
-                if (result == EliminateResult.Eliminated)
+                if (result.Outcome == EliminateOutcome.Eliminated)
                     _lockScheduler?.Acquire(ref state, pos, CellLockType.Receive, ReceiveLockTimings.ProjectileImpactClear);
             }
             else

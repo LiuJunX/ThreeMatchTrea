@@ -58,13 +58,10 @@ public class SimulationOrchestratorChainTests
         // Wave 0: center (5,5)
         orchestrator.UpdateExplosions(ref state, 0.1f, 10, 5.0f, events);
 
-        // Wave 1: hits (6,5) which has a bomb → triggers chain reaction
-        int bombCount = orchestrator.UpdateExplosions(ref state, 0.1f, 11, 5.1f, events);
+        // Wave 1: hits (6,5) which has a bomb -- ExplosionSystem handles chain reactions internally
+        orchestrator.UpdateExplosions(ref state, 0.1f, 11, 5.1f, events);
 
-        // Chain bomb should have been activated with proper tick/simTime/events
-        Assert.True(bombCount > 0, "Should have triggered chain bomb");
-
-        // The chain bomb activation should emit BombActivatedEvent
+        // The chain bomb activation should emit BombActivatedEvent internally
         var bombEvents = events.EmittedEvents.OfType<BombActivatedEvent>().ToList();
         Assert.True(bombEvents.Count > 0, "Chain reaction should emit BombActivatedEvent");
 

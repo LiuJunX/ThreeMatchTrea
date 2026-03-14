@@ -9,14 +9,14 @@ namespace Match3.Core.Systems.PowerUps;
 public interface IPowerUpHandler
 {
     /// <summary>
-    /// Process a special move (bomb combo or color bomb interaction) without event collection.
+    /// Process a bomb swap (bomb combo or color bomb interaction) without event collection.
     /// </summary>
-    void ProcessSpecialMove(ref GameState state, Position p1, Position p2, out int points);
+    void ProcessBombSwap(ref GameState state, Position p1, Position p2, out int points);
 
     /// <summary>
-    /// Process a special move (bomb combo or color bomb interaction) with full event sourcing.
+    /// Process a bomb swap (bomb combo or color bomb interaction) with full event sourcing.
     /// </summary>
-    void ProcessSpecialMove(
+    void ProcessBombSwap(
         ref GameState state,
         Position p1,
         Position p2,

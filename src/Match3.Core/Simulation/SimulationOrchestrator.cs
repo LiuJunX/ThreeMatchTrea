@@ -101,32 +101,8 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
     /// <inheritdoc />
     public int UpdateExplosions(ref GameState state, float deltaTime, int tick, float simTime, IEventCollector events)
     {
-        var triggeredBombs = Pools.ObtainList<Position>();
-        int bombCount = 0;
-
-        try
-        {
-            _explosionSystem.Update(
-                ref state,
-                deltaTime,
-                tick,
-                simTime,
-                events,
-                triggeredBombs);
-
-            bombCount = triggeredBombs.Count;
-
-            foreach (var pos in triggeredBombs)
-            {
-                _powerUpHandler.ActivateBomb(ref state, pos, tick, simTime, events, isChainReaction: true);
-            }
-        }
-        finally
-        {
-            Pools.Release(triggeredBombs);
-        }
-
-        return bombCount;
+        _explosionSystem.Update(ref state, deltaTime, tick, simTime, events);
+        return 0;
     }
 
     /// <inheritdoc />

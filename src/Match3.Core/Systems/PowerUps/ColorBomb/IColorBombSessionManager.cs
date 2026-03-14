@@ -25,7 +25,7 @@ public interface IColorBombSessionManager
 
     /// <summary>
     /// Create a new ColorBomb session with a specified target color (swap with normal tile).
-    /// The bomb tile should already be cleared (ClearBombAttribute) before calling this.
+    /// The bomb tile should already be consumed (ConsumeBomb) before calling this.
     /// </summary>
     void CreateSession(ref GameState state, Position origin, int bombTileId,
         ElementType targetColor, int tick, float simTime, IEventCollector events);

@@ -199,7 +199,7 @@ internal sealed class SimulationInputHandler
     }
 
     /// <summary>
-    /// Process bomb swap effects after swap animation completes.
+    /// Finalize bomb swap effects after swap animation completes.
     /// Tries combo first (color bomb + normal, bomb + bomb, color bomb + bomb),
     /// then falls back to single bomb activation.
     /// </summary>
@@ -214,7 +214,7 @@ internal sealed class SimulationInputHandler
     /// <param name="elapsedTime">Elapsed simulation time for event timestamps.</param>
     /// <param name="eventCollector">Event collector for event emission.</param>
     /// <param name="bombsActivated">Counter incremented when a bomb is activated.</param>
-    public void ProcessBombSwap(
+    public void FinalizeBombSwap(
         ref GameState state,
         Position from,
         Position to,
@@ -232,7 +232,7 @@ internal sealed class SimulationInputHandler
         // - Original tile B (to) is now at position 'from'
 
         // Try combo first (handles: color bomb + normal, bomb + bomb, color bomb + bomb)
-        _powerUpHandler.ProcessSpecialMove(
+        _powerUpHandler.ProcessBombSwap(
             ref state, from, to, currentTick, elapsedTime, eventCollector, out int points);
 
         if (points > 0)

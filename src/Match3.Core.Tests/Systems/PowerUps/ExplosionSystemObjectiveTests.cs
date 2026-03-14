@@ -80,10 +80,9 @@ public class ExplosionSystemObjectiveTests
         explosionSystem.CreateExplosion(ref state, origin, radius);
 
         // Process all waves
-        var triggeredBombs = new List<Position>();
         for (int wave = 0; wave <= radius; wave++)
         {
-            explosionSystem.Update(ref state, 0.1f, wave, wave * 0.1f, events, triggeredBombs);
+            explosionSystem.Update(ref state, 0.1f, wave, wave * 0.1f, events);
         }
 
         // Assert
@@ -129,10 +128,9 @@ public class ExplosionSystemObjectiveTests
         // Act
         explosionSystem.CreateExplosion(ref state, origin, radius);
 
-        var triggeredBombs = new List<Position>();
         for (int wave = 0; wave <= radius; wave++)
         {
-            explosionSystem.Update(ref state, 0.1f, wave, wave * 0.1f, events, triggeredBombs);
+            explosionSystem.Update(ref state, 0.1f, wave, wave * 0.1f, events);
         }
 
         // Assert - Should only count Red tiles (approximately half of 25)
@@ -155,10 +153,9 @@ public class ExplosionSystemObjectiveTests
         // Act & Assert - Should not throw
         explosionSystem.CreateExplosion(ref state, origin, radius);
 
-        var triggeredBombs = new List<Position>();
         for (int wave = 0; wave <= radius; wave++)
         {
-            explosionSystem.Update(ref state, 0.1f, wave, wave * 0.1f, events, triggeredBombs);
+            explosionSystem.Update(ref state, 0.1f, wave, wave * 0.1f, events);
         }
 
         // Tiles should still be destroyed
@@ -192,10 +189,9 @@ public class ExplosionSystemObjectiveTests
         // Act
         explosionSystem.CreateExplosion(ref state, origin, radius);
 
-        var triggeredBombs = new List<Position>();
         for (int wave = 0; wave <= radius; wave++)
         {
-            explosionSystem.Update(ref state, 0.1f, wave, wave * 0.1f, events, triggeredBombs);
+            explosionSystem.Update(ref state, 0.1f, wave, wave * 0.1f, events);
         }
 
         // Assert - Should have ObjectiveProgressEvents
@@ -230,10 +226,9 @@ public class ExplosionSystemObjectiveTests
         // Act
         explosionSystem.CreateExplosion(ref state, origin, radius);
 
-        var triggeredBombs = new List<Position>();
         for (int wave = 0; wave <= radius; wave++)
         {
-            explosionSystem.Update(ref state, 0.1f, wave, wave * 0.1f, events, triggeredBombs);
+            explosionSystem.Update(ref state, 0.1f, wave, wave * 0.1f, events);
         }
 
         // Assert
@@ -279,11 +274,10 @@ public class ExplosionSystemObjectiveTests
         // Act
         explosionSystem.CreateTargetedExplosion(ref state, origin, targets);
 
-        var triggeredBombs = new List<Position>();
         // Process enough waves to cover max distance
         for (int wave = 0; wave <= 5; wave++)
         {
-            explosionSystem.Update(ref state, 0.1f, wave, wave * 0.1f, events, triggeredBombs);
+            explosionSystem.Update(ref state, 0.1f, wave, wave * 0.1f, events);
         }
 
         // Assert
@@ -327,10 +321,9 @@ public class ExplosionSystemObjectiveTests
         // Act
         explosionSystem.CreateExplosion(ref state, origin, radius);
 
-        var triggeredBombs = new List<Position>();
         for (int wave = 0; wave <= radius; wave++)
         {
-            explosionSystem.Update(ref state, 0.1f, wave, wave * 0.1f, events, triggeredBombs);
+            explosionSystem.Update(ref state, 0.1f, wave, wave * 0.1f, events);
         }
 
         // Assert

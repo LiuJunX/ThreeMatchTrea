@@ -2,8 +2,8 @@ using System.Collections.Generic;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Layers;
-using Match3.Core.Systems.Objectives;
 
 namespace Match3.Core.Systems.PowerUps.ColorBomb;
 
@@ -32,26 +32,20 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
     /// Creates a new ColorBombSessionManager.
     /// </summary>
     /// <param name="config">Optional configuration; defaults to <see cref="ColorBombConfig"/> defaults.</param>
-    /// <param name="coverSystem">Cover system for protection checks; defaults to a new <see cref="CoverSystem"/>.</param>
-    /// <param name="groundSystem">Ground system for ground-layer damage; defaults to a new <see cref="GroundSystem"/>.</param>
-    /// <param name="objectiveSystem">Optional objective system for goal tracking.</param>
+    /// <param name="cellEliminator">Unified cell elimination pipeline; defaults to a new <see cref="CellEliminator"/>.</param>
     /// <param name="lockScheduler">
     /// Required lock scheduler for cell lock lifecycle management.
     /// Use <see cref="NullLockScheduler.Instance"/> in tests that do not need locking behavior.
     /// </param>
     public ColorBombSessionManager(ColorBombConfig? config = null,
-        ICoverSystem? coverSystem = null,
-        IGroundSystem? groundSystem = null,
-        ILevelObjectiveSystem? objectiveSystem = null,
+        ICellEliminator? cellEliminator = null,
         LockScheduler? lockScheduler = null)
     {
         var cfg = config ?? new ColorBombConfig();
         _lockScheduler = lockScheduler ?? NullLockScheduler.Instance;
         _beamController = new ColorBombBeamController(cfg, _lockScheduler);
         _batchProcessor = new ColorBombBatchProcessor(
-            coverSystem ?? new CoverSystem(),
-            groundSystem ?? new GroundSystem(),
-            objectiveSystem,
+            cellEliminator ?? new CellEliminator(new CoverSystem(), new GroundSystem()),
             _lockScheduler);
     }
 

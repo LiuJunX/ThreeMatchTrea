@@ -212,7 +212,7 @@ public sealed class SimulationEngine : IDisposable
         if (pendingBombSwap.HasValue && !_pendingMoveState.NeedsValidation)
         {
             var bomb = pendingBombSwap.Value;
-            _inputHandler.ProcessBombSwap(ref state, bomb.From, bomb.To,
+            _inputHandler.FinalizeBombSwap(ref state, bomb.From, bomb.To,
                 bomb.TileAIsBomb, bomb.TileBIsBomb, bomb.TileAIsColorBomb, bomb.TileBIsColorBomb,
                 _currentTick, _elapsedTime, _eventCollector, ref _bombsActivated);
         }
@@ -531,9 +531,9 @@ public sealed class SimulationEngine : IDisposable
         var cloneCover = new CoverSystem(_objectiveSystem);
         var cloneGround = new GroundSystem(_objectiveSystem);
         var cloneCellEliminator = new CellEliminator(cloneCover, cloneGround, _objectiveSystem);
-        var cloneExplosion = new ExplosionSystem(cloneCellEliminator, cloneCover, cloneGround, _objectiveSystem, cloneLocks);
+        var cloneExplosion = new ExplosionSystem(cloneCellEliminator, BombEffectRegistry.CreateDefault(), cloneLocks);
         var cloneProjectile = new ProjectileSystem();
-        var cloneColorBomb = new ColorBombSessionManager(null, cloneCover, cloneGround, _objectiveSystem, cloneLocks);
+        var cloneColorBomb = new ColorBombSessionManager(null, cloneCellEliminator, cloneLocks);
         var clonePowerUp = PowerUpHandlerFactory.CloneForSimulation(
             (PowerUpHandler)_powerUpHandler,
             cloneExplosion,
