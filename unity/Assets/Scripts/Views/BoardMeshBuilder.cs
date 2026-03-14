@@ -423,6 +423,7 @@ namespace Match3.Unity.Views
             SetBaseColor(baseMat, new Color(0.84f, 0.80f, 0.74f));
             if (baseMat.HasProperty("_Smoothness"))
                 baseMat.SetFloat("_Smoothness", 0.30f);
+            EnableEmission(baseMat, new Color(0.84f, 0.80f, 0.74f) * 0.08f);
 
             // Cell inset: the main visible cell surface (clean warm white)
             var insetMat = new Material(shader);
@@ -431,6 +432,7 @@ namespace Match3.Unity.Views
             SetBaseColor(insetMat, new Color(0.94f, 0.91f, 0.86f));
             if (insetMat.HasProperty("_Smoothness"))
                 insetMat.SetFloat("_Smoothness", 0.35f);
+            EnableEmission(insetMat, new Color(0.94f, 0.91f, 0.86f) * 0.12f);
 
             // Wall: slightly deeper warm tone
             var wallMat = new Material(shader);
@@ -439,6 +441,7 @@ namespace Match3.Unity.Views
             SetBaseColor(wallMat, new Color(0.82f, 0.76f, 0.68f));
             if (wallMat.HasProperty("_Smoothness"))
                 wallMat.SetFloat("_Smoothness", 0.30f);
+            EnableEmission(wallMat, new Color(0.82f, 0.76f, 0.68f) * 0.06f);
 
             _boardMaterials = new[] { baseMat, insetMat, wallMat };
             return _boardMaterials;
@@ -545,6 +548,13 @@ namespace Match3.Unity.Views
                 mat.SetColor("_BaseColor", color);
             else
                 mat.SetColor("_Color", color);
+        }
+
+        private static void EnableEmission(Material mat, Color emissionColor)
+        {
+            mat.EnableKeyword("_EMISSION");
+            mat.SetColor("_EmissionColor", emissionColor);
+            mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
         }
     }
 }
