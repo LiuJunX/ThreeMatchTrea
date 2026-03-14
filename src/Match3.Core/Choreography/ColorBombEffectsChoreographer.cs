@@ -4,6 +4,7 @@ using System.Numerics;
 using Match3.Core.Events;
 using Match3.Core.Events.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Utility.Pools;
 
 namespace Match3.Core.Choreography;
 
@@ -156,71 +157,78 @@ internal sealed class ColorBombEffectsChoreographer
         if (affectedPositions.Count == 0) return startTime;
 
         // Build target list with distance and angle, skipping origin
-        var targets = new List<(Position pos, Vector2 target, float dist, float angle)>();
-        foreach (var pos in affectedPositions)
+        var targets = Pools.ObtainList<(Position pos, Vector2 target, float dist, float angle)>();
+        try
         {
-            if (pos.X == gridOrigin.X && pos.Y == gridOrigin.Y) continue;
-            var targetPos = new Vector2(pos.X, pos.Y);
-            float dist = Vector2.Distance(origin, targetPos);
-            float angle = MathF.Atan2(pos.Y - gridOrigin.Y, pos.X - gridOrigin.X);
-            targets.Add((pos, targetPos, dist, angle));
+            foreach (var pos in affectedPositions)
+            {
+                if (pos.X == gridOrigin.X && pos.Y == gridOrigin.Y) continue;
+                var targetPos = new Vector2(pos.X, pos.Y);
+                float dist = Vector2.Distance(origin, targetPos);
+                float angle = MathF.Atan2(pos.Y - gridOrigin.Y, pos.X - gridOrigin.X);
+                targets.Add((pos, targetPos, dist, angle));
+            }
+            if (targets.Count == 0) return startTime;
+
+            // Sort: farthest first; same distance -> by angle (deterministic spread)
+            targets.Sort((a, b) =>
+            {
+                int cmp = b.dist.CompareTo(a.dist);
+                return cmp != 0 ? cmp : a.angle.CompareTo(b.angle);
+            });
+
+            float stagger = _ctx.Config.ColorBombBeamStagger;
+            float firstLaunch = startTime + 0.05f;
+            float lastLaunch = firstLaunch + (targets.Count - 1) * stagger;
+            float maxDist = targets[0].dist;
+            float arrivalTime = Math.Max(
+                firstLaunch + maxDist / _ctx.Config.ColorBombBeamSpeed,
+                lastLaunch + _ctx.Config.ColorBombMinFlightDuration);
+
+            byte colorIndex = 0;
+            for (int i = 0; i < targets.Count; i++)
+            {
+                var (pos, targetPos, dist, _) = targets[i];
+                float launchTime = firstLaunch + i * stagger;
+                float flightDuration = arrivalTime - launchTime;
+                _ctx.BeamHitTimes[pos] = arrivalTime;
+
+                int beamId = _ctx.NextBeamId--;
+                byte beamColor = colorIndex;
+                colorIndex = (byte)((colorIndex + 1) % 6);
+
+                _ctx.Commands.Add(new SpawnProjectileCommand
+                {
+                    ProjectileId = beamId, Origin = origin, ArcHeight = 0f,
+                    Type = ProjectileType.ColorBombBeam, ColorIndex = beamColor,
+                    StartTime = launchTime, Duration = 0
+                });
+                _ctx.Commands.Add(new MoveProjectileCommand
+                {
+                    ProjectileId = beamId, From = origin, To = targetPos,
+                    StartTime = launchTime, Duration = flightDuration
+                });
+                _ctx.Commands.Add(new ImpactProjectileCommand
+                {
+                    ProjectileId = beamId, Position = targetPos,
+                    EffectType = "color_bomb_hit", StartTime = arrivalTime, Duration = 0.5f
+                });
+                _ctx.Commands.Add(new RemoveProjectileCommand
+                {
+                    ProjectileId = beamId, StartTime = arrivalTime + 0.5f, Duration = 0
+                });
+                _ctx.Commands.Add(new ShowEffectCommand
+                {
+                    EffectType = "color_bomb_hit", Position = targetPos,
+                    StartTime = arrivalTime, Duration = 0.5f
+                });
+            }
+
+            return arrivalTime;
         }
-        if (targets.Count == 0) return startTime;
-
-        // Sort: farthest first; same distance -> by angle (deterministic spread)
-        targets.Sort((a, b) =>
+        finally
         {
-            int cmp = b.dist.CompareTo(a.dist);
-            return cmp != 0 ? cmp : a.angle.CompareTo(b.angle);
-        });
-
-        float stagger = _ctx.Config.ColorBombBeamStagger;
-        float firstLaunch = startTime + 0.05f;
-        float lastLaunch = firstLaunch + (targets.Count - 1) * stagger;
-        float maxDist = targets[0].dist;
-        float arrivalTime = Math.Max(
-            firstLaunch + maxDist / _ctx.Config.ColorBombBeamSpeed,
-            lastLaunch + _ctx.Config.ColorBombMinFlightDuration);
-
-        byte colorIndex = 0;
-        for (int i = 0; i < targets.Count; i++)
-        {
-            var (pos, targetPos, dist, _) = targets[i];
-            float launchTime = firstLaunch + i * stagger;
-            float flightDuration = arrivalTime - launchTime;
-            _ctx.BeamHitTimes[pos] = arrivalTime;
-
-            int beamId = _ctx.NextBeamId--;
-            byte beamColor = colorIndex;
-            colorIndex = (byte)((colorIndex + 1) % 6);
-
-            _ctx.Commands.Add(new SpawnProjectileCommand
-            {
-                ProjectileId = beamId, Origin = origin, ArcHeight = 0f,
-                Type = ProjectileType.ColorBombBeam, ColorIndex = beamColor,
-                StartTime = launchTime, Duration = 0
-            });
-            _ctx.Commands.Add(new MoveProjectileCommand
-            {
-                ProjectileId = beamId, From = origin, To = targetPos,
-                StartTime = launchTime, Duration = flightDuration
-            });
-            _ctx.Commands.Add(new ImpactProjectileCommand
-            {
-                ProjectileId = beamId, Position = targetPos,
-                EffectType = "color_bomb_hit", StartTime = arrivalTime, Duration = 0.5f
-            });
-            _ctx.Commands.Add(new RemoveProjectileCommand
-            {
-                ProjectileId = beamId, StartTime = arrivalTime + 0.5f, Duration = 0
-            });
-            _ctx.Commands.Add(new ShowEffectCommand
-            {
-                EffectType = "color_bomb_hit", Position = targetPos,
-                StartTime = arrivalTime, Duration = 0.5f
-            });
+            Pools.Release(targets);
         }
-
-        return arrivalTime;
     }
 }
