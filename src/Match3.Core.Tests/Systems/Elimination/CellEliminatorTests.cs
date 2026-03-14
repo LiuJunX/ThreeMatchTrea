@@ -30,6 +30,41 @@ public class CellEliminatorTests
     }
 
     [Fact]
+    public void BareGround_NoTileNoCover_GroundDamaged()
+    {
+        var state = CreateState();
+        state.SetGround(1, 1, new Ground(GroundType.Ice, 1));
+
+        var eliminator = new CellEliminator(new CoverSystem(), new GroundSystem());
+
+        var result = eliminator.Eliminate(
+            ref state, new Position(1, 1), ElimSource.Bomb, 0, 0f, NullEventCollector.Instance);
+
+        Assert.Equal(EliminateOutcome.GroundOnly, result.Outcome);
+        // Ground should be destroyed
+        Assert.Equal(GroundType.None, state.GetGround(1, 1).Type);
+    }
+
+    [Fact]
+    public void BareGround_WithCover_CoverDamaged_GroundProtected()
+    {
+        var state = CreateState();
+        state.SetGround(1, 1, new Ground(GroundType.Ice, 1));
+        state.SetCover(1, 1, new Cover(CoverType.Cage, 1));
+
+        var eliminator = new CellEliminator(new CoverSystem(), new GroundSystem());
+
+        var result = eliminator.Eliminate(
+            ref state, new Position(1, 1), ElimSource.Bomb, 0, 0f, NullEventCollector.Instance);
+
+        Assert.Equal(EliminateOutcome.Blocked, result.Outcome);
+        // Cover should be destroyed
+        Assert.Equal(CoverType.None, state.GetCover(1, 1).Type);
+        // Ground should survive (cover absorbed the hit)
+        Assert.Equal(GroundType.Ice, state.GetGround(1, 1).Type);
+    }
+
+    [Fact]
     public void CoverProtected_ReturnsAbsorbed_AndDamagesCover()
     {
         var state = CreateState();
@@ -186,5 +221,81 @@ public class CellEliminatorTests
             Assert.Equal(EliminateOutcome.Immune, result.Outcome);
             Assert.Equal(ElementType.ColorBomb, state.GetTile(1, 1).Type);
         }
+    }
+
+    [Fact]
+    public void ColorBomb_ConsumeBomb_BypassesImmunity()
+    {
+        var state = CreateState();
+        state.SetTile(1, 1, new Tile(99, ElementType.ColorBomb, 1, 1));
+
+        var eliminator = new CellEliminator(new CoverSystem(), new GroundSystem());
+
+        var result = eliminator.Eliminate(
+            ref state, new Position(1, 1), ElimSource.ConsumeBomb, 0, 0f, NullEventCollector.Instance);
+
+        Assert.Equal(EliminateOutcome.Eliminated, result.Outcome);
+        Assert.Equal(ElementType.ColorBomb, result.Tile.Type);
+        Assert.Equal(ElementType.None, state.GetTile(1, 1).Type);
+    }
+
+    [Fact]
+    public void ColorBomb_WithCover_CoverDamaged_TileSurvives()
+    {
+        var state = CreateState();
+        state.SetTile(1, 1, new Tile(99, ElementType.ColorBomb, 1, 1));
+        state.SetCover(1, 1, new Cover(CoverType.Cage, 1));
+
+        var eliminator = new CellEliminator(new CoverSystem(), new GroundSystem());
+
+        var result = eliminator.Eliminate(
+            ref state, new Position(1, 1), ElimSource.Bomb, 0, 0f, NullEventCollector.Instance);
+
+        Assert.Equal(EliminateOutcome.Immune, result.Outcome);
+        Assert.Equal(ElementType.ColorBomb, result.Tile.Type);
+        // Tile survives
+        Assert.Equal(ElementType.ColorBomb, state.GetTile(1, 1).Type);
+        // Cover destroyed
+        Assert.Equal(CoverType.None, state.GetCover(1, 1).Type);
+    }
+
+    [Fact]
+    public void ColorBomb_WithCover_ConsumeBomb_CoverAbsorbs()
+    {
+        var state = CreateState();
+        state.SetTile(1, 1, new Tile(99, ElementType.ColorBomb, 1, 1));
+        state.SetCover(1, 1, new Cover(CoverType.Cage, 1));
+
+        var eliminator = new CellEliminator(new CoverSystem(), new GroundSystem());
+
+        var result = eliminator.Eliminate(
+            ref state, new Position(1, 1), ElimSource.ConsumeBomb, 0, 0f, NullEventCollector.Instance);
+
+        Assert.Equal(EliminateOutcome.Absorbed, result.Outcome);
+        Assert.Equal(ElementType.ColorBomb, result.Tile.Type);
+        // Tile survives (cover absorbed)
+        Assert.Equal(ElementType.ColorBomb, state.GetTile(1, 1).Type);
+        // Cover destroyed
+        Assert.Equal(CoverType.None, state.GetCover(1, 1).Type);
+    }
+
+    [Fact]
+    public void ColorBomb_WithGround_GroundDamaged_TileSurvives()
+    {
+        var state = CreateState();
+        state.SetTile(1, 1, new Tile(99, ElementType.ColorBomb, 1, 1));
+        state.SetGround(1, 1, new Ground(GroundType.Ice, 1));
+
+        var eliminator = new CellEliminator(new CoverSystem(), new GroundSystem());
+
+        var result = eliminator.Eliminate(
+            ref state, new Position(1, 1), ElimSource.Bomb, 0, 0f, NullEventCollector.Instance);
+
+        Assert.Equal(EliminateOutcome.Immune, result.Outcome);
+        Assert.Equal(ElementType.ColorBomb, result.Tile.Type);
+        // Tile survives
+        Assert.Equal(ElementType.ColorBomb, state.GetTile(1, 1).Type);
+        // Ground destroyed
+        Assert.Equal(GroundType.None, state.GetGround(1, 1).Type);
     }
 }

@@ -32,21 +32,35 @@ public sealed class CellEliminator : ICellEliminator
         ref GameState state, Position pos, ElimSource reason,
         int tick, float simTime, IEventCollector events)
     {
-        // Guard: empty cell
-        var tile = state.GetTile(pos.X, pos.Y);
-        if (tile.Type == ElementType.None)
-            return EliminateResult.Blocked;
-
-        // ColorBomb immunity: immune to collateral damage (bombs, chain reactions, etc.).
-        // ConsumeBomb bypasses this — the bomb is being voluntarily activated by player tap/swap or combo.
-        if (tile.Type == ElementType.ColorBomb && reason != ElimSource.ConsumeBomb)
-            return EliminateResult.Immune(tile);
-
-        // Cover: absorb hit
+        // Cover: absorb hit first (applies regardless of tile presence or immunity)
         if (_coverSystem.IsTileProtected(in state, pos))
         {
             _coverSystem.TryDamageCover(ref state, pos, tick, simTime, events);
-            return EliminateResult.Absorbed(tile);
+            var tile2 = state.GetTile(pos.X, pos.Y);
+            if (tile2.Type == ElementType.None) return EliminateResult.Blocked;
+            return (tile2.Type == ElementType.ColorBomb && reason != ElimSource.ConsumeBomb)
+                ? EliminateResult.Immune(tile2)
+                : EliminateResult.Absorbed(tile2);
+        }
+
+        // No tile — bare ground can still be damaged
+        var tile = state.GetTile(pos.X, pos.Y);
+        if (tile.Type == ElementType.None)
+        {
+            var ground = state.GetGround(pos);
+            if (ground.Type != GroundType.None)
+            {
+                _groundSystem.OnTileDestroyed(ref state, pos, tick, simTime, events);
+                return EliminateResult.GroundOnly;
+            }
+            return EliminateResult.Blocked;
+        }
+
+        // ColorBomb immunity: tile survives, but ground still takes damage
+        if (tile.Type == ElementType.ColorBomb && reason != ElimSource.ConsumeBomb)
+        {
+            _groundSystem.OnTileDestroyed(ref state, pos, tick, simTime, events);
+            return EliminateResult.Immune(tile);
         }
 
         // Indestructible lock

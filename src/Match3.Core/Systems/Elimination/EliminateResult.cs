@@ -18,6 +18,9 @@ public enum EliminateOutcome : byte
 
     /// <summary>Tile is immune to this elimination source (e.g., ColorBomb resists non-manual destruction).</summary>
     Immune,
+
+    /// <summary>No tile present, but bare ground was damaged/destroyed by the hit.</summary>
+    GroundOnly,
 }
 
 /// <summary>
@@ -32,7 +35,8 @@ public readonly struct EliminateResult
     /// Snapshot of the tile before elimination.
     /// Valid when <see cref="Outcome"/> is <see cref="EliminateOutcome.Eliminated"/>,
     /// <see cref="EliminateOutcome.Absorbed"/>, or <see cref="EliminateOutcome.Immune"/>.
-    /// Default (empty) when <see cref="Outcome"/> is <see cref="EliminateOutcome.Blocked"/>.
+    /// Default (empty) when <see cref="Outcome"/> is <see cref="EliminateOutcome.Blocked"/>
+    /// or <see cref="EliminateOutcome.GroundOnly"/>.
     /// </summary>
     public Tile Tile { get; }
 
@@ -46,4 +50,5 @@ public readonly struct EliminateResult
     public static EliminateResult Absorbed(Tile tile) => new(EliminateOutcome.Absorbed, tile);
     public static EliminateResult Immune(Tile tile) => new(EliminateOutcome.Immune, tile);
     public static readonly EliminateResult Blocked = new(EliminateOutcome.Blocked, default);
+    public static readonly EliminateResult GroundOnly = new(EliminateOutcome.GroundOnly, default);
 }
