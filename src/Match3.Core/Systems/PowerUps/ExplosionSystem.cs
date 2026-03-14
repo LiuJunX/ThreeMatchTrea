@@ -225,7 +225,19 @@ public class ExplosionSystem : IExplosionSystem
 
             if (dist != currentWave) continue;
 
-            var result = _cellEliminator.Eliminate(ref state, pos, ElimSource.Bomb, tick, simTime, eventCollector);
+            // Check if this tile is a non-ColorBomb bomb at a non-origin position
+            // that will be chain-activated. Use ConsumeBomb so TileChoreographer
+            // skips the destroy animation (the bomb "activates", not "dies").
+            // ColorBombs are excluded — they must stay immune to explosion waves.
+            bool isOrigin = pos.X == explosion.Origin.X && pos.Y == explosion.Origin.Y;
+            var tileAtPos = state.GetTile(pos.X, pos.Y);
+            bool willChainActivate = triggeredBombs != null
+                && tileAtPos.Type.IsBomb()
+                && tileAtPos.Type != ElementType.ColorBomb
+                && !isOrigin;
+
+            var elimSource = willChainActivate ? ElimSource.ConsumeBomb : ElimSource.Bomb;
+            var result = _cellEliminator.Eliminate(ref state, pos, elimSource, tick, simTime, eventCollector);
 
             // ColorBomb returns Immune here (ElimSource.Bomb ≠ ConsumeBomb).
             // By design, ColorBombs are not chain-triggered by explosions;
@@ -236,8 +248,7 @@ public class ExplosionSystem : IExplosionSystem
                 _lockScheduler?.Acquire(ref state, pos, CellLockType.Receive, explosion.ReceiveLockDuration);
 
                 // Chain reaction: eliminated bomb starts a new wave front
-                if (result.Tile.Type.IsBomb()
-                    && !(pos.X == explosion.Origin.X && pos.Y == explosion.Origin.Y))
+                if (result.Tile.Type.IsBomb() && !isOrigin)
                 {
                     if (triggeredBombs != null)
                     {
