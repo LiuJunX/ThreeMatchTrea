@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -55,8 +54,9 @@ public sealed class DeepAnalysisService
         IProgress<DeepAnalysisProgress>? progress,
         CancellationToken cancellationToken)
     {
-        var sw = Stopwatch.StartNew();
         var tiers = PlayerPopulationConfig.DefaultTiers;
+        int playersPerTier = 50;
+        int gamesPerPlayer = simulationsPerTier / playersPerTier;
         int totalSimulations = tiers.Length * simulationsPerTier;
         int moveLimit = initialState.MoveLimit > 0 ? initialState.MoveLimit : 20;
 
@@ -79,122 +79,182 @@ public sealed class DeepAnalysisService
         // P95 计算：记录每个玩家的通关尝试次数
         var clearAttempts = new ConcurrentBag<int>();
 
-        int completedCount = 0;
-        object lockObj = new();
-
-        // === 并行模拟 ===
-        var options = new ParallelOptions
+        // 构建工作项列表: (tierIndex, playerIndex)
+        var workItems = new List<(int tierIndex, int playerIndex)>();
+        for (int t = 0; t < tiers.Length; t++)
         {
-            CancellationToken = cancellationToken,
-            MaxDegreeOfParallelism = Environment.ProcessorCount
-        };
-
-        try
-        {
-            // 为每个分层模拟多局
-            Parallel.ForEach(tiers, options, tierConfig =>
+            for (int p = 0; p < playersPerTier; p++)
             {
-                // 每个分层模拟多个"玩家"，每个玩家玩多局
-                int playersPerTier = 50;
-                int gamesPerPlayer = simulationsPerTier / playersPerTier;
+                workItems.Add((t, p));
+            }
+        }
 
-                for (int playerIdx = 0; playerIdx < playersPerTier; playerIdx++)
+        // Accumulate completed game count for progress reporting
+        int completedGames = 0;
+
+        var runner = new AnalysisSimulationRunner<(int tierIndex, int playerIndex), PlayerSimulationResult, DeepAnalysisResult>(
+            simulate: workItem =>
+            {
+                var (tierIndex, playerIndex) = workItem;
+                var tierConfig = tiers[tierIndex];
+                return SimulatePlayer(
+                    initialState, tierConfig, tierIndex, playerIndex,
+                    gamesPerPlayer, moveLimit);
+            },
+            aggregate: result =>
+            {
+                // Runner holds a lock when calling aggregate, so no additional sync needed
+                var stats = tierResults[result.TierName];
+                stats.TotalGames += result.GamesPlayed;
+                stats.Wins += result.Wins;
+
+                // Accumulate flow scores
+                if (result.FlowScoresPerGame != null)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    var playerOutcomes = new bool[gamesPerPlayer];
-                    int attemptsToWin = 0;
-                    bool hasWon = false;
-
-                    for (int gameIdx = 0; gameIdx < gamesPerPlayer; gameIdx++)
+                    foreach (var flowScores in result.FlowScoresPerGame)
                     {
-                        // 使用稳定的 seed 计算，避免 GetHashCode 负值问题
-                        ulong tierSeed = (ulong)(Array.IndexOf(tiers, tierConfig) + 1);
-                        ulong seed = tierSeed * 1000000UL + (ulong)playerIdx * 1000UL + (ulong)gameIdx;
-                        var result = SimulateSingleGame(initialState, seed, tierConfig, moveLimit);
-
-                        // 记录结果
-                        playerOutcomes[gameIdx] = result.Won;
-
-                        // P95 计算
-                        if (!hasWon)
+                        if (flowScores == null) continue;
+                        for (int m = 0; m < flowScores.Length; m++)
                         {
-                            attemptsToWin++;
-                            if (result.Won)
-                            {
-                                hasWon = true;
-                                clearAttempts.Add(attemptsToWin);
-                            }
+                            flowAccumulator.AddOrUpdate(m,
+                                (flowScores[m], 1),
+                                (_, old) => (old.sum + flowScores[m], old.count + 1));
                         }
-
-                        // 更新分层统计
-                        var stats = tierResults[tierConfig.Name];
-                        lock (stats)
-                        {
-                            stats.TotalGames++;
-                            if (result.Won) stats.Wins++;
-                        }
-
-                        // 累积心流曲线
-                        if (result.FlowScores != null)
-                        {
-                            for (int m = 0; m < result.FlowScores.Length; m++)
-                            {
-                                flowAccumulator.AddOrUpdate(m,
-                                    (result.FlowScores[m], 1),
-                                    (_, old) => (old.sum + result.FlowScores[m], old.count + 1));
-                            }
-                        }
-
-                        // 瓶颈目标统计
-                        if (!result.Won && result.BottleneckObjectiveIndex >= 0)
-                        {
-                            bottleneckStats.AddOrUpdate(result.BottleneckObjectiveIndex, 1, (_, c) => c + 1);
-                        }
-
-                        // 进度报告
-                        lock (lockObj)
-                        {
-                            completedCount++;
-                            if (completedCount % 50 == 0)
-                            {
-                                progress?.Report(new DeepAnalysisProgress
-                                {
-                                    Progress = (float)completedCount / totalSimulations,
-                                    CompletedCount = completedCount,
-                                    TotalCount = totalSimulations,
-                                    Stage = $"模拟 {tierConfig.Name}"
-                                });
-                            }
-                        }
-                    }
-
-                    // 记录玩家结果用于运气依赖度计算
-                    playerResults.Add((tierConfig.Name, playerOutcomes));
-
-                    // 如果玩家没有通关，记录最大尝试次数
-                    if (!hasWon)
-                    {
-                        clearAttempts.Add(gamesPerPlayer + 5); // 超出范围表示未通关
                     }
                 }
-            });
-        }
-        catch (OperationCanceledException)
-        {
-            sw.Stop();
-            return new DeepAnalysisResult
+
+                // Bottleneck objectives
+                if (result.BottleneckObjectiveIndices != null)
+                {
+                    foreach (var idx in result.BottleneckObjectiveIndices)
+                    {
+                        if (idx >= 0)
+                        {
+                            bottleneckStats.AddOrUpdate(idx, 1, (_, c) => c + 1);
+                        }
+                    }
+                }
+
+                // Player outcomes for luck/frustration calculation
+                playerResults.Add((result.TierName, result.Outcomes));
+
+                // P95 clear attempts
+                clearAttempts.Add(result.AttemptsToFirstWin);
+
+                completedGames += result.GamesPlayed;
+            },
+            buildResult: (completedPlayers, totalPlayers, elapsedMs, wasCancelled) =>
             {
-                WasCancelled = true,
-                ElapsedMs = sw.Elapsed.TotalMilliseconds,
-                TotalSimulations = completedCount
-            };
+                if (wasCancelled)
+                {
+                    return new DeepAnalysisResult
+                    {
+                        WasCancelled = true,
+                        ElapsedMs = elapsedMs,
+                        TotalSimulations = completedGames
+                    };
+                }
+
+                return BuildDeepResult(
+                    initialState, moveLimit, flowAccumulator, tierResults,
+                    bottleneckStats, playerResults, clearAttempts,
+                    completedGames, elapsedMs, gamesPerPlayer);
+            },
+            reportProgress: progress != null
+                ? (completedPlayers, totalPlayers) => progress.Report(new DeepAnalysisProgress
+                {
+                    Progress = (float)completedGames / totalSimulations,
+                    CompletedCount = completedGames,
+                    TotalCount = totalSimulations,
+                    Stage = "模拟中"
+                })
+                : (Action<int, int>?)null,
+            progressReportInterval: 5); // Report every 5 players (~250 games)
+
+        var result = runner.Run(workItems, useParallel: true, cancellationToken);
+
+        // Final progress report
+        progress?.Report(new DeepAnalysisProgress
+        {
+            Progress = 1.0f,
+            CompletedCount = completedGames,
+            TotalCount = totalSimulations,
+            Stage = "完成"
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// Simulates all games for a single player in a given tier.
+    /// Returns aggregated per-player results for statistics collection.
+    /// </summary>
+    private PlayerSimulationResult SimulatePlayer(
+        GameState initialState,
+        PlayerTierConfig tierConfig,
+        int tierIndex,
+        int playerIndex,
+        int gamesPerPlayer,
+        int moveLimit)
+    {
+        var outcomes = new bool[gamesPerPlayer];
+        var flowScoresPerGame = new float[gamesPerPlayer][];
+        var bottleneckIndices = new int[gamesPerPlayer];
+        int wins = 0;
+        int attemptsToWin = 0;
+        bool hasWon = false;
+
+        for (int gameIdx = 0; gameIdx < gamesPerPlayer; gameIdx++)
+        {
+            // 使用稳定的 seed 计算，避免 GetHashCode 负值问题
+            ulong tierSeed = (ulong)(tierIndex + 1);
+            ulong seed = tierSeed * 1000000UL + (ulong)playerIndex * 1000UL + (ulong)gameIdx;
+            var result = SimulateSingleGame(initialState, seed, tierConfig, moveLimit);
+
+            outcomes[gameIdx] = result.Won;
+            flowScoresPerGame[gameIdx] = result.FlowScores ?? Array.Empty<float>();
+            bottleneckIndices[gameIdx] = result.Won ? -1 : result.BottleneckObjectiveIndex;
+
+            if (result.Won) wins++;
+
+            // P95 calculation
+            if (!hasWon)
+            {
+                attemptsToWin++;
+                if (result.Won) hasWon = true;
+            }
         }
 
-        sw.Stop();
+        // 如果玩家没有通关，记录最大尝试次数
+        if (!hasWon)
+        {
+            attemptsToWin = gamesPerPlayer + 5; // 超出范围表示未通关
+        }
 
-        // === 计算最终指标 ===
+        return new PlayerSimulationResult
+        {
+            TierName = tierConfig.Name,
+            GamesPlayed = gamesPerPlayer,
+            Wins = wins,
+            Outcomes = outcomes,
+            FlowScoresPerGame = flowScoresPerGame,
+            BottleneckObjectiveIndices = bottleneckIndices,
+            AttemptsToFirstWin = attemptsToWin
+        };
+    }
 
+    private DeepAnalysisResult BuildDeepResult(
+        GameState initialState,
+        int moveLimit,
+        ConcurrentDictionary<int, (float sum, int count)> flowAccumulator,
+        ConcurrentDictionary<string, TierStats> tierResults,
+        ConcurrentDictionary<int, int> bottleneckStats,
+        ConcurrentBag<(string tier, bool[] outcomes)> playerResults,
+        ConcurrentBag<int> clearAttempts,
+        int completedCount,
+        double elapsedMs,
+        int gamesPerPlayer)
+    {
         // 1. 心流曲线
         var flowCurve = new float[moveLimit];
         float flowMin = float.MaxValue, flowMax = float.MinValue, flowSum = 0;
@@ -247,14 +307,6 @@ public sealed class DeepAnalysisService
         // 7. P95 通关次数
         int p95ClearAttempts = CalculateP95(clearAttempts.ToList());
 
-        progress?.Report(new DeepAnalysisProgress
-        {
-            Progress = 1.0f,
-            CompletedCount = completedCount,
-            TotalCount = totalSimulations,
-            Stage = "完成"
-        });
-
         return new DeepAnalysisResult
         {
             FlowCurve = flowCurve,
@@ -268,7 +320,7 @@ public sealed class DeepAnalysisService
             FrustrationRisk = frustrationRisk,
             LuckDependency = luckDependency,
             P95ClearAttempts = p95ClearAttempts,
-            ElapsedMs = sw.Elapsed.TotalMilliseconds,
+            ElapsedMs = elapsedMs,
             TotalSimulations = completedCount,
             WasCancelled = false
         };
@@ -583,5 +635,21 @@ public sealed class DeepAnalysisService
         public int MovesUsed { get; init; }
         public float[]? FlowScores { get; init; }
         public int BottleneckObjectiveIndex { get; init; }
+    }
+
+    /// <summary>
+    /// Aggregated results for all games played by a single simulated player.
+    /// Batching at the player level preserves per-player statistics needed for
+    /// frustration risk and luck dependency calculations.
+    /// </summary>
+    private readonly struct PlayerSimulationResult
+    {
+        public string TierName { get; init; }
+        public int GamesPlayed { get; init; }
+        public int Wins { get; init; }
+        public bool[] Outcomes { get; init; }
+        public float[][] FlowScoresPerGame { get; init; }
+        public int[] BottleneckObjectiveIndices { get; init; }
+        public int AttemptsToFirstWin { get; init; }
     }
 }

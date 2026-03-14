@@ -23,6 +23,7 @@ public class PowerUpHandler : IPowerUpHandler
     private readonly IProjectileSystem? _projectileSystem;
     private readonly IColorBombSessionManager? _colorBombSessionManager;
     private readonly LockScheduler? _lockScheduler;
+    private readonly ExplosionConfig _explosionConfig;
 
     public PowerUpHandler(IScoreSystem scoreSystem)
         : this(scoreSystem, new BombComboHandler(), BombEffectRegistry.CreateDefault(),
@@ -39,7 +40,8 @@ public class PowerUpHandler : IPowerUpHandler
         IExplosionSystem? explosionSystem = null,
         IProjectileSystem? projectileSystem = null,
         IColorBombSessionManager? colorBombSessionManager = null,
-        LockScheduler? lockScheduler = null)
+        LockScheduler? lockScheduler = null,
+        ExplosionConfig? explosionConfig = null)
     {
         _scoreSystem = scoreSystem;
         _comboHandler = comboHandler;
@@ -50,6 +52,7 @@ public class PowerUpHandler : IPowerUpHandler
         _projectileSystem = projectileSystem;
         _colorBombSessionManager = colorBombSessionManager;
         _lockScheduler = lockScheduler;
+        _explosionConfig = explosionConfig ?? new ExplosionConfig();
     }
 
     public void ProcessSpecialMove(ref GameState state, Position p1, Position p2, out int points)
@@ -57,6 +60,21 @@ public class PowerUpHandler : IPowerUpHandler
         ProcessSpecialMove(ref state, p1, p2, 0, 0f, NullEventCollector.Instance, out points);
     }
 
+    /// <summary>
+    /// Processes a special move (bomb swap) between two positions.
+    /// </summary>
+    /// <remarks>
+    /// <para><strong>Combo detection priority:</strong></para>
+    /// <list type="number">
+    /// <item>ColorBomb + other bomb (non-ColorBomb) — routed to session-based beam flow</item>
+    /// <item>ColorBomb + normal tile — routed to session-based flow with target color</item>
+    /// <item><see cref="BombComboHandler"/> — handles all remaining combos including ColorBomb + ColorBomb</item>
+    /// </list>
+    /// <para><strong>Activation flow:</strong>
+    /// detect combo → emit <see cref="Events.BombComboEvent"/> →
+    /// clear bomb attributes via <c>ClearBombAttribute</c> →
+    /// create explosion / session → launch UFO projectiles (if applicable).</para>
+    /// </remarks>
     public void ProcessSpecialMove(
         ref GameState state,
         Position p1,
@@ -167,7 +185,7 @@ public class PowerUpHandler : IPowerUpHandler
                     {
                         // ColorBomb + normal tile: longer receive lock for beam animation
                         _explosionSystem.CreateTargetedExplosion(ref state, p1, affected,
-                            ExplosionSystem.DefaultWaveInterval, 1f,
+                            _explosionConfig.DefaultWaveInterval, 1f,
                             ReceiveLockTimings.ColorBombBatchClear);
                     }
                     else
@@ -189,7 +207,8 @@ public class PowerUpHandler : IPowerUpHandler
                     // UFO + UFO: 3 projectiles
                     if (t1.Type == ElementType.Ufo && t2.Type == ElementType.Ufo)
                     {
-                        LaunchUfoComboProjectiles(ref state, t1.Id, t2.Id, p1, p2, tick, simTime, events);
+                        UfoLaunchHelper.LaunchUfoComboProjectiles(
+                            _projectileSystem, ref state, t1.Id, t2.Id, p1, p2, tick, simTime, events);
                     }
                     // UFO + Rocket: 1 projectile with Row/Column payload, rocket dragged behind
                     else if ((t1.Type.IsUfo() && t2.Type.IsRocket()) || (t1.Type.IsRocket() && t2.Type.IsUfo()))
@@ -200,7 +219,8 @@ public class PowerUpHandler : IPowerUpHandler
                         var otherPos = t1.Type.IsUfo() ? p2 : p1;
                         var payload = otherTile.Type == ElementType.HorizontalRocket
                             ? UfoPayload.Row : UfoPayload.Column;
-                        LaunchUfoPayloadProjectile(ref state, ufoTile.Id, ufoPos, payload, tick, simTime, events,
+                        UfoLaunchHelper.LaunchUfoPayloadProjectile(
+                            _projectileSystem, ref state, ufoTile.Id, ufoPos, payload, tick, simTime, events,
                             passengerTileId: otherTile.Id, passengerPos: otherPos);
                     }
                     // UFO + Square: 1 projectile with Area5x5 payload, square dragged behind
@@ -210,7 +230,8 @@ public class PowerUpHandler : IPowerUpHandler
                         var otherTile = t1.Type.IsUfo() ? t2 : t1;
                         var ufoPos = t1.Type.IsUfo() ? p1 : p2;
                         var otherPos = t1.Type.IsUfo() ? p2 : p1;
-                        LaunchUfoPayloadProjectile(ref state, ufoTile.Id, ufoPos, UfoPayload.Area5x5, tick, simTime, events,
+                        UfoLaunchHelper.LaunchUfoPayloadProjectile(
+                            _projectileSystem, ref state, ufoTile.Id, ufoPos, UfoPayload.Area5x5, tick, simTime, events,
                             passengerTileId: otherTile.Id, passengerPos: otherPos);
                     }
                 }
@@ -282,9 +303,11 @@ public class PowerUpHandler : IPowerUpHandler
                     // Rockets spread 2x faster than other bombs
                     bool isRocket = t.Type == ElementType.HorizontalRocket || t.Type == ElementType.VerticalRocket;
                     if (isRocket)
-                        _explosionSystem.CreateTargetedExplosion(ref state, p, affected, 0.04f, 0.8f);
+                        _explosionSystem.CreateTargetedExplosion(ref state, p, affected,
+                            _explosionConfig.RocketWaveInterval, _explosionConfig.RocketAcceleration);
                     else if (t.Type.IsAreaBomb())
-                        _explosionSystem.CreateTargetedExplosion(ref state, p, affected, 0.05f, 0.85f);
+                        _explosionSystem.CreateTargetedExplosion(ref state, p, affected,
+                            _explosionConfig.AreaBombWaveInterval, _explosionConfig.AreaBombAcceleration);
                     else
                         _explosionSystem.CreateTargetedExplosion(ref state, p, affected);
                 }
@@ -339,94 +362,36 @@ public class PowerUpHandler : IPowerUpHandler
         }
     }
 
-    public IPowerUpHandler WithExplosionSystem(IExplosionSystem? explosionSystem)
+    /// <summary>
+    /// Create a copy of this handler using a different explosion system (for Clone scenarios).
+    /// </summary>
+    public PowerUpHandler WithExplosionSystem(IExplosionSystem? explosionSystem)
     {
-        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, explosionSystem, _projectileSystem, _colorBombSessionManager, _lockScheduler);
-    }
-
-    public IPowerUpHandler WithProjectileSystem(IProjectileSystem? projectileSystem)
-    {
-        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, projectileSystem, _colorBombSessionManager, _lockScheduler);
-    }
-
-    public IPowerUpHandler WithLockScheduler(LockScheduler? lockScheduler)
-    {
-        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, _projectileSystem, _colorBombSessionManager, lockScheduler);
-    }
-
-    public IPowerUpHandler WithColorBombSessionManager(IColorBombSessionManager? sessionManager)
-    {
-        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, _projectileSystem, sessionManager, _lockScheduler);
+        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, explosionSystem, _projectileSystem, _colorBombSessionManager, _lockScheduler, _explosionConfig);
     }
 
     /// <summary>
-    /// Launch 3 UFO projectiles for UFO+UFO combo.
-    /// First 2 reuse the original UFO tile visuals; 3rd spawns a new visual.
+    /// Create a copy of this handler using a different projectile system (for Clone scenarios).
     /// </summary>
-    private void LaunchUfoComboProjectiles(
-        ref GameState state, int tileId1, int tileId2,
-        Position p1, Position p2,
-        int tick, float simTime, IEventCollector events)
+    public PowerUpHandler WithProjectileSystem(IProjectileSystem? projectileSystem)
     {
-        // Random base angle for 180° fan spread (different each swap)
-        float baseAngle = state.Random.Next(0, 360);
-
-        // UFO 1: from p1 (reuses existing tile visual)
-        var target1 = UfoEffect.PickRemoteTarget(in state, p1);
-        if (target1.HasValue)
-        {
-            var proj = new UfoProjectile(
-                _projectileSystem!.GenerateProjectileId(), p1, target1.Value)
-            { SourceTileId = tileId1, ComboDivergeAngle = baseAngle };
-            _projectileSystem.Launch(proj, tick, simTime, events);
-        }
-
-        // UFO 2: from p2 (reuses existing tile visual)
-        var target2 = UfoEffect.PickRemoteTarget(in state, p2);
-        if (target2.HasValue)
-        {
-            var proj = new UfoProjectile(
-                _projectileSystem!.GenerateProjectileId(), p2, target2.Value)
-            { SourceTileId = tileId2, ComboDivergeAngle = baseAngle + 90f };
-            _projectileSystem.Launch(proj, tick, simTime, events);
-        }
-
-        // UFO 3: from p1 (spawns a new tile visual via Choreographer)
-        var target3 = UfoEffect.PickRemoteTarget(in state, p1);
-        if (target3.HasValue)
-        {
-            int syntheticTileId = state.NextTileId++;
-            var proj = new UfoProjectile(
-                _projectileSystem!.GenerateProjectileId(), p1, target3.Value)
-            { SourceTileId = syntheticTileId, SpawnVisual = true, ComboDivergeAngle = baseAngle + 180f };
-            _projectileSystem.Launch(proj, tick, simTime, events);
-        }
+        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, projectileSystem, _colorBombSessionManager, _lockScheduler, _explosionConfig);
     }
 
     /// <summary>
-    /// Launch a single UFO projectile with an enhanced payload (Rocket row/column or Square 5×5).
-    /// Reuses the existing UFO tile visual for the flight animation.
-    /// The passenger bomb's tile visual follows the UFO during flight.
+    /// Create a copy of this handler using a different lock scheduler (for Clone scenarios).
     /// </summary>
-    private void LaunchUfoPayloadProjectile(
-        ref GameState state, int ufoTileId, Position ufoPos,
-        UfoPayload payload,
-        int tick, float simTime, IEventCollector events,
-        int? passengerTileId = null, Position? passengerPos = null)
+    public PowerUpHandler WithLockScheduler(LockScheduler? lockScheduler)
     {
-        var target = UfoEffect.PickRemoteTarget(in state, ufoPos);
-        if (target.HasValue)
-        {
-            var proj = new UfoProjectile(
-                _projectileSystem!.GenerateProjectileId(), ufoPos, target.Value)
-            {
-                SourceTileId = ufoTileId,
-                Payload = payload,
-                PassengerTileId = passengerTileId,
-                PassengerOrigin = passengerPos
-            };
-            _projectileSystem.Launch(proj, tick, simTime, events);
-        }
+        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, _projectileSystem, _colorBombSessionManager, lockScheduler, _explosionConfig);
+    }
+
+    /// <summary>
+    /// Create a copy of this handler using a different ColorBomb session manager (for Clone scenarios).
+    /// </summary>
+    public PowerUpHandler WithColorBombSessionManager(IColorBombSessionManager? sessionManager)
+    {
+        return new PowerUpHandler(_scoreSystem, _comboHandler, _effectRegistry, _coverSystem, _groundSystem, _explosionSystem, _projectileSystem, sessionManager, _lockScheduler, _explosionConfig);
     }
 
     /// <summary>

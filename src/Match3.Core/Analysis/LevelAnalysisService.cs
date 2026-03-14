@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Match3.Core.Config;
@@ -83,142 +82,17 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
         IProgress<SimulationProgress>? progress,
         CancellationToken cancellationToken)
     {
-        var sw = Stopwatch.StartNew();
-
+        // Shared aggregation state — mutated under lock by the runner
         int winCount = 0;
         int deadlockCount = 0;
         int outOfMovesCount = 0;
         long totalMovesUsed = 0;
         long totalScore = 0;
-        int completedCount = 0;
 
-        int total = config.SimulationCount;
-
-        if (config.UseParallel)
-        {
-            // 并行执行
-            int localWins = 0, localDeadlocks = 0, localOutOfMoves = 0;
-            long localMoves = 0, localScores = 0;
-            int localCompleted = 0;
-            object lockObj = new object();
-            int lastReportedCount = 0;
-
-            var options = new ParallelOptions
+        var runner = new AnalysisSimulationRunner<int, SingleGameResult, LevelAnalysisResult>(
+            simulate: i => SimulateSingleGame(initialState, (ulong)(i * 7919 + 12345)),
+            aggregate: result =>
             {
-                CancellationToken = cancellationToken,
-                MaxDegreeOfParallelism = Environment.ProcessorCount
-            };
-
-            try
-            {
-                Parallel.For(0, total, options, i =>
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    var result = SimulateSingleGame(initialState, (ulong)(i * 7919 + 12345));
-
-                    // 更新统计并检查是否需要报告进度
-                    bool shouldReport = false;
-                    int currentCompleted;
-                    int currentWins, currentDeadlocks;
-
-                    lock (lockObj)
-                    {
-                        localCompleted++;
-                        currentCompleted = localCompleted;
-                        localMoves += result.MovesUsed;
-                        localScores += result.Score;
-
-                        switch (result.EndReason)
-                        {
-                            case GameEndReason.Win:
-                                localWins++;
-                                break;
-                            case GameEndReason.Deadlock:
-                                localDeadlocks++;
-                                break;
-                            case GameEndReason.OutOfMoves:
-                                localOutOfMoves++;
-                                break;
-                        }
-
-                        currentWins = localWins;
-                        currentDeadlocks = localDeadlocks;
-
-                        // 检查是否需要报告进度
-                        if (progress != null && currentCompleted - lastReportedCount >= config.ProgressReportInterval)
-                        {
-                            lastReportedCount = currentCompleted;
-                            shouldReport = true;
-                        }
-                    }
-
-                    // 在 lock 外部报告进度，避免阻塞其他线程
-                    if (shouldReport)
-                    {
-                        progress!.Report(new SimulationProgress
-                        {
-                            CompletedCount = currentCompleted,
-                            TotalCount = total,
-                            WinCount = currentWins,
-                            DeadlockCount = currentDeadlocks
-                        });
-                    }
-                });
-
-                winCount = localWins;
-                deadlockCount = localDeadlocks;
-                outOfMovesCount = localOutOfMoves;
-                totalMovesUsed = localMoves;
-                totalScore = localScores;
-                completedCount = localCompleted;
-            }
-            catch (OperationCanceledException)
-            {
-                winCount = localWins;
-                deadlockCount = localDeadlocks;
-                outOfMovesCount = localOutOfMoves;
-                totalMovesUsed = localMoves;
-                totalScore = localScores;
-                completedCount = localCompleted;
-
-                sw.Stop();
-                return new LevelAnalysisResult
-                {
-                    TotalSimulations = completedCount,
-                    WinCount = winCount,
-                    DeadlockCount = deadlockCount,
-                    OutOfMovesCount = outOfMovesCount,
-                    AverageMovesUsed = completedCount > 0 ? (float)totalMovesUsed / completedCount : 0,
-                    AverageScore = completedCount > 0 ? (float)totalScore / completedCount : 0,
-                    ElapsedMs = sw.Elapsed.TotalMilliseconds,
-                    WasCancelled = true
-                };
-            }
-        }
-        else
-        {
-            // 顺序执行
-            for (int i = 0; i < total; i++)
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    sw.Stop();
-                    return new LevelAnalysisResult
-                    {
-                        TotalSimulations = completedCount,
-                        WinCount = winCount,
-                        DeadlockCount = deadlockCount,
-                        OutOfMovesCount = outOfMovesCount,
-                        AverageMovesUsed = completedCount > 0 ? (float)totalMovesUsed / completedCount : 0,
-                        AverageScore = completedCount > 0 ? (float)totalScore / completedCount : 0,
-                        ElapsedMs = sw.Elapsed.TotalMilliseconds,
-                        WasCancelled = true
-                    };
-                }
-
-                var result = SimulateSingleGame(initialState, (ulong)(i * 7919 + 12345));
-                completedCount++;
                 totalMovesUsed += result.MovesUsed;
                 totalScore += result.Score;
 
@@ -234,43 +108,34 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
                         outOfMovesCount++;
                         break;
                 }
-
-                // 报告进度
-                if (progress != null && completedCount % config.ProgressReportInterval == 0)
+            },
+            buildResult: (completed, total, elapsedMs, wasCancelled) => new LevelAnalysisResult
+            {
+                TotalSimulations = completed,
+                WinCount = winCount,
+                DeadlockCount = deadlockCount,
+                OutOfMovesCount = outOfMovesCount,
+                AverageMovesUsed = completed > 0 ? (float)totalMovesUsed / completed : 0,
+                AverageScore = completed > 0 ? (float)totalScore / completed : 0,
+                ElapsedMs = elapsedMs,
+                WasCancelled = wasCancelled
+            },
+            reportProgress: progress != null
+                ? (completed, total) => progress.Report(new SimulationProgress
                 {
-                    progress.Report(new SimulationProgress
-                    {
-                        CompletedCount = completedCount,
-                        TotalCount = total,
-                        WinCount = winCount,
-                        DeadlockCount = deadlockCount
-                    });
-                }
-            }
-        }
+                    CompletedCount = completed,
+                    TotalCount = total,
+                    WinCount = winCount,
+                    DeadlockCount = deadlockCount
+                })
+                : (Action<int, int>?)null,
+            progressReportInterval: config.ProgressReportInterval);
 
-        sw.Stop();
-
-        // 最终进度报告
-        progress?.Report(new SimulationProgress
-        {
-            CompletedCount = completedCount,
-            TotalCount = total,
-            WinCount = winCount,
-            DeadlockCount = deadlockCount
-        });
-
-        return new LevelAnalysisResult
-        {
-            TotalSimulations = completedCount,
-            WinCount = winCount,
-            DeadlockCount = deadlockCount,
-            OutOfMovesCount = outOfMovesCount,
-            AverageMovesUsed = completedCount > 0 ? (float)totalMovesUsed / completedCount : 0,
-            AverageScore = completedCount > 0 ? (float)totalScore / completedCount : 0,
-            ElapsedMs = sw.Elapsed.TotalMilliseconds,
-            WasCancelled = false
-        };
+        return runner.Run(
+            config.SimulationCount,
+            i => i,
+            config.UseParallel,
+            cancellationToken);
     }
 
     private GameState CreateInitialState(LevelData levelData)

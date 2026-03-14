@@ -28,11 +28,8 @@ public sealed class ColorBombSession
     /// <summary>Beams that arrived and target is still alive (shaking).</summary>
     public readonly List<BeamTarget> ArrivedTargets = new();
 
-    /// <summary>Lock tokens for cleanup on session end or external destroy (scheduler path).</summary>
+    /// <summary>Lock tokens for cleanup on session end or external destroy.</summary>
     public readonly List<LockToken> LockTokens = new();
-
-    /// <summary>Positions locked by this session (non-scheduler fallback path).</summary>
-    public readonly HashSet<Position> LockedPositions = new();
 
     /// <summary>Cursor into PendingTargets (replaces RemoveAt(0)).</summary>
     public int PendingIndex;
@@ -63,7 +60,6 @@ public sealed class ColorBombSession
         ActiveBeams.Clear();
         ArrivedTargets.Clear();
         LockTokens.Clear();
-        LockedPositions.Clear();
         PendingIndex = 0;
         FiredBeamCount = 0;
         ShootTimer = 0f;

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Match3.Core.AI;
@@ -59,15 +58,13 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
         IProgress<SimulationProgress>? progress,
         CancellationToken cancellationToken)
     {
-        var sw = Stopwatch.StartNew();
-
         if (config.Mode == SimulationMode.PlayerPopulation)
         {
-            return RunPopulationAnalysis(initialState, config, progress, cancellationToken, sw);
+            return RunPopulationAnalysis(initialState, config, progress, cancellationToken);
         }
         else
         {
-            return RunSingleStrategyAnalysis(initialState, config, progress, cancellationToken, sw);
+            return RunSingleStrategyAnalysis(initialState, config, progress, cancellationToken);
         }
     }
 
@@ -75,8 +72,7 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
         GameState initialState,
         AnalysisConfig config,
         IProgress<SimulationProgress>? progress,
-        CancellationToken cancellationToken,
-        Stopwatch sw)
+        CancellationToken cancellationToken)
     {
         var popConfig = config.PopulationConfig ?? new PlayerPopulationConfig();
         var tiers = popConfig.Tiers;
@@ -95,7 +91,6 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
 
         int globalWins = 0, globalDeadlocks = 0, globalOutOfMoves = 0;
         long globalMoves = 0, globalScores = 0;
-        int completedCount = 0;
 
         // 进度分布追踪
         var progressAccumulator = new float[moveLimit + 1];
@@ -104,9 +99,6 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
         // 剩余步数统计（用于胜利的情况）
         int remaining0to2 = 0, remaining3to5 = 0, remaining6to10 = 0, remaining10plus = 0;
         int totalWinsForRemaining = 0;
-
-        object lockObj = new();
-        int lastReportedCount = 0;
 
         // 创建所有模拟任务（混合各分层）
         var simTasks = new List<(int tierIdx, int simIdx)>();
@@ -122,105 +114,59 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
         // 随机打乱任务顺序，使各分层交错执行
         ShuffleTasks(simTasks, 12345);
 
-        if (config.UseParallel)
-        {
-            var options = new ParallelOptions
+        var runner = new AnalysisSimulationRunner<(int tierIdx, int simIdx), SingleGameResult, LevelAnalysisResult>(
+            simulate: task =>
             {
-                CancellationToken = cancellationToken,
-                MaxDegreeOfParallelism = Environment.ProcessorCount
-            };
-
-            try
-            {
-                Parallel.ForEach(simTasks, options, task =>
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    var (tierIdx, simIdx) = task;
-                    var tierConfig = tiers[tierIdx];
-                    var result = SimulateSingleGameWithStrategy(
-                        initialState,
-                        (ulong)(simIdx * 7919 + 12345),
-                        tierConfig,
-                        moveLimit);
-
-                    lock (lockObj)
-                    {
-                        UpdateStatistics(ref tierStats[tierIdx], result,
-                            ref globalWins, ref globalDeadlocks, ref globalOutOfMoves,
-                            ref globalMoves, ref globalScores, ref completedCount,
-                            progressAccumulator, progressCounts, moveLimit,
-                            ref remaining0to2, ref remaining3to5, ref remaining6to10, ref remaining10plus,
-                            ref totalWinsForRemaining);
-
-                        ReportProgress(progress, completedCount, total, globalWins, globalDeadlocks,
-                            ref lastReportedCount, config.ProgressReportInterval);
-                    }
-                });
-            }
-            catch (OperationCanceledException)
-            {
-                sw.Stop();
-                return BuildResult(completedCount, globalWins, globalDeadlocks, globalOutOfMoves,
-                    globalMoves, globalScores, tierStats, progressAccumulator, progressCounts,
-                    moveLimit, remaining0to2, remaining3to5, remaining6to10, remaining10plus, totalWinsForRemaining,
-                    sw.Elapsed.TotalMilliseconds, true, popConfig.OutputTierResults);
-            }
-        }
-        else
-        {
-            foreach (var (tierIdx, simIdx) in simTasks)
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    sw.Stop();
-                    return BuildResult(completedCount, globalWins, globalDeadlocks, globalOutOfMoves,
-                        globalMoves, globalScores, tierStats, progressAccumulator, progressCounts,
-                        moveLimit, remaining0to2, remaining3to5, remaining6to10, remaining10plus, totalWinsForRemaining,
-                        sw.Elapsed.TotalMilliseconds, true, popConfig.OutputTierResults);
-                }
-
+                var (tierIdx, simIdx) = task;
                 var tierConfig = tiers[tierIdx];
                 var result = SimulateSingleGameWithStrategy(
                     initialState,
                     (ulong)(simIdx * 7919 + 12345),
                     tierConfig,
                     moveLimit);
-
-                UpdateStatistics(ref tierStats[tierIdx], result,
+                // Tag the result with the tier index so aggregate can route it
+                return new SingleGameResult
+                {
+                    EndReason = result.EndReason,
+                    MovesUsed = result.MovesUsed,
+                    Score = result.Score,
+                    ProgressByMove = result.ProgressByMove,
+                    TierIndex = tierIdx
+                };
+            },
+            aggregate: result =>
+            {
+                UpdateStatistics(ref tierStats[result.TierIndex], result,
                     ref globalWins, ref globalDeadlocks, ref globalOutOfMoves,
-                    ref globalMoves, ref globalScores, ref completedCount,
+                    ref globalMoves, ref globalScores,
                     progressAccumulator, progressCounts, moveLimit,
                     ref remaining0to2, ref remaining3to5, ref remaining6to10, ref remaining10plus,
                     ref totalWinsForRemaining);
+            },
+            buildResult: (completed, totalCount, elapsedMs, wasCancelled) =>
+                BuildResult(completed, globalWins, globalDeadlocks, globalOutOfMoves,
+                    globalMoves, globalScores, tierStats, progressAccumulator, progressCounts,
+                    moveLimit, remaining0to2, remaining3to5, remaining6to10, remaining10plus, totalWinsForRemaining,
+                    elapsedMs, wasCancelled, popConfig.OutputTierResults),
+            reportProgress: progress != null
+                ? (completed, totalCount) => progress.Report(new SimulationProgress
+                {
+                    CompletedCount = completed,
+                    TotalCount = totalCount,
+                    WinCount = globalWins,
+                    DeadlockCount = globalDeadlocks
+                })
+                : (Action<int, int>?)null,
+            progressReportInterval: config.ProgressReportInterval);
 
-                ReportProgress(progress, completedCount, total, globalWins, globalDeadlocks,
-                    ref lastReportedCount, config.ProgressReportInterval);
-            }
-        }
-
-        sw.Stop();
-
-        progress?.Report(new SimulationProgress
-        {
-            CompletedCount = completedCount,
-            TotalCount = total,
-            WinCount = globalWins,
-            DeadlockCount = globalDeadlocks
-        });
-
-        return BuildResult(completedCount, globalWins, globalDeadlocks, globalOutOfMoves,
-            globalMoves, globalScores, tierStats, progressAccumulator, progressCounts,
-            moveLimit, remaining0to2, remaining3to5, remaining6to10, remaining10plus, totalWinsForRemaining,
-            sw.Elapsed.TotalMilliseconds, false, popConfig.OutputTierResults);
+        return runner.Run(simTasks, config.UseParallel, cancellationToken);
     }
 
     private LevelAnalysisResult RunSingleStrategyAnalysis(
         GameState initialState,
         AnalysisConfig config,
         IProgress<SimulationProgress>? progress,
-        CancellationToken cancellationToken,
-        Stopwatch sw)
+        CancellationToken cancellationToken)
     {
         var tierConfig = config.Mode switch
         {
@@ -263,7 +209,7 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
             }
         };
 
-        return RunPopulationAnalysis(initialState, modifiedConfig, progress, cancellationToken, sw);
+        return RunPopulationAnalysis(initialState, modifiedConfig, progress, cancellationToken);
     }
 
     private static void ShuffleTasks(List<(int tierIdx, int simIdx)> tasks, int seed)
@@ -280,12 +226,11 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
         ref TierStatistics tierStats,
         SingleGameResult result,
         ref int globalWins, ref int globalDeadlocks, ref int globalOutOfMoves,
-        ref long globalMoves, ref long globalScores, ref int completedCount,
+        ref long globalMoves, ref long globalScores,
         float[] progressAccumulator, int[] progressCounts, int moveLimit,
         ref int remaining0to2, ref int remaining3to5, ref int remaining6to10, ref int remaining10plus,
         ref int totalWinsForRemaining)
     {
-        completedCount++;
         tierStats.SimCount++;
         tierStats.TotalMoves += result.MovesUsed;
         tierStats.TotalScore += result.Score;
@@ -326,24 +271,6 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
                 progressAccumulator[m] += result.ProgressByMove[m];
                 progressCounts[m]++;
             }
-        }
-    }
-
-    private static void ReportProgress(
-        IProgress<SimulationProgress>? progress,
-        int completedCount, int total, int winCount, int deadlockCount,
-        ref int lastReportedCount, int interval)
-    {
-        if (progress != null && completedCount - lastReportedCount >= interval)
-        {
-            lastReportedCount = completedCount;
-            progress.Report(new SimulationProgress
-            {
-                CompletedCount = completedCount,
-                TotalCount = total,
-                WinCount = winCount,
-                DeadlockCount = deadlockCount
-            });
         }
     }
 
@@ -520,7 +447,8 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
             EndReason = endReason,
             MovesUsed = movesUsed,
             Score = engine.State.Score,
-            ProgressByMove = progressByMove
+            ProgressByMove = progressByMove,
+            TierIndex = -1 // Will be set by caller context
         };
     }
 
@@ -570,6 +498,10 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
         public int MovesUsed { get; init; }
         public long Score { get; init; }
         public float[]? ProgressByMove { get; init; }
+        /// <summary>
+        /// Index into the tiers array, used by the aggregation step to route results.
+        /// </summary>
+        public int TierIndex { get; init; }
     }
 
     private struct TierStatistics

@@ -107,6 +107,14 @@ internal sealed class SharedSimulationContext : IDisposable
     /// </summary>
     public SimulationEngine CreateEngine(GameState state, LevelObjectiveSystem objectiveSystem)
     {
+        return CreateEngineForPreview(state, objectiveSystem);
+    }
+
+    /// <summary>
+    /// 构建预览/分析用 SimulationEngine 的统一入口，封装 CoverSystem、GroundSystem、ExplosionSystem 的创建
+    /// </summary>
+    private SimulationEngine CreateEngineForPreview(GameState state, LevelObjectiveSystem objectiveSystem)
+    {
         var coverSystem = new Systems.Layers.CoverSystem(objectiveSystem);
         var groundSystem = new Systems.Layers.GroundSystem(objectiveSystem);
         var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem);
@@ -146,25 +154,8 @@ internal sealed class SharedSimulationContext : IDisposable
             _previewState.ObjectiveProgress[i] = currentState.ObjectiveProgress[i];
         }
 
-        var coverSystem = new Systems.Layers.CoverSystem(objectiveSystem);
-        var groundSystem = new Systems.Layers.GroundSystem(objectiveSystem);
-        var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem);
-
         // 创建临时引擎执行预览
-        using var engine = new SimulationEngine(
-            _previewState,
-            SimulationConfig.ForAI(),
-            GetPhysics(),
-            GetRefill(),
-            GetMatchFinder(),
-            GetMatchProcessor(),
-            GetPowerUpHandler(),
-            null,
-            NullEventCollector.Instance,
-            explosionSystem,
-            null,
-            null,
-            objectiveSystem);
+        using var engine = CreateEngineForPreview(_previewState, objectiveSystem);
 
         int scoreBefore = _previewState.Score;
         int tilesBefore = AnalysisUtility.CountTiles(in _previewState);
@@ -195,24 +186,8 @@ internal sealed class SharedSimulationContext : IDisposable
         _previewState.Random = StateRandom;
 
         var objectiveSystem = new LevelObjectiveSystem();
-        var coverSystem = new Systems.Layers.CoverSystem(objectiveSystem);
-        var groundSystem = new Systems.Layers.GroundSystem(objectiveSystem);
-        var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem);
 
-        using var engine = new SimulationEngine(
-            _previewState,
-            SimulationConfig.ForAI(),
-            GetPhysics(),
-            GetRefill(),
-            GetMatchFinder(),
-            GetMatchProcessor(),
-            GetPowerUpHandler(),
-            null,
-            NullEventCollector.Instance,
-            explosionSystem,
-            null,
-            null,
-            objectiveSystem);
+        using var engine = CreateEngineForPreview(_previewState, objectiveSystem);
 
         int scoreBefore = _previewState.Score;
         int tilesBefore = AnalysisUtility.CountTiles(in _previewState);
@@ -235,24 +210,7 @@ internal sealed class SharedSimulationContext : IDisposable
         var newState = state.Clone();
         newState.Random = StateRandom;
 
-        var coverSystem = new Systems.Layers.CoverSystem(objectiveSystem);
-        var groundSystem = new Systems.Layers.GroundSystem(objectiveSystem);
-        var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem);
-
-        using var engine = new SimulationEngine(
-            newState,
-            SimulationConfig.ForAI(),
-            GetPhysics(),
-            GetRefill(),
-            GetMatchFinder(),
-            GetMatchProcessor(),
-            GetPowerUpHandler(),
-            null,
-            NullEventCollector.Instance,
-            explosionSystem,
-            null,
-            null,
-            objectiveSystem);
+        using var engine = CreateEngineForPreview(newState, objectiveSystem);
 
         engine.ApplyMove(from, to);
         engine.RunUntilStable();

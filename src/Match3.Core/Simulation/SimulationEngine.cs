@@ -28,6 +28,7 @@ public sealed class SimulationEngine : IDisposable
     private readonly IPowerUpHandler _powerUpHandler;
     private readonly SimulationOrchestrator _orchestrator;
     private readonly ISwapOperations _swapOperations;
+    private readonly SimulationInputHandler _inputHandler;
     private readonly IDeadlockDetectionSystem? _deadlockDetector;
     private readonly IBoardShuffleSystem? _shuffleSystem;
     private readonly ILevelObjectiveSystem? _objectiveSystem;
@@ -140,6 +141,9 @@ public sealed class SimulationEngine : IDisposable
         var swapContext = new InstantSwapContext(SwapAnimationDuration);
         _swapOperations = new SwapOperations(_matchFinder, swapContext);
 
+        // Initialize input handler for move/tap processing
+        _inputHandler = new SimulationInputHandler(_swapOperations, powerUpHandler);
+
         // Initialize deadlock detection and shuffle systems
         _deadlockDetector = deadlockDetector;
         _shuffleSystem = shuffleSystem;
@@ -185,7 +189,7 @@ public sealed class SimulationEngine : IDisposable
             state.SelectedPosition = Position.Invalid;
         }
 
-        // 0. Validate pending move (check for invalid swap revert)
+        // Phase 0: Validate pending move — check for invalid swap revert
         // Capture bomb swap info before validation clears it
         var pendingBombSwap = _pendingMoveState.IsBombSwap && _pendingMoveState.NeedsValidation
             ? _pendingMoveState
@@ -203,14 +207,15 @@ public sealed class SimulationEngine : IDisposable
         if (pendingBombSwap.HasValue && !_pendingMoveState.NeedsValidation)
         {
             var bomb = pendingBombSwap.Value;
-            ProcessBombSwap(ref state, bomb.From, bomb.To,
-                bomb.TileAIsBomb, bomb.TileBIsBomb, bomb.TileAIsColorBomb, bomb.TileBIsColorBomb);
+            _inputHandler.ProcessBombSwap(ref state, bomb.From, bomb.To,
+                bomb.TileAIsBomb, bomb.TileBIsBomb, bomb.TileAIsColorBomb, bomb.TileBIsColorBomb,
+                _currentTick, _elapsedTime, _eventCollector, ref _bombsActivated);
         }
 
-        // 1. Refill empty columns
+        // Phase 1: Refill — spawn tiles at column tops before gravity pulls them
         _orchestrator.ProcessRefill(ref state);
 
-        // 2. Update projectiles
+        // Phase 2: Projectiles — update in-flight projectiles (UFO, beams)
         var projectileCount = _orchestrator.UpdateProjectiles(
             ref state,
             deltaTime,
@@ -219,7 +224,7 @@ public sealed class SimulationEngine : IDisposable
             _eventCollector);
         _tilesCleared += projectileCount;
 
-        // 3. Update explosions
+        // Phase 3: Explosions — process active explosion waves
         var bombCount = _orchestrator.UpdateExplosions(
             ref state,
             deltaTime,
@@ -228,7 +233,7 @@ public sealed class SimulationEngine : IDisposable
             _eventCollector);
         _bombsActivated += bombCount;
 
-        // 3.5. Update ColorBomb sessions (beam timing, re-scan, batch destruction)
+        // Phase 3.5: ColorBomb sessions — beam timing, re-scan, batch destruction
         _orchestrator.UpdateColorBombSessions(
             ref state,
             deltaTime,
@@ -236,13 +241,13 @@ public sealed class SimulationEngine : IDisposable
             _elapsedTime,
             _eventCollector);
 
-        // 3.6. Tick timed locks (auto-release expired)
+        // Phase 3.6: Timed locks — auto-release expired locks
         _lockScheduler.Tick(ref state, deltaTime);
 
-        // 4. Physics (gravity)
+        // Phase 4: Physics — gravity simulation
         _orchestrator.UpdatePhysics(ref state, deltaTime);
 
-        // 5. Process stable matches (skip during swap animation to let tiles visually complete swap)
+        // Phase 5: Match processing — detect and process stable matches (skip during swap animation)
         if (!_pendingMoveState.NeedsValidation)
         {
             // Pass swap positions as foci for bomb generation priority
@@ -260,12 +265,12 @@ public sealed class SimulationEngine : IDisposable
                 // Clear swap foci after first match processing (cascade matches don't use swap priority)
                 _lastSwapFrom = Position.Invalid;
                 _lastSwapTo = Position.Invalid;
-                // Reset shuffle failed flag - board state changed, may have valid moves now
+                // Reset shuffle failed flag — board state changed, may have valid moves now
                 _shuffleFailed = false;
             }
         }
 
-        // 5.5. Deadlock detection and auto-shuffle
+        // Phase 5.5: Deadlock detection — shuffle if no valid moves remain
         // Skip if previous shuffle already failed (prevent infinite loop)
         if (_config.EnableDeadlockDetection && !_shuffleFailed &&
             _deadlockDetector != null && _shuffleSystem != null && IsStable())
@@ -300,11 +305,11 @@ public sealed class SimulationEngine : IDisposable
             }
         }
 
-        // 6. Update tick counter
+        // Phase 6: Tick counter — advance simulation time
         _currentTick++;
         _elapsedTime += deltaTime;
 
-        // 6.5. Clear stale physics state on immovable tiles (safety net).
+        // Phase 6.5: Safety net — clear stale physics on immovable tiles
         // Gravity's ProcessColumn handles this inline, but systems after gravity
         // (e.g., match processing) may create new tiles at immovable positions.
         ClearImmovableTilePhysicsState(ref state);
@@ -313,7 +318,7 @@ public sealed class SimulationEngine : IDisposable
 
         var isStable = IsStable();
 
-        // 7. Update level status when stable
+        // Phase 7: Level status — check objectives when stable
         if (isStable && _objectiveSystem != null)
         {
             _objectiveSystem.UpdateLevelStatus(ref state, _currentTick, _elapsedTime, _eventCollector);
@@ -383,87 +388,20 @@ public sealed class SimulationEngine : IDisposable
     public bool ApplyMove(Position from, Position to)
     {
         var state = State;
+        bool result = _inputHandler.ApplyMove(
+            from, to,
+            ref state,
+            ref _pendingMoveState,
+            ref _lastSwapFrom,
+            ref _lastSwapTo,
+            _currentTick, _elapsedTime, _eventCollector);
 
-        if (!state.IsValid(from) || !state.IsValid(to))
-            return false;
-
-        // Check if tiles are blocked by cover
-        if (!state.CanInteract(from) || !state.CanInteract(to))
-            return false;
-
-        // Clear selection when a move is applied (swipe bypasses HandleTap)
-        state.SelectedPosition = Position.Invalid;
-
-        // Get tile info BEFORE swap
-        var tileA = state.GetTile(from.X, from.Y);
-        var tileB = state.GetTile(to.X, to.Y);
-        var tileAId = tileA.Id;
-        var tileBId = tileB.Id;
-
-        // Check if either tile is a bomb or color bomb (before swap)
-        bool tileAIsBomb = tileA.Type.IsBomb();
-        bool tileBIsBomb = tileB.Type.IsBomb();
-        bool tileAIsColorBomb = tileA.Type.IsColorBomb();
-        bool tileBIsColorBomb = tileB.Type.IsColorBomb();
-        bool hasSpecialMove = tileAIsBomb || tileBIsBomb;
-
-        // Swap tiles in grid using shared operations
-        _swapOperations.SwapTiles(ref state, from, to);
-
-        // Check if swap creates a match (check both positions)
-        var hadMatch = _swapOperations.HasMatch(in state, from) || _swapOperations.HasMatch(in state, to);
-
-        // If there's a bomb involved, treat as valid move (no revert)
-        // Bomb effects will be processed AFTER swap animation completes
-        if (hasSpecialMove)
+        if (result)
         {
-            hadMatch = true;
+            State = state;
         }
 
-        // Track pending move for potential revert (or bomb processing)
-        _pendingMoveState = new PendingMoveState
-        {
-            From = from,
-            To = to,
-            TileAId = tileAId,
-            TileBId = tileBId,
-            HadMatch = hadMatch,
-            NeedsValidation = true,
-            AnimationTime = 0f,
-            // Store bomb swap info for delayed processing
-            IsBombSwap = hasSpecialMove,
-            TileAIsBomb = tileAIsBomb,
-            TileBIsBomb = tileBIsBomb,
-            TileAIsColorBomb = tileAIsColorBomb,
-            TileBIsColorBomb = tileBIsColorBomb
-        };
-
-        // Save swap positions for bomb generation priority
-        // Note: 'from' is where player started drag, 'to' is destination
-        // After swap, tiles have swapped places, so:
-        // - Original tile at 'from' is now at 'to'
-        // - Original tile at 'to' is now at 'from'
-        // Per bomb-generation.md: bomb should spawn at player's "touched" positions
-        _lastSwapFrom = from;
-        _lastSwapTo = to;
-
-        // Emit swap event
-        if (_eventCollector.IsEnabled)
-        {
-            _eventCollector.Emit(new TilesSwappedEvent
-            {
-                Tick = _currentTick,
-                SimulationTime = _elapsedTime,
-                TileAId = tileAId,
-                TileBId = tileBId,
-                PositionA = from,
-                PositionB = to,
-                IsRevert = false
-            });
-        }
-
-        State = state;
-        return true;
+        return result;
     }
 
     /// <summary>
@@ -494,51 +432,6 @@ public sealed class SimulationEngine : IDisposable
                     state.SetTile(x, y, tile);
                 }
             }
-        }
-    }
-
-    /// <summary>
-    /// Process bomb swap effects (combo or single bomb activation).
-    /// </summary>
-    private void ProcessBombSwap(
-        ref GameState state,
-        Position from,
-        Position to,
-        bool tileAIsBomb,
-        bool tileBIsBomb,
-        bool tileAIsColorBomb,
-        bool tileBIsColorBomb)
-    {
-        // After swap:
-        // - Original tile A (from) is now at position 'to'
-        // - Original tile B (to) is now at position 'from'
-
-        // Try combo first (handles: 彩球+普通, 炸弹+炸弹, 彩球+炸弹)
-        _powerUpHandler.ProcessSpecialMove(
-            ref state, from, to, _currentTick, _elapsedTime, _eventCollector, out int points);
-
-        if (points > 0)
-        {
-            // Combo was processed
-            _bombsActivated++;
-            return;
-        }
-
-        // If no combo, activate single bomb
-        // After swap:
-        // - If tileA was bomb, it's now at 'to'
-        // - If tileB was bomb, it's now at 'from'
-        if (tileAIsBomb && !tileBIsBomb && !tileBIsColorBomb)
-        {
-            // Single bomb A + normal B: activate bomb at 'to' (where A is now)
-            _powerUpHandler.ActivateBomb(ref state, to, _currentTick, _elapsedTime, _eventCollector);
-            _bombsActivated++;
-        }
-        else if (tileBIsBomb && !tileAIsBomb && !tileAIsColorBomb)
-        {
-            // Single bomb B + normal A: activate bomb at 'from' (where B is now)
-            _powerUpHandler.ActivateBomb(ref state, from, _currentTick, _elapsedTime, _eventCollector);
-            _bombsActivated++;
         }
     }
 
@@ -578,57 +471,15 @@ public sealed class SimulationEngine : IDisposable
     public void HandleTap(Position p)
     {
         var state = State;
-        if (!state.IsValid(p)) return;
-
-        var tile = state.GetTile(p.X, p.Y);
-
-        // 1. Check for Bomb - single tap activates bomb
-        if (tile.Type.IsBomb())
-        {
-            ActivateBomb(p);
-            return;
-        }
-
-        // 2. Handle selection logic
-        if (state.SelectedPosition == Position.Invalid)
-        {
-            // Nothing selected - select this tile (if not blocked by cover)
-            if (state.CanInteract(p))
-            {
-                state.SelectedPosition = p;
-            }
-        }
-        else if (state.SelectedPosition == p)
-        {
-            // Same tile tapped - deselect
-            state.SelectedPosition = Position.Invalid;
-        }
-        else if (IsNeighbor(state.SelectedPosition, p))
-        {
-            // Adjacent tile tapped - swap
-            var from = state.SelectedPosition;
-            state.SelectedPosition = Position.Invalid;
-            State = state;
-            ApplyMove(from, p);
-            return;
-        }
-        else
-        {
-            // Non-adjacent tile tapped - change selection (if not blocked by cover)
-            if (state.CanInteract(p))
-            {
-                state.SelectedPosition = p;
-            }
-        }
-
+        _inputHandler.HandleTap(
+            p, ref state,
+            ref _pendingMoveState,
+            ref _lastSwapFrom,
+            ref _lastSwapTo,
+            _currentTick, _elapsedTime, _eventCollector,
+            ref _bombsActivated);
         State = state;
     }
-
-    private static bool IsNeighbor(Position a, Position b)
-    {
-        return System.Math.Abs(a.X - b.X) + System.Math.Abs(a.Y - b.Y) == 1;
-    }
-
 
     /// <summary>
     /// Check if simulation is in stable state.
@@ -677,11 +528,12 @@ public sealed class SimulationEngine : IDisposable
         var cloneExplosion = new ExplosionSystem(cloneCover, cloneGround, _objectiveSystem, cloneLocks);
         var cloneProjectile = new ProjectileSystem();
         var cloneColorBomb = new ColorBombSessionManager(null, cloneCover, cloneGround, _objectiveSystem, cloneLocks);
-        var clonePowerUp = _powerUpHandler
-            .WithExplosionSystem(cloneExplosion)
-            .WithProjectileSystem(cloneProjectile)
-            .WithLockScheduler(cloneLocks)
-            .WithColorBombSessionManager(cloneColorBomb);
+        var clonePowerUp = PowerUpHandlerFactory.CloneForSimulation(
+            (PowerUpHandler)_powerUpHandler,
+            cloneExplosion,
+            cloneProjectile,
+            cloneLocks,
+            cloneColorBomb);
 
         // Shared stateless systems: _matchFinder, _matchProcessor, _deadlockDetector,
         // _shuffleSystem, _objectiveSystem — safe to share (no mutable instance fields).
