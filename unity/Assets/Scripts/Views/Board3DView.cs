@@ -388,9 +388,6 @@ namespace Match3.Unity.Views
             RenderProjectiles(state, cellSize, origin, height);
         }
 
-        private static readonly int LightColorProp = Shader.PropertyToID("_BaseColor");
-        private static readonly int LightColorPropFallback = Shader.PropertyToID("_Color");
-
         private void UpdateSelectionHighlight()
         {
             var selectedPos = _bridge.CurrentState.SelectedPosition;
@@ -419,7 +416,7 @@ namespace Match3.Unity.Views
             {
                 next.SetHighlighted(true);
 
-                // Move selection light to tile and match its color
+                // Move selection light to tile (white light for neutral illumination)
                 if (selectionLight != null)
                 {
                     var tilePos = next.transform.position;

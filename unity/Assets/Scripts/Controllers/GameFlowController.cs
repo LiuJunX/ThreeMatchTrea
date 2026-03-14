@@ -95,6 +95,11 @@ namespace Match3.Unity.Controllers
             }
 
             // Global Volume with Bloom
+            SetupBloom();
+        }
+
+        private static void SetupBloom()
+        {
             var volumeGo = new GameObject("PostProcessVolume");
             var volume = volumeGo.AddComponent<Volume>();
             volume.isGlobal = true;
