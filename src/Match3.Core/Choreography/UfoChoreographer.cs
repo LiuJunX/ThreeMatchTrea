@@ -33,14 +33,18 @@ internal sealed class UfoChoreographer
             int tileId = evt.SourceTileId ?? 0;
             if (tileId == 0) return; // No tile to animate
 
-            // Combo-spawned UFO: create a new tile visual at the launch origin
+            // Chain-triggered UFO: spawn a fresh tile visual at the launch origin.
+            // Priority = -1 ensures SpawnTile sorts before UfoLaunchCommand (same StartTime).
+            // Without this, unstable sort can let UfoLaunch set AnimationRef on the old visual,
+            // then SpawnTile replaces it (AnimationRefCount resets to 0) and SyncFalling removes it.
             if (evt.SpawnVisual)
             {
                 _ctx.Commands.Add(new SpawnTileCommand
                 {
                     TileId = tileId, Type = ElementType.Ufo,
                     GridPos = new Position((int)evt.Origin.X, (int)evt.Origin.Y),
-                    SpawnPos = evt.Origin, StartTime = startTime, Duration = 0
+                    SpawnPos = evt.Origin, StartTime = startTime, Duration = 0,
+                    Priority = -1
                 });
             }
 

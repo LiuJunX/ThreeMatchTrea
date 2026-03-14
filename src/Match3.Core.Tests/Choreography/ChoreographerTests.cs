@@ -1253,5 +1253,39 @@ public class ChoreographerTests
             $"RemoveTile at {removeCmd.StartTime} fires before flight end {flightEndTime}");
     }
 
+    /// <summary>
+    /// Regression: when SpawnVisual=true, SpawnTileCommand must sort before
+    /// UfoLaunchCommand after Player.Append sorts by (StartTime, Priority).
+    /// If UfoLaunch executes first it sets AnimationRef on the old visual;
+    /// SpawnTile then replaces it (AnimationRefCount=0) and SyncFalling removes it.
+    /// </summary>
+    [Fact]
+    public void ChainTriggeredUfo_SpawnTileSortsBeforeUfoLaunch()
+    {
+        var events = new GameEvent[]
+        {
+            new ProjectileLaunchedEvent
+            {
+                ProjectileId = 1,
+                Type = ProjectileType.Ufo,
+                Origin = new Vector2(2, 3),
+                TargetPosition = new Position(6, 1),
+                SourceTileId = 99,
+                SpawnVisual = true,
+                SimulationTime = 1.0f
+            }
+        };
+
+        var commands = _choreographer.Choreograph(events);
+
+        var spawn = Assert.Single(commands.OfType<SpawnTileCommand>());
+        var launch = Assert.Single(commands.OfType<UfoLaunchCommand>());
+
+        Assert.Equal(spawn.StartTime, launch.StartTime);
+        // SpawnTile must have strictly lower Priority so unstable sort never reorders it after UfoLaunch
+        Assert.True(spawn.Priority < launch.Priority,
+            $"SpawnTile.Priority ({spawn.Priority}) must be < UfoLaunch.Priority ({launch.Priority})");
+    }
+
     #endregion
 }
