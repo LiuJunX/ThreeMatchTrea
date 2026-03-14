@@ -76,12 +76,12 @@ namespace Match3.Unity.Controllers
             mainCamera.backgroundColor = new Color(0.15f, 0.15f, 0.2f);
             mainCamera.clearFlags = CameraClearFlags.SolidColor;
 
-            // URP MSAA 2x (render scale 2.0 handles most aliasing)
+            // MSAA disabled — Fresnel soft edges handle aliasing
             var rpAsset = GraphicsSettings.currentRenderPipeline;
             if (rpAsset != null)
             {
                 var msaaProp = rpAsset.GetType().GetProperty("msaaSampleCount");
-                msaaProp?.SetValue(rpAsset, 2);
+                msaaProp?.SetValue(rpAsset, 1);
             }
 
             // SMAA

@@ -6,6 +6,7 @@ Shader "Match3/TileLit"
         _Metallic ("Metallic", Range(0,1)) = 0.05
         _Smoothness ("Smoothness", Range(0,1)) = 0.62
         [HDR] _EmissionColor ("Emission", Color) = (0,0,0,0)
+        _EdgeSoftness ("Edge Softness", Range(0, 1)) = 0.3
         _ClipYMin ("Clip Y Min", Float) = -9999
         _ClipYMax ("Clip Y Max", Float) =  9999
     }
@@ -14,9 +15,9 @@ Shader "Match3/TileLit"
     {
         Tags
         {
-            "RenderType" = "Opaque"
+            "RenderType" = "Transparent"
             "RenderPipeline" = "UniversalPipeline"
-            "Queue" = "Geometry"
+            "Queue" = "Transparent"
         }
 
         // ─── Pass 0: Forward Lit ───
@@ -24,6 +25,9 @@ Shader "Match3/TileLit"
         {
             Name "ForwardLit"
             Tags { "LightMode" = "UniversalForward" }
+
+            Blend SrcAlpha OneMinusSrcAlpha
+            ZWrite On
 
             HLSLPROGRAM
             #pragma vertex LitVert
@@ -43,6 +47,7 @@ Shader "Match3/TileLit"
                 half  _Metallic;
                 half  _Smoothness;
                 half4 _EmissionColor;
+                half  _EdgeSoftness;
                 float _ClipYMin;
                 float _ClipYMax;
             CBUFFER_END
@@ -89,16 +94,6 @@ Shader "Match3/TileLit"
                 clip(_ClipYMax - input.positionWS.y);
 
                 // Surface data
-                SurfaceData surfaceData = (SurfaceData)0;
-                surfaceData.albedo     = _BaseColor.rgb;
-                surfaceData.metallic   = _Metallic;
-                surfaceData.smoothness = _Smoothness;
-                surfaceData.normalTS   = half3(0, 0, 1);
-                surfaceData.emission   = _EmissionColor.rgb;
-                surfaceData.occlusion  = 1;
-                surfaceData.alpha      = _BaseColor.a;
-
-                // Input data
                 InputData inputData = (InputData)0;
                 inputData.positionWS              = input.positionWS;
                 inputData.positionCS              = input.positionCS;
@@ -109,15 +104,29 @@ Shader "Match3/TileLit"
                 inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(input.positionCS);
                 inputData.bakedGI                 = SampleSH(inputData.normalWS);
 
+                // Fresnel edge softness
+                half fresnel = saturate(dot(inputData.normalWS, inputData.viewDirectionWS));
+                half edgeAlpha = smoothstep(0, _EdgeSoftness, fresnel);
+
+                SurfaceData surfaceData = (SurfaceData)0;
+                surfaceData.albedo     = _BaseColor.rgb;
+                surfaceData.metallic   = _Metallic;
+                surfaceData.smoothness = _Smoothness;
+                surfaceData.normalTS   = half3(0, 0, 1);
+                surfaceData.emission   = _EmissionColor.rgb;
+                surfaceData.occlusion  = 1;
+                surfaceData.alpha      = edgeAlpha;
+
                 half4 color = UniversalFragmentPBR(inputData, surfaceData);
                 color.rgb = MixFog(color.rgb, inputData.fogCoord);
+                color.a = edgeAlpha;
 
                 return color;
             }
             ENDHLSL
         }
 
-        // ─── Pass 1: Shadow Caster ───
+        // ─── Pass 1: Shadow Caster (stays opaque) ───
         Pass
         {
             Name "ShadowCaster"
@@ -141,6 +150,7 @@ Shader "Match3/TileLit"
                 half  _Metallic;
                 half  _Smoothness;
                 half4 _EmissionColor;
+                half  _EdgeSoftness;
                 float _ClipYMin;
                 float _ClipYMax;
             CBUFFER_END
@@ -213,6 +223,7 @@ Shader "Match3/TileLit"
                 half  _Metallic;
                 half  _Smoothness;
                 half4 _EmissionColor;
+                half  _EdgeSoftness;
                 float _ClipYMin;
                 float _ClipYMax;
             CBUFFER_END
@@ -264,6 +275,7 @@ Shader "Match3/TileLit"
                 half  _Metallic;
                 half  _Smoothness;
                 half4 _EmissionColor;
+                half  _EdgeSoftness;
                 float _ClipYMin;
                 float _ClipYMax;
             CBUFFER_END

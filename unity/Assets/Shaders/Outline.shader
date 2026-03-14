@@ -11,8 +11,9 @@ Shader "Match3/Outline"
     {
         Tags
         {
-            "RenderType" = "Opaque"
+            "RenderType" = "Transparent"
             "RenderPipeline" = "UniversalPipeline"
+            "Queue" = "Transparent+1"
         }
 
         Pass
@@ -21,7 +22,8 @@ Shader "Match3/Outline"
             Tags { "LightMode" = "SRPDefaultUnlit" }
 
             Cull Front
-            ZWrite On
+            Blend SrcAlpha OneMinusSrcAlpha
+            ZWrite Off
 
             HLSLPROGRAM
             #pragma vertex vert
