@@ -424,15 +424,7 @@ namespace Match3.Unity.Views
                 {
                     var tilePos = next.transform.position;
                     selectionLight.transform.position = new Vector3(tilePos.x, tilePos.y, tilePos.z - 1f);
-
-                    if (selectedTileId != _highlightedTileId)
-                    {
-                        // Only re-read material color on tile change (not every frame)
-                        var mat = next.GetComponent<MeshRenderer>().sharedMaterial;
-                        selectionLight.color = mat.HasProperty(LightColorProp)
-                            ? mat.GetColor(LightColorProp)
-                            : mat.GetColor(LightColorPropFallback);
-                    }
+                    selectionLight.color = Color.white;
                     selectionLight.enabled = true;
                 }
             }
