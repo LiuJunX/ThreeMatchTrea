@@ -171,8 +171,8 @@ public class PowerUpHandlerExplosionTests
             CreatedExplosions.Add((origin, new HashSet<Position>(targets)));
         }
 
-        public void Update(ref GameState state, float deltaTime, int tick, float simTime,
-            IEventCollector eventCollector) { }
+        public int Update(ref GameState state, float deltaTime, int tick, float simTime,
+            IEventCollector eventCollector) => 0;
 
         public void Reset() { }
     }

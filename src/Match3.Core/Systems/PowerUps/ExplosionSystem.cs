@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Match3.Core.Events;
 using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
@@ -25,6 +26,7 @@ public class ExplosionSystem : IExplosionSystem
     private readonly BombEffectRegistry _bombEffectRegistry;
     private readonly LockScheduler? _lockScheduler;
     private readonly ExplosionConfig _config;
+    private int _chainReactionCount;
 
     public ExplosionSystem()
         : this(
@@ -77,6 +79,10 @@ public class ExplosionSystem : IExplosionSystem
     /// </summary>
     public void CreateExplosion(ref GameState state, Position origin, int radius)
     {
+        Debug.Assert(_config.DefaultWaveInterval < ReceiveLockTimings.ExplosionClear,
+            $"WaveInterval({_config.DefaultWaveInterval}) must be < ReceiveLockDuration({ReceiveLockTimings.ExplosionClear}), " +
+            "otherwise gravity can steal tiles before the next wave reaches them.");
+
         var explosion = Pools.Obtain<Explosion>();
         explosion.Initialize(origin, radius, _config.DefaultWaveInterval);
 
@@ -110,6 +116,10 @@ public class ExplosionSystem : IExplosionSystem
     /// </summary>
     public void CreateTargetedExplosion(ref GameState state, Position origin, IEnumerable<Position> targets, float waveInterval, float acceleration, float receiveLockDuration)
     {
+        Debug.Assert(waveInterval < receiveLockDuration,
+            $"WaveInterval({waveInterval}) must be < ReceiveLockDuration({receiveLockDuration}), " +
+            "otherwise gravity can steal tiles before the next wave reaches them.");
+
         int maxRadius = 0;
         foreach (var pos in targets)
         {
@@ -135,7 +145,7 @@ public class ExplosionSystem : IExplosionSystem
     /// as many waves as time allows. When a wave hits a bomb, it is eliminated
     /// and a new wave front is started immediately. Finished explosions are cleaned up.
     /// </summary>
-    public void Update(
+    public int Update(
         ref GameState state,
         float deltaTime,
         int tick,
@@ -143,6 +153,7 @@ public class ExplosionSystem : IExplosionSystem
         IEventCollector eventCollector)
     {
         _explosionsToRemove.Clear();
+        _chainReactionCount = 0;
 
         foreach (var explosion in _activeExplosions)
         {
@@ -174,6 +185,8 @@ public class ExplosionSystem : IExplosionSystem
             _activeExplosions.AddRange(_pendingExplosions);
             _pendingExplosions.Clear();
         }
+
+        return _chainReactionCount;
     }
 
     /// <inheritdoc />
@@ -211,6 +224,10 @@ public class ExplosionSystem : IExplosionSystem
             if (dist != currentWave) continue;
 
             var result = _cellEliminator.Eliminate(ref state, pos, ElimSource.Bomb, tick, simTime, eventCollector);
+
+            // ColorBomb returns Immune here (ElimSource.Bomb ≠ ConsumeBomb).
+            // By design, ColorBombs are not chain-triggered by explosions;
+            // they can only be activated via player swap or ConsumeBomb.
 
             if (result.Outcome == EliminateOutcome.Eliminated)
             {
@@ -286,6 +303,10 @@ public class ExplosionSystem : IExplosionSystem
                 if (dist > maxRadius) maxRadius = dist;
             }
 
+            Debug.Assert(waveInterval < ReceiveLockTimings.ExplosionClear,
+                $"Chain WaveInterval({waveInterval}) must be < ReceiveLockDuration({ReceiveLockTimings.ExplosionClear}), " +
+                "otherwise gravity can steal tiles before the next wave reaches them.");
+
             var chainExplosion = Pools.Obtain<Explosion>();
             chainExplosion.Initialize(pos, maxRadius, waveInterval, acceleration);
             chainExplosion.ReceiveLockDuration = ReceiveLockTimings.ExplosionClear;
@@ -295,6 +316,7 @@ public class ExplosionSystem : IExplosionSystem
 
             // Add to pending list (processed next tick, not recursively)
             _pendingExplosions.Add(chainExplosion);
+            _chainReactionCount++;
         }
         finally
         {

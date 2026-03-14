@@ -101,8 +101,7 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
     /// <inheritdoc />
     public int UpdateExplosions(ref GameState state, float deltaTime, int tick, float simTime, IEventCollector events)
     {
-        _explosionSystem.Update(ref state, deltaTime, tick, simTime, events);
-        return 0;
+        return _explosionSystem.Update(ref state, deltaTime, tick, simTime, events);
     }
 
     /// <inheritdoc />

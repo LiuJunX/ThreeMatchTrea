@@ -233,6 +233,101 @@ public class BombReceiveLockIntegrationTests
             "GameServiceFactory 创建的引擎，炸弹激活后原位置应持有 ReceiveLock");
     }
 
+    /// <summary>
+    /// 高列场景：炸弹在底部附近，上方全是 tile。
+    /// 验证爆炸波向上扩散时，ReceiveLock 阻止重力把待消除 tile 拉走，
+    /// 确保所有 AffectedArea 内的 tile 都被消除（没有漏掉）。
+    /// 这是 WaveInterval &lt; ReceiveLockDuration 不变式的端到端守护测试。
+    /// </summary>
+    [Fact]
+    public void TallColumn_ExplosionWave_AllTargetsEliminated()
+    {
+        // 3×8 棋盘，中间列全填 tile，两侧留 void 隔离重力影响
+        // 炸弹放在 (1,6)（靠近底部），爆炸范围覆盖整列
+        var state = CreateIsolatedState(3, 8);
+
+        // 左右两列设为 void（隔离，只保留中间列参与重力）
+        for (int y = 0; y < 8; y++)
+        {
+            state.SetCell(0, y, CellKind.Void);
+            state.SetCell(2, y, CellKind.Void);
+        }
+
+        // 中间列填充 tile，交替颜色避免意外 match
+        int id = 1;
+        for (int y = 0; y < 8; y++)
+        {
+            var type = y % 2 == 0 ? ElementType.Item1 : ElementType.Item2;
+            state.SetTile(1, y, new Tile(id++, type, 1, y));
+        }
+
+        // 放置 AreaBomb（5x5），覆盖中间列 y=4..7
+        state.SetTile(1, 6, new Tile(100, ElementType.Square5x5, 1, 6));
+
+        // 记录爆炸范围内（y=4..7）所有 tile 的 id（含炸弹自身）
+        var targetTileIds = new System.Collections.Generic.HashSet<int>();
+        for (int y = 4; y <= 7; y++)
+        {
+            var tile = state.GetTile(1, y);
+            if (tile.Type != ElementType.None)
+                targetTileIds.Add(tile.Id);
+        }
+
+        var collector = new BufferedEventCollector();
+        var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
+
+        // 激活炸弹
+        engine.ActivateBomb(new Position(1, 6));
+
+        // 运行足够多的 tick 直到稳定
+        for (int i = 0; i < 300; i++)
+        {
+            engine.Tick(1f / 60f);
+            if (i > 30 && engine.IsStable()) break;
+        }
+
+        // 统计被消除的目标 tile
+        var destroyedIds = new System.Collections.Generic.HashSet<int>();
+        foreach (var evt in collector.GetEvents())
+        {
+            if (evt is TileDestroyedEvent tde && targetTileIds.Contains(tde.TileId))
+                destroyedIds.Add(tde.TileId);
+        }
+
+        // 所有目标 tile 都应被消除（炸弹自身 + 范围内的 y=4,5,7）
+        var missing = new System.Collections.Generic.HashSet<int>(targetTileIds);
+        missing.ExceptWith(destroyedIds);
+        Assert.True(missing.Count == 0,
+            $"有 {missing.Count} 个目标 tile 未被消除（ids: {string.Join(",", missing)}）。" +
+            "可能是重力在波到达前拉走了 tile（WaveInterval >= ReceiveLockDuration）。");
+    }
+
+    /// <summary>
+    /// 验证 ExplosionConfig 中所有 WaveInterval 都小于对应的 ReceiveLockDuration。
+    /// 纯配置校验，不需要跑模拟，确保改配置时不会破坏时序不变式。
+    /// </summary>
+    [Fact]
+    public void ExplosionConfig_AllWaveIntervals_LessThanReceiveLockDuration()
+    {
+        var config = new Match3.Core.Systems.PowerUps.ExplosionConfig();
+
+        // 默认爆炸
+        Assert.True(config.DefaultWaveInterval < ReceiveLockTimings.ExplosionClear,
+            $"DefaultWaveInterval({config.DefaultWaveInterval}) must be < ExplosionClear({ReceiveLockTimings.ExplosionClear})");
+
+        // 火箭
+        Assert.True(config.RocketWaveInterval < ReceiveLockTimings.ExplosionClear,
+            $"RocketWaveInterval({config.RocketWaveInterval}) must be < ExplosionClear({ReceiveLockTimings.ExplosionClear})");
+
+        // 方块炸弹
+        Assert.True(config.AreaBombWaveInterval < ReceiveLockTimings.ExplosionClear,
+            $"AreaBombWaveInterval({config.AreaBombWaveInterval}) must be < ExplosionClear({ReceiveLockTimings.ExplosionClear})");
+
+        // 双彩球
+        Assert.True(DoubleColorBombConstants.WipeInterval < ReceiveLockTimings.ColorBombBatchClear,
+            $"DoubleColorBomb WipeInterval({DoubleColorBombConstants.WipeInterval}) must be < ColorBombBatchClear({ReceiveLockTimings.ColorBombBatchClear})");
+    }
+
     #region Helpers
 
     private static GameState CreateIsolatedState(int width, int height)

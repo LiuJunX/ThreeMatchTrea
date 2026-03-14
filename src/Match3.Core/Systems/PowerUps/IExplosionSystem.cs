@@ -11,7 +11,10 @@ public interface IExplosionSystem
     void CreateTargetedExplosion(ref GameState state, Position origin, System.Collections.Generic.IEnumerable<Position> targets, float waveInterval, float acceleration);
     void CreateTargetedExplosion(ref GameState state, Position origin, System.Collections.Generic.IEnumerable<Position> targets, float waveInterval, float acceleration, float receiveLockDuration);
 
-    void Update(
+    /// <summary>
+    /// Advances active explosions. Returns the number of chain reactions triggered this tick.
+    /// </summary>
+    int Update(
         ref GameState state,
         float deltaTime,
         int tick,
