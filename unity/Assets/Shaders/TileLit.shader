@@ -9,6 +9,9 @@ Shader "Match3/TileLit"
         [HDR] _FresnelColor ("Fresnel Glow", Color) = (0,0,0,0)
         _FresnelPower ("Fresnel Power", Range(1, 8)) = 3
         _EdgeSoftness ("Edge Softness", Range(0, 1)) = 0.15
+        [HDR] _GlowColor ("Glow Color", Color) = (0,0,0,0)
+        _GlowWidth ("Glow Width", Range(0, 0.5)) = 0
+        _GlowPower ("Glow Falloff", Range(0.5, 5)) = 2
         _ClipYMin ("Clip Y Min", Float) = -9999
         _ClipYMax ("Clip Y Max", Float) =  9999
     }
@@ -52,6 +55,9 @@ Shader "Match3/TileLit"
                 half4 _FresnelColor;
                 half  _FresnelPower;
                 half  _EdgeSoftness;
+                half4 _GlowColor;
+                half  _GlowWidth;
+                half  _GlowPower;
                 float _ClipYMin;
                 float _ClipYMax;
             CBUFFER_END
@@ -161,6 +167,9 @@ Shader "Match3/TileLit"
                 half4 _FresnelColor;
                 half  _FresnelPower;
                 half  _EdgeSoftness;
+                half4 _GlowColor;
+                half  _GlowWidth;
+                half  _GlowPower;
                 float _ClipYMin;
                 float _ClipYMax;
             CBUFFER_END
@@ -236,6 +245,9 @@ Shader "Match3/TileLit"
                 half4 _FresnelColor;
                 half  _FresnelPower;
                 half  _EdgeSoftness;
+                half4 _GlowColor;
+                half  _GlowWidth;
+                half  _GlowPower;
                 float _ClipYMin;
                 float _ClipYMax;
             CBUFFER_END
@@ -290,6 +302,9 @@ Shader "Match3/TileLit"
                 half4 _FresnelColor;
                 half  _FresnelPower;
                 half  _EdgeSoftness;
+                half4 _GlowColor;
+                half  _GlowWidth;
+                half  _GlowPower;
                 float _ClipYMin;
                 float _ClipYMax;
             CBUFFER_END
@@ -323,6 +338,78 @@ Shader "Match3/TileLit"
                 half3 nWS = NormalizeNormalPerPixel(input.normalWS);
                 float2 octNormal = PackNormalOctQuadEncode(nWS);
                 return half4(octNormal, 0, 0);
+            }
+            ENDHLSL
+        }
+
+        // ─── Pass 4: Glow (normal-expanded additive halo) ───
+        Pass
+        {
+            Name "Glow"
+            Tags { "LightMode" = "SRPDefaultUnlit" }
+
+            Blend One One   // Additive
+            ZWrite Off
+            ZTest LEqual
+            Cull Back
+
+            HLSLPROGRAM
+            #pragma vertex GlowVert
+            #pragma fragment GlowFrag
+
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+            CBUFFER_START(UnityPerMaterial)
+                half4 _BaseColor;
+                half  _Metallic;
+                half  _Smoothness;
+                half4 _EmissionColor;
+                half4 _FresnelColor;
+                half  _FresnelPower;
+                half  _EdgeSoftness;
+                half4 _GlowColor;
+                half  _GlowWidth;
+                half  _GlowPower;
+                float _ClipYMin;
+                float _ClipYMax;
+            CBUFFER_END
+
+            struct Attributes
+            {
+                float4 positionOS : POSITION;
+                float3 normalOS   : NORMAL;
+            };
+
+            struct Varyings
+            {
+                float4 positionCS : SV_POSITION;
+                float3 positionWS : TEXCOORD0;
+                half3  normalWS   : TEXCOORD1;
+            };
+
+            Varyings GlowVert(Attributes input)
+            {
+                Varyings o;
+                float3 expandedOS = input.positionOS.xyz + input.normalOS * _GlowWidth;
+                o.positionWS = TransformObjectToWorld(expandedOS);
+                o.positionCS = TransformWorldToHClip(o.positionWS);
+                o.normalWS   = TransformObjectToWorldNormal(input.normalOS);
+                return o;
+            }
+
+            half4 GlowFrag(Varyings input) : SV_Target
+            {
+                clip(input.positionWS.y - _ClipYMin);
+                clip(_ClipYMax - input.positionWS.y);
+
+                half3 normalWS = normalize(input.normalWS);
+                half3 viewDir = GetWorldSpaceNormalizeViewDir(input.positionWS);
+                half NdotV = saturate(dot(normalWS, viewDir));
+
+                // Edge glow: bright at silhouette edges, fading toward center
+                half glow = pow(1 - NdotV, _GlowPower);
+
+                return half4(_GlowColor.rgb * glow, 1);
             }
             ENDHLSL
         }

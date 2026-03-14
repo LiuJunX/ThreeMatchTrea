@@ -66,6 +66,8 @@ namespace Match3.Unity.Views
         private static readonly int EmissionColorProp = Shader.PropertyToID("_EmissionColor");
         private static readonly int FresnelColorProp = Shader.PropertyToID("_FresnelColor");
         private static readonly int FresnelPowerProp = Shader.PropertyToID("_FresnelPower");
+        private static readonly int GlowColorProp = Shader.PropertyToID("_GlowColor");
+        private static readonly int GlowWidthProp = Shader.PropertyToID("_GlowWidth");
         private static readonly int ShadowColorProp = Shader.PropertyToID("_BaseColor");
         private static readonly int ShadowColorPropFallback = Shader.PropertyToID("_Color");
         private static readonly int ClipYMinProp = Shader.PropertyToID("_ClipYMin");
@@ -359,7 +361,7 @@ namespace Match3.Unity.Views
             if (_isHighlighted == highlighted) return;
             _isHighlighted = highlighted;
 
-            // Emission + Fresnel glow: on when selected, off when deselected
+            // Emission + Fresnel + Glow halo: on when selected, off when deselected
             _meshRenderer.GetPropertyBlock(_propBlock);
             if (highlighted)
             {
@@ -370,11 +372,15 @@ namespace Match3.Unity.Views
                 _propBlock.SetColor(EmissionColorProp, baseColor * 0.3f);
                 _propBlock.SetColor(FresnelColorProp, baseColor * 0.6f);
                 _propBlock.SetFloat(FresnelPowerProp, 3f);
+                _propBlock.SetColor(GlowColorProp, baseColor * 0.4f);
+                _propBlock.SetFloat(GlowWidthProp, 0.08f);
             }
             else
             {
                 _propBlock.SetColor(EmissionColorProp, Color.black);
                 _propBlock.SetColor(FresnelColorProp, Color.black);
+                _propBlock.SetColor(GlowColorProp, Color.black);
+                _propBlock.SetFloat(GlowWidthProp, 0f);
                 _highlightTime = 0f;
                 _spinAngle = 0f;
                 // Transform resets via PoseStack on next Compose
