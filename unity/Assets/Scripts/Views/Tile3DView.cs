@@ -1,6 +1,7 @@
 using Match3.Core.Models.Enums;
 using Match3.Presentation;
 using Match3.Unity.Bridge;
+using Match3.Unity.Common;
 using Match3.Unity.Controllers;
 using Match3.Unity.Pools;
 using UnityEngine;
@@ -58,6 +59,7 @@ namespace Match3.Unity.Views
         private bool _wasAnimated;
         private float _bounceTime = -1f;
         private float _highlightTime;
+        private float _spinAngle;
 
         private static readonly int ColorProp = Shader.PropertyToID("_BaseColor");
         private static readonly int ColorPropFallback = Shader.PropertyToID("_Color");
@@ -69,7 +71,20 @@ namespace Match3.Unity.Views
 
         // Per-tile X tilt (replaces TileContainer3D rotation for clean coordinates)
         private const float BaseTiltX = -10f;
-        private static readonly Vector3 BaseTiltEuler = new Vector3(BaseTiltX, 0f, 0f);
+        private static readonly Quaternion BaseTiltQuat = Quaternion.Euler(BaseTiltX, 0f, 0f);
+
+        // Pose channel indices — each owned by exactly one animation system
+        private static class Ch
+        {
+            public const int Grid = 0;      // Presentation: world position + base scale
+            public const int Effect = 1;    // Selection float / hint nudge / bomb lift
+            public const int BaseTilt = 2;  // Constant: -10 deg X tilt (set once)
+            public const int Dynamic = 3;   // Selection spin / hint tilt / bomb rotation
+            public const int FxScale = 4;   // Bounce squash + hint/selection pulse
+            public const int Count = 5;
+        }
+
+        private PoseStack _pose;
 
         // Scale multiplier: makes tiles fill more of the cell
         private const float TileScaleMultiplier = 1.05f;
@@ -115,6 +130,8 @@ namespace Match3.Unity.Views
             _propBlock = new MaterialPropertyBlock();
             _outline = gameObject.AddComponent<OutlineEffect>();
             CreateBlobShadow();
+            _pose = new PoseStack(transform, Ch.Count);
+            _pose[Ch.BaseTilt].rotation = BaseTiltQuat;
         }
 
         private void CreateBlobShadow()
@@ -184,31 +201,34 @@ namespace Match3.Unity.Views
             if (_ufoFlying)
             {
                 _ufoFlying = false;
-                transform.localEulerAngles = BaseTiltEuler;
+                _pose.ResetAll();
+                _pose[Ch.BaseTilt].rotation = BaseTiltQuat;
                 if (_shadowTransform != null)
                     _shadowTransform.gameObject.SetActive(true);
             }
 
-            var pos = new Vector3(worldPos.x, worldPos.y, 0f);
-            // NOTE: Idle breathing intentionally disabled (keep tiles perfectly still when idle).
+            // --- Ch.Grid: world position + base scale ---
+            _pose[Ch.Grid].position = new Vector3(worldPos.x, worldPos.y, 0f);
 
-            if (_isHighlighted)
-            {
-                _highlightTime = (_highlightTime + dt) % 628f; // wrap to avoid float precision loss
-                // 选中呼吸：相对棋盘的上下（沿棋盘法线 Z 轴轻微浮动）
-                var floatZ = Mathf.Sin(_highlightTime * 5f) * 0.04f * cellSize;
-                pos.z += floatZ;
-            }
-
-            // Scale (uniform 3D, Z tracks min of X/Y for natural shrink)
             var scaleFactor = cellSize * TileScaleMultiplier;
             var zScale = Mathf.Min(visual.Scale.X, visual.Scale.Y);
             _baseScale = new Vector3(
                 visual.Scale.X * scaleFactor,
                 visual.Scale.Y * scaleFactor,
                 zScale * scaleFactor);
+            _pose[Ch.Grid].scale = _baseScale;
 
-            var finalScale = _baseScale;
+            // --- Per-frame effect channels ---
+            var effectPos = Vector3.zero;
+            var dynamicRot = Quaternion.identity;
+            var fxScale = Vector3.one;
+
+            // Highlight timing + Z-float breathing
+            if (_isHighlighted)
+            {
+                _highlightTime = (_highlightTime + dt) % 628f;
+                effectPos.z = Mathf.Sin(_highlightTime * 5f) * 0.04f * cellSize;
+            }
 
             // Landing bounce
             {
@@ -216,9 +236,9 @@ namespace Match3.Unity.Views
                 _bounceTime = newBounce;
                 if (squash != 0f)
                 {
-                    finalScale.x *= 1f + squash;
-                    finalScale.z *= 1f + squash;
-                    finalScale.y *= 1f - squash;
+                    fxScale.x *= 1f + squash;
+                    fxScale.z *= 1f + squash;
+                    fxScale.y *= 1f - squash;
                 }
             }
 
@@ -227,17 +247,16 @@ namespace Match3.Unity.Views
             {
                 var (newHint, pulse, phase) = TileAnimationHelper.CalculateHintPulse(_hintTime, dt, _hintType);
                 _hintTime = newHint;
-                finalScale *= pulse;
+                fxScale *= pulse;
 
                 if (_hintType == HintAnimationType.SwapNudge)
                 {
                     var nudge = TileAnimationHelper.CalculateSwapNudgeOffset(phase, cellSize);
-                    pos += new Vector3(_hintNudgeDir.x * nudge, _hintNudgeDir.y * nudge, 0f);
-                    // Tilt toward movement direction during nudge (3D: X/Y axes with base tilt)
+                    effectPos += new Vector3(_hintNudgeDir.x * nudge, _hintNudgeDir.y * nudge, 0f);
                     var tiltAngle = TileAnimationHelper.CalculateSwapNudgeTiltAngle(phase);
-                    var tiltX = -_hintNudgeDir.y * tiltAngle; // vertical: X axis
-                    var tiltY = _hintNudgeDir.x * tiltAngle;  // horizontal: Y axis
-                    transform.localEulerAngles = new Vector3(BaseTiltX + tiltX, tiltY, 0f);
+                    var tiltX = -_hintNudgeDir.y * tiltAngle;
+                    var tiltY = _hintNudgeDir.x * tiltAngle;
+                    dynamicRot = Quaternion.Euler(tiltX, tiltY, 0f);
                 }
 
                 // Emission pulse for hint
@@ -252,33 +271,30 @@ namespace Match3.Unity.Views
                 _meshRenderer.SetPropertyBlock(_propBlock);
             }
 
-            // Apply final position (after all highlight/hint modifications)
-            transform.position = pos;
-
-            // Selection pulse (scale + rotation; _highlightTime already updated above)
+            // Selection pulse + rotation
             if (_isHighlighted)
             {
                 var pulse = TileAnimationHelper.CalculateSelectionPulse(_highlightTime);
-                finalScale *= pulse;
-
-                // 3D mode: Y-axis rotation
-                var rot = transform.localEulerAngles;
-                rot.y += 30f * dt;
-                transform.localEulerAngles = rot;
+                fxScale *= pulse;
+                _spinAngle = (_spinAngle + 30f * dt) % 360f;
+                dynamicRot = Quaternion.Euler(0f, _spinAngle, 0f);
             }
 
             // Animation-driven rotation (color bomb spin etc.)
             if (visual.Rotation != 0f)
             {
-                pos.z = -0.5f; // Float above other tiles
-                transform.position = pos;
-                transform.localEulerAngles = new Vector3(BaseTiltX, visual.Rotation, 0f);
+                effectPos.z = -0.5f;
+                dynamicRot = Quaternion.Euler(0f, visual.Rotation, 0f);
             }
 
-            transform.localScale = finalScale;
+            // --- Write channels + compose ---
+            _pose[Ch.Effect].position = effectPos;
+            _pose[Ch.Dynamic].rotation = dynamicRot;
+            _pose[Ch.FxScale].scale = fxScale;
+            _pose.Compose();
 
             // Update blob shadow
-            UpdateBlobShadow(worldPos, cellSize, finalScale, pos.z);
+            UpdateBlobShadow(worldPos, cellSize, _pose.Scale, _pose.Position.z);
 
             // Alpha via MaterialPropertyBlock
             if (visual.Alpha < 1f)
@@ -317,8 +333,7 @@ namespace Match3.Unity.Views
             if (!hinted && wasHinted)
             {
                 _hintTime = 0f;
-                transform.localEulerAngles = BaseTiltEuler;
-                // Clear emission
+                // Clear emission (rotation resets via PoseStack on next Compose)
                 _meshRenderer.GetPropertyBlock(_propBlock);
                 _propBlock.SetColor(EmissionColorProp, Color.black);
                 _meshRenderer.SetPropertyBlock(_propBlock);
@@ -356,8 +371,8 @@ namespace Match3.Unity.Views
             {
                 _propBlock.SetColor(EmissionColorProp, Color.black);
                 _highlightTime = 0f;
-                transform.localEulerAngles = BaseTiltEuler;
-                transform.localScale = _baseScale;
+                _spinAngle = 0f;
+                // Transform resets via PoseStack on next Compose
             }
             _meshRenderer.SetPropertyBlock(_propBlock);
         }
@@ -655,9 +670,11 @@ namespace Match3.Unity.Views
             _ufoArcSnapshot = 0f;
             _retargetBlend = 0f;
             _ufoTakeoffBlend = 0f;
+            _spinAngle = 0f;
             _lastMaterials = null;
-            transform.localScale = Vector3.one;
-            transform.localEulerAngles = BaseTiltEuler;
+            _pose.ResetAll();
+            _pose[Ch.BaseTilt].rotation = BaseTiltQuat;
+            _pose.Compose();
             if (_shadowTransform != null)
                 _shadowTransform.gameObject.SetActive(true);
             _meshRenderer.SetPropertyBlock(null);
