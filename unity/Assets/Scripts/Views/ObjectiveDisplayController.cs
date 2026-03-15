@@ -24,7 +24,7 @@ namespace Match3.Unity.Views
         private const float IconSpacing = 1.5f;
         private const float BounceTime = 0.2f;
         private const float CompletedAlpha = 0.5f;
-        private const float IconTiltX = -25f;
+        private const float IconTiltX = 25f;
 
         private Match3Bridge _bridge;
         private Board3DView _boardView;
@@ -473,7 +473,7 @@ namespace Match3.Unity.Views
 
                 fly.View.transform.position = pos;
                 fly.View.transform.localScale = Vector3.one * (scale * cellSize);
-                fly.View.transform.localEulerAngles = new Vector3(tiltX, fly.CurrentRotationY, 0f);
+                fly.View.transform.localRotation = Quaternion.Euler(tiltX, 0f, 0f) * Quaternion.Euler(0f, fly.CurrentRotationY, 0f);
             }
         }
 
@@ -494,7 +494,7 @@ namespace Match3.Unity.Views
             float tiltX = Mathf.Lerp(0f, IconTiltX, easedT);
             fly.View.transform.position = pos;
             fly.View.transform.localScale = Vector3.one * (scale * cellSize);
-            fly.View.transform.localEulerAngles = new Vector3(tiltX, fly.CurrentRotationY, 0f);
+            fly.View.transform.localRotation = Quaternion.Euler(tiltX, 0f, 0f) * Quaternion.Euler(0f, fly.CurrentRotationY, 0f);
         }
 
         private void OnFlyComplete(ActiveFly fly)
