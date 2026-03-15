@@ -23,6 +23,10 @@ MonoBehaviour:
   Smoothness: 0.65
   ClearCoatMask: 0.07
   ClearCoatSmoothness: 0.29
+  BloomEnabled: 1
+  BloomThreshold: 0.9
+  BloomIntensity: 0.4
+  BloomScatter: 0.7
   BlobSize: 0.54
   BlobBaseAlpha: 0.11
   BlobOffset: 0.025

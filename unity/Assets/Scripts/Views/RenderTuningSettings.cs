@@ -26,6 +26,12 @@ namespace Match3.Unity.Views
         [Range(0f, 1f)] public float ClearCoatMask = 0.07f;
         [Range(0f, 1f)] public float ClearCoatSmoothness = 0.75f;
 
+        [Header("Bloom")]
+        public bool BloomEnabled = true;
+        [Range(0f, 2f)] public float BloomThreshold = 0.9f;
+        [Range(0f, 3f)] public float BloomIntensity = 0.4f;
+        [Range(0f, 1f)] public float BloomScatter = 0.7f;
+
         [Header("Blob Shadow (3D contact shadow)")]
         [Range(0.1f, 1.2f)] public float BlobSize = 0.54f;
         [Range(0f, 0.5f)] public float BlobBaseAlpha = 0.11f;

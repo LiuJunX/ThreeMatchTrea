@@ -6,7 +6,6 @@ using Match3.Unity.Bridge;
 using Match3.Unity.Pools;
 using Match3.Unity.Services;
 using UnityEngine;
-using UnityEngine.Rendering;
 
 namespace Match3.Unity.Views
 {
@@ -153,7 +152,7 @@ namespace Match3.Unity.Views
         private void SetupEnvironment()
         {
             // Ambient Light: bright warm, casual game style
-            RenderSettings.ambientMode = AmbientMode.Trilight;
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
             RenderSettings.ambientSkyColor = new Color(0.78f, 0.75f, 0.70f);
             RenderSettings.ambientEquatorColor = new Color(0.62f, 0.59f, 0.55f);
             RenderSettings.ambientGroundColor = new Color(0.45f, 0.42f, 0.38f);
@@ -235,7 +234,7 @@ namespace Match3.Unity.Views
 
             var mr = _boardVignette.AddComponent<MeshRenderer>();
             mr.sharedMaterial = GetOrCreateVignetteMaterial();
-            mr.shadowCastingMode = ShadowCastingMode.Off;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mr.receiveShadows = false;
         }
 
