@@ -441,6 +441,97 @@ public class MergeToBombPlayerTests
 
     #endregion
 
+    #region Chain-Triggered UFO Visual Survival
+
+    /// <summary>
+    /// Regression: 5x5 bomb triggers 3 UFOs at same wave distance.
+    /// All 3 SpawnTile + UfoLaunch commands should survive SyncFallingTilesFromGameState
+    /// (tiles are None in game state but IsBeingAnimated protects them).
+    /// </summary>
+    [Fact]
+    public void ChainTriggeredUfos_AllThreeSurviveSync()
+    {
+        // Simulate: 3 chain-triggered UFOs spawned and launched
+        float t = 0f;
+        var commands = new RenderCommand[]
+        {
+            // SpawnTile for each UFO (Priority=-1, before UfoLaunch)
+            new SpawnTileCommand
+            {
+                TileId = 501, Type = ElementType.Ufo,
+                GridPos = new Position(3, 2), SpawnPos = new Vector2(3, 2),
+                StartTime = t, Duration = 0, Priority = -1
+            },
+            new SpawnTileCommand
+            {
+                TileId = 502, Type = ElementType.Ufo,
+                GridPos = new Position(4, 2), SpawnPos = new Vector2(4, 2),
+                StartTime = t, Duration = 0, Priority = -1
+            },
+            new SpawnTileCommand
+            {
+                TileId = 503, Type = ElementType.Ufo,
+                GridPos = new Position(5, 2), SpawnPos = new Vector2(5, 2),
+                StartTime = t, Duration = 0, Priority = -1
+            },
+            // UfoLaunch for each (Priority=0, Duration > 0 → sets IsBeingAnimated)
+            new UfoLaunchCommand
+            {
+                TileId = 501, Origin = new Vector2(3, 2), Target = new Vector2(7, 7),
+                StayFraction = 0.15f,
+                StartTime = t, Duration = 1.0f
+            },
+            new UfoLaunchCommand
+            {
+                TileId = 502, Origin = new Vector2(4, 2), Target = new Vector2(8, 6),
+                StayFraction = 0.15f,
+                StartTime = t, Duration = 1.0f
+            },
+            new UfoLaunchCommand
+            {
+                TileId = 503, Origin = new Vector2(5, 2), Target = new Vector2(6, 8),
+                StayFraction = 0.15f,
+                StartTime = t, Duration = 1.0f
+            },
+        };
+
+        _player.Load(commands);
+        _player.Tick(0.016f);
+
+        // All 3 should exist and be animated
+        for (int id = 501; id <= 503; id++)
+        {
+            var tile = _visualState.GetTile(id);
+            Assert.NotNull(tile);
+            Assert.True(tile.IsBeingAnimated, $"UFO tile {id} should be animated after UfoLaunch");
+        }
+
+        // Now sync with game state where UFOs are None (eliminated by explosion)
+        var state = CreateGameState(10, 10);
+        // Fill board except UFO positions (they're None)
+        var types = new[] { ElementType.Item1, ElementType.Item2, ElementType.Item3, ElementType.Item4 };
+        int nextId = 1;
+        for (int y = 0; y < 10; y++)
+            for (int x = 0; x < 10; x++)
+                SetTile(ref state, x, y, new Tile(nextId++, types[(x + y) % 4], x, y));
+        // Clear UFO positions (they were eliminated by explosion)
+        SetTile(ref state, 3, 2, new Tile(0, ElementType.None, 3, 2));
+        SetTile(ref state, 4, 2, new Tile(0, ElementType.None, 4, 2));
+        SetTile(ref state, 5, 2, new Tile(0, ElementType.None, 5, 2));
+
+        _visualState.SyncFallingTilesFromGameState(in state);
+
+        // All 3 UFO visuals should survive (IsBeingAnimated protects them)
+        for (int id = 501; id <= 503; id++)
+        {
+            var tile = _visualState.GetTile(id);
+            Assert.NotNull(tile);
+            Assert.True(tile.IsBeingAnimated, $"UFO tile {id} should survive sync (IsBeingAnimated=true)");
+        }
+    }
+
+    #endregion
+
     #region Helpers
 
     private static GameState CreateGameState(int width, int height)
