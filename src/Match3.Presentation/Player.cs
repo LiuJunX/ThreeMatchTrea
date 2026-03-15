@@ -528,7 +528,7 @@ public sealed class Player
                 break;
 
             case RotateTileCommand rotateCmd:
-                _visualState.SetTileRotation(rotateCmd.TileId, rotateCmd.ToAngle);
+                _visualState.SetTileRotation(rotateCmd.TileId, rotateCmd.ToAngle % 360f);
                 break;
 
             case ShakeTileCommand shake:

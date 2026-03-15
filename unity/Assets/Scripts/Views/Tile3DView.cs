@@ -207,21 +207,19 @@ namespace Match3.Unity.Views
                     _shadowTransform.gameObject.SetActive(true);
             }
 
-            // --- Ch.Grid: world position + base scale ---
+            // --- Ch.Grid: world position + base scale (stable, no animation) ---
             _pose[Ch.Grid].position = new Vector3(worldPos.x, worldPos.y, 0f);
 
             var scaleFactor = cellSize * TileScaleMultiplier;
-            var zScale = Mathf.Min(visual.Scale.X, visual.Scale.Y);
-            _baseScale = new Vector3(
-                visual.Scale.X * scaleFactor,
-                visual.Scale.Y * scaleFactor,
-                zScale * scaleFactor);
+            _baseScale = new Vector3(scaleFactor, scaleFactor, scaleFactor);
             _pose[Ch.Grid].scale = _baseScale;
 
             // --- Per-frame effect channels ---
             var effectPos = Vector3.zero;
             var dynamicRot = Quaternion.identity;
-            var fxScale = Vector3.one;
+            // Animation scale from Presentation (shuffle gather/scatter, etc.)
+            var zScale = Mathf.Min(visual.Scale.X, visual.Scale.Y);
+            var fxScale = new Vector3(visual.Scale.X, visual.Scale.Y, zScale);
 
             // Highlight timing + Z-float breathing
             if (_isHighlighted)
@@ -280,11 +278,16 @@ namespace Match3.Unity.Views
                 dynamicRot = Quaternion.Euler(0f, _spinAngle, 0f);
             }
 
-            // Animation-driven rotation (color bomb spin etc.)
+            // Animation-driven rotation (shuffle spin, color bomb spin, etc.)
             if (visual.Rotation != 0f)
             {
-                effectPos.z = -0.5f;
                 dynamicRot = Quaternion.Euler(0f, visual.Rotation, 0f);
+            }
+
+            // Color bomb Z-lift: raise piece during spin for better 3D visibility
+            if (visual.TileType.IsColorBomb() && visual.Rotation != 0f)
+            {
+                effectPos.z = -0.5f;
             }
 
             // --- Write channels + compose ---
