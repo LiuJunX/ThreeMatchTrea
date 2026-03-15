@@ -24,7 +24,7 @@ namespace Match3.Unity.Views
         private const float IconSpacing = 1.5f;
         private const float BounceTime = 0.2f;
         private const float CompletedAlpha = 0.5f;
-        private const float IconTiltX = 25f;
+        private const float IconTiltX = -25f;
 
         private Match3Bridge _bridge;
         private Board3DView _boardView;
