@@ -397,7 +397,7 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
         private RealtimeRefillSystem? _refill;
         private ClassicMatchFinder? _matchFinder;
         private StandardMatchProcessor? _matchProcessor;
-        private PowerUpHandler? _powerUpHandler;
+        private BombResolution? _powerUpHandler;
         private LevelObjectiveSystem? _objectiveSystem;
 
         public RealtimeGravitySystem GetPhysics() =>
@@ -430,8 +430,8 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
             return _matchProcessor;
         }
 
-        public PowerUpHandler GetPowerUpHandler() =>
-            _powerUpHandler ??= new PowerUpHandler(ScoreSystem);
+        public BombResolution GetPowerUpHandler() =>
+            _powerUpHandler ??= new BombResolution(ScoreSystem);
 
         public void ResetForSimulation(ulong seed, int tileTypesCount)
         {

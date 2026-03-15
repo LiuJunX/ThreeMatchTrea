@@ -362,7 +362,7 @@ public class DropTimingTests
         var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem, lockScheduler);
         var cellEliminator = new CellEliminator(coverSystem, groundSystem, objectiveSystem);
         var sessionManager = new ColorBombSessionManager(null, cellEliminator, lockScheduler);
-        var powerUpHandler = new PowerUpHandler(score, new BombComboHandler(), BombEffectRegistry.CreateDefault(),
+        var powerUpHandler = new BombResolution(score, new BombComboHandler(), BombEffectRegistry.CreateDefault(),
             coverSystem, groundSystem, explosionSystem: explosionSystem, colorBombSessionManager: sessionManager,
             lockScheduler: lockScheduler);
 

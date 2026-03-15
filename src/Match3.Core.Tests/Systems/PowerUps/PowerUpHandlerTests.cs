@@ -22,13 +22,13 @@ public class PowerUpHandlerTests
 {
     private readonly ExplosionSystem _explosionSystem = new(new CoverSystem(), new GroundSystem());
 
-    private PowerUpHandler CreateHandler()
+    private BombResolution CreateHandler()
     {
-        return new PowerUpHandler(new StubScoreSystem())
+        return new BombResolution(new StubScoreSystem())
             .WithExplosionSystem(_explosionSystem);
     }
 
-    private void ActivateBombAndRunExplosion(PowerUpHandler handler, ref GameState state, Position pos)
+    private void ActivateBombAndRunExplosion(BombResolution handler, ref GameState state, Position pos)
     {
         var eventCollector = new StubEventCollector();
         handler.ActivateBomb(ref state, pos, 0, 0f, eventCollector);

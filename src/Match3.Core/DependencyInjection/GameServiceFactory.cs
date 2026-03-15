@@ -121,19 +121,17 @@ public sealed class GameServiceFactory : IGameServiceFactory
         var matchProcessor = _matchProcessorFactory(scoreSystem, bombRegistry);
         var projectileSystem = _projectileFactory();
 
-        // Create shared LockScheduler first — all subsystems that apply cell locks must share it
+        // Create shared SimulationContext — all subsystems share the same infrastructure
         var lockScheduler = new LockScheduler();
         var coverSystem = new CoverSystem(objectiveSystem);
         var groundSystem = new GroundSystem(objectiveSystem);
         var cellEliminator = new CellEliminator(coverSystem, groundSystem, objectiveSystem);
-        var explosionSystem = new ExplosionSystem(cellEliminator, bombRegistry, lockScheduler);
-        var colorBombSessionManager = new ColorBombSessionManager(null, cellEliminator, lockScheduler);
-        var basePowerUp = (PowerUpHandler)_powerUpFactory(scoreSystem);
-        var powerUpHandler = basePowerUp
-            .WithExplosionSystem(explosionSystem)
-            .WithProjectileSystem(projectileSystem)
-            .WithLockScheduler(lockScheduler)
-            .WithColorBombSessionManager(colorBombSessionManager);
+        var context = new Simulation.SimulationContext(cellEliminator, bombRegistry, lockScheduler);
+        var explosionSystem = new ExplosionSystem(context);
+        var colorBombSessionManager = new ColorBombSessionManager(context);
+        var basePowerUp = (BombResolution)_powerUpFactory(scoreSystem);
+        var powerUpHandler = PowerUpHandlerFactory.CloneForSimulation(
+            basePowerUp, context, explosionSystem, projectileSystem, colorBombSessionManager);
         var collector = eventCollector ?? _eventCollectorFactory(true);
 
         // ── Random domain wiring (single update point) ──

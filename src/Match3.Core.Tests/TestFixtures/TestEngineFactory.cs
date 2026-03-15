@@ -52,15 +52,16 @@ public static class TestEngineFactory
         var coverSystem = new CoverSystem(objectiveSystem);
         var groundSystem = new GroundSystem(objectiveSystem);
         var cellEliminator = new CellEliminator(coverSystem, groundSystem, objectiveSystem);
+        var lockScheduler = new LockScheduler();
+        var context = new SimulationContext(cellEliminator, BombEffectRegistry.CreateDefault(), lockScheduler);
         var matchProcessor = new StandardMatchProcessor(
             score, cellEliminator, BombEffectRegistry.CreateDefault());
-        var lockScheduler = new LockScheduler();
-        var explosionSystem = new ExplosionSystem(cellEliminator, BombEffectRegistry.CreateDefault(), lockScheduler);
-        var colorBombSessionManager = new ColorBombSessionManager(null, cellEliminator, lockScheduler);
+        var explosionSystem = new ExplosionSystem(context);
+        var colorBombSessionManager = new ColorBombSessionManager(context);
         var proj = projectileSystem ?? new ProjectileSystem();
-        var powerUpHandler = new PowerUpHandler(
-            score, new BombComboHandler(), BombEffectRegistry.CreateDefault(),
-            coverSystem, groundSystem, explosionSystem, proj, colorBombSessionManager, lockScheduler);
+        var powerUpHandler = new BombResolution(
+            score, new BombComboHandler(), context,
+            explosionSystem, proj, colorBombSessionManager);
 
         return new SimulationEngine(
             state,

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Simulation;
 using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Layers;
 
@@ -47,6 +48,11 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
         _batchProcessor = new ColorBombBatchProcessor(
             cellEliminator ?? new CellEliminator(new CoverSystem(), new GroundSystem()),
             _lockScheduler);
+    }
+
+    public ColorBombSessionManager(SimulationContext context, ColorBombConfig? config = null)
+        : this(config, context.CellEliminator, context.LockScheduler)
+    {
     }
 
     /// <inheritdoc />

@@ -114,9 +114,9 @@ public class PowerUpHandlerExplosionTests
 
     #region Helpers
 
-    private static PowerUpHandler CreateHandler(IExplosionSystem? explosionSystem)
+    private static BombResolution CreateHandler(IExplosionSystem? explosionSystem)
     {
-        return new PowerUpHandler(
+        return new BombResolution(
             new StubScoreSystem(),
             new BombComboHandler(),
             BombEffectRegistry.CreateDefault(),

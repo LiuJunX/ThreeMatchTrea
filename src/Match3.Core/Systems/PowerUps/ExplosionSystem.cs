@@ -5,6 +5,7 @@ using Match3.Core.Events;
 using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Simulation;
 using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.Objectives;
@@ -66,6 +67,11 @@ public class ExplosionSystem : IExplosionSystem
         _bombEffectRegistry = bombEffectRegistry;
         _lockScheduler = lockScheduler;
         _config = config ?? new ExplosionConfig();
+    }
+
+    public ExplosionSystem(SimulationContext context, ExplosionConfig? config = null)
+        : this(context.CellEliminator, context.BombEffectRegistry, context.LockScheduler, config)
+    {
     }
 
     /// <summary>Explosion timing configuration used by this system.</summary>

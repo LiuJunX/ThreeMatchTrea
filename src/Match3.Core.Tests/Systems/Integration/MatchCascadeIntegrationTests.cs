@@ -250,7 +250,7 @@ public class MatchCascadeIntegrationTests
         // 创建系统 -- ExplosionSystem is now required for wave-based destruction
         var scoreSystem = new StubScoreSystem();
         var explosionSystem = new ExplosionSystem(new CoverSystem(), new GroundSystem());
-        var powerUpHandler = new PowerUpHandler(scoreSystem)
+        var powerUpHandler = new BombResolution(scoreSystem)
             .WithExplosionSystem(explosionSystem);
         var eventCollector = new StubEventCollector();
         var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };
@@ -655,7 +655,7 @@ public class MatchCascadeIntegrationTests
 
         var scoreSystem = new StubScoreSystem();
         var explosionSystem = new ExplosionSystem(new CoverSystem(), new GroundSystem());
-        var powerUpHandler = new PowerUpHandler(scoreSystem)
+        var powerUpHandler = new BombResolution(scoreSystem)
             .WithExplosionSystem(explosionSystem);
         var eventCollector = new StubEventCollector();
         var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };

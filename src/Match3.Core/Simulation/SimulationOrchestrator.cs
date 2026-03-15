@@ -23,10 +23,10 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
     private readonly IRefillSystem _refill;
     private readonly IProjectileSystem _projectileSystem;
     private readonly IExplosionSystem _explosionSystem;
-    private readonly IPowerUpHandler _powerUpHandler;
     private readonly SimulationMatchHandler _matchHandler;
     private readonly ILevelObjectiveSystem? _objectiveSystem;
     private readonly IColorBombSessionManager? _colorBombSessionManager;
+    private readonly IChainReactionHandler _chainReactionHandler;
 
     public SimulationOrchestrator(
         IPhysicsSimulation physics,
@@ -40,15 +40,16 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
         IColorBombSessionManager? colorBombSessionManager = null,
         LockScheduler? lockScheduler = null,
         ChoreographyConfig? choreographyConfig = null,
-        ICellEliminator? cellEliminator = null)
+        ICellEliminator? cellEliminator = null,
+        IChainReactionHandler? chainReactionHandler = null)
     {
         _physics = physics;
         _refill = refill;
         _projectileSystem = projectileSystem ?? new ProjectileSystem();
         _explosionSystem = explosionSystem ?? new ExplosionSystem();
-        _powerUpHandler = powerUpHandler;
         _objectiveSystem = objectiveSystem;
         _colorBombSessionManager = colorBombSessionManager;
+        _chainReactionHandler = chainReactionHandler ?? new ChainReactionHandler(powerUpHandler);
         _matchHandler = new SimulationMatchHandler(matchFinder, matchProcessor, cellEliminator, objectiveSystem, lockScheduler, choreographyConfig);
     }
 
@@ -84,9 +85,7 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
                 _matchHandler.ProcessProjectileImpacts(ref state, affectedPositions, tick, simTime, events, triggeredBombs);
 
                 foreach (var pos in triggeredBombs)
-                {
-                    _powerUpHandler.ActivateBomb(ref state, pos, tick, simTime, events, isChainReaction: true);
-                }
+                    _chainReactionHandler.HandleImpactChain(ref state, pos, tick, simTime, events);
             }
             finally
             {
@@ -107,7 +106,7 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
             int count = _explosionSystem.Update(ref state, deltaTime, tick, simTime, events, triggeredBombs);
 
             foreach (var (pos, tile) in triggeredBombs)
-                _powerUpHandler.ActivateChainBomb(ref state, pos, tile, tick, simTime, events);
+                _chainReactionHandler.HandleExplosionChain(ref state, pos, tile, tick, simTime, events);
 
             return count + triggeredBombs.Count;
         }
@@ -159,9 +158,7 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
             _colorBombSessionManager.Update(ref state, deltaTime, tick, simTime, events, triggeredBombs);
 
             foreach (var pos in triggeredBombs)
-            {
-                _powerUpHandler.ActivateBomb(ref state, pos, tick, simTime, events, isChainReaction: true);
-            }
+                _chainReactionHandler.HandleImpactChain(ref state, pos, tick, simTime, events);
         }
         finally
         {

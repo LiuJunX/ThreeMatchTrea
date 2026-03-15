@@ -74,7 +74,7 @@ public class CoverExplosionIntegrationTests
         var coverSystem = new CoverSystem(objectiveSystem);
         var groundSystem = new GroundSystem(objectiveSystem);
         var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem);
-        var powerUpHandler = new PowerUpHandler(scoreSystem)
+        var powerUpHandler = new BombResolution(scoreSystem)
             .WithExplosionSystem(explosionSystem);
         var eventCollector = new StubEventCollector();
 
@@ -137,7 +137,7 @@ public class CoverExplosionIntegrationTests
         var coverSystem = new CoverSystem(objectiveSystem);
         var groundSystem = new GroundSystem(objectiveSystem);
         var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem);
-        var powerUpHandler = new PowerUpHandler(scoreSystem)
+        var powerUpHandler = new BombResolution(scoreSystem)
             .WithExplosionSystem(explosionSystem);
         var eventCollector = new StubEventCollector();
 
@@ -205,7 +205,7 @@ public class CoverExplosionIntegrationTests
         var coverSystem = new CoverSystem(objectiveSystem);
         var groundSystem = new GroundSystem(objectiveSystem);
         var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem);
-        var powerUpHandler = new PowerUpHandler(scoreSystem)
+        var powerUpHandler = new BombResolution(scoreSystem)
             .WithExplosionSystem(explosionSystem);
         var eventCollector = new StubEventCollector();
 
@@ -423,7 +423,7 @@ public class CoverExplosionIntegrationTests
         var coverSystem = new CoverSystem(objectiveSystem);
         var groundSystem = new GroundSystem(objectiveSystem);
         var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem);
-        var powerUpHandler = new PowerUpHandler(scoreSystem)
+        var powerUpHandler = new BombResolution(scoreSystem)
             .WithExplosionSystem(explosionSystem);
         var eventCollector = new StubEventCollector();
         var config = new Match3Config { GravitySpeed = 20.0f, MaxFallSpeed = 25.0f };

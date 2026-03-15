@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Projectiles;
 using Match3.Core.Utility.Pools;
 
 namespace Match3.Core.Systems.PowerUps;
@@ -28,6 +29,17 @@ public class BombComboHandler
     /// <returns>是否触发了组合</returns>
     public bool TryApplyCombo(ref GameState state, Position p1, Position p2, HashSet<Position> affected)
     {
+        return TryApplyCombo(ref state, p1, p2, affected, out _);
+    }
+
+    /// <summary>
+    /// 尝试应用组合效果，同时输出完整的 <see cref="ComboResult"/>
+    /// （包含爆炸时序和 UFO 发射信息）。
+    /// </summary>
+    public bool TryApplyCombo(ref GameState state, Position p1, Position p2,
+        HashSet<Position> affected, out ComboResult comboResult)
+    {
+        comboResult = default;
         var t1 = state.GetTile(p1.X, p1.Y);
         var t2 = state.GetTile(p2.X, p2.Y);
 
@@ -35,6 +47,7 @@ public class BombComboHandler
         if (IsColorBombWithNormalTile(t1, t2))
         {
             ApplyColorBombWithNormalTile(ref state, t1, t2, p1, p2, affected);
+            comboResult = new ComboResult { HasColorBomb = true };
             return true;
         }
 
@@ -46,6 +59,13 @@ public class BombComboHandler
             return false;
 
         ApplyCombo(ref state, p1, p2, affected);
+
+        comboResult = new ComboResult
+        {
+            IsDoubleColorBomb = t1.Type == ElementType.ColorBomb && t2.Type == ElementType.ColorBomb,
+            HasColorBomb = t1.Type == ElementType.ColorBomb || t2.Type == ElementType.ColorBomb,
+            UfoLaunch = BuildUfoLaunchInfo(t1, t2, p1, p2)
+        };
         return true;
     }
 
@@ -326,6 +346,58 @@ public class BombComboHandler
     private static void ApplyArea(in GameState state, Position center, int radius, HashSet<Position> affected) => BombComboHelpers.ApplyArea(state, center, radius, affected);
     private static Position? GetRandomTarget(ref GameState state, Position exclude, HashSet<Position> alreadyAffected) => BombComboHelpers.GetRandomTarget(ref state, exclude, alreadyAffected);
     private static ElementType FindMostFrequentColor(ref GameState state) => BombComboHelpers.FindMostFrequentColor(ref state);
+
+    /// <summary>
+    /// 根据组合的两颗炸弹类型，判断是否需要发射 UFO 飞弹并构建发射信息。
+    /// </summary>
+    private static UfoLaunchInfo? BuildUfoLaunchInfo(Tile t1, Tile t2, Position p1, Position p2)
+    {
+        var b1 = t1.Type;
+        var b2 = t2.Type;
+
+        // UFO + UFO: 3 projectiles
+        if (b1 == ElementType.Ufo && b2 == ElementType.Ufo)
+        {
+            return new UfoLaunchInfo
+            {
+                IsUfoUfoCombo = true,
+                UfoTileId = t1.Id, UfoPosition = p1,
+                OtherTileId = t2.Id, OtherPosition = p2
+            };
+        }
+
+        // UFO + Rocket: 1 payload projectile
+        if ((b1.IsUfo() && b2.IsRocket()) || (b1.IsRocket() && b2.IsUfo()))
+        {
+            var ufo = b1.IsUfo() ? t1 : t2;
+            var other = b1.IsUfo() ? t2 : t1;
+            var ufoPos = b1.IsUfo() ? p1 : p2;
+            var otherPos = b1.IsUfo() ? p2 : p1;
+            return new UfoLaunchInfo
+            {
+                UfoTileId = ufo.Id, UfoPosition = ufoPos,
+                OtherTileId = other.Id, OtherPosition = otherPos,
+                Payload = other.Type == ElementType.HorizontalRocket ? UfoPayload.Row : UfoPayload.Column
+            };
+        }
+
+        // UFO + Square: 1 payload projectile
+        if ((b1.IsUfo() && b2.IsAreaBomb()) || (b1.IsAreaBomb() && b2.IsUfo()))
+        {
+            var ufo = b1.IsUfo() ? t1 : t2;
+            var other = b1.IsUfo() ? t2 : t1;
+            var ufoPos = b1.IsUfo() ? p1 : p2;
+            var otherPos = b1.IsUfo() ? p2 : p1;
+            return new UfoLaunchInfo
+            {
+                UfoTileId = ufo.Id, UfoPosition = ufoPos,
+                OtherTileId = other.Id, OtherPosition = otherPos,
+                Payload = UfoPayload.Area5x5
+            };
+        }
+
+        return null;
+    }
 
     #endregion
 }

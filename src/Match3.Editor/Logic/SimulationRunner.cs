@@ -69,7 +69,7 @@ namespace Match3.Editor.Logic
             var coverSystem = new Match3.Core.Systems.Layers.CoverSystem(objectiveSystem);
             var groundSystem = new Match3.Core.Systems.Layers.GroundSystem(objectiveSystem);
             var matchProcessor = new StandardMatchProcessor(scoreSystem, coverSystem, groundSystem, bombRegistry);
-            var powerUpHandler = new PowerUpHandler(scoreSystem);
+            var powerUpHandler = new BombResolution(scoreSystem);
             
             var gameLoop = new AsyncGameLoopSystem(physics, refill, matchFinder, matchProcessor, powerUpHandler);
             var interaction = new InteractionSystem(_logger);

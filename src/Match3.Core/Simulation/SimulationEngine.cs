@@ -527,18 +527,18 @@ public sealed class SimulationEngine : IDisposable
         var cloneConfig = _config.Clone();
         var clonePhysics = _physics.CloneForSimulation(cloneRandom);
 
-        var cloneLocks = _lockScheduler.Clone();
-        var cloneCover = new CoverSystem(_objectiveSystem);
-        var cloneGround = new GroundSystem(_objectiveSystem);
-        var cloneCellEliminator = new CellEliminator(cloneCover, cloneGround, _objectiveSystem);
-        var cloneExplosion = new ExplosionSystem(cloneCellEliminator, BombEffectRegistry.CreateDefault(), cloneLocks);
+        var cloneContext = new SimulationContext(
+            new CellEliminator(new CoverSystem(_objectiveSystem), new GroundSystem(_objectiveSystem), _objectiveSystem),
+            BombEffectRegistry.CreateDefault(),
+            _lockScheduler.Clone());
+        var cloneExplosion = new ExplosionSystem(cloneContext);
         var cloneProjectile = new ProjectileSystem();
-        var cloneColorBomb = new ColorBombSessionManager(null, cloneCellEliminator, cloneLocks);
+        var cloneColorBomb = new ColorBombSessionManager(cloneContext);
         var clonePowerUp = PowerUpHandlerFactory.CloneForSimulation(
-            (PowerUpHandler)_powerUpHandler,
+            (BombResolution)_powerUpHandler,
+            cloneContext,
             cloneExplosion,
             cloneProjectile,
-            cloneLocks,
             cloneColorBomb);
 
         // Shared stateless systems: _matchFinder, _matchProcessor, _deadlockDetector,
@@ -559,9 +559,9 @@ public sealed class SimulationEngine : IDisposable
             _shuffleSystem,
             _objectiveSystem,
             cloneColorBomb,
-            cloneLocks,
+            cloneContext.LockScheduler,
             _choreographyConfig,
-            cloneCellEliminator
+            cloneContext.CellEliminator
         );
     }
 

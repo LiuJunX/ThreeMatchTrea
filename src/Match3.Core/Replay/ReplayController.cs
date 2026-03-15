@@ -112,7 +112,8 @@ public sealed class ReplayController : IDisposable
 
     /// <summary>
     /// Seeks to a specific progress position (0.0 to 1.0).
-    /// Uses precise seek with full simulation ticking for accuracy.
+    /// Replays commands using RunUntilStable per command — matching the original
+    /// game's execution pattern exactly for deterministic state reproduction.
     /// </summary>
     /// <param name="progress">Target progress (0.0 to 1.0).</param>
     public void Seek(float progress)
@@ -128,13 +129,23 @@ public sealed class ReplayController : IDisposable
             Initialize();
         }
 
-        // Fast-forward to target tick with full simulation
-        while (_currentTick < targetTick)
+        // Replay commands using RunUntilStable — identical to how the original
+        // game executed (command → RunUntilStable → next command).
+        // Tick-by-tick replay diverges because idle ticks consume random streams
+        // (e.g. physics column shuffle) differently from RunUntilStable.
+        while (_currentCommandIndex < _recording.Commands.Count)
         {
-            ExecuteNextCommandIfReady();
-            _engine!.Tick(TickDuration);
-            _currentTick++;
+            var cmd = _recording.Commands[_currentCommandIndex];
+            if (cmd.IssuedAtTick > targetTick)
+                break;
+
+            cmd.Execute(_engine!);
+            _engine!.RunUntilStable();
+            CommandExecuted?.Invoke(cmd);
+            _currentCommandIndex++;
         }
+
+        _currentTick = targetTick;
 
         // Drain accumulated events during seek to prevent memory leak
         if (_engine!.EventCollector is BufferedEventCollector buffered)

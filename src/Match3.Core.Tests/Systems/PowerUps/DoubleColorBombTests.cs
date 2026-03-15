@@ -517,9 +517,9 @@ public class DoubleColorBombTests : IDisposable
         return count;
     }
 
-    private PowerUpHandler CreateHandlerWithExplosion()
+    private BombResolution CreateHandlerWithExplosion()
     {
-        return new PowerUpHandler(
+        return new BombResolution(
             new StubScoreSystem(),
             new BombComboHandler(),
             BombEffectRegistry.CreateDefault(),
@@ -528,9 +528,9 @@ public class DoubleColorBombTests : IDisposable
             _explosionSystem);
     }
 
-    private PowerUpHandler CreateHandlerWithExplosionAndSession(ColorBombSessionManager sessionManager)
+    private BombResolution CreateHandlerWithExplosionAndSession(ColorBombSessionManager sessionManager)
     {
-        return new PowerUpHandler(
+        return new BombResolution(
             new StubScoreSystem(),
             new BombComboHandler(),
             BombEffectRegistry.CreateDefault(),

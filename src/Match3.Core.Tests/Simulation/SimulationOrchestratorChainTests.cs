@@ -36,7 +36,7 @@ public class SimulationOrchestratorChainTests
         var explosionSystem = new ExplosionSystem();
         var coverSystem = new CoverSystem();
         var groundSystem = new GroundSystem();
-        var powerUpHandler = new PowerUpHandler(
+        var powerUpHandler = new BombResolution(
             new StubScoreSystem(),
             new BombComboHandler(),
             BombEffectRegistry.CreateDefault(),
@@ -84,7 +84,7 @@ public class SimulationOrchestratorChainTests
         var coverSystem = new CoverSystem();
         var groundSystem = new GroundSystem();
         var projectileSystem = new ProjectileSystem();
-        var powerUpHandler = new PowerUpHandler(
+        var powerUpHandler = new BombResolution(
             new StubScoreSystem(),
             new BombComboHandler(),
             BombEffectRegistry.CreateDefault(),
@@ -129,7 +129,7 @@ public class SimulationOrchestratorChainTests
         var coverSystem = new CoverSystem();
         var groundSystem = new GroundSystem();
         var projectileSystem = new ProjectileSystem();
-        var powerUpHandler = new PowerUpHandler(
+        var powerUpHandler = new BombResolution(
             new StubScoreSystem(),
             new BombComboHandler(),
             BombEffectRegistry.CreateDefault(),
@@ -179,7 +179,7 @@ public class SimulationOrchestratorChainTests
         var coverSystem = new CoverSystem();
         var groundSystem = new GroundSystem();
         var projectileSystem = new ProjectileSystem();
-        var powerUpHandler = new PowerUpHandler(
+        var powerUpHandler = new BombResolution(
             new StubScoreSystem(),
             new BombComboHandler(),
             BombEffectRegistry.CreateDefault(),
@@ -242,7 +242,7 @@ public class SimulationOrchestratorChainTests
         var coverSystem = new CoverSystem();
         var groundSystem = new GroundSystem();
         var projectileSystem = new ProjectileSystem();
-        var powerUpHandler = new PowerUpHandler(
+        var powerUpHandler = new BombResolution(
             new StubScoreSystem(),
             new BombComboHandler(),
             BombEffectRegistry.CreateDefault(),

@@ -63,7 +63,7 @@ public class ReplayControllerTests
             var matchFinder = new ClassicMatchFinder(bombGenerator);
             var scoreSystem = new StubScoreSystem();
             var matchProcessor = new StandardMatchProcessor(scoreSystem, new Match3.Core.Systems.Layers.CoverSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), new Match3.Core.Systems.Layers.GroundSystem(new Match3.Core.Systems.Objectives.LevelObjectiveSystem()), BombEffectRegistry.CreateDefault());
-            var powerUpHandler = new PowerUpHandler(scoreSystem);
+            var powerUpHandler = new BombResolution(scoreSystem);
 
             var lockScheduler = new LockScheduler();
             var explosionSystem = new ExplosionSystem(

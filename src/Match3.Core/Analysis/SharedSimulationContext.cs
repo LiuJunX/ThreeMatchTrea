@@ -36,7 +36,7 @@ internal sealed class SharedSimulationContext : IDisposable
     private RealtimeRefillSystem? _refill;
     private ClassicMatchFinder? _matchFinder;
     private StandardMatchProcessor? _matchProcessor;
-    private PowerUpHandler? _powerUpHandler;
+    private BombResolution? _powerUpHandler;
 
     // 预览状态缓存
     private GameState _previewState;
@@ -85,8 +85,8 @@ internal sealed class SharedSimulationContext : IDisposable
         return _matchProcessor;
     }
 
-    public PowerUpHandler GetPowerUpHandler() =>
-        _powerUpHandler ??= new PowerUpHandler(_scoreSystem);
+    public BombResolution GetPowerUpHandler() =>
+        _powerUpHandler ??= new BombResolution(_scoreSystem);
 
     private AnalysisSpawnModel GetSpawnModel()
     {

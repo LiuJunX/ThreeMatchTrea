@@ -182,7 +182,7 @@ public sealed class GameServiceBuilder
         _refillFactory = spawnModel => new RealtimeRefillSystem(spawnModel);
         _matchFinderFactory = bombGen => new ClassicMatchFinder(bombGen);
         _matchProcessorFactory = (score, registry) => new StandardMatchProcessor(score, new CoverSystem(), new GroundSystem(), registry);
-        _powerUpFactory = score => new PowerUpHandler(score);
+        _powerUpFactory = score => new BombResolution(score);
         _projectileFactory = () => new ProjectileSystem();
         _explosionFactory = () => new ExplosionSystem();
         _eventCollectorFactory = enabled => enabled ? new BufferedEventCollector() : NullEventCollector.Instance;
@@ -229,7 +229,7 @@ public sealed class GameServiceBuilder
         _refillFactory ??= spawnModel => new RealtimeRefillSystem(spawnModel);
         _matchFinderFactory ??= bombGen => new ClassicMatchFinder(bombGen);
         _matchProcessorFactory ??= (score, registry) => new StandardMatchProcessor(score, new CoverSystem(), new GroundSystem(), registry);
-        _powerUpFactory ??= score => new PowerUpHandler(score);
+        _powerUpFactory ??= score => new BombResolution(score);
         _projectileFactory ??= () => new ProjectileSystem();
         _explosionFactory ??= () => new ExplosionSystem();
         _eventCollectorFactory ??= enabled => enabled ? new BufferedEventCollector() : NullEventCollector.Instance;

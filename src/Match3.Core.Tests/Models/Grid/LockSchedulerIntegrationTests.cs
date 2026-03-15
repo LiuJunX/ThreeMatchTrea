@@ -88,7 +88,7 @@ public class LockSchedulerIntegrationTests
         var matchProcessor = new StandardMatchProcessor(
             score, coverSystem, groundSystem, BombEffectRegistry.CreateDefault());
         var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem, lockScheduler);
-        var powerUpHandler = new PowerUpHandler(score)
+        var powerUpHandler = new BombResolution(score)
             .WithExplosionSystem(explosionSystem);
 
         return new SimulationEngine(

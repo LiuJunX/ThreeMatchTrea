@@ -556,7 +556,7 @@ public sealed class MCTSAnalyzer
         private RealtimeRefillSystem? _refill;
         private ClassicMatchFinder? _matchFinder;
         private StandardMatchProcessor? _matchProcessor;
-        private PowerUpHandler? _powerUpHandler;
+        private BombResolution? _powerUpHandler;
         private LevelObjectiveSystem? _objectiveSystem;
 
         // 缓存的层系统对象（避免重复创建）
@@ -616,8 +616,8 @@ public sealed class MCTSAnalyzer
             return _matchProcessor;
         }
 
-        public PowerUpHandler GetPowerUpHandler() =>
-            _powerUpHandler ??= new PowerUpHandler(ScoreSystem);
+        public BombResolution GetPowerUpHandler() =>
+            _powerUpHandler ??= new BombResolution(ScoreSystem);
 
         /// <summary>
         /// 获取缓存的 ExplosionSystem（复用以减少对象分配）

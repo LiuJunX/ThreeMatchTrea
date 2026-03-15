@@ -1106,7 +1106,7 @@ public class ColorBombSessionManagerTests
         var groundSystem = new GroundSystem();
         var sessionManager = new ColorBombSessionManager(_config, new CellEliminator(coverSystem, groundSystem));
 
-        var handler = new PowerUpHandler(
+        var handler = new BombResolution(
             new StubScoreSystem(),
             new BombComboHandler(),
             BombEffectRegistry.CreateDefault(),
@@ -1135,7 +1135,7 @@ public class ColorBombSessionManagerTests
     public void PowerUpHandler_ActivateBomb_ColorBomb_NoSessionManager_FallsBackToLegacy()
     {
         // Without session manager, ColorBomb should use legacy instant path
-        var handler = new PowerUpHandler(
+        var handler = new BombResolution(
             new StubScoreSystem());
 
         var state = CreateState(4, 4);
