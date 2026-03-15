@@ -23,8 +23,8 @@ namespace Match3.Unity.Views
         private MaterialPropertyBlock _shadowPropBlock;
         private Transform _shadowTransform;
 
-        private OutlineEffect _outline;
         private Material[] _lastMaterials;
+        private bool _isOutlined;
 
         // Cached shadow state so blob tweaks can refresh instantly
         private bool _hasLastShadowState;
@@ -132,7 +132,6 @@ namespace Match3.Unity.Views
             _meshFilter = GetComponent<MeshFilter>();
             _meshRenderer = GetComponent<MeshRenderer>();
             _propBlock = new MaterialPropertyBlock();
-            _outline = gameObject.AddComponent<OutlineEffect>();
             CreateBlobShadow();
             _pose = new PoseStack(transform, Ch.Count);
             _pose[Ch.BaseTilt].rotation = BaseTiltQuat;
@@ -172,9 +171,6 @@ namespace Match3.Unity.Views
                 : MeshFactory.GetTileMesh(type);
             ViewHelper.SetMesh(_meshFilter, targetMesh);
             ViewHelper.SetMaterials(_meshRenderer, MeshFactory.GetTileMaterialArray(type), ref _lastMaterials);
-
-            if (_outline != null)
-                _outline.OutlineColor = MeshFactory.GetOutlineColor(type);
         }
 
         /// <summary>
@@ -313,7 +309,7 @@ namespace Match3.Unity.Views
                 _propBlock.SetColor(ColorPropFallback, color);
                 _meshRenderer.SetPropertyBlock(_propBlock);
             }
-            else if (!_isHinted && !_isHighlighted && !_clipActive)
+            else if (!_isHinted && !_isHighlighted && !_clipActive && !_isOutlined)
             {
                 _meshRenderer.SetPropertyBlock(null);
             }
@@ -345,12 +341,28 @@ namespace Match3.Unity.Views
         }
 
         /// <summary>
-        /// Show/hide per-instance outline (used by hint system).
+        /// Show/hide per-instance Fresnel rim glow (used by hint system).
         /// </summary>
         public void SetOutlined(bool outlined)
         {
-            if (_outline != null)
-                _outline.SetForceVisible(outlined);
+            if (_isOutlined == outlined) return;
+            _isOutlined = outlined;
+
+            _meshRenderer.GetPropertyBlock(_propBlock);
+            if (outlined)
+            {
+                var mat = _meshRenderer.sharedMaterial;
+                var baseColor = mat.HasProperty(ColorProp)
+                    ? mat.GetColor(ColorProp)
+                    : mat.GetColor(ColorPropFallback);
+                _propBlock.SetColor(FresnelColorProp, baseColor * 0.5f);
+                _propBlock.SetFloat(FresnelPowerProp, 2.5f);
+            }
+            else
+            {
+                _propBlock.SetColor(FresnelColorProp, Color.black);
+            }
+            _meshRenderer.SetPropertyBlock(_propBlock);
         }
 
         /// <summary>
@@ -628,10 +640,6 @@ namespace Match3.Unity.Views
             // Hide blob shadow while clipping
             if (_shadowTransform != null)
                 _shadowTransform.gameObject.SetActive(false);
-
-            // Forward to outline
-            if (_outline != null)
-                _outline.SetClipBounds(clipYMin, clipYMax);
         }
 
         /// <summary>
@@ -650,10 +658,6 @@ namespace Match3.Unity.Views
             // Restore blob shadow
             if (_shadowTransform != null)
                 _shadowTransform.gameObject.SetActive(true);
-
-            // Forward to outline
-            if (_outline != null)
-                _outline.ResetClipBounds();
         }
 
         #endregion
@@ -672,6 +676,7 @@ namespace Match3.Unity.Views
             _bounceTime = -1f;
             _highlightTime = 0f;
             _clipActive = false;
+            _isOutlined = false;
             _ufoFlying = false;
             _ufoSpinAngle = 0f;
             _ufoTiltX = _ufoTiltZ = 0f;
@@ -689,8 +694,6 @@ namespace Match3.Unity.Views
             if (_shadowTransform != null)
                 _shadowTransform.gameObject.SetActive(true);
             _meshRenderer.SetPropertyBlock(null);
-            if (_outline != null)
-                _outline.ResetState();
         }
 
         public void OnDespawn()

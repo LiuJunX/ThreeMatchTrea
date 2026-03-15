@@ -23,9 +23,6 @@ namespace Match3.Unity.Pools
 
         private static RenderTuningSettings _tuning;
 
-        // Outline resources
-        private static Material _outlineMaterial;
-
         // Blob shadow resources
         private static Mesh _blobShadowMesh;
         private static Material _blobShadowMaterial;
@@ -221,43 +218,11 @@ namespace Match3.Unity.Pools
         }
 
         /// <summary>
-        /// Get the shared outline material (Match3/Outline shader, back-face extrusion).
-        /// </summary>
-        public static Material GetOutlineMaterial()
-        {
-            if (_outlineMaterial != null) return _outlineMaterial;
-
-            var shader = Shader.Find("Match3/Outline");
-            if (shader == null)
-            {
-                Debug.LogWarning("[MeshFactory] Match3/Outline shader not found");
-                return null;
-            }
-
-            _outlineMaterial = new Material(shader) { name = "TileOutline" };
-            return _outlineMaterial;
-        }
-
-        /// <summary>
         /// Get the ceramic base color for a tile type.
         /// </summary>
         public static Color GetTileColor(ElementType type)
         {
             return GetCeramicColor(type);
-        }
-
-        /// <summary>
-        /// Get the outline color for a tile type.
-        /// Darkened + slightly more saturated version of the ceramic color,
-        /// mimicking the natural edge darkening of ceramic glaze.
-        /// </summary>
-        public static Color GetOutlineColor(ElementType type)
-        {
-            var baseColor = GetCeramicColor(type);
-            Color.RGBToHSV(baseColor, out float h, out float s, out float v);
-            s = Mathf.Min(s * 1.1f, 1f);
-            v *= 0.65f;
-            return Color.HSVToRGB(h, s, v);
         }
 
         /// <summary>
@@ -379,9 +344,9 @@ namespace Match3.Unity.Pools
                 _fallbackMaterial = null;
             }
 
-            // Note: Do NOT destroy _outlineMaterial, _blobShadowMaterial, _blobShadowTexture, _blobShadowMesh here.
+            // Note: Do NOT destroy _blobShadowMaterial, _blobShadowTexture, _blobShadowMesh here.
             // Pooled Tile3DView objects hold references to these materials created in Awake().
-            // Destroying them turns outlines/shadows magenta on pool re-use.
+            // Destroying them turns shadows magenta on pool re-use.
 
             _bombMeshCache.Clear();
 
