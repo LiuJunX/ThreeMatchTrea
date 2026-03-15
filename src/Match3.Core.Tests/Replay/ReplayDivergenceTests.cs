@@ -1,4 +1,5 @@
 using Match3.Core.Commands;
+using Match3.Core.Config;
 using Match3.Core.DependencyInjection;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
@@ -13,44 +14,56 @@ using Xunit;
 namespace Match3.Core.Tests.Replay;
 
 /// <summary>
-/// Verifies that ReplayController produces identical results to the original game.
-/// These tests are designed to catch divergence between recording and playback,
-/// specifically the random stream position issue where the Refill domain random
-/// is consumed during board initialization but not restored during replay.
+/// Verifies that ReplayController produces identical results to the original game
+/// across all level complexity levels (covers, grounds, objectives, irregular boards).
 /// </summary>
 [Trait("Category", "Slow")]
 public class ReplayDivergenceTests
 {
     private const int MaxMoves = 8;
 
-    // ── Test 1: End-to-end replay via ReplayController ──────────────
+    // ── Preset × Seed data sources ───────────────────────────────────
+
+    public static IEnumerable<object[]> AllPresets_x_Seeds()
+    {
+        int[] seeds = { 42, 1337, 9999 };
+        foreach (var preset in SimulationTestHelper.AllPresetNames)
+            foreach (var seed in seeds)
+                yield return new object[] { preset, seed };
+    }
+
+    public static IEnumerable<object[]> ComplexPresets_x_Seeds()
+    {
+        int[] seeds = { 42, 1337 };
+        string[] presets = { "WithCover", "WithGround", "Irregular7x7", "WithObjectives" };
+        foreach (var preset in presets)
+            foreach (var seed in seeds)
+                yield return new object[] { preset, seed };
+    }
+
+    // ── Test 1: End-to-end replay across all presets ─────────────────
 
     /// <summary>
-    /// Hypothesis: ReplayController.Seek(1.0) should produce the same final state
-    /// as the original game.
-    ///
-    /// Expected to FAIL if the Refill random stream starts at a different position
-    /// in replay vs gameplay, causing different tiles to spawn after matches.
+    /// ReplayController.Seek(1.0) should produce the same final state
+    /// as the original game, for every preset × seed combination.
     /// </summary>
     [Theory]
-    [InlineData(42)]
-    [InlineData(1337)]
-    [InlineData(9999)]
-    public void ReplayController_SeekToEnd_MatchesOriginalGame(int seed)
+    [MemberData(nameof(AllPresets_x_Seeds))]
+    public void ReplayController_SeekToEnd_MatchesOriginalGame(string presetName, int seed)
     {
+        var (levelConfig, tileTypesCount) = SimulationTestHelper.GetLevelPreset(presetName);
         var factory = new GameServiceBuilder().UseDefaultServices().Build();
 
-        // Phase 1: Play a game with ForHumanPlay config (matching real gameplay)
         var gameConfig = new GameServiceConfiguration
         {
             RngSeed = seed,
+            TileTypesCount = tileTypesCount,
             EnableEventCollection = false
-            // SimulationConfig defaults to ForHumanPlay()
         };
-        using var session = factory.CreateGameSession(gameConfig);
+        using var session = factory.CreateGameSession(gameConfig, levelConfig);
         var engine = session.Engine;
         var initState = engine.State;
-        var recorder = new GameRecorder(in initState, seed);
+        var recorder = new GameRecorder(in initState, seed, tileTypesCount, levelConfig);
 
         PlayMoves(engine, recorder, MaxMoves);
 
@@ -59,43 +72,38 @@ public class ReplayDivergenceTests
             engine.CurrentTick, finalState.Score, finalState.MoveCount);
         recorder.Dispose();
 
-        // Phase 2: Replay via ReplayController
         using var replayCtrl = new ReplayController(recording, factory);
         replayCtrl.Seek(1.0f);
 
-        // Phase 3: Compare final states
         Assert.NotNull(replayCtrl.Engine);
-        var replayState = replayCtrl.Engine!.State;
-
-        SimulationTestHelper.AssertStateEqual(finalState, replayState,
-            "ReplayController vs Original");
+        SimulationTestHelper.AssertStateEqual(finalState, replayCtrl.Engine!.State,
+            $"[{presetName}] ReplayController vs Original");
     }
 
-    // ── Test 2: Direct command replay (bypass ReplayController) ─────
+    // ── Test 2: Direct command replay across complex presets ─────────
 
     /// <summary>
-    /// Control test: replay by directly executing commands on a fresh engine
-    /// created the SAME way as gameplay (via CreateGameSession).
-    /// This should always pass — both sides use CreateGameSession which
-    /// consumes the Refill random during board init identically.
+    /// Control test: direct command execution on a fresh engine should match.
+    /// Covers complex presets to ensure covers/grounds/objectives don't interfere.
     /// </summary>
     [Theory]
-    [InlineData(42)]
-    [InlineData(1337)]
-    public void DirectReplay_WithSameSessionFactory_MatchesOriginalGame(int seed)
+    [MemberData(nameof(ComplexPresets_x_Seeds))]
+    public void DirectReplay_WithComplexLevel_MatchesOriginalGame(string presetName, int seed)
     {
+        var (levelConfig, tileTypesCount) = SimulationTestHelper.GetLevelPreset(presetName);
         var factory = new GameServiceBuilder().UseDefaultServices().Build();
+
         var gameConfig = new GameServiceConfiguration
         {
             RngSeed = seed,
+            TileTypesCount = tileTypesCount,
             EnableEventCollection = false
         };
 
-        // Play original game
-        using var session = factory.CreateGameSession(gameConfig);
+        using var session = factory.CreateGameSession(gameConfig, levelConfig);
         var engine = session.Engine;
         var initState = engine.State;
-        var recorder = new GameRecorder(in initState, seed);
+        var recorder = new GameRecorder(in initState, seed, tileTypesCount, levelConfig);
 
         PlayMoves(engine, recorder, MaxMoves);
 
@@ -104,8 +112,7 @@ public class ReplayDivergenceTests
             engine.CurrentTick, finalState.Score, finalState.MoveCount);
         recorder.Dispose();
 
-        // Replay on a fresh session with same seed (same init path)
-        using var replaySession = factory.CreateGameSession(gameConfig);
+        using var replaySession = factory.CreateGameSession(gameConfig, levelConfig);
         var replayEngine = replaySession.Engine;
 
         foreach (var cmd in recording.Commands)
@@ -116,33 +123,32 @@ public class ReplayDivergenceTests
         }
 
         SimulationTestHelper.AssertStateEqual(finalState, replayEngine.State,
-            "Direct replay vs Original");
+            $"[{presetName}] Direct replay vs Original");
     }
 
-    // ── Test 3: Same init path produces identical first move ────────
+    // ── Test 3: Same init path consistency ───────────────────────────
 
     /// <summary>
-    /// Verifies that recreating a session with the same seed (the fix)
-    /// produces identical results after the first move.
-    /// Both engines go through CreateGameSession → same Refill stream position.
+    /// Verifies that two sessions with the same config produce identical
+    /// results after the first move, including on complex boards.
     /// </summary>
     [Theory]
-    [InlineData(42)]
-    [InlineData(1337)]
-    public void SameInitPath_ProducesIdenticalFirstMove(int seed)
+    [MemberData(nameof(ComplexPresets_x_Seeds))]
+    public void SameInitPath_ProducesIdenticalFirstMove(string presetName, int seed)
     {
+        var (levelConfig, tileTypesCount) = SimulationTestHelper.GetLevelPreset(presetName);
         var factory = new GameServiceBuilder().UseDefaultServices().Build();
+
         var gameConfig = new GameServiceConfiguration
         {
             RngSeed = seed,
+            TileTypesCount = tileTypesCount,
             EnableEventCollection = false
         };
 
-        // Both engines created via CreateGameSession (same init path)
-        using var sessionA = factory.CreateGameSession(gameConfig);
-        using var sessionB = factory.CreateGameSession(gameConfig);
+        using var sessionA = factory.CreateGameSession(gameConfig, levelConfig);
+        using var sessionB = factory.CreateGameSession(gameConfig, levelConfig);
 
-        // Apply the same move to both
         var state = sessionA.Engine.State;
         var moves = ValidMoveDetector.FindAllValidMoves(in state, sessionA.Engine.MatchFinder);
         try
@@ -163,29 +169,33 @@ public class ReplayDivergenceTests
 
         SimulationTestHelper.AssertStateEqual(
             sessionA.Engine.State, sessionB.Engine.State,
-            "After first move: session A vs session B");
+            $"[{presetName}] After first move: session A vs session B");
     }
 
-    // ── Test 4: Serialization round-trip doesn't lose state ─────────
+    // ── Test 4: Serialization round-trip across all presets ──────────
 
     /// <summary>
     /// Verifies that serializing and deserializing a recording doesn't
-    /// introduce additional divergence beyond what already exists.
+    /// introduce divergence — especially for LevelConfig with covers,
+    /// grounds, and objectives.
     /// </summary>
     [Theory]
-    [InlineData(42)]
-    public void Serialization_DoesNotAddDivergence(int seed)
+    [MemberData(nameof(AllPresets_x_Seeds))]
+    public void Serialization_DoesNotAddDivergence(string presetName, int seed)
     {
+        var (levelConfig, tileTypesCount) = SimulationTestHelper.GetLevelPreset(presetName);
         var factory = new GameServiceBuilder().UseDefaultServices().Build();
+
         var gameConfig = new GameServiceConfiguration
         {
             RngSeed = seed,
+            TileTypesCount = tileTypesCount,
             EnableEventCollection = false
         };
-        using var session = factory.CreateGameSession(gameConfig);
+        using var session = factory.CreateGameSession(gameConfig, levelConfig);
         var engine = session.Engine;
         var initState = engine.State;
-        var recorder = new GameRecorder(in initState, seed);
+        var recorder = new GameRecorder(in initState, seed, tileTypesCount, levelConfig);
 
         PlayMoves(engine, recorder, 5);
 
@@ -205,11 +215,52 @@ public class ReplayDivergenceTests
         using var ctrl2 = new ReplayController(deserialized!, factory);
         ctrl2.Seek(1.0f);
 
-        // Both replays should produce identical state
-        // (even if both diverge from the original game)
         SimulationTestHelper.AssertStateEqual(
             ctrl1.Engine!.State, ctrl2.Engine!.State,
-            "Replay from original vs deserialized recording");
+            $"[{presetName}] Replay from original vs deserialized recording");
+    }
+
+    // ── Test 5: Many moves on complex levels ─────────────────────────
+
+    /// <summary>
+    /// Stress test: play more moves on complex levels to exercise deeper
+    /// random stream positions and more cascading interactions.
+    /// </summary>
+    [Theory]
+    [InlineData("WithCover", 42, 15)]
+    [InlineData("WithGround", 1337, 15)]
+    [InlineData("WithObjectives", 9999, 20)]
+    [InlineData("Small5x5_3Colors", 42, 20)]
+    public void ReplayController_ManyMoves_MatchesOriginalGame(
+        string presetName, int seed, int moveCount)
+    {
+        var (levelConfig, tileTypesCount) = SimulationTestHelper.GetLevelPreset(presetName);
+        var factory = new GameServiceBuilder().UseDefaultServices().Build();
+
+        var gameConfig = new GameServiceConfiguration
+        {
+            RngSeed = seed,
+            TileTypesCount = tileTypesCount,
+            EnableEventCollection = false
+        };
+        using var session = factory.CreateGameSession(gameConfig, levelConfig);
+        var engine = session.Engine;
+        var initState = engine.State;
+        var recorder = new GameRecorder(in initState, seed, tileTypesCount, levelConfig);
+
+        PlayMoves(engine, recorder, moveCount);
+
+        var finalState = engine.State;
+        var recording = recorder.Complete(
+            engine.CurrentTick, finalState.Score, finalState.MoveCount);
+        recorder.Dispose();
+
+        using var replayCtrl = new ReplayController(recording, factory);
+        replayCtrl.Seek(1.0f);
+
+        Assert.NotNull(replayCtrl.Engine);
+        SimulationTestHelper.AssertStateEqual(finalState, replayCtrl.Engine!.State,
+            $"[{presetName}] {moveCount} moves: ReplayController vs Original");
     }
 
     // ── Helpers ──────────────────────────────────────────────────────
@@ -220,7 +271,18 @@ public class ReplayDivergenceTests
         {
             if (engine.State.LevelStatus != LevelStatus.InProgress) break;
 
+            // Try tappable bombs first (like real gameplay)
             var state = engine.State;
+            if (ValidMoveDetector.HasTappableBomb(in state))
+            {
+                if (TryTapBomb(engine, recorder))
+                {
+                    engine.RunUntilStable();
+                    continue;
+                }
+            }
+
+            // Fall back to swap moves
             var moves = ValidMoveDetector.FindAllValidMoves(in state, engine.MatchFinder);
             try
             {
@@ -244,5 +306,30 @@ public class ReplayDivergenceTests
 
             engine.RunUntilStable();
         }
+    }
+
+    private static bool TryTapBomb(SimulationEngine engine, GameRecorder recorder)
+    {
+        var state = engine.State;
+        for (int y = 0; y < state.Height; y++)
+        {
+            for (int x = 0; x < state.Width; x++)
+            {
+                var pos = new Position(x, y);
+                var tile = state.GetTile(x, y);
+                if (tile.Type.IsBomb() && state.CanInteract(pos))
+                {
+                    var cmd = new TapCommand
+                    {
+                        IssuedAtTick = engine.CurrentTick,
+                        Position = pos
+                    };
+                    cmd.Execute(engine);
+                    recorder.RecordCommand(cmd);
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
