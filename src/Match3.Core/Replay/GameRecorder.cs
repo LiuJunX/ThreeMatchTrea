@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Match3.Core.Commands;
+using Match3.Core.Config;
 using Match3.Core.Models.Grid;
 
 namespace Match3.Core.Replay;
@@ -13,6 +14,8 @@ public sealed class GameRecorder : IDisposable
 {
     private readonly GameStateSnapshot _initialState;
     private readonly int _seed;
+    private readonly int _tileTypesCount;
+    private readonly LevelConfig? _levelConfig;
     private readonly CommandHistory _history;
     private readonly List<int> _bookmarks = new();
     private bool _isRecording;
@@ -34,10 +37,15 @@ public sealed class GameRecorder : IDisposable
     /// </summary>
     /// <param name="initialState">The game state at the start of the session.</param>
     /// <param name="seed">The random seed for deterministic replay.</param>
-    public GameRecorder(in GameState initialState, int seed)
+    /// <param name="tileTypesCount">Number of tile types used.</param>
+    /// <param name="levelConfig">Level config used for initialization (null for random boards).</param>
+    public GameRecorder(in GameState initialState, int seed,
+        int tileTypesCount = 6, LevelConfig? levelConfig = null)
     {
         _initialState = GameStateSnapshot.FromState(in initialState);
         _seed = seed;
+        _tileTypesCount = tileTypesCount;
+        _levelConfig = levelConfig;
         _history = new CommandHistory();
         _isRecording = true;
     }
@@ -79,7 +87,9 @@ public sealed class GameRecorder : IDisposable
             durationTicks,
             finalScore,
             totalMoves,
-            _bookmarks.ToArray());
+            _bookmarks.ToArray(),
+            _tileTypesCount,
+            _levelConfig);
     }
 
     public void Dispose()

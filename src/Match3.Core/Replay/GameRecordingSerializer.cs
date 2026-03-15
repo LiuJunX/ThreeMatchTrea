@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Match3.Core.Commands;
+using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
@@ -69,12 +70,14 @@ public static class GameRecordingSerializer
             Version = recording.Version,
             RecordedAt = recording.RecordedAt.ToString("O"),
             RandomSeed = recording.RandomSeed,
+            TileTypesCount = recording.TileTypesCount,
             DurationTicks = recording.DurationTicks,
             FinalScore = recording.FinalScore,
             TotalMoves = recording.TotalMoves,
             InitialState = SnapshotToDto(recording.InitialState),
             Commands = commands,
-            Bookmarks = bookmarks
+            Bookmarks = bookmarks,
+            LevelConfig = recording.LevelConfig != null ? LevelConfigToDto(recording.LevelConfig) : null
         };
     }
 
@@ -94,12 +97,14 @@ public static class GameRecordingSerializer
             Version = dto.Version,
             RecordedAt = recordedAt,
             RandomSeed = dto.RandomSeed,
+            TileTypesCount = dto.TileTypesCount > 0 ? dto.TileTypesCount : 6,
             DurationTicks = dto.DurationTicks,
             FinalScore = dto.FinalScore,
             TotalMoves = dto.TotalMoves,
             InitialState = DtoToSnapshot(dto.InitialState),
             Commands = commands,
-            Bookmarks = dto.Bookmarks ?? new List<int>()
+            Bookmarks = dto.Bookmarks ?? new List<int>(),
+            LevelConfig = dto.LevelConfig != null ? DtoToLevelConfig(dto.LevelConfig) : null
         };
     }
 
@@ -266,6 +271,99 @@ public static class GameRecordingSerializer
         };
     }
 
+    private static LevelConfigDto LevelConfigToDto(LevelConfig config)
+    {
+        int size = config.Width * config.Height;
+
+        var grid = new byte[size];
+        for (int i = 0; i < size && i < config.Grid.Length; i++)
+            grid[i] = (byte)config.Grid[i];
+
+        var cells = new byte[size];
+        for (int i = 0; i < size && i < config.Cells.Length; i++)
+            cells[i] = (byte)config.Cells[i];
+
+        var covers = new byte[size];
+        var coverHealths = new byte[size];
+        for (int i = 0; i < size; i++)
+        {
+            if (i < config.Covers.Length) covers[i] = (byte)config.Covers[i];
+            if (i < config.CoverHealths.Length) coverHealths[i] = config.CoverHealths[i];
+        }
+
+        var grounds = new byte[size];
+        var groundHealths = new byte[size];
+        for (int i = 0; i < size; i++)
+        {
+            if (i < config.Grounds.Length) grounds[i] = (byte)config.Grounds[i];
+            if (i < config.GroundHealths.Length) groundHealths[i] = config.GroundHealths[i];
+        }
+
+        var objectives = new List<ObjectiveDto>(4);
+        for (int i = 0; i < 4 && i < config.Objectives.Length; i++)
+        {
+            var obj = config.Objectives[i];
+            objectives.Add(new ObjectiveDto
+            {
+                TargetLayer = (byte)obj.TargetLayer,
+                ElementType = obj.ElementType,
+                TargetCount = obj.TargetCount
+            });
+        }
+
+        return new LevelConfigDto
+        {
+            Width = config.Width,
+            Height = config.Height,
+            MoveLimit = config.MoveLimit,
+            TargetDifficulty = config.TargetDifficulty,
+            Grid = grid,
+            Cells = cells,
+            Covers = covers,
+            CoverHealths = coverHealths,
+            Grounds = grounds,
+            GroundHealths = groundHealths,
+            Objectives = objectives
+        };
+    }
+
+    private static LevelConfig DtoToLevelConfig(LevelConfigDto dto)
+    {
+        var config = new LevelConfig(dto.Width, dto.Height)
+        {
+            MoveLimit = dto.MoveLimit,
+            TargetDifficulty = dto.TargetDifficulty
+        };
+
+        int size = dto.Width * dto.Height;
+        for (int i = 0; i < size && i < dto.Grid.Length; i++)
+            config.Grid[i] = (ElementType)dto.Grid[i];
+        for (int i = 0; i < size && i < dto.Cells.Length; i++)
+            config.Cells[i] = (CellKind)dto.Cells[i];
+        for (int i = 0; i < size; i++)
+        {
+            if (i < dto.Covers.Length) config.Covers[i] = (CoverType)dto.Covers[i];
+            if (i < dto.CoverHealths.Length) config.CoverHealths[i] = dto.CoverHealths[i];
+            if (i < dto.Grounds.Length) config.Grounds[i] = (GroundType)dto.Grounds[i];
+            if (i < dto.GroundHealths.Length) config.GroundHealths[i] = dto.GroundHealths[i];
+        }
+
+        var objectives = new LevelObjective[4];
+        for (int i = 0; i < 4 && i < dto.Objectives.Count; i++)
+        {
+            var obj = dto.Objectives[i];
+            objectives[i] = new LevelObjective
+            {
+                TargetLayer = (ObjectiveTargetLayer)obj.TargetLayer,
+                ElementType = obj.ElementType,
+                TargetCount = obj.TargetCount
+            };
+        }
+        config.Objectives = objectives;
+
+        return config;
+    }
+
     #region Internal DTOs
 
     internal sealed class RecordingDto
@@ -273,12 +371,14 @@ public static class GameRecordingSerializer
         public int Version { get; set; }
         public string RecordedAt { get; set; } = "";
         public int RandomSeed { get; set; }
+        public int TileTypesCount { get; set; } = 6;
         public int DurationTicks { get; set; }
         public int FinalScore { get; set; }
         public int TotalMoves { get; set; }
         public SnapshotDto InitialState { get; set; } = new();
         public List<CommandDto> Commands { get; set; } = new();
         public List<int> Bookmarks { get; set; } = new();
+        public LevelConfigDto? LevelConfig { get; set; }
     }
 
     internal sealed class SnapshotDto
@@ -328,6 +428,28 @@ public static class GameRecordingSerializer
         public int FromY { get; set; }
         public int ToX { get; set; }
         public int ToY { get; set; }
+    }
+
+    internal sealed class LevelConfigDto
+    {
+        public int Width { get; set; }
+        public int Height { get; set; }
+        public int MoveLimit { get; set; } = 20;
+        public float TargetDifficulty { get; set; } = 0.5f;
+        public byte[] Grid { get; set; } = Array.Empty<byte>();
+        public byte[] Cells { get; set; } = Array.Empty<byte>();
+        public byte[] Covers { get; set; } = Array.Empty<byte>();
+        public byte[] CoverHealths { get; set; } = Array.Empty<byte>();
+        public byte[] Grounds { get; set; } = Array.Empty<byte>();
+        public byte[] GroundHealths { get; set; } = Array.Empty<byte>();
+        public List<ObjectiveDto> Objectives { get; set; } = new();
+    }
+
+    internal sealed class ObjectiveDto
+    {
+        public byte TargetLayer { get; set; }
+        public int ElementType { get; set; }
+        public int TargetCount { get; set; }
     }
 
     #endregion

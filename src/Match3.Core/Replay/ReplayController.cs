@@ -3,7 +3,6 @@ using Match3.Core.Commands;
 using Match3.Core.DependencyInjection;
 using Match3.Core.Events;
 using Match3.Core.Simulation;
-using Match3.Random;
 
 namespace Match3.Core.Replay;
 
@@ -208,16 +207,20 @@ public sealed class ReplayController : IDisposable
     {
         _engine?.Dispose();
 
-        // Recreate multi-domain random streams from recorded seed
-        var seedManager = new SeedManager(_recording.RandomSeed);
-        var mainRng = seedManager.GetRandom(RandomDomain.Main);
-
-        // Restore initial state with Main-domain random
-        var initialState = _recording.InitialState.ToState(mainRng);
-
-        // Create engine with per-domain randoms (Refill, Physics) for deterministic replay
-        var simulationConfig = SimulationConfig.ForHumanPlay();
-        _engine = _factory.CreateSimulationEngine(initialState, simulationConfig, seedManager);
+        // Recreate the game session using the same path as gameplay:
+        // CreateGameSession(config, levelConfig) ensures all random streams
+        // (Refill, Physics, etc.) are consumed identically during board initialization.
+        var gameConfig = new GameServiceConfiguration
+        {
+            Width = _recording.InitialState.Width,
+            Height = _recording.InitialState.Height,
+            TileTypesCount = _recording.TileTypesCount,
+            RngSeed = _recording.RandomSeed,
+            EnableEventCollection = true,
+            SimulationConfig = SimulationConfig.ForHumanPlay()
+        };
+        var session = _factory.CreateGameSession(gameConfig, _recording.LevelConfig);
+        _engine = session.Engine;
 
         _currentCommandIndex = 0;
         _currentTick = 0;

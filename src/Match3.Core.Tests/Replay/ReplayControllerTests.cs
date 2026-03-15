@@ -93,16 +93,35 @@ public class ReplayControllerTests
             => CreateSimulationEngine(initialState, config, eventCollector);
 
         public GameSession CreateGameSession(LevelConfig? levelConfig = null)
-            => throw new NotSupportedException("Not needed for replay tests");
+            => CreateGameSession(new GameServiceConfiguration(), levelConfig);
+
+        public GameSession CreateGameSession(GameServiceConfiguration configuration, LevelConfig? levelConfig = null)
+        {
+            var seedManager = new SeedManager(configuration.RngSeed);
+            var mainRng = seedManager.GetRandom(RandomDomain.Main);
+            var state = new GameState(
+                configuration.Width, configuration.Height,
+                configuration.TileTypesCount, mainRng);
+
+            // Fill board with checkerboard pattern (no random consumption needed for stub)
+            for (int y = 0; y < state.Height; y++)
+                for (int x = 0; x < state.Width; x++)
+                {
+                    var type = (x + y) % 2 == 0 ? ElementType.Item1 : ElementType.Item3;
+                    state.SetTile(x, y, new Tile(state.NextTileId++, type, x, y));
+                }
+
+            var config = configuration.SimulationConfig ?? SimulationConfig.ForHumanPlay();
+            var collector = new BufferedEventCollector();
+            var engine = CreateSimulationEngine(state, config, collector);
+            return new GameSession(engine, collector, seedManager, configuration);
+        }
 
         public ISpawnModel CreateSpawnModel(IRandom random) => new StubSpawnModel();
         public ITileGenerator CreateTileGenerator(IRandom random) => throw new NotSupportedException();
         public IDeadlockDetectionSystem CreateDeadlockDetector(IMatchFinder matchFinder) => throw new NotSupportedException();
         public IBoardShuffleSystem CreateShuffleSystem(IDeadlockDetectionSystem deadlockDetector) => throw new NotSupportedException();
         public ILevelObjectiveSystem? CreateObjectiveSystem() => throw new NotSupportedException();
-
-        public GameSession CreateGameSession(GameServiceConfiguration configuration, LevelConfig? levelConfig = null)
-            => throw new NotSupportedException("Not needed for replay tests");
     }
 
     /// <summary>

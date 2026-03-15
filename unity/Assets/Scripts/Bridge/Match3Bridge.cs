@@ -49,6 +49,7 @@ namespace Match3.Unity.Bridge
 
         // Recording (always-on during gameplay)
         private GameRecorder _recorder;
+        private LevelConfig _levelConfig;
 
         // Replay mode
         private ReplayController _replayController;
@@ -255,14 +256,14 @@ namespace Match3.Unity.Bridge
                 .UseDefaultServices()
                 .Build();
 
-            LevelConfig levelConfig = null;
+            _levelConfig = null;
             try
             {
-                levelConfig = UnityConfigProvider.Instance.GetLevelConfig(levelId);
-                if (levelConfig != null)
+                _levelConfig = UnityConfigProvider.Instance.GetLevelConfig(levelId);
+                if (_levelConfig != null)
                 {
-                    _width = levelConfig.Width;
-                    _height = levelConfig.Height;
+                    _width = _levelConfig.Width;
+                    _height = _levelConfig.Height;
                 }
             }
             catch (System.Exception ex)
@@ -277,7 +278,7 @@ namespace Match3.Unity.Bridge
                 RngSeed = seed,
                 EnableEventCollection = true
             };
-            _session = _factory.CreateGameSession(config, levelConfig);
+            _session = _factory.CreateGameSession(config, _levelConfig);
 
             _choreographer = new Choreographer();
             _player = new Player();
@@ -302,7 +303,8 @@ namespace Match3.Unity.Bridge
             _isReplaying = false;
 
             // Start recording
-            _recorder = new GameRecorder(in state, seed);
+            _recorder = new GameRecorder(in state, seed,
+                config.TileTypesCount, _levelConfig);
 
             Debug.Log($"Match3Bridge initialized: {_width}x{_height}, seed={seed}, level={levelId}");
         }
@@ -327,15 +329,15 @@ namespace Match3.Unity.Bridge
                 .Build();
 
             // Load level config (provides objectives, move limit, etc.)
-            LevelConfig levelConfig = null;
+            _levelConfig = null;
             try
             {
-                levelConfig = UnityConfigProvider.Instance.GetLevelConfig("level_001");
+                _levelConfig = UnityConfigProvider.Instance.GetLevelConfig("level_001");
                 // Override width/height/moves from level config
-                if (levelConfig != null)
+                if (_levelConfig != null)
                 {
-                    _width = width = levelConfig.Width;
-                    _height = height = levelConfig.Height;
+                    _width = width = _levelConfig.Width;
+                    _height = height = _levelConfig.Height;
                 }
             }
             catch (System.Exception ex)
@@ -351,7 +353,7 @@ namespace Match3.Unity.Bridge
                 RngSeed = seed,
                 EnableEventCollection = true
             };
-            _session = _factory.CreateGameSession(config, levelConfig);
+            _session = _factory.CreateGameSession(config, _levelConfig);
 
             // Create choreographer and player
             _choreographer = new Choreographer();
@@ -380,7 +382,8 @@ namespace Match3.Unity.Bridge
             _isReplaying = false;
 
             // Start recording
-            _recorder = new GameRecorder(in state, seed);
+            _recorder = new GameRecorder(in state, seed,
+                config.TileTypesCount, _levelConfig);
 
             Debug.Log($"Match3Bridge initialized: {width}x{height}, seed={seed}");
         }
@@ -878,7 +881,8 @@ namespace Match3.Unity.Bridge
             Debug.Log($"[Recording] Saved: {path} ({recording.TotalMoves} moves, {recording.Commands.Count} commands)");
 
             // Create a fresh recorder for continued play
-            _recorder = new GameRecorder(in state, _seed);
+            _recorder = new GameRecorder(in state, _seed,
+                _session.Configuration.TileTypesCount, _levelConfig);
 
             return path;
         }
@@ -902,7 +906,8 @@ namespace Match3.Unity.Bridge
             File.WriteAllText(path, GameRecordingSerializer.ToJson(recording));
             Debug.Log($"[Recording] Saved as: {path}");
 
-            _recorder = new GameRecorder(in state, _seed);
+            _recorder = new GameRecorder(in state, _seed,
+                _session.Configuration.TileTypesCount, _levelConfig);
             return path;
         }
 
@@ -960,10 +965,11 @@ namespace Match3.Unity.Bridge
             _player = new Player();
             _objectiveCollector = new ObjectiveCollectionProcessor();
 
-            // Sync initial visual state from recording
-            var seedManager = new SeedManager(recording.RandomSeed);
-            var mainRng = seedManager.GetRandom(RandomDomain.Main);
-            var initialState = recording.InitialState.ToState(mainRng);
+            // Play() creates the engine via CreateGameSession (same init path as gameplay)
+            _replayController.Play();
+
+            // Sync initial visual state from the replay engine
+            var initialState = _replayController.Engine.State;
             _player.SyncFromGameState(in initialState);
 
             _width = recording.InitialState.Width;
@@ -979,8 +985,6 @@ namespace Match3.Unity.Bridge
             _lastMovesRemaining = -1;
             _lastScore = -1;
             _lastObjectiveHash = -1;
-
-            _replayController.Play();
 
             Debug.Log($"[Replay] Started: {recording.TotalMoves} moves, {recording.DurationTicks} ticks, seed={recording.RandomSeed}");
         }

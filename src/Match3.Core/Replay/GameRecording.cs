@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Match3.Core.Commands;
+using Match3.Core.Config;
 
 namespace Match3.Core.Replay;
 
@@ -21,6 +22,12 @@ public sealed record GameRecording
 
     /// <summary>Random seed used for deterministic replay.</summary>
     public int RandomSeed { get; init; }
+
+    /// <summary>Number of tile types used during the session.</summary>
+    public int TileTypesCount { get; init; } = 6;
+
+    /// <summary>Level config used for board initialization (null for random boards).</summary>
+    public LevelConfig? LevelConfig { get; init; }
 
     /// <summary>All recorded player commands.</summary>
     public IReadOnlyList<IGameCommand> Commands { get; init; } = Array.Empty<IGameCommand>();
@@ -53,12 +60,16 @@ public sealed record GameRecording
         int durationTicks,
         int finalScore,
         int totalMoves,
-        IReadOnlyList<int>? bookmarks = null)
+        IReadOnlyList<int>? bookmarks = null,
+        int tileTypesCount = 6,
+        LevelConfig? levelConfig = null)
     {
         return new GameRecording
         {
             InitialState = initialState,
             RandomSeed = seed,
+            TileTypesCount = tileTypesCount,
+            LevelConfig = levelConfig?.DeepCopy(),
             Commands = commands,
             DurationTicks = durationTicks,
             FinalScore = finalScore,

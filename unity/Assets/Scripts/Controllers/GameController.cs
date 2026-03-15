@@ -572,11 +572,19 @@ namespace Match3.Unity.Controllers
             if (_currentReplayRecording == null) return;
             Debug.Log("[Replay] Restarting...");
             _replayCompletedShown = false;
+
+            // Preserve current speed from UI before creating new controller
+            var currentSpeed = _uiManager?.ReplayPanel?.GetSpeed() ?? 1.0f;
+
             _boardView?.Clear();
             _bridge.StartReplay(_currentReplayRecording);
             _boardView.Initialize(_bridge);
             _effectManager.Initialize(_bridge);
             _uiManager?.ReplayPanel?.ResetState();
+
+            // Restore speed to the new ReplayController
+            var ctrl = _bridge.ReplayCtrl;
+            if (ctrl != null) ctrl.PlaybackSpeed = currentSpeed;
 
             var cameraSetup = FindObjectOfType<CameraSetup>();
             if (cameraSetup != null)
