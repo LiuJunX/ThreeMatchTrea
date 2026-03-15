@@ -126,12 +126,12 @@ public class LevelConfig
             TargetDifficulty = TargetDifficulty,
             AnalysisCache = AnalysisCache
         };
-        Array.Copy(Grid, copy.Grid, Grid.Length);
-        Array.Copy(Cells, copy.Cells, Cells.Length);
-        Array.Copy(Grounds, copy.Grounds, Grounds.Length);
-        Array.Copy(GroundHealths, copy.GroundHealths, GroundHealths.Length);
-        Array.Copy(Covers, copy.Covers, Covers.Length);
-        Array.Copy(CoverHealths, copy.CoverHealths, CoverHealths.Length);
+        if (Grid != null) Array.Copy(Grid, copy.Grid, Math.Min(Grid.Length, copy.Grid.Length));
+        if (Cells != null) Array.Copy(Cells, copy.Cells, Math.Min(Cells.Length, copy.Cells.Length));
+        if (Grounds != null) Array.Copy(Grounds, copy.Grounds, Math.Min(Grounds.Length, copy.Grounds.Length));
+        if (GroundHealths != null) Array.Copy(GroundHealths, copy.GroundHealths, Math.Min(GroundHealths.Length, copy.GroundHealths.Length));
+        if (Covers != null) Array.Copy(Covers, copy.Covers, Math.Min(Covers.Length, copy.Covers.Length));
+        if (CoverHealths != null) Array.Copy(CoverHealths, copy.CoverHealths, Math.Min(CoverHealths.Length, copy.CoverHealths.Length));
         for (int i = 0; i < Objectives.Length; i++)
             copy.Objectives[i] = Objectives[i];
         return copy;
