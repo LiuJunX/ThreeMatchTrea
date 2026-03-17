@@ -214,4 +214,7 @@ internal sealed class LayerChoreographer
 
     /// <summary>Obstacle destroyed — placeholder for future animation.</summary>
     internal void Visit(ObstacleDestroyedEvent evt) { }
+
+    /// <summary>Ground spawned by death effect — placeholder for future animation.</summary>
+    internal void Visit(GroundSpawnedEvent evt) { }
 }

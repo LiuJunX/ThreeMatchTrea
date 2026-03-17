@@ -80,6 +80,12 @@ public struct GameState
     /// </summary>
     public LevelStatus LevelStatus;
 
+    /// <summary>
+    /// Current simulation time in seconds. Updated each tick by the game loop.
+    /// Used by CanMatch to skip tiles that are still in their protection window.
+    /// </summary>
+    public float SimulationTime;
+
     public GameState(int width, int height, int tileTypesCount, IRandom random)
     {
         if (width <= 0) throw new ArgumentOutOfRangeException(nameof(width), width, "Width must be positive.");
@@ -106,6 +112,7 @@ public struct GameState
         Random = random;
         ObjectiveProgress = new ObjectiveProgress[4];
         LevelStatus = LevelStatus.InProgress;
+        SimulationTime = 0f;
 
         // Init Cells to Slot by default to avoid breaking existing logic immediately
         Array.Fill(Cells, CellKind.Slot);
@@ -261,7 +268,9 @@ public struct GameState
         var idx = y * Width + x;
         var cover = CoverLayer[idx];
         if (CoverRules.BlocksMatch(cover.Type)) return false;
-        return !CellLockOps.IsLocked(CellLocks[idx], CellLockType.Matching);
+        if (CellLockOps.IsLocked(CellLocks[idx], CellLockType.Matching)) return false;
+        if (Grid[idx].ProtectUntil > SimulationTime) return false;
+        return true;
     }
 
     /// <summary>

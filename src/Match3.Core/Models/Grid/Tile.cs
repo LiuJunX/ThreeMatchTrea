@@ -12,6 +12,13 @@ public struct Tile
     public int Id;
 
     /// <summary>
+    /// Simulation time until which this tile is immune to matching and destruction.
+    /// Used by death-effect released tiles (Pearl, Plate) to survive their spawn animation.
+    /// 0 = no protection (default).
+    /// </summary>
+    public float ProtectUntil;
+
+    /// <summary>
     /// Whether tile is currently falling. Backward compatible property.
     /// </summary>
     public bool IsFalling
@@ -27,6 +34,7 @@ public struct Tile
         Position = new Vector2(x, y);
         Velocity = Vector2.Zero;
         State = TileState.None;
+        ProtectUntil = 0f;
     }
 
     public Tile(int id, ElementType type, Vector2 position)
@@ -36,5 +44,6 @@ public struct Tile
         Position = position;
         Velocity = Vector2.Zero;
         State = TileState.None;
+        ProtectUntil = 0f;
     }
 }

@@ -26,9 +26,9 @@ namespace Match3.Core.Choreography;
 ///     (internal helper, not directly routed)
 ///
 ///   LayerChoreographer:
-///     MatchDetectedEvent, CoverDestroyedEvent, GroundDestroyedEvent, ScoreAddedEvent,
-///     ComboChangedEvent, MoveCompletedEvent, DeadlockDetectedEvent, BoardShuffledEvent,
-///     ObjectiveProgressEvent, LevelCompletedEvent,
+///     MatchDetectedEvent, CoverDestroyedEvent, GroundDestroyedEvent, GroundSpawnedEvent,
+///     ScoreAddedEvent, ComboChangedEvent, MoveCompletedEvent, DeadlockDetectedEvent,
+///     BoardShuffledEvent, ObjectiveProgressEvent, LevelCompletedEvent,
 ///     ObstacleDamagedEvent, ObstacleDestroyedEvent
 /// </summary>
 public sealed class Choreographer : IEventVisitor
@@ -204,6 +204,9 @@ public sealed class Choreographer : IEventVisitor
 
     /// <inheritdoc />
     public void Visit(ObstacleDestroyedEvent evt) => _layer.Visit(evt);
+
+    /// <inheritdoc />
+    public void Visit(GroundSpawnedEvent evt) => _layer.Visit(evt);
 
     #endregion
 }

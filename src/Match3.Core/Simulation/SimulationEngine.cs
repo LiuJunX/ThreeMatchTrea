@@ -187,6 +187,9 @@ public sealed class SimulationEngine : IDisposable
 
         var state = State;
 
+        // Sync simulation time for ProtectUntil checks (death-effect immunity)
+        state.SimulationTime = _elapsedTime;
+
         // Clear selection when board is actively processing (gravity, matching, cascading)
         // This prevents the highlight from "sticking" to a position when the tile there changes.
         if (state.SelectedPosition != Position.Invalid && !IsStable())

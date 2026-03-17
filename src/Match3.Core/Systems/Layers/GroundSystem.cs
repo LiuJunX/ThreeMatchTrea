@@ -28,6 +28,10 @@ public class GroundSystem : IGroundSystem
         if (ground.Type == GroundType.None)
             return;
 
+        // Protected ground (freshly spawned by death effect) is immune
+        if (ground.ProtectUntil > simTime)
+            return;
+
         // Damage the ground
         ground.Health--;
 

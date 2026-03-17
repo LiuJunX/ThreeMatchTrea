@@ -14,6 +14,8 @@ public static class GroundRules
     {
         GroundType.None => 0,
         GroundType.Ice => 1,
+        GroundType.Grass => 1,
+        GroundType.Leaves => 1,
         _ => 1
     };
 }

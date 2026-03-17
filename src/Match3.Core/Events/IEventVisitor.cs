@@ -89,4 +89,7 @@ public interface IEventVisitor
 
     /// <summary>Visit an obstacle destroyed event.</summary>
     void Visit(ObstacleDestroyedEvent evt);
+
+    /// <summary>Visit a ground spawned event (death effect).</summary>
+    void Visit(GroundSpawnedEvent evt);
 }

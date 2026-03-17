@@ -20,12 +20,20 @@ public struct Ground
     public byte Health;
 
     /// <summary>
+    /// Simulation time until which this ground element is immune to destruction.
+    /// Used by death-effect spawned ground (Grass, Leaves) to survive their spawn animation.
+    /// 0 = no protection (default).
+    /// </summary>
+    public float ProtectUntil;
+
+    /// <summary>
     /// Creates a new ground element with the specified type and health.
     /// </summary>
-    public Ground(GroundType type, byte health = 1)
+    public Ground(GroundType type, byte health = 1, float protectUntil = 0f)
     {
         Type = type;
         Health = health;
+        ProtectUntil = protectUntil;
     }
 
     /// <summary>

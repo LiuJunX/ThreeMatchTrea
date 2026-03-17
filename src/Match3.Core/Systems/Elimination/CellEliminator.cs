@@ -86,6 +86,10 @@ public sealed class CellEliminator : ICellEliminator
         if (!state.CanDestroy(pos))
             return EliminateResult.Blocked;
 
+        // Protected tile (freshly released by death effect) is immune
+        if (tile.ProtectUntil > simTime)
+            return EliminateResult.Blocked;
+
         // Event (with IsGoal)
         if (events.IsEnabled)
         {

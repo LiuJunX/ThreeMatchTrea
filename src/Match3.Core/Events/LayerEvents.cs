@@ -4,6 +4,25 @@ using Match3.Core.Models.Grid;
 namespace Match3.Core.Events;
 
 /// <summary>
+/// Event emitted when a ground element is spawned by an obstacle death effect.
+/// Used by presentation layer to animate ground appearance (e.g., Grass spreading from Bush).
+/// </summary>
+public sealed record GroundSpawnedEvent : GameEvent
+{
+    /// <summary>Grid position where the ground was spawned.</summary>
+    public Position GridPosition { get; init; }
+
+    /// <summary>Type of the spawned ground.</summary>
+    public GroundType Type { get; init; }
+
+    /// <summary>Position of the obstacle whose death caused this spawn.</summary>
+    public Position SourcePosition { get; init; }
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
+}
+
+/// <summary>
 /// Event emitted when a cover element is destroyed.
 /// </summary>
 public sealed record CoverDestroyedEvent : GameEvent

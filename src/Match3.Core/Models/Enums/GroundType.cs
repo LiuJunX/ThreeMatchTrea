@@ -18,4 +18,16 @@ public enum GroundType : byte
     /// </summary>
     [AIMapping(0, "Ice")]
     Ice = 1,
+
+    /// <summary>
+    /// Grass spawned by Bush death effect. Counts toward objectives.
+    /// </summary>
+    [AIMapping(1, "Grass")]
+    Grass = 2,
+
+    /// <summary>
+    /// Leaves spawned by Flowerpot death effect. Counts toward objectives.
+    /// </summary>
+    [AIMapping(2, "Leaves")]
+    Leaves = 3,
 }

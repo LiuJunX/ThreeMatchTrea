@@ -81,6 +81,9 @@ public class AsyncGameLoopSystem : IAsyncGameLoopSystem
         {
             Pools.Release(allMatches);
         }
+
+        // Advance simulation time AFTER processing (matches SimulationEngine pattern)
+        state.SimulationTime += dt;
     }
     
     private bool IsGroupStable(ref GameState state, MatchGroup group)

@@ -61,6 +61,16 @@ public enum ElementType : byte
     /// </summary>
     Bird = 100,
 
+    /// <summary>
+    /// Pearl released by Oyster death effect. Collectible, counts toward objectives.
+    /// </summary>
+    Pearl = 101,
+
+    /// <summary>
+    /// Plate released by Cupboard death effect. Collectible, counts toward objectives.
+    /// </summary>
+    Plate = 102,
+
     // --- Blockers ---
 
     /// <summary>
@@ -105,5 +115,5 @@ public static class ElementTypeExtensions
 
     /// <summary>Whether this is a collectible element (Bird, etc.).</summary>
     public static bool IsCollectible(this ElementType type)
-        => type == ElementType.Bird;
+        => type == ElementType.Bird || type == ElementType.Pearl || type == ElementType.Plate;
 }
