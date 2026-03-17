@@ -504,9 +504,9 @@ public sealed class SimulationEngine : IDisposable
     /// <summary>
     /// Clone the engine for parallel simulation (AI branching / DryRun).
     /// <para>
-    /// Thread-safety: when <paramref name="newRandom"/> is provided, the returned engine
-    /// has fully independent mutable state (GameState, Physics, Config, frame buffers)
-    /// and can run on a background thread concurrently with the original.
+    /// Thread-safety: the returned engine has fully independent mutable state
+    /// (GameState, Physics, Config, frame buffers) and can run on a background
+    /// thread concurrently with the original.
     /// </para>
     /// <para>
     /// Stateless systems (MatchFinder, MatchProcessor, DeadlockDetector, ShuffleSystem,
@@ -514,16 +514,12 @@ public sealed class SimulationEngine : IDisposable
     /// ThreadLocal pools.
     /// </para>
     /// </summary>
-    public SimulationEngine Clone(Match3.Random.IRandom? newRandom = null)
+    public SimulationEngine Clone(Match3.Random.IRandom newRandom)
     {
-        var clonedState = State.Clone();
-        if (newRandom != null)
-        {
-            clonedState.Random = newRandom;
-        }
+        var clonedState = State.Clone(newRandom);
 
         // Clone mutable systems — each clone needs independent frame buffers and RNG
-        var cloneRandom = newRandom ?? clonedState.Random;
+        var cloneRandom = newRandom;
         var cloneConfig = _config.Clone();
         var clonePhysics = _physics.CloneForSimulation(cloneRandom);
 

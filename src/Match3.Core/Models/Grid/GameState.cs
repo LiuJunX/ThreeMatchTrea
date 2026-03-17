@@ -106,29 +106,43 @@ public struct GameState
         Array.Fill(Cells, CellKind.Slot);
     }
 
+    /// <summary>
+    /// Clone without RNG — returns NullRandom (fail-fast).
+    /// Caller must assign Random or use <see cref="Clone(IRandom)"/> instead.
+    /// </summary>
     public GameState Clone()
     {
-        var clone = new GameState(Width, Height, TileTypesCount, Random);
-        clone.Score = Score;
-        clone.MoveCount = MoveCount;
-        clone.NextTileId = NextTileId;
-        clone.MoveLimit = MoveLimit;
-        clone.TargetDifficulty = TargetDifficulty;
-        clone.SelectedPosition = SelectedPosition;
-        // Use logical size (Width * Height) instead of array length
-        // to support arrays from ArrayPool which may be larger
+        var clone = CloneInternal();
+        clone.Random = NullRandom.Instance;
+        return clone;
+    }
+
+    /// <summary>
+    /// Clone with explicit RNG — one-step safe copy.
+    /// </summary>
+    public GameState Clone(IRandom rng)
+    {
+        var clone = CloneInternal();
+        clone.Random = rng;
+        return clone;
+    }
+
+    private GameState CloneInternal()
+    {
+        var clone = this;
         int size = Width * Height;
-        Array.Copy(Cells, clone.Cells, size); // Clone Cells
+        clone.Cells = new CellKind[size];
+        clone.Grid = new Tile[size];
+        clone.GroundLayer = new Ground[size];
+        clone.CoverLayer = new Cover[size];
+        clone.CellLocks = new uint[size];
+        Array.Copy(Cells, clone.Cells, size);
         Array.Copy(Grid, clone.Grid, size);
         Array.Copy(GroundLayer, clone.GroundLayer, size);
         Array.Copy(CoverLayer, clone.CoverLayer, size);
         Array.Copy(CellLocks, clone.CellLocks, size);
-        // Holes removed
         clone.ObjectiveProgress = new ObjectiveProgress[4];
         Array.Copy(ObjectiveProgress, clone.ObjectiveProgress, 4);
-        clone.LevelStatus = LevelStatus;
-        // Note: IRandom is shared reference here.
-        // For true MCTS/branching, we would need a cloneable/struct RNG.
         return clone;
     }
 

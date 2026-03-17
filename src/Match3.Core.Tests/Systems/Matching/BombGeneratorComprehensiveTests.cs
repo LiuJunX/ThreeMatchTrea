@@ -907,7 +907,7 @@ public class BombGeneratorComprehensiveTests
             new Position(1, 0),
             new Position(3, 0)
         };
-        var random = new DefaultRandom(42);
+        var random = new XorShift64(42);
 
         var results = _generator.Generate(component, foci, random);
 
@@ -924,7 +924,7 @@ public class BombGeneratorComprehensiveTests
     {
         // Run multiple times to verify randomness
         var component = ParseGrid("A A A A A");
-        var random = new DefaultRandom(12345);
+        var random = new XorShift64(12345);
 
         var origins = new HashSet<Position>();
         for (int i = 0; i < 50; i++)

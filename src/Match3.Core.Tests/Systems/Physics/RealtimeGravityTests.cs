@@ -190,8 +190,8 @@ public class RealtimeGravityTests
     {
         // Arrange - Two identical systems with same seed
         const int seed = 12345;
-        var random1 = new DefaultRandom(seed);
-        var random2 = new DefaultRandom(seed);
+        var random1 = new XorShift64((ulong)seed);
+        var random2 = new XorShift64((ulong)seed);
 
         var config = new Match3Config(8, 8, 6) { GravitySpeed = 35.0f };
         var physics1 = new RealtimeGravitySystem(config, random1);

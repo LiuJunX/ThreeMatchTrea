@@ -722,7 +722,7 @@ public class DropTimingTests
         var engine = CreateFullEngine(state, rng, new BufferedEventCollector());
 
         // Clone should not throw
-        var clone = engine.Clone();
+        var clone = engine.Clone(new StubRandom());
 
         // Both should be stable independently
         Assert.True(engine.IsStable());

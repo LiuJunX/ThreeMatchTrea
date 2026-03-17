@@ -147,8 +147,7 @@ public sealed class AIService : IAIService
     public MovePreview PreviewMove(in GameState state, Move move)
     {
         // Clone state for simulation
-        var clonedState = state.Clone();
-        clonedState.Random = _randomFactory();
+        var clonedState = state.Clone(_randomFactory());
 
         // Create simulation engine
         using var engine = new SimulationEngine(

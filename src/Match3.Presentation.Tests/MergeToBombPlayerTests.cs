@@ -536,7 +536,7 @@ public class MergeToBombPlayerTests
 
     private static GameState CreateGameState(int width, int height)
     {
-        return new GameState(width, height, 6, new DefaultRandom(42));
+        return new GameState(width, height, 6, new XorShift64(42));
     }
 
     private static void SetTile(ref GameState state, int x, int y, Tile tile)

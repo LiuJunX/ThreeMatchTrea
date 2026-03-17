@@ -172,7 +172,7 @@ public class SimulationEngineTests
         var state = CreateStableState();
         var engine = TestEngineFactory.CreateEngine(state);
 
-        var cloned = engine.Clone();
+        var cloned = engine.Clone(new StubRandom());
 
         // Modify original
         engine.Tick();
@@ -188,7 +188,7 @@ public class SimulationEngineTests
         var collector = new BufferedEventCollector();
         var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
-        var cloned = engine.Clone();
+        var cloned = engine.Clone(new StubRandom());
 
         Assert.False(cloned.EventCollector.IsEnabled);
     }

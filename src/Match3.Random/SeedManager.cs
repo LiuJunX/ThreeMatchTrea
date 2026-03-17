@@ -20,7 +20,7 @@ public sealed class SeedManager
 
         if (_overrides.TryGetValue(domain, out var seed))
         {
-            rng = new DefaultRandom(seed);
+            rng = new XorShift64((ulong)seed);
         }
         else
         {

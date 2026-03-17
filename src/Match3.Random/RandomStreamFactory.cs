@@ -4,20 +4,20 @@ public static class RandomStreamFactory
 {
     public static IRandom Create(int? masterSeed, RandomDomain domain)
     {
-        if (!masterSeed.HasValue) return new DefaultRandom(null);
+        if (!masterSeed.HasValue) return new XorShift64((ulong)new System.Random().Next());
         int tagHash = (int)domain;
         int derived = unchecked(masterSeed.Value * 16777619 ^ tagHash);
         if (derived == 0) derived = 1;
-        return new DefaultRandom(derived);
+        return new XorShift64((ulong)derived);
     }
 
     public static IRandom Create(int? masterSeed, string tag)
     {
-        if (!masterSeed.HasValue) return new DefaultRandom(null);
+        if (!masterSeed.HasValue) return new XorShift64((ulong)new System.Random().Next());
         int tagHash = StableHash(tag);
         int derived = unchecked(masterSeed.Value * 16777619 ^ tagHash);
         if (derived == 0) derived = 1;
-        return new DefaultRandom(derived);
+        return new XorShift64((ulong)derived);
     }
 
     private static int StableHash(string s)

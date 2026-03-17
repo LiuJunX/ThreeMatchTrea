@@ -74,7 +74,7 @@ public class RandomTests
     public void RandomStreamFactory_Create_WithNullMasterSeed_ReturnsNonDeterministic()
     {
         // When master seed is null, we expect System.Random behavior (effectively)
-        // or just a DefaultRandom(null).
+        // or just a XorShift64 with a random seed.
         var rng = RandomStreamFactory.Create(null, RandomDomain.Main);
         Assert.NotNull(rng);
     }

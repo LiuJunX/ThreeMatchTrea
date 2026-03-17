@@ -143,7 +143,7 @@ public class SimulationIntegrationTests
         var collector = new BufferedEventCollector();
         var engine = TestEngineFactory.CreateEngine(state, eventCollector: collector);
 
-        var cloned = engine.Clone();
+        var cloned = engine.Clone(new StubRandom());
 
         // Events on cloned engine should not affect original
         cloned.ApplyMove(new Position(0, 0), new Position(1, 0));
