@@ -21,6 +21,12 @@ public enum EliminateOutcome : byte
 
     /// <summary>No tile present, but bare ground was damaged/destroyed by the hit.</summary>
     GroundOnly,
+
+    /// <summary>Obstacle at this position took damage but survived.</summary>
+    ObstacleDamaged,
+
+    /// <summary>Obstacle at this position was fully destroyed.</summary>
+    ObstacleDestroyed,
 }
 
 /// <summary>
@@ -51,4 +57,6 @@ public readonly struct EliminateResult
     public static EliminateResult Immune(Tile tile) => new(EliminateOutcome.Immune, tile);
     public static readonly EliminateResult Blocked = new(EliminateOutcome.Blocked, default);
     public static readonly EliminateResult GroundOnly = new(EliminateOutcome.GroundOnly, default);
+    public static readonly EliminateResult ObstacleDamaged = new(EliminateOutcome.ObstacleDamaged, default);
+    public static readonly EliminateResult ObstacleDestroyed = new(EliminateOutcome.ObstacleDestroyed, default);
 }

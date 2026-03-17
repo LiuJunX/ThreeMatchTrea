@@ -31,6 +31,11 @@ public interface ILevelObjectiveSystem
     void OnGroundDestroyed(ref GameState state, GroundType type, int tick, float simTime, IEventCollector events);
 
     /// <summary>
+    /// Called when an obstacle is destroyed.
+    /// </summary>
+    void OnObstacleDestroyed(ref GameState state, ObstacleType type, int tick, float simTime, IEventCollector events);
+
+    /// <summary>
     /// Check if all objectives are completed (victory condition).
     /// </summary>
     bool IsLevelComplete(in GameState state);

@@ -208,4 +208,10 @@ internal sealed class LayerChoreographer
             StartTime = effectTime, Duration = 0.1f
         });
     }
+
+    /// <summary>Obstacle damaged — placeholder for future animation.</summary>
+    internal void Visit(ObstacleDamagedEvent evt) { }
+
+    /// <summary>Obstacle destroyed — placeholder for future animation.</summary>
+    internal void Visit(ObstacleDestroyedEvent evt) { }
 }

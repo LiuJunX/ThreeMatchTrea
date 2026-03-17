@@ -79,6 +79,12 @@ public class LevelObjectiveSystem : ILevelObjectiveSystem
         UpdateProgress(ref state, ObjectiveTargetLayer.Ground, (int)type, tick, simTime, events);
     }
 
+    /// <inheritdoc />
+    public void OnObstacleDestroyed(ref GameState state, ObstacleType type, int tick, float simTime, IEventCollector events)
+    {
+        UpdateProgress(ref state, ObjectiveTargetLayer.Obstacle, (int)type, tick, simTime, events);
+    }
+
     private void UpdateProgress(ref GameState state, ObjectiveTargetLayer layer, int elementType, int tick, float simTime, IEventCollector events)
     {
         for (int i = 0; i < 4; i++)

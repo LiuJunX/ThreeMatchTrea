@@ -83,4 +83,10 @@ public interface IEventVisitor
 
     /// <summary>Visit a color bomb combo batch activate event (all transformed bombs fire simultaneously).</summary>
     void Visit(ColorBombComboBatchActivateEvent evt);
+
+    /// <summary>Visit an obstacle damaged event.</summary>
+    void Visit(ObstacleDamagedEvent evt);
+
+    /// <summary>Visit an obstacle destroyed event.</summary>
+    void Visit(ObstacleDestroyedEvent evt);
 }
