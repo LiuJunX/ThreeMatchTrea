@@ -121,7 +121,7 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
                 var tierConfig = tiers[tierIdx];
                 var result = SimulateSingleGameWithStrategy(
                     initialState,
-                    (ulong)(simIdx * 7919 + 12345),
+                    AnalysisSeedDerivation.FromSimulationIndex(simIdx),
                     tierConfig,
                     moveLimit);
                 // Tag the result with the tier index so aggregate can route it
@@ -380,8 +380,7 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
         var ctx = _contextCache.Value!;
         ctx.ResetForSimulation(seed, initialState.TileTypesCount);
 
-        var state = initialState.Clone();
-        state.Random = ctx.StateRandom;
+        var state = initialState.Clone(ctx.StateRandom);
 
         // 每次模拟创建新的 ObjectiveSystem 以避免状态污染
         var objectiveSystem = ctx.CreateObjectiveSystem();

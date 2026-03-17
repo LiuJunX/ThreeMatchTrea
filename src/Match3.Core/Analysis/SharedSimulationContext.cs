@@ -142,8 +142,7 @@ internal sealed class SharedSimulationContext : IDisposable
     public MovePreview PreviewMove(in GameState currentState, Position from, Position to)
     {
         // 克隆状态用于预览
-        _previewState = currentState.Clone();
-        _previewState.Random = StateRandom;
+        _previewState = currentState.Clone(StateRandom);
 
         // 创建临时的 ObjectiveSystem（不影响主游戏状态）
         var objectiveSystem = new LevelObjectiveSystem();
@@ -182,8 +181,7 @@ internal sealed class SharedSimulationContext : IDisposable
     public (int scoreGained, int tilesCleared, bool isValid) QuickPreviewMove(
         in GameState currentState, Position from, Position to)
     {
-        _previewState = currentState.Clone();
-        _previewState.Random = StateRandom;
+        _previewState = currentState.Clone(StateRandom);
 
         var objectiveSystem = new LevelObjectiveSystem();
 
@@ -207,8 +205,7 @@ internal sealed class SharedSimulationContext : IDisposable
     /// </summary>
     public GameState ApplyMoveAndGetNewState(in GameState state, Position from, Position to, LevelObjectiveSystem objectiveSystem)
     {
-        var newState = state.Clone();
-        newState.Random = StateRandom;
+        var newState = state.Clone(StateRandom);
 
         using var engine = CreateEngineForPreview(newState, objectiveSystem);
 

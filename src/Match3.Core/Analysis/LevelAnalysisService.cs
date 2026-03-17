@@ -90,7 +90,7 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
         long totalScore = 0;
 
         var runner = new AnalysisSimulationRunner<int, SingleGameResult, LevelAnalysisResult>(
-            simulate: i => SimulateSingleGame(initialState, (ulong)(i * 7919 + 12345)),
+            simulate: i => SimulateSingleGame(initialState, AnalysisSeedDerivation.FromSimulationIndex(i)),
             aggregate: result =>
             {
                 totalMovesUsed += result.MovesUsed;
@@ -294,8 +294,7 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
         var ctx = _contextCache.Value!;
         ctx.ResetForSimulation(seed, initialState.TileTypesCount);
 
-        var state = initialState.Clone();
-        state.Random = ctx.StateRandom;
+        var state = initialState.Clone(ctx.StateRandom);
 
         var physics = ctx.GetPhysics();
         var refill = ctx.GetRefill(state.TileTypesCount);

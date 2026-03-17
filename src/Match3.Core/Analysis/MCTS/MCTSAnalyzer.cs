@@ -149,7 +149,7 @@ public sealed class MCTSAnalyzer
         Parallel.For(0, _config.TotalGames, parallelOptions, game =>
         {
             // 每个线程使用独立的种子
-            var result = PlaySingleGameWithMCTS(levelConfig, (ulong)(game * 7919 + 12345));
+            var result = PlaySingleGameWithMCTS(levelConfig, AnalysisSeedDerivation.FromSimulationIndex(game));
             results.Add(result);
 
             // 报告进度（线程安全的递增）
@@ -444,8 +444,7 @@ public sealed class MCTSAnalyzer
 
     private GameState ApplyMoveAndGetNewState(GameState state, ValidMove move, SimulationContext context)
     {
-        var newState = state.Clone();
-        newState.Random = context.Random;
+        var newState = state.Clone(context.Random);
 
         using var engine = CreateEngine(newState, context);
         engine.ApplyMove(move.From, move.To);

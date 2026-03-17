@@ -206,9 +206,7 @@ public sealed class DeepAnalysisService
 
         for (int gameIdx = 0; gameIdx < gamesPerPlayer; gameIdx++)
         {
-            // 使用稳定的 seed 计算，避免 GetHashCode 负值问题
-            ulong tierSeed = (ulong)(tierIndex + 1);
-            ulong seed = tierSeed * 1000000UL + (ulong)playerIndex * 1000UL + (ulong)gameIdx;
+            ulong seed = AnalysisSeedDerivation.FromPlayerGame(tierIndex, playerIndex, gameIdx);
             var result = SimulateSingleGame(initialState, seed, tierConfig, moveLimit);
 
             outcomes[gameIdx] = result.Won;
@@ -335,8 +333,7 @@ public sealed class DeepAnalysisService
         var ctx = _contextCache.Value!;
         ctx.ResetForSimulation(seed, initialState.TileTypesCount);
 
-        var state = initialState.Clone();
-        state.Random = ctx.StateRandom;
+        var state = initialState.Clone(ctx.StateRandom);
 
         var objectiveSystem = ctx.CreateObjectiveSystem();
 
