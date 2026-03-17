@@ -1,4 +1,6 @@
+using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Match3.Core.Events;
 using Match3.Core.Systems.Core;
 using Match3.Core.Systems.Generation;
@@ -128,6 +130,54 @@ public class ArchitectureTests
         Assert.True(
             result.IsSuccessful,
             $"All concrete GameEvent subclasses should be sealed. Violations: {string.Join(", ", failedNames)}");
+    }
+
+    [Fact]
+    public void SeedDerivation_MagicNumbers_OnlyInDedicatedClass()
+    {
+        // 找到 Analysis 源码目录
+        var testDir = Path.GetDirectoryName(typeof(ArchitectureTests).Assembly.Location)!;
+        var analysisDir = Path.GetFullPath(Path.Combine(testDir, "..", "..", "..", "..", "Match3.Core", "Analysis"));
+
+        Assert.True(Directory.Exists(analysisDir), $"Analysis directory not found: {analysisDir}");
+
+        var allowedFile = "AnalysisSeedDerivation.cs";
+        // 匹配种子派生魔法数字: 7919、1000000UL
+        var patterns = new[]
+        {
+            new Regex(@"\b7919\b"),
+            new Regex(@"\b1000000UL\b"),
+        };
+
+        var violations = new System.Collections.Generic.List<string>();
+
+        foreach (var file in Directory.EnumerateFiles(analysisDir, "*.cs", SearchOption.AllDirectories))
+        {
+            if (Path.GetFileName(file) == allowedFile) continue;
+
+            var lines = File.ReadAllLines(file);
+            for (int i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i];
+                // 跳过注释行
+                var trimmed = line.TrimStart();
+                if (trimmed.StartsWith("//") || trimmed.StartsWith("*") || trimmed.StartsWith("/*")) continue;
+
+                foreach (var pattern in patterns)
+                {
+                    if (pattern.IsMatch(line))
+                    {
+                        var relative = Path.GetRelativePath(analysisDir, file);
+                        violations.Add($"{relative}:{i + 1} -> {line.Trim()}");
+                    }
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            $"Seed derivation magic numbers should only appear in {allowedFile}. " +
+            $"Use AnalysisSeedDerivation instead.\nViolations:\n{string.Join("\n", violations)}");
     }
 
     [Fact]
