@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Match3.Core.Events;
 using Match3.Core.Events.Enums;
@@ -6,6 +7,7 @@ using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Layers;
+using Match3.Core.Systems.Obstacles;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Scoring;
 using Match3.Core.Utility.Pools;
@@ -20,6 +22,7 @@ public class StandardMatchProcessor : IMatchProcessor
     private readonly IScoreSystem _scoreSystem;
     private readonly ICellEliminator _cellEliminator;
     private readonly BombEffectRegistry _bombRegistry;
+    private readonly IObstacleSystem? _obstacleSystem;
 
     /// <summary>
     /// Backward-compatible constructor — creates a <see cref="CellEliminator"/> internally.
@@ -36,11 +39,13 @@ public class StandardMatchProcessor : IMatchProcessor
     public StandardMatchProcessor(
         IScoreSystem scoreSystem,
         ICellEliminator cellEliminator,
-        BombEffectRegistry bombRegistry)
+        BombEffectRegistry bombRegistry,
+        IObstacleSystem? obstacleSystem = null)
     {
         _scoreSystem = scoreSystem;
         _cellEliminator = cellEliminator;
         _bombRegistry = bombRegistry;
+        _obstacleSystem = obstacleSystem;
     }
 
     public int ProcessMatches(ref GameState state, List<MatchGroup> groups)
@@ -61,6 +66,7 @@ public class StandardMatchProcessor : IMatchProcessor
         var queue = Pools.ObtainQueue<Position>();
         var globalCleared = Pools.ObtainHashSet<Position>();
         var explosionRange = Pools.ObtainHashSet<Position>();
+        var groupEliminated = Pools.ObtainList<EliminatedTileInfo>();
 
         try
         {
@@ -84,6 +90,7 @@ public class StandardMatchProcessor : IMatchProcessor
                 }
 
                 // Eliminate group positions + drain any bomb chain reactions
+                groupEliminated.Clear();
                 while (queue.Count > 0)
                 {
                     var p = queue.Dequeue();
@@ -96,26 +103,42 @@ public class StandardMatchProcessor : IMatchProcessor
                     var result = _cellEliminator.Eliminate(ref state, p, ElimSource.Match, tick, simTime, events);
                     globalCleared.Add(p);
 
-                    // Bomb chain reaction — only if the bomb was actually eliminated
-                    // (cover-protected or indestructible bombs must not trigger chain)
-                    if (result.Outcome == EliminateOutcome.Eliminated && result.Tile.Type.IsBomb())
+                    // Collect eliminated tiles for obstacle notification
+                    if (result.Outcome == EliminateOutcome.Eliminated)
                     {
-                        if (_bombRegistry.TryGetEffect(result.Tile.Type, out var effect))
-                        {
-                            explosionRange.Clear();
-                            effect!.Apply(in state, p, explosionRange);
+                        groupEliminated.Add(new EliminatedTileInfo(p, result.Tile, ElimSource.Match));
 
-                            foreach (var exP in explosionRange)
+                        // Bomb chain reaction — only if the bomb was actually eliminated
+                        // (cover-protected or indestructible bombs must not trigger chain)
+                        if (result.Tile.Type.IsBomb())
+                        {
+                            if (_bombRegistry.TryGetEffect(result.Tile.Type, out var effect))
                             {
-                                if (!globalCleared.Contains(exP))
-                                    queue.Enqueue(exP);
+                                explosionRange.Clear();
+                                effect!.Apply(in state, p, explosionRange);
+
+                                foreach (var exP in explosionRange)
+                                {
+                                    if (!globalCleared.Contains(exP))
+                                        queue.Enqueue(exP);
+                                }
                             }
                         }
                     }
                 }
 
-                // TODO: obstacle adjacency notification
-                // obstacleSystem.NotifyBatchElimination(groupEliminated, g.Type);
+                // Obstacle adjacency + global notification (per group = per dedup scope)
+                if (_obstacleSystem != null && groupEliminated.Count > 0)
+                {
+                    _obstacleSystem.NotifyBatchElimination(
+                        ref state,
+                        new ReadOnlySpan<EliminatedTileInfo>(
+                            groupEliminated.ToArray()),
+                        tick, simTime, events);
+
+                    _obstacleSystem.NotifyGlobalColorElimination(
+                        ref state, g.Type, tick, simTime, events);
+                }
             }
         }
         finally
@@ -124,6 +147,7 @@ public class StandardMatchProcessor : IMatchProcessor
             Pools.Release(queue);
             Pools.Release(globalCleared);
             Pools.Release(explosionRange);
+            Pools.Release(groupEliminated);
         }
 
         return points;
