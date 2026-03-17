@@ -57,10 +57,9 @@ public class StandardMatchProcessor : IMatchProcessor
     {
         int points = 0;
 
-        var tilesToClear = Pools.ObtainHashSet<Position>();
         var protectedTiles = Pools.ObtainHashSet<Position>();
         var queue = Pools.ObtainQueue<Position>();
-        var cleared = Pools.ObtainHashSet<Position>();
+        var globalCleared = Pools.ObtainHashSet<Position>();
         var explosionRange = Pools.ObtainHashSet<Position>();
 
         try
@@ -69,63 +68,61 @@ public class StandardMatchProcessor : IMatchProcessor
             {
                 points += _scoreSystem.CalculateMatchScore(g);
 
-                foreach (var p in g.Positions)
-                {
-                    tilesToClear.Add(p);
-                }
-
+                // Bomb spawn: protect BombOrigin and place the bomb tile
                 if (g.SpawnBombType != ElementType.None && g.BombOrigin.HasValue)
                 {
-                    var p = g.BombOrigin.Value;
-                    tilesToClear.Remove(p);
-                    protectedTiles.Add(p);
-
-                    state.SetTile(p.X, p.Y, new Tile(state.NextTileId++, g.SpawnBombType, p.X, p.Y));
+                    var bp = g.BombOrigin.Value;
+                    protectedTiles.Add(bp);
+                    state.SetTile(bp.X, bp.Y, new Tile(state.NextTileId++, g.SpawnBombType, bp.X, bp.Y));
                 }
-            }
 
-            foreach (var p in tilesToClear)
-            {
-                queue.Enqueue(p);
-            }
-
-            while (queue.Count > 0)
-            {
-                var p = queue.Dequeue();
-                if (protectedTiles.Contains(p)) continue;
-                if (cleared.Contains(p)) continue;
-
-                var t = state.GetTile(p.X, p.Y);
-                if (t.Type == ElementType.None) { cleared.Add(p); continue; }
-
-                // Unified elimination (captures tile type before clearing)
-                var result = _cellEliminator.Eliminate(ref state, p, ElimSource.Match, tick, simTime, events);
-                cleared.Add(p);
-
-                // Bomb chain reaction — only if the bomb was actually eliminated
-                // (cover-protected or indestructible bombs must not trigger chain)
-                if (result.Outcome == EliminateOutcome.Eliminated && result.Tile.Type.IsBomb())
+                // Enqueue group positions for elimination
+                foreach (var p in g.Positions)
                 {
-                    if (_bombRegistry.TryGetEffect(result.Tile.Type, out var effect))
-                    {
-                        explosionRange.Clear();
-                        effect!.Apply(in state, p, explosionRange);
+                    if (!protectedTiles.Contains(p) && !globalCleared.Contains(p))
+                        queue.Enqueue(p);
+                }
 
-                        foreach (var exP in explosionRange)
+                // Eliminate group positions + drain any bomb chain reactions
+                while (queue.Count > 0)
+                {
+                    var p = queue.Dequeue();
+                    if (protectedTiles.Contains(p)) continue;
+                    if (globalCleared.Contains(p)) continue;
+
+                    var t = state.GetTile(p.X, p.Y);
+                    if (t.Type == ElementType.None) { globalCleared.Add(p); continue; }
+
+                    var result = _cellEliminator.Eliminate(ref state, p, ElimSource.Match, tick, simTime, events);
+                    globalCleared.Add(p);
+
+                    // Bomb chain reaction — only if the bomb was actually eliminated
+                    // (cover-protected or indestructible bombs must not trigger chain)
+                    if (result.Outcome == EliminateOutcome.Eliminated && result.Tile.Type.IsBomb())
+                    {
+                        if (_bombRegistry.TryGetEffect(result.Tile.Type, out var effect))
                         {
-                            if (!cleared.Contains(exP))
-                                queue.Enqueue(exP);
+                            explosionRange.Clear();
+                            effect!.Apply(in state, p, explosionRange);
+
+                            foreach (var exP in explosionRange)
+                            {
+                                if (!globalCleared.Contains(exP))
+                                    queue.Enqueue(exP);
+                            }
                         }
                     }
                 }
+
+                // TODO: obstacle adjacency notification
+                // obstacleSystem.NotifyBatchElimination(groupEliminated, g.Type);
             }
         }
         finally
         {
-            Pools.Release(tilesToClear);
             Pools.Release(protectedTiles);
             Pools.Release(queue);
-            Pools.Release(cleared);
+            Pools.Release(globalCleared);
             Pools.Release(explosionRange);
         }
 
