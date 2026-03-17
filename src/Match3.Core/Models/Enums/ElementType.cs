@@ -53,6 +53,14 @@ public enum ElementType : byte
     /// <summary>Explodes a 5x5 square area.</summary>
     Square5x5 = 14,
 
+    // --- Special (100-109) ---
+
+    /// <summary>
+    /// Collectible element that falls and is collected at Sink cells.
+    /// Not matchable, not a bomb — routed to collection logic on reaching Sink.
+    /// </summary>
+    Bird = 100,
+
     // --- Blockers ---
 
     /// <summary>
@@ -94,4 +102,8 @@ public static class ElementTypeExtensions
     /// <summary>Whether this type can participate in color matching (colors only).</summary>
     public static bool IsMatchable(this ElementType type)
         => type.IsColor();
+
+    /// <summary>Whether this is a collectible element (Bird, etc.).</summary>
+    public static bool IsCollectible(this ElementType type)
+        => type == ElementType.Bird;
 }

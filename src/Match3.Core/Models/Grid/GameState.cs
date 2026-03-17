@@ -41,7 +41,12 @@ public struct GameState
     /// </summary>
     public uint[] CellLocks;
 
-    // REMOVED: Holes[] is replaced by Cells[i] == CellKind.Void
+    /// <summary>
+    /// Obstacle layer. Stores complex multi-stage blockers (Box, Bush, Safe, etc.).
+    /// Obstacles are the cell's primary content — separate from Tile and Cover.
+    /// Array size: Width * Height. Empty cells have Obstacle.Empty (Type=None).
+    /// </summary>
+    public Obstacle[] ObstacleLayer;
 
     public int Width;
     public int Height;
@@ -90,7 +95,7 @@ public struct GameState
         GroundLayer = new Ground[size];
         CoverLayer = new Cover[size];
         CellLocks = new uint[size];
-        // Holes removed
+        ObstacleLayer = new Obstacle[size];
         
         Score = 0;
         MoveCount = 0;
@@ -136,11 +141,13 @@ public struct GameState
         clone.GroundLayer = new Ground[size];
         clone.CoverLayer = new Cover[size];
         clone.CellLocks = new uint[size];
+        clone.ObstacleLayer = new Obstacle[size];
         Array.Copy(Cells, clone.Cells, size);
         Array.Copy(Grid, clone.Grid, size);
         Array.Copy(GroundLayer, clone.GroundLayer, size);
         Array.Copy(CoverLayer, clone.CoverLayer, size);
         Array.Copy(CellLocks, clone.CellLocks, size);
+        Array.Copy(ObstacleLayer, clone.ObstacleLayer, size);
         clone.ObjectiveProgress = new ObjectiveProgress[4];
         Array.Copy(ObjectiveProgress, clone.ObjectiveProgress, 4);
         return clone;
@@ -203,6 +210,22 @@ public struct GameState
     
     public readonly bool HasCover(Position p) => CoverLayer[p.Y * Width + p.X].Type != CoverType.None;
     
+    #endregion
+
+    #region Obstacle Layer Access
+
+    public readonly ref Obstacle GetObstacle(int x, int y) => ref ObstacleLayer[y * Width + x];
+
+    public readonly ref Obstacle GetObstacle(Position p) => ref ObstacleLayer[p.Y * Width + p.X];
+
+    public void SetObstacle(int x, int y, Obstacle obstacle) => ObstacleLayer[y * Width + x] = obstacle;
+
+    public void SetObstacle(Position p, Obstacle obstacle) => ObstacleLayer[p.Y * Width + p.X] = obstacle;
+
+    public readonly bool HasObstacle(int x, int y) => ObstacleLayer[y * Width + x].Type != ObstacleType.None;
+
+    public readonly bool HasObstacle(Position p) => ObstacleLayer[p.Y * Width + p.X].Type != ObstacleType.None;
+
     #endregion
 
     #region Convenience Query Methods

@@ -16,4 +16,7 @@ public enum ObjectiveTargetLayer : byte
 
     /// <summary>Target is a GroundType.</summary>
     Ground = 3,
+
+    /// <summary>Target is an ObstacleType.</summary>
+    Obstacle = 4,
 }
