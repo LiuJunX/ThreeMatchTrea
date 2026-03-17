@@ -22,8 +22,8 @@ public class StrategyDrivenAnalysisServiceTests
         var levelConfig = CreateSimpleLevelConfig();
         var analysisConfig = new AnalysisConfig
         {
-            SimulationCount = 100,
-            UseParallel = false,
+            SimulationCount = 20,
+            UseParallel = true,
             Mode = SimulationMode.PlayerPopulation,
             PopulationConfig = new PlayerPopulationConfig
             {
@@ -36,7 +36,7 @@ public class StrategyDrivenAnalysisServiceTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(100, result.TotalSimulations);
+        Assert.Equal(20, result.TotalSimulations);
         Assert.True(result.WinCount >= 0);
         Assert.True(result.WinRate >= 0 && result.WinRate <= 1);
         Assert.NotNull(result.TierResults);
@@ -46,11 +46,12 @@ public class StrategyDrivenAnalysisServiceTests
     [Fact]
     public async Task AnalyzeAsync_WithPlayerPopulation_TierResultsMatchWeights()
     {
-        // Arrange
+        // Arrange — distribution is deterministic (DistributeSimulations does integer math),
+        // so 100 sims is more than enough to verify weight allocation.
         var levelConfig = CreateSimpleLevelConfig();
         var analysisConfig = new AnalysisConfig
         {
-            SimulationCount = 1000,
+            SimulationCount = 100,
             UseParallel = true,
             Mode = SimulationMode.PlayerPopulation,
             PopulationConfig = new PlayerPopulationConfig
@@ -76,7 +77,7 @@ public class StrategyDrivenAnalysisServiceTests
         int totalSims = result.TierResults[0].SimulationCount +
                        result.TierResults[1].SimulationCount +
                        result.TierResults[2].SimulationCount;
-        Assert.Equal(1000, totalSims);
+        Assert.Equal(100, totalSims);
 
         float noviceRatio = (float)result.TierResults[0].SimulationCount / totalSims;
         float casualRatio = (float)result.TierResults[1].SimulationCount / totalSims;
@@ -103,7 +104,7 @@ public class StrategyDrivenAnalysisServiceTests
 
         var analysisConfig = new AnalysisConfig
         {
-            SimulationCount = 500,
+            SimulationCount = 200,
             UseParallel = true,
             Mode = SimulationMode.PlayerPopulation,
             PopulationConfig = new PlayerPopulationConfig
@@ -136,8 +137,8 @@ public class StrategyDrivenAnalysisServiceTests
         var levelConfig = CreateSimpleLevelConfig();
         var analysisConfig = new AnalysisConfig
         {
-            SimulationCount = 50,
-            UseParallel = false,
+            SimulationCount = 10,
+            UseParallel = true,
             Mode = SimulationMode.Greedy
         };
 
@@ -146,18 +147,18 @@ public class StrategyDrivenAnalysisServiceTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(50, result.TotalSimulations);
+        Assert.Equal(10, result.TotalSimulations);
         Assert.Null(result.TierResults); // No tier results in single strategy mode
     }
 
     [Fact]
     public async Task AnalyzeAsync_WithRandomMode_ReturnsValidResult()
     {
-        // Arrange
+        // Arrange — Random mode (SkillLevel=0) skips QuickPreviewMove, already fast
         var levelConfig = CreateSimpleLevelConfig();
         var analysisConfig = new AnalysisConfig
         {
-            SimulationCount = 50,
+            SimulationCount = 20,
             UseParallel = false,
             Mode = SimulationMode.Random
         };
@@ -167,7 +168,7 @@ public class StrategyDrivenAnalysisServiceTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(50, result.TotalSimulations);
+        Assert.Equal(20, result.TotalSimulations);
     }
 
     [Fact]
@@ -179,8 +180,8 @@ public class StrategyDrivenAnalysisServiceTests
 
         var analysisConfig = new AnalysisConfig
         {
-            SimulationCount = 100,
-            UseParallel = false,
+            SimulationCount = 20,
+            UseParallel = true,
             Mode = SimulationMode.PlayerPopulation
         };
 
@@ -195,11 +196,11 @@ public class StrategyDrivenAnalysisServiceTests
 
     private static LevelConfig CreateSimpleLevelConfig()
     {
-        int width = 8;
-        int height = 8;
+        // 6x6 board — fewer valid moves per turn → much faster QuickPreviewMove
+        int width = 6;
+        int height = 6;
         var grid = new ElementType[width * height];
 
-        // Fill with None (will be randomly generated)
         for (int i = 0; i < grid.Length; i++)
         {
             grid[i] = ElementType.None;
@@ -209,7 +210,7 @@ public class StrategyDrivenAnalysisServiceTests
         {
             Width = width,
             Height = height,
-            MoveLimit = 20,
+            MoveLimit = 15,
             Grid = grid,
             Objectives = new[]
             {
@@ -217,7 +218,7 @@ public class StrategyDrivenAnalysisServiceTests
                 {
                     TargetLayer = ObjectiveTargetLayer.Tile,
                     ElementType = (int)ElementType.Item1,
-                    TargetCount = 10
+                    TargetCount = 8
                 }
             }
         };

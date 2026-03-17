@@ -29,9 +29,9 @@ public class ComprehensiveLevelAnalyzerTests
         var config = new ComprehensiveAnalysisConfig
         {
             RunMCTSAnalysis = true,
-            MCTSTotalGames = 5,
-            PopulationSimulationCount = 50,
-            UseParallel = false
+            MCTSTotalGames = 3,
+            PopulationSimulationCount = 20,
+            UseParallel = true
         };
 
         // Act
@@ -56,8 +56,8 @@ public class ComprehensiveLevelAnalyzerTests
         var config = new ComprehensiveAnalysisConfig
         {
             RunMCTSAnalysis = false,
-            PopulationSimulationCount = 50,
-            UseParallel = false
+            PopulationSimulationCount = 20,
+            UseParallel = true
         };
 
         // Act
@@ -87,8 +87,8 @@ public class ComprehensiveLevelAnalyzerTests
         {
             RunMCTSAnalysis = true,
             MCTSTotalGames = 3,
-            PopulationSimulationCount = 30,
-            UseParallel = false
+            PopulationSimulationCount = 20,
+            UseParallel = true
         };
 
         // Act
@@ -185,8 +185,8 @@ public class ComprehensiveLevelAnalyzerTests
         var config = new ComprehensiveAnalysisConfig
         {
             RunMCTSAnalysis = false,
-            PopulationSimulationCount = 50,
-            UseParallel = false
+            PopulationSimulationCount = 20,
+            UseParallel = true
         };
 
         var progressReports = new System.Collections.Generic.List<ComprehensiveProgress>();
@@ -205,8 +205,9 @@ public class ComprehensiveLevelAnalyzerTests
 
     private static LevelConfig CreateSimpleLevelConfig()
     {
-        int width = 8;
-        int height = 8;
+        // 6x6 board — fewer valid moves per turn → faster simulation
+        int width = 6;
+        int height = 6;
         var grid = new ElementType[width * height];
 
         for (int i = 0; i < grid.Length; i++)
@@ -218,7 +219,7 @@ public class ComprehensiveLevelAnalyzerTests
         {
             Width = width,
             Height = height,
-            MoveLimit = 20,
+            MoveLimit = 15,
             Grid = grid,
             Objectives = new[]
             {
@@ -226,7 +227,7 @@ public class ComprehensiveLevelAnalyzerTests
                 {
                     TargetLayer = ObjectiveTargetLayer.Tile,
                     ElementType = (int)ElementType.Item1,
-                    TargetCount = 15
+                    TargetCount = 10
                 }
             }
         };

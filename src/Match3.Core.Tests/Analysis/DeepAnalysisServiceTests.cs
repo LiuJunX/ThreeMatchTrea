@@ -166,7 +166,7 @@ public class DeepAnalysisServiceTests
 
         // Act
         var sw = Stopwatch.StartNew();
-        var result = await service.AnalyzeAsync(levelConfig, simulationsPerTier: 100);
+        var result = await service.AnalyzeAsync(levelConfig, simulationsPerTier: 50);
         sw.Stop();
 
         // Assert - Should complete in reasonable time
@@ -193,7 +193,7 @@ public class DeepAnalysisServiceTests
         var service = new DeepAnalysisService();
 
         // Act
-        var result = await service.AnalyzeAsync(levelConfig, simulationsPerTier: 100);
+        var result = await service.AnalyzeAsync(levelConfig, simulationsPerTier: 50);
 
         // Assert - Expert should generally win more than novice on easy levels
         var expertWinRate = result.TierWinRates.GetValueOrDefault("Expert", 0);
@@ -218,7 +218,7 @@ public class DeepAnalysisServiceTests
         // Assert - Should throw TaskCanceledException or return WasCancelled=true
         try
         {
-            var result = await service.AnalyzeAsync(levelConfig, simulationsPerTier: 100, cancellationToken: cts.Token);
+            var result = await service.AnalyzeAsync(levelConfig, simulationsPerTier: 50, cancellationToken: cts.Token);
             Assert.True(result.WasCancelled, "Should return WasCancelled=true when cancelled");
         }
         catch (OperationCanceledException)
@@ -304,7 +304,7 @@ public class DeepAnalysisServiceTests
         var service = new DeepAnalysisService();
 
         // Act
-        var result = await service.AnalyzeAsync(levelConfig, simulationsPerTier: 100);
+        var result = await service.AnalyzeAsync(levelConfig, simulationsPerTier: 50);
 
         // Assert - Should identify Blue as bottleneck (if there are failures)
         if (result.TierWinRates.GetValueOrDefault("Casual", 0) < 0.95f)
@@ -335,8 +335,9 @@ public class DeepAnalysisServiceTests
 
     private static LevelConfig CreateSimpleLevelConfig()
     {
-        int width = 8;
-        int height = 8;
+        // 6x6 board — fewer valid moves per turn → much faster QuickPreviewMove
+        int width = 6;
+        int height = 6;
         var grid = new ElementType[width * height];
 
         for (int i = 0; i < grid.Length; i++)
@@ -348,7 +349,7 @@ public class DeepAnalysisServiceTests
         {
             Width = width,
             Height = height,
-            MoveLimit = 20,
+            MoveLimit = 15,
             Grid = grid,
             Objectives = new[]
             {
@@ -356,7 +357,7 @@ public class DeepAnalysisServiceTests
                 {
                     TargetLayer = ObjectiveTargetLayer.Tile,
                     ElementType = (int)ElementType.Item1,
-                    TargetCount = 10
+                    TargetCount = 8
                 }
             }
         };

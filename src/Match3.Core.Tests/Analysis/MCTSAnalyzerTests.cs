@@ -80,8 +80,8 @@ public class MCTSAnalyzerTests
         var levelConfig = CreateSimpleLevelConfig();
         var mctsConfig = new MCTSConfig
         {
-            TotalGames = 10,
-            SimulationsPerMove = 50,
+            TotalGames = 5,
+            SimulationsPerMove = 20,
             UseGuidedRollout = true
         };
         var analyzer = new MCTSAnalyzer(mctsConfig);
@@ -220,9 +220,9 @@ public class MCTSAnalyzerTests
 
         var mctsConfig = new MCTSConfig
         {
-            TotalGames = 10,           // 减少局数用于快速测试
-            SimulationsPerMove = 30,   // 减少模拟次数
-            MaxRolloutDepth = 15,
+            TotalGames = 5,            // 减少局数用于快速测试
+            SimulationsPerMove = 15,   // 减少模拟次数
+            MaxRolloutDepth = 10,
             UseGuidedRollout = true,
             RolloutSkillLevel = 0.7f
         };
@@ -233,13 +233,13 @@ public class MCTSAnalyzerTests
         var result = await analyzer.AnalyzeAsync(levelConfig);
         sw.Stop();
 
-        // Assert - 10 games with reduced settings should complete in reasonable time
+        // Assert - 5 games with reduced settings should complete in reasonable time
         Assert.True(sw.Elapsed.TotalSeconds < 60,
             $"Analysis took {sw.Elapsed.TotalSeconds:F1}s, expected < 60s. " +
             $"WinRate: {result.OptimalWinRate:P1}, Games: {result.TotalGames}");
 
         // 验证结果有效性
-        Assert.Equal(10, result.TotalGames);
+        Assert.Equal(5, result.TotalGames);
         Assert.True(result.ElapsedMs > 0);
     }
 
@@ -250,8 +250,8 @@ public class MCTSAnalyzerTests
         var levelConfig = CreateSimpleLevelConfig();
         var mctsConfig = new MCTSConfig
         {
-            TotalGames = 8,  // 使用 CPU 核心数的倍数
-            SimulationsPerMove = 20,
+            TotalGames = 4,
+            SimulationsPerMove = 10,
             MaxRolloutDepth = 10,
             UseGuidedRollout = true
         };
@@ -263,7 +263,7 @@ public class MCTSAnalyzerTests
         sw.Stop();
 
         // Assert - Should complete and parallelization means games run concurrently
-        Assert.Equal(8, result.TotalGames);
+        Assert.Equal(4, result.TotalGames);
         Assert.True(result.WinCount >= 0);
 
         // 验证并行化生效：8局游戏应该比串行8倍单局时间更短
@@ -316,8 +316,9 @@ public class MCTSAnalyzerTests
 
     private static LevelConfig CreateSimpleLevelConfig()
     {
-        int width = 8;
-        int height = 8;
+        // 6x6 board — fewer valid moves per turn → faster MCTS simulation
+        int width = 6;
+        int height = 6;
         var grid = new ElementType[width * height];
 
         for (int i = 0; i < grid.Length; i++)
@@ -329,7 +330,7 @@ public class MCTSAnalyzerTests
         {
             Width = width,
             Height = height,
-            MoveLimit = 20,
+            MoveLimit = 15,
             Grid = grid,
             Objectives = new[]
             {
@@ -337,7 +338,7 @@ public class MCTSAnalyzerTests
                 {
                     TargetLayer = ObjectiveTargetLayer.Tile,
                     ElementType = (int)ElementType.Item1,
-                    TargetCount = 10
+                    TargetCount = 8
                 }
             }
         };

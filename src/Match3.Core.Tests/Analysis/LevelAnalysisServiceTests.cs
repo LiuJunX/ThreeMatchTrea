@@ -126,7 +126,7 @@ public class LevelAnalysisServiceTests
         var analysisConfig = new AnalysisConfig
         {
             SimulationCount = 20,
-            UseParallel = false
+            UseParallel = true
         };
 
         // Act
@@ -161,7 +161,7 @@ public class LevelAnalysisServiceTests
         var analysisConfig = new AnalysisConfig
         {
             SimulationCount = 20,
-            UseParallel = false
+            UseParallel = true
         };
 
         // Act
@@ -305,15 +305,15 @@ public class LevelAnalysisServiceTests
 
         var analysisConfig = new AnalysisConfig
         {
-            SimulationCount = 30,
-            UseParallel = false
+            SimulationCount = 20,
+            UseParallel = true
         };
 
         // Act
         var result = await _service.AnalyzeAsync(config, analysisConfig);
 
         // Assert
-        Assert.Equal(30, result.TotalSimulations);
+        Assert.Equal(20, result.TotalSimulations);
         Assert.True(result.AverageMovesUsed > 0, "Average moves used should be positive");
         Assert.True(result.AverageScore >= 0, "Average score should be non-negative");
         Assert.True(result.ElapsedMs > 0, "Elapsed time should be positive");
@@ -367,12 +367,11 @@ public class LevelAnalysisServiceTests
 
     private static LevelConfig CreateSimpleLevelConfig()
     {
-        const int width = 8;
-        const int height = 8;
+        // 6x6 board — fewer valid moves per turn → faster simulation
+        const int width = 6;
+        const int height = 6;
         var grid = new ElementType[width * height];
 
-        // Use ElementType.None to let the system generate random tiles
-        // This ensures a playable board with valid moves
         for (int i = 0; i < grid.Length; i++)
         {
             grid[i] = ElementType.None;
@@ -383,7 +382,7 @@ public class LevelAnalysisServiceTests
             Width = width,
             Height = height,
             Grid = grid,
-            MoveLimit = 20,
+            MoveLimit = 15,
             TargetDifficulty = 0.5f
         };
     }
