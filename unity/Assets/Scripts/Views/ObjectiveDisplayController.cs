@@ -203,6 +203,9 @@ namespace Match3.Unity.Views
                     mr.sharedMaterials = mats;
                 else
                     mr.sharedMaterial = MeshFactory.GetFallbackMaterial();
+
+                // Ground models are larger than gems — scale down for icon
+                go.transform.localScale *= 0.75f;
             }
             else if (elementType != ElementType.None)
             {

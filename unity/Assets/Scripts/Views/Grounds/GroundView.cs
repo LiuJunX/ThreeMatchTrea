@@ -61,8 +61,8 @@ namespace Match3.Unity.Views.Grounds
             // Push ground behind tiles (positive Z = further from camera)
             transform.localPosition = new Vector3(worldPos.x, worldPos.y, worldPos.z + 0.15f);
 
-            // Uniform scale to fill cell (art model defines its own proportions)
-            _baseScale = cellSize * 0.4f;
+            // Scale to fill cell (match obstacle sizing)
+            _baseScale = cellSize * 1.05f;
             transform.localScale = new Vector3(_baseScale, _baseScale, _baseScale);
 
             // Delegate to presenter based on state
