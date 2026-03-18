@@ -1,17 +1,17 @@
+using Match3.Core.Models.Enums;
 using Match3.Unity.Pools;
 using UnityEngine;
 
 namespace Match3.Unity.Views.Obstacles
 {
     /// <summary>
-    /// Presenter for Box obstacle: multi-stage mesh swap + shake on damage + shrink on death.
-    /// Falls back to a tinted cube when art meshes are not yet available.
+    /// Presenter for Box obstacle: uses imported model + color tint per stage.
     /// </summary>
     public sealed class BoxPresenter : IObstaclePresenter
     {
         private byte _currentStage;
 
-        // Stage colors: darker as HP decreases (placeholder until real meshes)
+        // Stage colors: darker as HP decreases
         private static readonly Color[] StageColors =
         {
             Color.gray,                              // stage 0 (unused)
@@ -24,7 +24,14 @@ namespace Match3.Unity.Views.Obstacles
         public void Setup(ObstacleView view, byte stage)
         {
             _currentStage = stage;
-            view.SetMesh(MeshFactory.GetFallbackMesh());
+
+            var mesh = MeshFactory.GetObstacleMesh(ObstacleType.Box);
+            view.SetMesh(mesh);
+
+            var mats = MeshFactory.GetObstacleMaterials(ObstacleType.Box);
+            if (mats != null)
+                view.SetMaterials(mats);
+
             ApplyStageColor(view, stage);
         }
 

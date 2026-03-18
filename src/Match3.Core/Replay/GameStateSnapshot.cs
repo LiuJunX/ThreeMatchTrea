@@ -33,6 +33,12 @@ public sealed record GameStateSnapshot
     /// <summary>Per-cell cell kind (topology).</summary>
     public CellKind[] Cells { get; init; } = Array.Empty<CellKind>();
 
+    /// <summary>Flattened obstacle layer array.</summary>
+    public Obstacle[] ObstacleLayer { get; init; } = Array.Empty<Obstacle>();
+
+    /// <summary>Simulation time at snapshot.</summary>
+    public float SimulationTime { get; init; }
+
     /// <summary>Next tile ID to assign.</summary>
     public int NextTileId { get; init; }
 
@@ -78,6 +84,9 @@ public sealed record GameStateSnapshot
             }
         }
 
+        var obstacleLayer = new Obstacle[size];
+        Array.Copy(state.ObstacleLayer, obstacleLayer, size);
+
         var objectiveProgress = new ObjectiveProgress[4];
         Array.Copy(state.ObjectiveProgress, objectiveProgress, 4);
 
@@ -90,6 +99,8 @@ public sealed record GameStateSnapshot
             CoverLayers = coverLayers,
             GroundLayers = groundLayers,
             Cells = cells,
+            ObstacleLayer = obstacleLayer,
+            SimulationTime = state.SimulationTime,
             NextTileId = state.NextTileId,
             Score = state.Score,
             MoveCount = state.MoveCount,
@@ -134,8 +145,12 @@ public sealed record GameStateSnapshot
                     state.SetGround(x, y, GroundLayers[index]);
                 if (index < Cells.Length)
                     state.Cells[index] = Cells[index];
+                if (index < ObstacleLayer.Length)
+                    state.SetObstacle(x, y, ObstacleLayer[index]);
             }
         }
+
+        state.SimulationTime = SimulationTime;
 
         // Reset NextTileId to saved value (we incremented during tile creation)
         state.NextTileId = NextTileId;

@@ -134,6 +134,13 @@ public static class GameRecordingSerializer
             grounds.Add(new GroundDto { Type = (byte)g.Type, Health = g.Health });
         }
 
+        var obstacles = new List<ObstacleDto>(size);
+        for (int i = 0; i < size; i++)
+        {
+            var o = i < snapshot.ObstacleLayer.Length ? snapshot.ObstacleLayer[i] : default;
+            obstacles.Add(new ObstacleDto { Type = (byte)o.Type, Stage = o.Stage, State = o.State });
+        }
+
         var objectives = new List<ObjectiveProgressDto>(4);
         for (int i = 0; i < 4; i++)
         {
@@ -157,11 +164,13 @@ public static class GameRecordingSerializer
             MoveCount = snapshot.MoveCount,
             MoveLimit = snapshot.MoveLimit,
             TargetDifficulty = snapshot.TargetDifficulty,
+            SimulationTime = snapshot.SimulationTime,
             LevelStatus = (byte)snapshot.LevelStatus,
             TileTypes = tileTypes,
             Cells = cells,
             Covers = covers,
             Grounds = grounds,
+            Obstacles = obstacles,
             ObjectiveProgress = objectives
         };
     }
@@ -192,6 +201,16 @@ public static class GameRecordingSerializer
             groundLayers[i] = new Ground((GroundType)g.Type, g.Health);
         }
 
+        var obstacleLayer = new Obstacle[size];
+        if (dto.Obstacles != null)
+        {
+            for (int i = 0; i < size && i < dto.Obstacles.Count; i++)
+            {
+                var o = dto.Obstacles[i];
+                obstacleLayer[i] = new Obstacle((ObstacleType)o.Type, o.Stage, o.State);
+            }
+        }
+
         var objectiveProgress = new ObjectiveProgress[4];
         for (int i = 0; i < 4 && i < dto.ObjectiveProgress.Count; i++)
         {
@@ -215,11 +234,13 @@ public static class GameRecordingSerializer
             MoveCount = dto.MoveCount,
             MoveLimit = dto.MoveLimit,
             TargetDifficulty = dto.TargetDifficulty,
+            SimulationTime = dto.SimulationTime,
             LevelStatus = (LevelStatus)dto.LevelStatus,
             TileTypes = tileTypes,
             Cells = cells,
             CoverLayers = coverLayers,
             GroundLayers = groundLayers,
+            ObstacleLayer = obstacleLayer,
             ObjectiveProgress = objectiveProgress
         };
     }
@@ -299,6 +320,14 @@ public static class GameRecordingSerializer
             if (i < config.GroundHealths.Length) groundHealths[i] = config.GroundHealths[i];
         }
 
+        var obstacles = new byte[size];
+        var obstacleStages = new byte[size];
+        for (int i = 0; i < size; i++)
+        {
+            if (i < config.Obstacles.Length) obstacles[i] = (byte)config.Obstacles[i];
+            if (i < config.ObstacleStages.Length) obstacleStages[i] = config.ObstacleStages[i];
+        }
+
         var objectives = new List<ObjectiveDto>(4);
         for (int i = 0; i < 4 && i < config.Objectives.Length; i++)
         {
@@ -323,6 +352,8 @@ public static class GameRecordingSerializer
             CoverHealths = coverHealths,
             Grounds = grounds,
             GroundHealths = groundHealths,
+            Obstacles = obstacles,
+            ObstacleStages = obstacleStages,
             Objectives = objectives
         };
     }
@@ -346,6 +377,8 @@ public static class GameRecordingSerializer
             if (i < dto.CoverHealths.Length) config.CoverHealths[i] = dto.CoverHealths[i];
             if (i < dto.Grounds.Length) config.Grounds[i] = (GroundType)dto.Grounds[i];
             if (i < dto.GroundHealths.Length) config.GroundHealths[i] = dto.GroundHealths[i];
+            if (dto.Obstacles != null && i < dto.Obstacles.Length) config.Obstacles[i] = (ObstacleType)dto.Obstacles[i];
+            if (dto.ObstacleStages != null && i < dto.ObstacleStages.Length) config.ObstacleStages[i] = dto.ObstacleStages[i];
         }
 
         var objectives = new LevelObjective[4];
@@ -391,11 +424,13 @@ public static class GameRecordingSerializer
         public int MoveCount { get; set; }
         public int MoveLimit { get; set; } = 20;
         public float TargetDifficulty { get; set; } = 0.5f;
+        public float SimulationTime { get; set; }
         public byte LevelStatus { get; set; }
         public byte[] TileTypes { get; set; } = Array.Empty<byte>();
         public byte[] Cells { get; set; } = Array.Empty<byte>();
         public List<CoverDto> Covers { get; set; } = new();
         public List<GroundDto> Grounds { get; set; } = new();
+        public List<ObstacleDto> Obstacles { get; set; } = new();
         public List<ObjectiveProgressDto> ObjectiveProgress { get; set; } = new();
     }
 
@@ -430,6 +465,13 @@ public static class GameRecordingSerializer
         public int ToY { get; set; }
     }
 
+    internal sealed class ObstacleDto
+    {
+        public byte Type { get; set; }
+        public byte Stage { get; set; }
+        public byte State { get; set; }
+    }
+
     internal sealed class LevelConfigDto
     {
         public int Width { get; set; }
@@ -442,6 +484,8 @@ public static class GameRecordingSerializer
         public byte[] CoverHealths { get; set; } = Array.Empty<byte>();
         public byte[] Grounds { get; set; } = Array.Empty<byte>();
         public byte[] GroundHealths { get; set; } = Array.Empty<byte>();
+        public byte[] Obstacles { get; set; } = Array.Empty<byte>();
+        public byte[] ObstacleStages { get; set; } = Array.Empty<byte>();
         public List<ObjectiveDto> Objectives { get; set; } = new();
     }
 

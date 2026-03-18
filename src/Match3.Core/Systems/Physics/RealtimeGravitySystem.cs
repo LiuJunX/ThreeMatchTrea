@@ -234,7 +234,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
             }
 
             var targetSlot = state.GetTile(visualX, visualY);
-            if (targetSlot.Type == ElementType.None)
+            if (targetSlot.Type == ElementType.None && !state.HasObstacle(visualX, visualY))
             {
                 // Move tile to new position
                 state.SetTile(visualX, visualY, tile);

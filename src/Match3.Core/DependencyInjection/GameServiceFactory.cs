@@ -122,8 +122,8 @@ public sealed class GameServiceFactory : IGameServiceFactory
         var projectileSystem = _projectileFactory();
 
         // Create shared SimulationContext — all subsystems share the same infrastructure
-        var obstacleSystem = new ObstacleSystem(objectiveSystem);
         var lockScheduler = new LockScheduler();
+        var obstacleSystem = new ObstacleSystem(objectiveSystem, lockScheduler);
         var coverSystem = new CoverSystem(objectiveSystem);
         var groundSystem = new GroundSystem(objectiveSystem);
         var cellEliminator = new CellEliminator(coverSystem, groundSystem, objectiveSystem, obstacleSystem);

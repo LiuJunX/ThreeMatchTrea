@@ -149,6 +149,7 @@ public class ConfigParserLevelTests
     [InlineData("\"Tile\"", ObjectiveTargetLayer.Tile)]
     [InlineData("\"Cover\"", ObjectiveTargetLayer.Cover)]
     [InlineData("\"Ground\"", ObjectiveTargetLayer.Ground)]
+    [InlineData("\"Obstacle\"", ObjectiveTargetLayer.Obstacle)]
     public void ParseLevelConfig_EnumStrings_ConvertCorrectly(string enumStr, ObjectiveTargetLayer expected)
     {
         var json = $$"""

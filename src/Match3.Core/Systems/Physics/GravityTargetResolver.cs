@@ -208,6 +208,7 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
     {
         return state.IsValid(x, y) &&
                !state.IsHole(x, y) &&
+               !state.HasObstacle(x, y) &&
                state.GetTile(x, y).Type == ElementType.None &&
                state.CanReceive(x, y) &&
                !IsReserved(x, y, state.Width);

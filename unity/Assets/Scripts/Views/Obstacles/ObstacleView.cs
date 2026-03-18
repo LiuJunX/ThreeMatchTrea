@@ -21,6 +21,8 @@ namespace Match3.Unity.Views.Obstacles
         private IObstaclePresenter _presenter;
         private float _baseScale = 1f;
 
+        private static readonly Quaternion BaseTiltQuat = Quaternion.Euler(-10f, 0f, 0f);
+
         // Shader property IDs
         private static readonly int BaseColorProp = Shader.PropertyToID("_BaseColor");
         private static readonly int ColorProp = Shader.PropertyToID("_Color");
@@ -60,9 +62,10 @@ namespace Match3.Unity.Views.Obstacles
             // Position: static, convert grid → world
             var worldPos = CoordinateConverter.GridToWorld(visual.GridPosition, cellSize, origin, height);
             transform.localPosition = worldPos;
+            transform.localRotation = BaseTiltQuat;
 
-            // Base scale to fill cell (obstacles are roughly cell-sized)
-            _baseScale = cellSize * 0.4f;
+            // Base scale to fill cell (match tile scale)
+            _baseScale = cellSize * 1.05f;
             transform.localScale = new Vector3(_baseScale, _baseScale, _baseScale);
 
             // Delegate to presenter based on state
@@ -89,6 +92,12 @@ namespace Match3.Unity.Views.Obstacles
         {
             if (_meshFilter.sharedMesh != mesh)
                 _meshFilter.sharedMesh = mesh;
+        }
+
+        /// <summary>Set shared materials from FBX model.</summary>
+        public void SetMaterials(Material[] materials)
+        {
+            _meshRenderer.sharedMaterials = materials;
         }
 
         /// <summary>

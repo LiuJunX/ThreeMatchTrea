@@ -174,6 +174,7 @@ public static class SimulationTestHelper
             "WithGround" => (CreateGroundConfig(), 5),
             "Irregular7x7" => (CreateIrregularConfig(), 5),
             "WithObjectives" => (CreateObjectiveConfig(), 4),
+            "WithObstacles" => (CreateObstacleConfig(), 5),
             _ => throw new ArgumentException($"Unknown level preset: {name}")
         };
     }
@@ -181,7 +182,7 @@ public static class SimulationTestHelper
     public static readonly string[] AllPresetNames =
     {
         "Standard8x8", "Small5x5_3Colors", "WithCover",
-        "WithGround", "Irregular7x7", "WithObjectives"
+        "WithGround", "Irregular7x7", "WithObjectives", "WithObstacles"
     };
 
     // ── Level config presets ──────────────────────────────────────────
@@ -263,6 +264,38 @@ public static class SimulationTestHelper
                 ElementType = (int)ElementType.Item2,
                 TargetCount = 15
             },
+            default,
+            default
+        ];
+        return config;
+    }
+
+    private static LevelConfig CreateObstacleConfig()
+    {
+        var config = new LevelConfig(8, 8) { MoveLimit = 30 };
+
+        // Place 4 boxes at varied stages
+        void PlaceBox(int x, int y, byte stage)
+        {
+            int i = y * 8 + x;
+            config.Obstacles[i] = ObstacleType.Box;
+            config.ObstacleStages[i] = stage;
+        }
+
+        PlaceBox(2, 2, 2);
+        PlaceBox(5, 2, 1);
+        PlaceBox(2, 5, 3);
+        PlaceBox(5, 5, 4);
+
+        config.Objectives =
+        [
+            new LevelObjective
+            {
+                TargetLayer = ObjectiveTargetLayer.Obstacle,
+                ElementType = (int)ObstacleType.Box,
+                TargetCount = 4
+            },
+            default,
             default,
             default
         ];

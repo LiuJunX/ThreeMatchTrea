@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StandardMatchProcessor 重构 — 炸弹生成时序边界分析（修正版）</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --card: #16213e;
+    --accent: #e94560;
+    --accent2: #0f3460;
+    --text: #eee;
+    --muted: #888;
+    --green: #4ecca3;
+    --yellow: #f0c040;
+    --orange: #e67e22;
+    --blue: #3498db;
+    --purple: #9b59b6;
+    --red: #e74c3c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 20px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  h1 { text-align: center; margin-bottom: 8px; font-size: 1.4em; }
+  .subtitle { text-align: center; color: var(--muted); margin-bottom: 28px; font-size: 0.92em; }
+
+  .section {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .section h2 {
+    font-size: 1.1em;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #333;
+  }
+  .section p, .section li { font-size: 0.92em; }
+  .section ul { padding-left: 20px; margin: 8px 0; }
+  .section li { margin: 4px 0; }
+
+  .wrong-box {
+    background: rgba(231, 76, 60, 0.1);
+    border: 1px solid var(--red);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 12px 0;
+  }
+  .correct-box {
+    background: rgba(78, 204, 163, 0.1);
+    border: 1px solid var(--green);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 12px 0;
+  }
+
+  code {
+    background: #2a2a4a;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.92em;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+  }
+
+  /* Board */
+  .board-container { display: flex; flex-direction: column; align-items: center; margin: 16px 0; }
+  .board-label { font-size: 0.82em; color: var(--muted); margin-bottom: 6px; }
+  .board {
+    display: grid;
+    gap: 3px;
+  }
+  .cell {
+    width: 72px;
+    height: 72px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7em;
+    font-weight: 600;
+    position: relative;
+    transition: all 0.4s ease;
+    border: 2px solid transparent;
+  }
+  .cell .icon { font-size: 1.5em; margin-bottom: 1px; }
+  .cell .label { font-size: 0.78em; opacity: 0.85; }
+  .cell .coord {
+    position: absolute; bottom: 1px; right: 4px;
+    font-size: 0.6em; color: var(--muted); font-weight: 400;
+  }
+  .cell .badge {
+    position: absolute; top: 2px; left: 4px;
+    font-size: 0.85em;
+  }
+
+  .cell-item1 { background: #2d5a27; }
+  .cell-hrocket { background: #8e3b0e; }
+  .cell-vrocket { background: #0e5a8e; }
+  .cell-empty { background: #2a2a3e; }
+  .cell-none { background: #1a1a28; border: 1px dashed #333; }
+
+  .cell.hl-eliminate { border-color: var(--red); box-shadow: 0 0 10px rgba(231,76,60,0.4); }
+  .cell.hl-protected { border-color: var(--green); box-shadow: 0 0 10px rgba(78,204,163,0.4); }
+  .cell.hl-spawn { border-color: var(--blue); box-shadow: 0 0 10px rgba(52,152,219,0.4); }
+  .cell.hl-cover-hit { border-color: var(--orange); box-shadow: 0 0 12px rgba(230,126,34,0.5); animation: pulse 0.6s ease-in-out infinite alternate; }
+  @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.05); } }
+
+  .group-bar-row { display: flex; gap: 3px; margin-top: 4px; }
+  .gbar { height: 6px; width: 72px; border-radius: 3px; }
+  .gbar-a { background: var(--green); }
+  .gbar-b { background: var(--blue); }
+  .gbar-ab { background: linear-gradient(90deg, var(--green), var(--blue)); }
+  .gbar-none { background: transparent; }
+
+  /* Step controls */
+  .step-controls {
+    display: flex; align-items: center; justify-content: center; gap: 12px; margin: 14px 0;
+  }
+  .step-controls button {
+    padding: 7px 18px; border: none; border-radius: 6px; cursor: pointer;
+    font-size: 0.88em; font-weight: 600; transition: all 0.2s;
+  }
+  .btn-prev { background: #444; color: #eee; }
+  .btn-next { background: var(--accent); color: #fff; }
+  .btn-reset { background: var(--accent2); color: #eee; }
+  .btn-prev:hover { background: #555; }
+  .btn-next:hover { background: #c0354e; }
+  .btn-reset:hover { background: #1a4a80; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .step-label { font-size: 0.88em; color: var(--muted); min-width: 60px; text-align: center; }
+
+  .step-desc {
+    background: #111; border-radius: 8px; padding: 14px 16px; margin: 10px 0;
+    font-size: 0.88em; line-height: 1.7; min-height: 60px;
+  }
+
+  /* Comparison layout */
+  .comparison {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;
+  }
+  .approach-card {
+    background: #111; border-radius: 10px; padding: 16px;
+  }
+  .approach-card h3 { font-size: 0.95em; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #333; }
+
+  /* Legend */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin: 12px 0; font-size: 0.8em;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 2px solid; }
+
+  /* Flow diagrams */
+  .flow {
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 0.82em; line-height: 2;
+    background: #0d0d1a; border-radius: 8px; padding: 14px 16px; margin: 10px 0;
+    white-space: pre; overflow-x: auto;
+  }
+  .fc { color: #6a9955; }
+  .fk { color: #569cd6; }
+  .ft { color: #4ec9b0; }
+  .fh { background: rgba(231,76,60,0.15); }
+  .fg { background: rgba(78,204,163,0.15); }
+  .fo { background: rgba(230,126,34,0.2); }
+
+  /* Result table */
+  .result-table {
+    width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.88em;
+  }
+  .result-table th, .result-table td {
+    padding: 8px 12px; border: 1px solid #333; text-align: left;
+  }
+  .result-table th { background: #111; font-weight: 600; }
+  .result-table .diff { color: var(--orange); font-weight: 600; }
+
+  .solution-section {
+    border: 1px solid var(--green);
+    background: linear-gradient(135deg, #16213e, #1a2a4e);
+  }
+  .solution-section h2 { color: var(--green); }
+
+  @media (max-width: 800px) {
+    .comparison { grid-template-columns: 1fr; }
+    .cell { width: 56px; height: 56px; }
+    .gbar { width: 56px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>StandardMatchProcessor 重构 — 炸弹时序边界（修正版）</h1>
+<p class="subtitle">修正了上一版错误的场景，重新分析真实的行为差异</p>
+
+<!-- ===== Section 1: Correction ===== -->
+<div class="section">
+  <h2>1. 上一版场景的错误</h2>
+
+  <div class="wrong-box">
+    <p><strong>错误场景</strong>：(5,0) 放了一个 Square5x5 炸弹，同时声称它是 Group B 的 BombOrigin。</p>
+    <p style="margin-top:8px;"><strong>为什么错</strong>：MatchGroup.Positions 里的格子都是<strong>同色普通 tile</strong>（Item1~Item6）。
+    Square5x5 是炸弹类型，<strong>不参与颜色匹配</strong>，不可能出现在任何 MatchGroup 中，更不会成为 BombOrigin。</p>
+  </div>
+
+  <div class="correct-box">
+    <p><strong>修正</strong>：BombOrigin 位置一定放的是<strong>普通颜色 tile</strong>（和 Group 的 Type 一致）。</p>
+    <p style="margin-top:4px;">因此：即使该位置被提前消除，消除的也只是一个普通 tile — <strong>不会触发任何二次连锁爆炸</strong>。</p>
+    <p style="margin-top:4px;">上一版所说的「多了一整个 5x5 爆炸」<strong>不可能发生</strong>。</p>
+  </div>
+</div>
+
+<!-- ===== Section 2: Revised analysis ===== -->
+<div class="section">
+  <h2>2. 真实的边界场景</h2>
+
+  <p>那么两遍式和单遍式到底有没有区别？有，但<strong>只在跨 Group 共享位置 + 该位置是 BombOrigin</strong> 时出现，而且差异很小。</p>
+
+  <h3 style="margin-top:16px; font-size:0.95em;">场景：L 形匹配拆成两个 Group，交叉点是 BombOrigin 且带 Cover</h3>
+
+  <div class="board-container">
+    <div class="board-label">初始棋盘（第 0 行，6 格）</div>
+    <div class="board" id="init-board" style="grid-template-columns: repeat(6, 72px);"></div>
+    <div class="group-bar-row" id="init-groups"></div>
+  </div>
+
+  <div style="display:flex; gap:20px; flex-wrap:wrap; margin-top:10px; font-size:0.88em;">
+    <div>
+      <span style="color:var(--green); font-weight:600;">Group A</span>：{(0,0), (1,0), (2,0)} — 3-match
+    </div>
+    <div>
+      <span style="color:var(--blue); font-weight:600;">Group B</span>：{(2,0), (3,0), (4,0), (5,0)} — 4-match<br>
+      BombOrigin = <code>(2,0)</code>，SpawnBombType = HRocket
+    </div>
+    <div>
+      共享位置 <code>(2,0)</code>：普通 Item1 tile + <strong>Cage 覆盖层</strong> (HP=1)
+    </div>
+  </div>
+</div>
+
+<!-- ===== Section 3: Interactive comparison ===== -->
+<div class="section">
+  <h2>3. 逐步对比</h2>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="border-color:var(--red); background:#3a1515;"></div> 消除</div>
+    <div class="legend-item"><div class="legend-swatch" style="border-color:var(--green); background:#153a20;"></div> 受保护</div>
+    <div class="legend-item"><div class="legend-swatch" style="border-color:var(--blue); background:#15253a;"></div> 炸弹生成</div>
+    <div class="legend-item"><div class="legend-swatch" style="border-color:var(--orange); background:#3a2515;"></div> Cover 被击中</div>
+    <div class="legend-item"><span>🔒</span> Cage 覆盖层</div>
+  </div>
+
+  <div class="comparison">
+    <!-- Two-pass -->
+    <div class="approach-card">
+      <h3 style="color:var(--green);">两遍式（当前代码）</h3>
+      <div class="step-controls">
+        <button class="btn-prev" onclick="step('A',-1)">◀</button>
+        <span class="step-label" id="stepA-label">0/5</span>
+        <button class="btn-next" onclick="step('A',1)">▶</button>
+      </div>
+      <div class="step-desc" id="stepA-desc">点击 ▶ 开始</div>
+      <div class="board-container">
+        <div class="board" id="boardA" style="grid-template-columns: repeat(6, 72px);"></div>
+      </div>
+    </div>
+
+    <!-- Single-pass -->
+    <div class="approach-card">
+      <h3 style="color:var(--orange);">单遍式（逐组处理）</h3>
+      <div class="step-controls">
+        <button class="btn-prev" onclick="step('B',-1)">◀</button>
+        <span class="step-label" id="stepB-label">0/6</span>
+        <button class="btn-next" onclick="step('B',1)">▶</button>
+      </div>
+      <div class="step-desc" id="stepB-desc">点击 ▶ 开始</div>
+      <div class="board-container">
+        <div class="board" id="boardB" style="grid-template-columns: repeat(6, 72px);"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center; margin-top:14px;">
+    <button class="btn-reset" onclick="resetAll()">重置</button>
+    <button class="btn-next" onclick="autoPlay()" id="auto-btn" style="margin-left:10px;">自动演示两侧</button>
+  </div>
+</div>
+
+<!-- ===== Section 4: Result table ===== -->
+<div class="section">
+  <h2>4. 结果对比</h2>
+
+  <table class="result-table">
+    <tr>
+      <th></th>
+      <th style="color:var(--green);">两遍式（当前）</th>
+      <th style="color:var(--orange);">单遍式</th>
+    </tr>
+    <tr>
+      <td>(2,0) 最终 tile</td>
+      <td>HRocket</td>
+      <td>HRocket（相同）</td>
+    </tr>
+    <tr>
+      <td>(2,0) Cage 状态</td>
+      <td>完好（未被触碰）</td>
+      <td class="diff">被摧毁（多受了一次伤害）</td>
+    </tr>
+    <tr>
+      <td>(2,0) 消除事件</td>
+      <td>无（被 SetTile 静默覆盖）</td>
+      <td class="diff">有（Eliminate 被调用，产生 CoverDamaged 事件）</td>
+    </tr>
+    <tr>
+      <td>其他位置</td>
+      <td>全部消除</td>
+      <td>全部消除（相同）</td>
+    </tr>
+    <tr>
+      <td>二次连锁爆炸</td>
+      <td>不发生</td>
+      <td>不发生（相同 — 普通 tile 不会连锁）</td>
+    </tr>
+  </table>
+
+  <p style="margin-top:12px; font-size:0.9em;">
+    差异<strong>仅限于 BombOrigin 位置的 Cover/Ground 层</strong>是否多受一次伤害。
+    不会导致额外的连锁爆炸，不会改变消除的 tile 集合。
+  </p>
+</div>
+
+<!-- ===== Section 5: Does this actually happen? ===== -->
+<div class="section">
+  <h2>5. 这个场景会发生吗？</h2>
+
+  <p>需要同时满足：</p>
+  <ul>
+    <li><strong>两个 Group 共享一个 Position</strong> — 需要 L/T 形匹配被拆成两个 Group，或者级联中两个独立匹配恰好重叠</li>
+    <li><strong>共享位置恰好是某个 Group 的 BombOrigin</strong></li>
+    <li><strong>该位置有 Cover 或 Ground</strong>（否则连这个小差异也不存在）</li>
+  </ul>
+
+  <p style="margin-top:12px;">三个条件同时满足的概率<strong>极低</strong>，但非零。</p>
+
+  <div class="correct-box" style="margin-top:12px;">
+    <p><strong>结论</strong>：影响比第一版分析的小得多（没有额外爆炸），但两遍式仍然是更干净的方案 — 保持 Pass 1（所有 bomb spawn）不动，只把 Pass 2 改为逐 group 消除。成本几乎为零，彻底消除差异。</p>
+  </div>
+</div>
+
+<!-- ===== Section 6: Solution ===== -->
+<div class="section solution-section">
+  <h2>6. 推荐方案：两遍式（只改 Pass 2）</h2>
+
+  <div class="flow"><span class="fc">// Pass 1（不动）: 评分 + 所有 bomb spawn</span>
+<span class="fk">foreach</span> (var g in groups)
+{
+    points += score(g);
+<span class="fg">    if (g.SpawnBombType != None && g.BombOrigin.HasValue)
+    {
+        protectedTiles.Add(g.BombOrigin.Value);   <span class="fc">// ← 所有保护先建立</span>
+        state.SetTile(..., new Tile(g.SpawnBombType));
+    }</span>
+}
+
+<span class="fc">// Pass 2（重构点）: 逐 group 消除 + 收集结果</span>
+<span class="fk">foreach</span> (var g in groups)
+{
+    var groupEliminated = new List&lt;(Position, Tile)&gt;();
+
+    <span class="fk">foreach</span> (var pos in g.Positions)
+    {
+        if (globalCleared.Contains(pos)) continue;
+        if (protectedTiles.Contains(pos)) continue;
+
+        var result = Eliminate(pos);
+        globalCleared.Add(pos);
+        if (result.Outcome == Eliminated)
+            groupEliminated.Add((pos, result.Tile));
+    }
+
+<span class="fo">    <span class="fc">// TODO: obstacle adjacency notification</span>
+    <span class="fc">// obstacleSystem.NotifyBatchElimination(groupEliminated, g.Type);</span></span>
+}</div>
+</div>
+
+<script>
+// ===== Tile definitions =====
+const T = {
+  item1:    { cls: 'cell-item1',   icon: '🟢', label: 'Item1' },
+  hrocket:  { cls: 'cell-hrocket', icon: '🚀', label: 'HRocket' },
+  empty:    { cls: 'cell-empty',   icon: '·',  label: '' },
+};
+
+// cage=true means has Cage cover
+function mkCell(type, x, cage, hl) {
+  return { type, x, cage: !!cage, hl: hl || '' };
+}
+
+const INIT_CELLS = [
+  mkCell('item1', 0), mkCell('item1', 1), mkCell('item1', 2, true),
+  mkCell('item1', 3), mkCell('item1', 4), mkCell('item1', 5),
+];
+const GROUP_COLORS = ['a','a','ab','b','b','b']; // a=greenA, b=blueB, ab=both
+
+// ===== Two-pass steps =====
+const stepsA = [
+  {
+    desc: '<strong>初始状态</strong>：(2,0) 有 Item1 + Cage 覆盖层。Group A 和 B 都包含 (2,0)。',
+    cells: INIT_CELLS.map(c => ({...c})),
+  },
+  {
+    desc: '<strong>Pass 1 — Group A</strong>：计算分数。无 bomb spawn。',
+    cells: INIT_CELLS.map((c,i) => ({...c, hl: i<=2 ? 'eliminate' : ''})),
+  },
+  {
+    desc: '<strong>Pass 1 — Group B</strong>：bomb spawn!<br><code>protectedTiles.Add((2,0))</code><br><code>SetTile((2,0), HRocket)</code> — Item1 被<strong>静默覆盖</strong>为 HRocket。<br>🔒 Cage 依然完好。',
+    cells: [
+      mkCell('item1',0,'','eliminate'), mkCell('item1',1,'','eliminate'),
+      mkCell('hrocket',2,true,'spawn'),
+      mkCell('item1',3,'','eliminate'), mkCell('item1',4,'','eliminate'), mkCell('item1',5,'','eliminate'),
+    ],
+  },
+  {
+    desc: '<strong>Pass 2 — Group A</strong>：消除 (0,0), (1,0)。<br>(2,0) 在 protectedTiles 中 → <strong>跳过</strong>。Cage 安全。',
+    cells: [
+      mkCell('empty',0), mkCell('empty',1),
+      mkCell('hrocket',2,true,'protected'),
+      mkCell('item1',3), mkCell('item1',4), mkCell('item1',5),
+    ],
+  },
+  {
+    desc: '<strong>Pass 2 — Group B</strong>：消除 (3,0), (4,0), (5,0)。<br>(2,0) 在 protectedTiles 中 → <strong>跳过</strong>。',
+    cells: [
+      mkCell('empty',0), mkCell('empty',1),
+      mkCell('hrocket',2,true,'protected'),
+      mkCell('empty',3), mkCell('empty',4), mkCell('empty',5),
+    ],
+  },
+  {
+    desc: '<strong>最终状态</strong>：(2,0) = HRocket，<strong>🔒 Cage 完好</strong>。<br>Cage 从始至终未被 Eliminate 调用触碰。',
+    cells: [
+      mkCell('empty',0), mkCell('empty',1),
+      mkCell('hrocket',2,true,'spawn'),
+      mkCell('empty',3), mkCell('empty',4), mkCell('empty',5),
+    ],
+  },
+];
+
+// ===== Single-pass steps =====
+const stepsB = [
+  {
+    desc: '<strong>初始状态</strong>：相同棋盘。单遍式 = 每个 Group 依次执行 bomb spawn + 消除。',
+    cells: INIT_CELLS.map(c => ({...c})),
+  },
+  {
+    desc: '<strong>Group A — 消除</strong>：(0,0), (1,0) 消除。<br>到 (2,0)… <strong>Group B 还没执行</strong>，protectedTiles 是空的！',
+    cells: [
+      mkCell('empty',0), mkCell('empty',1),
+      mkCell('item1',2,true,'cover-hit'),
+      mkCell('item1',3), mkCell('item1',4), mkCell('item1',5),
+    ],
+  },
+  {
+    desc: '<strong>(2,0) 被 Eliminate 调用</strong>：<br>Cage (HP=1) 吸收伤害 → <span style="color:var(--orange);"><strong>Cage 被摧毁!</strong></span><br>Item1 tile 存活（Cover 保护了它）。<br>结果：CoverDamaged，产生消除事件。',
+    cells: [
+      mkCell('empty',0), mkCell('empty',1),
+      mkCell('item1',2,false,'cover-hit'),  // cage removed!
+      mkCell('item1',3), mkCell('item1',4), mkCell('item1',5),
+    ],
+  },
+  {
+    desc: '<strong>Group A 完成</strong>。globalCleared = {(0,0), (1,0), (2,0)}。<br>注意：(2,0) 的 Item1 tile 还在（Cover 吸收了伤害），但 <strong>Cage 已经没了</strong>。',
+    cells: [
+      mkCell('empty',0), mkCell('empty',1),
+      mkCell('item1',2,false),
+      mkCell('item1',3), mkCell('item1',4), mkCell('item1',5),
+    ],
+  },
+  {
+    desc: '<strong>Group B — bomb spawn</strong>：<br><code>protectedTiles.Add((2,0))</code><br><code>SetTile((2,0), HRocket)</code> — Item1 被替换为 HRocket。',
+    cells: [
+      mkCell('empty',0), mkCell('empty',1),
+      mkCell('hrocket',2,false,'spawn'),  // no cage!
+      mkCell('item1',3,'','eliminate'), mkCell('item1',4,'','eliminate'), mkCell('item1',5,'','eliminate'),
+    ],
+  },
+  {
+    desc: '<strong>Group B — 消除</strong>：(3,0)(4,0)(5,0) 消除。<br>(2,0) 在 globalCleared 中 → 跳过。',
+    cells: [
+      mkCell('empty',0), mkCell('empty',1),
+      mkCell('hrocket',2,false,'spawn'),
+      mkCell('empty',3), mkCell('empty',4), mkCell('empty',5),
+    ],
+  },
+  {
+    desc: '<strong>最终状态</strong>：(2,0) = HRocket（同），但 <span style="color:var(--orange);"><strong>Cage 已被摧毁</strong></span>！<br>对比两遍式：Cage 应该完好。这是唯一的行为差异。',
+    cells: [
+      mkCell('empty',0), mkCell('empty',1),
+      mkCell('hrocket',2,false,'cover-hit'),
+      mkCell('empty',3), mkCell('empty',4), mkCell('empty',5),
+    ],
+  },
+];
+
+// ===== Rendering =====
+function renderBoard(id, cells) {
+  const el = document.getElementById(id);
+  el.innerHTML = '';
+  cells.forEach(c => {
+    const t = T[c.type];
+    const div = document.createElement('div');
+    div.className = `cell ${t.cls}${c.hl ? ' hl-' + c.hl : ''}`;
+    div.innerHTML =
+      (c.cage ? '<span class="badge">🔒</span>' : '') +
+      `<span class="icon">${t.icon}</span>` +
+      `<span class="label">${t.label}</span>` +
+      `<span class="coord">(${c.x},0)</span>`;
+    el.appendChild(div);
+  });
+}
+
+function renderInitBoard() {
+  renderBoard('init-board', INIT_CELLS);
+  const gc = document.getElementById('init-groups');
+  gc.innerHTML = '';
+  GROUP_COLORS.forEach(g => {
+    const d = document.createElement('div');
+    d.className = 'gbar gbar-' + (g || 'none');
+    gc.appendChild(d);
+  });
+}
+
+let idxA = 0, idxB = 0;
+
+function updateSide(side) {
+  const steps = side === 'A' ? stepsA : stepsB;
+  const idx = side === 'A' ? idxA : idxB;
+  renderBoard('board' + side, steps[idx].cells);
+  document.getElementById('step' + side + '-desc').innerHTML = steps[idx].desc;
+  document.getElementById('step' + side + '-label').textContent = `${idx}/${steps.length - 1}`;
+}
+
+function step(side, dir) {
+  const steps = side === 'A' ? stepsA : stepsB;
+  if (side === 'A') {
+    idxA = Math.max(0, Math.min(steps.length - 1, idxA + dir));
+  } else {
+    idxB = Math.max(0, Math.min(steps.length - 1, idxB + dir));
+  }
+  updateSide(side);
+}
+
+function resetAll() {
+  idxA = 0; idxB = 0;
+  updateSide('A'); updateSide('B');
+}
+
+async function autoPlay() {
+  const btn = document.getElementById('auto-btn');
+  btn.disabled = true; btn.textContent = '演示中...';
+  resetAll();
+  await sleep(500);
+  const maxS = Math.max(stepsA.length, stepsB.length);
+  for (let i = 1; i < maxS; i++) {
+    if (i < stepsA.length) { idxA = i; updateSide('A'); }
+    if (i < stepsB.length) { idxB = i; updateSide('B'); }
+    await sleep(2000);
+  }
+  btn.disabled = false; btn.textContent = '自动演示两侧';
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// Init
+renderInitBoard();
+updateSide('A');
+updateSide('B');
+</script>
+</body>
+</html>

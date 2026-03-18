@@ -44,6 +44,11 @@ public sealed class XorShift64 : IRandom
         return x;
     }
 
+    /// <summary>
+    /// Gets the current internal state for saving/restoring deterministic simulation.
+    /// </summary>
+    public ulong GetState() => _state;
+
     public void SetState(ulong state)
     {
         _state = state == 0 ? 1 : state;

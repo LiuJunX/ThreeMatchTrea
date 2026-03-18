@@ -112,7 +112,7 @@ internal sealed class SimulationMatchHandler
                 CaptureBombOriginTiles(ref state, stableGroups);
 
                 processed = stableGroups.Count;
-                _matchProcessor.ProcessMatches(ref state, stableGroups);
+                _matchProcessor.ProcessMatches(ref state, stableGroups, currentTick, elapsedTime, eventCollector);
 
                 // Apply timed locks for destroyed/merged positions
                 ApplyPostMatchLocks(ref state, stableGroups);

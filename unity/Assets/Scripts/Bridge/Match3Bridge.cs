@@ -499,6 +499,14 @@ namespace Match3.Unity.Bridge
             var events = (IReadOnlyList<GameEvent>)_eventBuffer;
             if (_eventBuffer.Count > 0)
             {
+                foreach (var evt in _eventBuffer)
+                {
+                    if (evt is Match3.Core.Events.ObstacleDamagedEvent dmg)
+                        Debug.Log($"[Obstacle] Damaged: {dmg.Type} at ({dmg.GridPosition.X},{dmg.GridPosition.Y}) → stage {dmg.RemainingStage}");
+                    else if (evt is Match3.Core.Events.ObstacleDestroyedEvent dst)
+                        Debug.Log($"[Obstacle] Destroyed: {dst.Type} at ({dst.GridPosition.X},{dst.GridPosition.Y}) IsGoal={dst.IsGoal}");
+                }
+
                 _objectiveCollector.Process(events, state, OnObjectiveCollected);
 
                 var commands = _choreographer.Choreograph(events, _player.CurrentTime);

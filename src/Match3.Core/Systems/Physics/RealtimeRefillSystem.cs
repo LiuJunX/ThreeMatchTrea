@@ -42,8 +42,8 @@ public class RealtimeRefillSystem : IRefillSystem
             // Column is entirely holes — skip
             if (spawnY < 0) continue;
 
-            // Only spawn if the spawn point is empty and can receive
-            if (state.GetTile(x, spawnY).Type == ElementType.None && state.CanReceive(x, spawnY))
+            // Only spawn if the spawn point is empty, has no obstacle, and can receive
+            if (state.GetTile(x, spawnY).Type == ElementType.None && !state.HasObstacle(x, spawnY) && state.CanReceive(x, spawnY))
             {
                 // Spawn a new tile at the top using the spawn model
                 var type = _spawnModel.Predict(ref state, x, in context);

@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Match3 Royal Match 扩展 · 重构分析</title>
+<style>
+:root {
+  --bg:        #080c14;
+  --bg-card:   #0d1117;
+  --bg-card2:  #161b22;
+  --bg-card3:  #1c2128;
+  --border:    #30363d;
+  --accent:    #7c3aed;
+  --accent-l:  #a78bfa;
+  --red:       #f85149;
+  --green:     #3fb950;
+  --yellow:    #d29922;
+  --blue:      #58a6ff;
+  --orange:    #f0883e;
+  --text:      #e6edf3;
+  --muted:     #7d8590;
+  --dim:       #484f58;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.6;overflow-x:hidden}
+
+/* ── NAV ── */
+.nav{position:fixed;top:0;left:0;right:0;z-index:200;height:52px;
+  background:rgba(8,12,20,.93);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 1.5rem;gap:0}
+.nav-logo{font-weight:700;font-size:.9rem;color:var(--accent-l);margin-right:1.5rem;white-space:nowrap}
+.tab{height:52px;padding:0 1.1rem;background:none;border:none;border-bottom:2px solid transparent;
+  color:var(--muted);cursor:pointer;font-size:.85rem;font-weight:500;transition:all .2s;white-space:nowrap;
+  display:flex;align-items:center;gap:6px}
+.tab:hover{color:var(--text)}
+.tab.on{color:var(--accent-l);border-bottom-color:var(--accent)}
+.tab-n{background:var(--accent);color:#fff;width:17px;height:17px;border-radius:50%;
+  font-size:.65rem;display:flex;align-items:center;justify-content:center;font-weight:700}
+
+/* ── SECTION ── */
+.sec{display:none;padding:72px 0 60px;min-height:100vh}
+.sec.on{display:block}
+.wrap{max-width:1080px;margin:0 auto;padding:0 1.5rem}
+.sec-tag{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--accent-l);margin-bottom:.4rem}
+.sec-title{font-size:1.6rem;font-weight:700;line-height:1.3;margin-bottom:.4rem}
+.sec-desc{color:var(--muted);max-width:680px;font-size:.9rem}
+.sec-head{margin-bottom:2.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border)}
+
+/* ── S1 LAYERS ── */
+.layers-wrap{display:grid;grid-template-columns:300px 1fr;gap:2.5rem;align-items:start;margin-bottom:2.5rem}
+.layer-stack{display:flex;flex-direction:column;gap:5px}
+.layer-item{height:54px;border-radius:6px;display:flex;align-items:center;padding:0 .9rem;gap:.7rem;
+  cursor:pointer;transition:all .2s;border:1px solid transparent;border-left-width:3px;position:relative}
+.layer-item:hover{transform:translateX(4px)}
+.layer-item.sel{border-color:var(--accent);box-shadow:0 0 18px rgba(124,58,237,.3)}
+.l-struct{background:#0d1f3c;border-left-color:#1d4ed8}
+.l-ground{background:#1a0e00;border-left-color:#b45309}
+.l-tile  {background:#071a0f;border-left-color:#16a34a}
+.l-cover {background:#130d1f;border-left-color:#7c3aed}
+.l-lock  {background:#111827;border-left-color:#475569}
+.l-obst  {background:#1a0a0a;border-left-color:#dc2626}
+.l-new   {position:relative;overflow:hidden}
+.l-new::after{content:'NEW';position:absolute;right:8px;top:4px;font-size:.55rem;font-weight:700;
+  background:var(--green);color:#052e16;padding:1px 5px;border-radius:3px}
+.l-icon{font-size:1.2rem}
+.l-label{font-size:.78rem;font-weight:600;flex:1;line-height:1.3}
+.l-type{font-size:.67rem;color:var(--muted);font-family:monospace}
+.badge{font-size:.63rem;padding:2px 5px;border-radius:8px;font-weight:600}
+.badge-s{background:#1e3a5f;color:#60a5fa}
+.badge-d{background:#14532d;color:#4ade80}
+.badge-r{background:#3b1a1a;color:#fca5a5}
+
+.layer-detail{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;
+  padding:1.25rem;min-height:200px}
+.ld-title{font-weight:700;font-size:.95rem;margin-bottom:.6rem;display:flex;align-items:center;gap:.5rem}
+.ld-struct{background:var(--bg);border:1px solid var(--border);border-radius:5px;
+  padding:.6rem .9rem;font-family:Consolas,monospace;font-size:.77rem;margin-bottom:.9rem;color:#a5d6ff;line-height:1.8;white-space:pre}
+.ld-fields{display:flex;flex-wrap:wrap;gap:.4rem}
+.ftag{background:var(--bg-card2);border:1px solid var(--border);border-radius:4px;
+  padding:2px 7px;font-size:.72rem;font-family:monospace;color:var(--muted)}
+.ftag.hi{border-color:var(--accent);color:var(--accent-l)}
+.ftag.prob{border-color:var(--red);color:#fca5a5}
+.ftag.done{border-color:var(--green);color:#4ade80}
+.ld-note{margin-top:.75rem;font-size:.78rem;color:var(--muted);padding:.5rem .75rem;
+  border-left:3px solid var(--green);border-radius:0 4px 4px 0;background:rgba(63,185,80,.06)}
+.ld-note.warn{border-left-color:var(--yellow);background:rgba(210,153,34,.06)}
+
+/* Pipeline */
+.pipe-section{margin-bottom:2.5rem}
+.pipe-label{font-size:.85rem;font-weight:600;color:var(--muted);margin-bottom:.75rem}
+.pipe{display:flex;align-items:center;background:var(--bg-card);border:1px solid var(--border);
+  border-radius:8px;padding:1rem 1.25rem;overflow-x:auto;position:relative;gap:0}
+.pipe-ball{position:absolute;top:50%;width:11px;height:11px;background:var(--accent);
+  border-radius:50%;box-shadow:0 0 10px var(--accent);transform:translateY(-50%);
+  animation:ball 5s infinite linear;z-index:5}
+@keyframes ball{0%{left:1.5rem;opacity:1}85%{left:calc(100% - 1.5rem);opacity:1}
+  90%{left:calc(100% - 1.5rem);opacity:0}91%{left:1.5rem;opacity:0}100%{left:1.5rem;opacity:1}}
+.pipe-step{flex:1;text-align:center;padding:.4rem .2rem;min-width:80px}
+.ps-icon{font-size:1.3rem;margin-bottom:2px}
+.ps-name{font-size:.68rem;font-weight:600;color:var(--text);display:block}
+.ps-desc{font-size:.6rem;color:var(--dim);display:block;margin-top:1px}
+.pipe-arrow{color:var(--dim);font-size:1.1rem;padding:0 .1rem;flex-shrink:0}
+.ps-result{font-size:.6rem;padding:2px 5px;border-radius:4px;margin-top:3px;display:inline-block}
+.ps-blocked{background:rgba(248,81,73,.15);color:#fca5a5}
+.ps-absorbed{background:rgba(245,158,11,.15);color:#fbbf24}
+.ps-eliminated{background:rgba(63,185,80,.15);color:#4ade80}
+.ps-new{background:rgba(124,58,237,.15);color:var(--accent-l)}
+
+/* Constraints */
+.constraints{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:.6rem;margin-top:1rem}
+.cst{background:var(--bg-card);border:1px solid var(--border);border-radius:6px;
+  padding:.7rem .9rem;display:flex;align-items:flex-start;gap:.5rem}
+.cst-icon{font-size:.95rem;flex-shrink:0;margin-top:2px}
+.cst-text{font-size:.78rem;color:var(--muted)}
+.cst-text strong{color:var(--text)}
+
+/* ── S2 PROBLEMS ── */
+.prob-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.9rem}
+.pc{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;
+  padding:1.1rem;cursor:default;transition:all .2s;position:relative;overflow:hidden}
+.pc::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  transition:transform .2s;transform-origin:left}
+.pc.solved{border-color:rgba(63,185,80,.3)}
+.pc.solved::after{background:var(--green);transform:scaleX(1)}
+.pc.unsolved{border-color:rgba(248,81,73,.2)}
+.pc.unsolved::after{background:var(--red);transform:scaleX(1)}
+.pc-head{display:flex;align-items:flex-start;gap:.6rem;margin-bottom:.6rem}
+.pc-id{width:26px;height:26px;border-radius:5px;
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.75rem;flex-shrink:0;color:#fff}
+.pc.solved .pc-id{background:var(--green)}
+.pc.unsolved .pc-id{background:var(--red)}
+.pc-name{font-weight:600;font-size:.88rem;line-height:1.3}
+.pc-broken{display:inline-flex;align-items:center;gap:3px;
+  border-radius:3px;padding:1px 5px;font-size:.67rem;margin-bottom:.4rem;font-family:monospace}
+.pc.solved .pc-broken{background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.25);color:#4ade80}
+.pc.unsolved .pc-broken{background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.25);color:#fca5a5}
+.pc-desc{font-size:.78rem;color:var(--muted);line-height:1.5}
+.pc-elems{display:flex;flex-wrap:wrap;gap:3px;margin-top:.5rem}
+.etag{background:var(--bg-card2);border:1px solid var(--border);border-radius:3px;
+  padding:1px 5px;font-size:.65rem;color:var(--muted)}
+.pc-solution{margin-top:.6rem;padding:.4rem .65rem;border-radius:0 4px 4px 0;font-size:.75rem}
+.pc.solved .pc-solution{background:rgba(63,185,80,.05);border-left:3px solid var(--green);color:#4ade80}
+.pc.unsolved .pc-solution{background:rgba(248,81,73,.05);border-left:3px solid var(--red);color:#fca5a5}
+
+/* mini viz */
+.pc-viz{margin:.6rem 0;height:56px;background:var(--bg);border-radius:5px;
+  display:flex;align-items:center;justify-content:center;gap:4px;overflow:hidden;position:relative}
+.mini-gem{width:18px;height:18px;border-radius:3px;display:flex;align-items:center;
+  justify-content:center;font-size:9px}
+.mg-r{background:rgba(239,68,68,.35);border:1px solid rgba(239,68,68,.6)}
+.mg-g{background:rgba(34,197,94,.35);border:1px solid rgba(34,197,94,.6)}
+.mg-b{background:rgba(59,130,246,.35);border:1px solid rgba(59,130,246,.6)}
+.mg-y{background:rgba(245,158,11,.35);border:1px solid rgba(245,158,11,.6)}
+.mg-p{background:rgba(168,85,247,.35);border:1px solid rgba(168,85,247,.6)}
+.mg-obs{background:rgba(107,114,128,.35);border:1px solid rgba(107,114,128,.6);font-size:9px;color:var(--text)}
+.viz-label{font-size:.65rem;color:var(--dim);position:absolute;bottom:3px;left:6px}
+
+/* ── S3 GOALS ── */
+.goals-grid{display:grid;grid-template-columns:1fr 1fr;gap:.9rem}
+.gc{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:1.1rem;
+  transition:border-color .2s}
+.gc:hover{border-color:rgba(63,185,80,.5)}
+.gc-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem}
+.gc-id{background:var(--green);color:#052e16;width:26px;height:26px;border-radius:5px;
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.75rem}
+.gc-name{font-weight:600;font-size:.88rem}
+.gc-std{font-size:.78rem;color:var(--muted);padding:.5rem .7rem;background:var(--bg);
+  border-radius:5px;border-left:3px solid var(--green);margin-bottom:.6rem;line-height:1.5}
+.gc-verify{display:flex;align-items:center;gap:.4rem;font-size:.73rem;color:#4ade80;margin-bottom:.5rem}
+.gc-enables{display:flex;flex-wrap:wrap;gap:3px}
+.en-tag{background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.25);border-radius:3px;
+  padding:1px 5px;font-size:.65rem;color:#4ade80}
+
+/* ── S4 DIRECTIONS ── */
+.phase-bar{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:2.5rem}
+.phase{flex:1;padding:.9rem 1rem;background:var(--bg-card);border-right:1px solid var(--border);
+  transition:background .2s;position:relative}
+.phase:last-child{border-right:none}
+.phase.done{background:rgba(63,185,80,.06)}
+.phase.skipped{background:rgba(210,153,34,.04)}
+.ph-num{font-size:.68rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:.05em;margin-bottom:.35rem;display:flex;align-items:center;gap:.5rem}
+.phase.done .ph-num{color:var(--green)}
+.phase.skipped .ph-num{color:var(--yellow)}
+.phase:not(.done):not(.skipped) .ph-num{color:var(--accent-l)}
+.ph-title{font-weight:600;font-size:.82rem;margin-bottom:.4rem}
+.ph-items{display:flex;flex-direction:column;gap:2px}
+.ph-item{font-size:.72rem;color:var(--muted);display:flex;align-items:center;gap:3px}
+.ph-item::before{font-size:.65rem}
+.ph-item.done::before{content:'✓';color:var(--green)}
+.ph-item.skip::before{content:'—';color:var(--yellow)}
+.ph-item.todo::before{content:'▸';color:var(--accent)}
+.ph-status{font-size:.6rem;padding:2px 6px;border-radius:8px;font-weight:600}
+.ph-status.s-done{background:rgba(63,185,80,.15);color:#4ade80}
+.ph-status.s-skip{background:rgba(210,153,34,.15);color:#fbbf24}
+
+.dir-grid{display:grid;grid-template-columns:1fr 1fr;gap:.9rem}
+.dc{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;overflow:hidden;
+  transition:border-color .2s}
+.dc:hover{border-color:rgba(124,58,237,.5)}
+.dc.dc-done{border-color:rgba(63,185,80,.3)}
+.dc.dc-skip{border-color:rgba(210,153,34,.3);opacity:.7}
+.dc-head{padding:.9rem 1.1rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:.6rem}
+.dc-done .dc-head{background:rgba(63,185,80,.06)}
+.dc-skip .dc-head{background:rgba(210,153,34,.04)}
+.dc:not(.dc-done):not(.dc-skip) .dc-head{background:rgba(124,58,237,.08)}
+.dc-id{width:30px;height:30px;border-radius:5px;color:#fff;
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.78rem;flex-shrink:0}
+.dc-done .dc-id{background:var(--green)}
+.dc-skip .dc-id{background:var(--yellow)}
+.dc:not(.dc-done):not(.dc-skip) .dc-id{background:var(--accent)}
+.dc-title{font-weight:600;font-size:.88rem;line-height:1.3}
+.dc-sub{font-size:.72rem;color:var(--muted)}
+.dc-body{padding:1.1rem}
+.dc-desc{font-size:.8rem;color:var(--muted);margin-bottom:.9rem;line-height:1.6}
+.dc-impl{font-size:.78rem;padding:.6rem .8rem;background:var(--bg);border:1px solid var(--border);
+  border-radius:5px;margin-bottom:.9rem;font-family:Consolas,monospace;color:#a5d6ff;line-height:1.7;white-space:pre}
+.dc-badges{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:.75rem}
+.dbadge{display:inline-flex;align-items:center;gap:3px;border-radius:4px;padding:2px 6px;font-size:.67rem}
+.dbadge-p{background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.3);color:var(--accent-l)}
+.dbadge-done{background:rgba(63,185,80,.12);border:1px solid rgba(63,185,80,.3);color:#4ade80}
+.dbadge-skip{background:rgba(210,153,34,.1);border:1px solid rgba(210,153,34,.3);color:#fbbf24}
+
+/* Map table */
+.map-table{width:100%;border-collapse:collapse;margin-top:2rem;font-size:.78rem}
+.map-table th{background:var(--bg-card);padding:.55rem .9rem;text-align:left;
+  font-weight:600;color:var(--muted);border-bottom:1px solid var(--border)}
+.map-table td{padding:.55rem .9rem;border-bottom:1px solid var(--border);vertical-align:middle}
+.map-table tr:hover td{background:rgba(255,255,255,.02)}
+.tcell{display:flex;flex-wrap:wrap;gap:3px;align-items:center}
+.pt{border-radius:3px;padding:1px 5px;font-size:.67rem}
+.pt-done{background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.25);color:#4ade80}
+.pt-open{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.25);color:#fca5a5}
+.gt{background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.25);border-radius:3px;
+  padding:1px 5px;font-size:.67rem;color:#4ade80}
+.dt{border-radius:3px;padding:1px 5px;font-size:.67rem}
+.dt-done{background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.25);color:#4ade80}
+.dt-skip{background:rgba(210,153,34,.1);border:1px solid rgba(210,153,34,.25);color:#fbbf24}
+.status-done{color:var(--green);font-size:.7rem;font-weight:600}
+.status-skip{color:var(--yellow);font-size:.7rem;font-weight:600}
+.status-open{color:var(--red);font-size:.7rem;font-weight:600}
+
+@media(max-width:768px){
+  .layers-wrap,.goals-grid,.dir-grid,.prob-grid{grid-template-columns:1fr}
+  .phase-bar{flex-direction:column}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-logo">Match3 重构分析</div>
+  <button class="tab on" onclick="show(0,this)"><span class="tab-n">1</span>现状</button>
+  <button class="tab" onclick="show(1,this)"><span class="tab-n">9</span>问题</button>
+  <button class="tab" onclick="show(2,this)"><span class="tab-n">8</span>目标</button>
+  <button class="tab" onclick="show(3,this)"><span class="tab-n">7</span>方向</button>
+</nav>
+
+<!-- ═══════════════ S1: 现状 ═══════════════ -->
+<section class="sec on" id="s0">
+<div class="wrap">
+  <div class="sec-head">
+    <div class="sec-tag">Section 01 · 重构后现状</div>
+    <div class="sec-title">GameState 6 层并行数组 + 新消除管线</div>
+    <div class="sec-desc">D1-D4/D6/D7 完成后的架构现状。ObstacleLayer 已就位，CellEliminator 管线已扩展。</div>
+  </div>
+
+  <!-- 6层可视化 -->
+  <div class="layers-wrap">
+    <div class="layer-stack">
+      <div class="layer-item l-struct sel" onclick="selLayer(0,this)">
+        <span class="l-icon">🏗️</span>
+        <div><div class="l-label">Structure 结构层</div><div class="l-type">CellKind[]</div></div>
+        <span class="badge badge-s">静态</span>
+      </div>
+      <div class="layer-item l-ground" onclick="selLayer(1,this)">
+        <span class="l-icon">🟫</span>
+        <div><div class="l-label">Ground 地面层</div><div class="l-type">Ground[]</div></div>
+        <span class="badge badge-s">静态</span>
+      </div>
+      <div class="layer-item l-tile" onclick="selLayer(2,this)">
+        <span class="l-icon">💎</span>
+        <div><div class="l-label">Tile 宝石层</div><div class="l-type">Tile[]</div></div>
+        <span class="badge badge-d">移动</span>
+      </div>
+      <div class="layer-item l-cover" onclick="selLayer(3,this)">
+        <span class="l-icon">🛡️</span>
+        <div><div class="l-label">Cover 保护层</div><div class="l-type">Cover[]</div></div>
+        <span class="badge badge-d">可移</span>
+      </div>
+      <div class="layer-item l-lock" onclick="selLayer(4,this)">
+        <span class="l-icon">🔒</span>
+        <div><div class="l-label">Lock 锁定层</div><div class="l-type">uint[]</div></div>
+        <span class="badge badge-r">位掩码</span>
+      </div>
+      <div class="layer-item l-obst l-new" onclick="selLayer(5,this)">
+        <span class="l-icon">🧱</span>
+        <div><div class="l-label">Obstacle 障碍层</div><div class="l-type">Obstacle[]</div></div>
+        <span class="badge badge-d">D1</span>
+      </div>
+    </div>
+    <div class="layer-detail" id="layer-detail"></div>
+  </div>
+
+  <!-- CellEliminator 管线（重构后） -->
+  <div class="pipe-section">
+    <div class="pipe-label">CellEliminator 消除管线（重构后）</div>
+    <div class="pipe">
+      <div class="pipe-ball"></div>
+      <div class="pipe-step">
+        <div class="ps-icon">🛡️</div>
+        <span class="ps-name">① Cover</span>
+        <span class="ps-desc">TryDamageCover</span>
+        <span class="ps-result ps-absorbed">→ Absorbed</span>
+      </div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step">
+        <div class="ps-icon">🧱</div>
+        <span class="ps-name">② Obstacle</span>
+        <span class="ps-desc">TryHit(ctx)</span>
+        <span class="ps-result ps-new">→ Damaged/Destroyed</span>
+      </div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step">
+        <div class="ps-icon">⏳</div>
+        <span class="ps-name">③ ProtectUntil</span>
+        <span class="ps-desc">simTime &lt; protect?</span>
+        <span class="ps-result ps-blocked">→ Blocked</span>
+      </div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step">
+        <div class="ps-icon">🌈</div>
+        <span class="ps-name">④ ColorBomb</span>
+        <span class="ps-desc">非Consume免疫</span>
+        <span class="ps-result ps-blocked">→ Immune</span>
+      </div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step">
+        <div class="ps-icon">🚫</div>
+        <span class="ps-name">⑤ Indestructible</span>
+        <span class="ps-desc">Lock 标志</span>
+        <span class="ps-result ps-blocked">→ Blocked</span>
+      </div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step">
+        <div class="ps-icon">📢</div>
+        <span class="ps-name">⑥ Event</span>
+        <span class="ps-desc">TileDestroyedEvent</span>
+      </div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step">
+        <div class="ps-icon">✂️</div>
+        <span class="ps-name">⑦ Mutate</span>
+        <span class="ps-desc">SetTile(None)</span>
+        <span class="ps-result ps-eliminated">消除</span>
+      </div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step">
+        <div class="ps-icon">🟫</div>
+        <span class="ps-name">⑧ Ground</span>
+        <span class="ps-desc">OnTileDestroyed</span>
+      </div>
+    </div>
+    <div style="margin-top:.5rem;font-size:.73rem;color:var(--muted)">
+      <span style="color:var(--accent-l)">NEW</span> 步骤②：Obstacle 拦截（D1/D2 ElimContext 语义检查 + ObstacleRules.CanHit）&nbsp;·&nbsp;
+      <span style="color:var(--accent-l)">NEW</span> 步骤③：ProtectUntil 保护窗口（D4 死亡效果生成物保护）
+    </div>
+  </div>
+
+  <!-- 三条伤害路径 -->
+  <div class="pipe-section">
+    <div class="pipe-label">Obstacle 三条伤害路径（D3 旁击 + D4 死亡效果）</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem">
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:.8rem">
+        <div style="font-size:.75rem;font-weight:600;color:var(--green);margin-bottom:.4rem">① 直接命中</div>
+        <div style="font-size:.72rem;color:var(--muted)">CellEliminator → TryHit(ctx)<br>炸弹/匹配直接打中障碍格</div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:.8rem">
+        <div style="font-size:.75rem;font-weight:600;color:var(--blue);margin-bottom:.4rem">② 邻接反应</div>
+        <div style="font-size:.72rem;color:var(--muted)">NotifyBatchElimination()<br>邻居被消除后旁击（D3）</div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:.8rem">
+        <div style="font-size:.75rem;font-weight:600;color:var(--orange);margin-bottom:.4rem">③ 全局反应</div>
+        <div style="font-size:.72rem;color:var(--muted)">NotifyGlobalColorElimination()<br>Curtain 监听全局颜色消除</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 关键约束 -->
+  <div class="pipe-label" style="margin-bottom:.75rem">不可违背的关键约束</div>
+  <div class="constraints">
+    <div class="cst"><span class="cst-icon">📦</span><div class="cst-text"><strong>GameState struct</strong><br>6 层 Array.Copy，Clone 零 GC</div></div>
+    <div class="cst"><span class="cst-icon">🔀</span><div class="cst-text"><strong>事件溯源分离</strong><br>IEventVisitor 编译期穷举</div></div>
+    <div class="cst"><span class="cst-icon">🧵</span><div class="cst-text"><strong>Clone 零共享</strong><br>AI DryRun 并行安全</div></div>
+    <div class="cst"><span class="cst-icon">🚫</span><div class="cst-text"><strong>Core 零 UI 依赖</strong><br>不引用 UnityEngine</div></div>
+    <div class="cst"><span class="cst-icon">♻️</span><div class="cst-text"><strong>Pool/Span 零分配</strong><br>热路径禁止 new T()</div></div>
+    <div class="cst"><span class="cst-icon">🎲</span><div class="cst-text"><strong>IRandom 统一</strong><br>确定性回放</div></div>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════ S2: 问题 ═══════════════ -->
+<section class="sec" id="s1">
+<div class="wrap">
+  <div class="sec-head">
+    <div class="sec-tag">Section 02 · 完成度 8/9</div>
+    <div class="sec-title">9 个架构冲突——已解决 8 个</div>
+    <div class="sec-desc">绿色 = 已解决（D1-D4/D6/D7），黄色/红色 = 留到具体元素实现时处理。</div>
+  </div>
+  <div class="prob-grid">
+
+    <div class="pc solved">
+      <div class="pc-head"><div class="pc-id">P1</div><div class="pc-name">旁击（Side Hit）机制</div></div>
+      <div class="pc-broken">D3 已解决</div>
+      <div class="pc-desc">NotifyBatchElimination() 对每组消除的邻居触发旁击。ObstacleRules.CanReactAdjacent() 按类型+颜色路由。</div>
+      <div class="pc-elems"><span class="etag">Cupboard</span><span class="etag">Mailbox</span><span class="etag">Magic Hat</span><span class="etag">Honey</span></div>
+      <div class="pc-solution">✓ IObstacleSystem.NotifyBatchElimination + per-group dedup</div>
+    </div>
+
+    <div class="pc solved">
+      <div class="pc-head"><div class="pc-id">P2</div><div class="pc-name">多层障碍状态</div></div>
+      <div class="pc-broken">D1 已解决</div>
+      <div class="pc-desc">ObstacleLayer 存 (ObstacleType, Stage, State)。Box 4层/Bush 5层/Safe 5层，Stage 逐次递减。</div>
+      <div class="pc-elems"><span class="etag">Box(4)</span><span class="etag">Bush(5)</span><span class="etag">Safe(5)</span><span class="etag">ColorBox(3)</span><span class="etag">Stone(3)</span></div>
+      <div class="pc-solution">✓ Obstacle struct { Type, Stage, State } — 零 GC，Clone = Array.Copy</div>
+    </div>
+
+    <div class="pc solved">
+      <div class="pc-head"><div class="pc-id">P3</div><div class="pc-name">死亡效果链</div></div>
+      <div class="pc-broken">D4 已解决</div>
+      <div class="pc-desc">Bush Stage=0 时同 Tick 内向 4-邻居扩散 Grass（写 GroundLayer），ProtectUntil=0.4s 保护新生成 Ground。</div>
+      <div class="pc-elems"><span class="etag">Bush→Grass</span><span class="etag">Flowerpot→Leaves</span><span class="etag">Oyster→Pearl</span></div>
+      <div class="pc-solution">✓ ObstacleSystem.SpreadGround() 同 Tick 执行 + ProtectUntil 保护</div>
+    </div>
+
+    <div class="pc solved">
+      <div class="pc-head"><div class="pc-id">P4</div><div class="pc-name">条件性可破坏</div></div>
+      <div class="pc-broken">D2 已解决</div>
+      <div class="pc-desc">ElimContext 携带 Source + MatchColor。ObstacleRules.CanHit() 按 ObstacleType 做来源条件检查（Safe 仅 PowerUp/Bomb/Projectile/ColorBomb）。</div>
+      <div class="pc-elems"><span class="etag">Safe(PowerUpOnly)</span><span class="etag">Stone(PowerUpOnly)</span><span class="etag">ColorBox(颜色匹配)</span></div>
+      <div class="pc-solution">✓ ElimContext { Source, MatchColor } + ObstacleRules.CanHit()</div>
+    </div>
+
+    <div class="pc solved">
+      <div class="pc-head"><div class="pc-id">P5</div><div class="pc-name">Honey Cover 语义</div></div>
+      <div class="pc-broken">D3 已解决</div>
+      <div class="pc-desc">Honey 作为 CoverType，CoverRules 增加"不保护 Tile"标志。SideHit 路径可触发 Honey 消除。</div>
+      <div class="pc-elems"><span class="etag">Honey（旁击消除，不保护Tile）</span></div>
+      <div class="pc-solution">✓ CoverRules 区分保护/非保护型 Cover</div>
+    </div>
+
+    <div class="pc solved">
+      <div class="pc-head"><div class="pc-id">P6</div><div class="pc-name">生成器内部状态</div></div>
+      <div class="pc-broken">D1 已解决</div>
+      <div class="pc-desc">Obstacle.State (byte) 存储 Magic Hat 已旁击次数、ColorBox 颜色变体、Curtain 监听颜色。</div>
+      <div class="pc-elems"><span class="etag">MagicHat(State=hitCount)</span><span class="etag">ColorBox(State=color)</span><span class="etag">Curtain(State=color)</span></div>
+      <div class="pc-solution">✓ Obstacle.State byte — 多用途内部状态字段</div>
+    </div>
+
+    <div class="pc unsolved">
+      <div class="pc-head"><div class="pc-id">P7</div><div class="pc-name">Sink 按类型路由</div></div>
+      <div class="pc-broken">D5 跳过 · Bird 实现时处理</div>
+      <div class="pc-desc">Bird 已作为 ElementType.Bird=100 加入 Tile 层。Sink 路由逻辑留到 Bird 具体实现时在 GravitySystem 添加。</div>
+      <div class="pc-elems"><span class="etag">Bird(ElementType=100)</span><span class="etag">Pearl(101)</span><span class="etag">Plate(102)</span></div>
+      <div class="pc-solution">⏳ ElementType 已就位，Sink 路由延后</div>
+    </div>
+
+    <div class="pc solved">
+      <div class="pc-head"><div class="pc-id">P8</div><div class="pc-name">Curtain 全局条件</div></div>
+      <div class="pc-broken">D7 + D3 已解决</div>
+      <div class="pc-desc">Curtain 作为 ObstacleType，Obstacle.State 存颜色。NotifyGlobalColorElimination() 在每组匹配后按颜色累计。</div>
+      <div class="pc-elems"><span class="etag">Curtain（全局颜色消除监听）</span></div>
+      <div class="pc-solution">✓ IObstacleSystem.NotifyGlobalColorElimination() — 第三条伤害路径</div>
+    </div>
+
+    <div class="pc solved">
+      <div class="pc-head"><div class="pc-id">P9</div><div class="pc-name">View 多阶段渲染</div></div>
+      <div class="pc-broken">D6 已解决</div>
+      <div class="pc-desc">ObstacleVisual { Type, CurrentStage, DamageProgress, DeathProgress }。ObstacleChoreographer 路由 DamageObstacleCommand / DestroyObstacleCommand。VisualState.Obstacles 字典按 Position 索引。</div>
+      <div class="pc-elems"><span class="etag">ObstacleVisual</span><span class="etag">VisualEffect</span><span class="etag">ObstacleChoreographer</span></div>
+      <div class="pc-solution">✓ ObstacleVisual + ObstacleChoreographer + RenderCommand 全链路</div>
+    </div>
+
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════ S3: 目标 ═══════════════ -->
+<section class="sec" id="s2">
+<div class="wrap">
+  <div class="sec-head">
+    <div class="sec-tag">Section 03</div>
+    <div class="sec-title">8 个扩展性目标</div>
+    <div class="sec-desc">可验证标准。绿色标签表示此目标解锁的 Royal Match 元素。</div>
+  </div>
+  <div class="goals-grid">
+
+    <div class="gc">
+      <div class="gc-head"><div class="gc-id">G1</div><div class="gc-name">旁击框架</div></div>
+      <div class="gc-std">新增"旁击可伤害元素"只需在 ObstacleRules.CanReactAdjacent() 添加一个 case 和 ObstacleType 枚举值。</div>
+      <div class="gc-verify">✓ 验证：MagicHat 不修改 MatchProcessor / ExplosionSystem</div>
+      <div class="gc-enables"><span class="en-tag">Cupboard</span><span class="en-tag">Mailbox</span><span class="en-tag">Magic Hat</span><span class="en-tag">Honey</span></div>
+    </div>
+
+    <div class="gc">
+      <div class="gc-head"><div class="gc-id">G2</div><div class="gc-name">消除来源语义</div></div>
+      <div class="gc-std">ElimContext 携带 Source + MatchColor，ObstacleRules.CanHit() 按 ObstacleType 做条件检查。</div>
+      <div class="gc-verify">✓ 验证：Safe 被 Match 命中 → Blocked；被 Bomb 命中 → Damaged</div>
+      <div class="gc-enables"><span class="en-tag">Safe</span><span class="en-tag">Stone</span><span class="en-tag">Color Box</span><span class="en-tag">Owl</span></div>
+    </div>
+
+    <div class="gc">
+      <div class="gc-head"><div class="gc-id">G3</div><div class="gc-name">多阶段障碍</div></div>
+      <div class="gc-std">Obstacle { Type, Stage, State } 存于并行数组，Clone = Array.Copy，AI 分支零 GC。</div>
+      <div class="gc-verify">✓ 验证：Bush 5次命中 Stage 归零；Clone 后 Stage 值正确</div>
+      <div class="gc-enables"><span class="en-tag">Box(4)</span><span class="en-tag">Bush(5)</span><span class="en-tag">Safe(5)</span><span class="en-tag">Oyster(3)</span><span class="en-tag">Stone(3)</span></div>
+    </div>
+
+    <div class="gc">
+      <div class="gc-head"><div class="gc-id">G4</div><div class="gc-name">死亡效果链</div></div>
+      <div class="gc-std">Bush 销毁同 Tick 写 GroundLayer（Grass），ProtectUntil=0.4s。Presentation 通过 GroundSpawnedEvent 获知。</div>
+      <div class="gc-verify">✓ 验证：单元测试断言 Ground[邻居].Type == Grass</div>
+      <div class="gc-enables"><span class="en-tag">Bush→Grass</span><span class="en-tag">Oyster→Pearl</span><span class="en-tag">Flowerpot→Leaves</span></div>
+    </div>
+
+    <div class="gc">
+      <div class="gc-head"><div class="gc-id">G5</div><div class="gc-name">生成器状态</div></div>
+      <div class="gc-std">Obstacle.State byte 存 MagicHat 已击中次数。State=3 时触发 Diamond 生成。</div>
+      <div class="gc-verify">✓ 验证：确定性种子下 Diamond 生成位置可重放</div>
+      <div class="gc-enables"><span class="en-tag">Mailbox</span><span class="en-tag">Magic Hat</span></div>
+    </div>
+
+    <div class="gc">
+      <div class="gc-head"><div class="gc-id">G6</div><div class="gc-name">Sink 路由</div></div>
+      <div class="gc-std">Bird 到 Sink → 收集计数，不发 TileDestroyedEvent。留到 Bird 实现时处理。</div>
+      <div class="gc-verify">⏳ 待验证：Bird 到底后计数器变化，无销毁事件</div>
+      <div class="gc-enables"><span class="en-tag">Bird</span></div>
+    </div>
+
+    <div class="gc">
+      <div class="gc-head"><div class="gc-id">G7</div><div class="gc-name">View 多阶段渲染</div></div>
+      <div class="gc-std">ObstacleVisual { CurrentStage, DamageProgress, DeathProgress }。DamageObstacleCommand 驱动 Mesh 切换，无 GameObject 重建。</div>
+      <div class="gc-verify">✓ 验证：Box 4次命中过程中 Visual 对象不变，Stage 字段递减</div>
+      <div class="gc-enables"><span class="en-tag">Box多外观</span><span class="en-tag">Bush多阶段</span><span class="en-tag">ObstacleView</span><span class="en-tag">VisualEffect</span></div>
+    </div>
+
+    <div class="gc">
+      <div class="gc-head"><div class="gc-id">G8</div><div class="gc-name">全局条件元素</div></div>
+      <div class="gc-std">Curtain 的 Obstacle.State 存颜色，NotifyGlobalColorElimination 按颜色匹配累计。无 Dictionary。</div>
+      <div class="gc-verify">✓ 验证：消除 N 红色后 Obstacle[curtainPos].Stage == 0</div>
+      <div class="gc-enables"><span class="en-tag">Curtain</span></div>
+    </div>
+
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════ S4: 方向 ═══════════════ -->
+<section class="sec" id="s3">
+<div class="wrap">
+  <div class="sec-head">
+    <div class="sec-tag">Section 04 · 完成度 6/7</div>
+    <div class="sec-title">7 个方向——已完成 6 个，跳过 1 个</div>
+    <div class="sec-desc">Phase 1-3 全部完成。D5 跳过，Bird 的 Sink 路由留到具体实现时处理。</div>
+  </div>
+
+  <!-- 实施阶段 -->
+  <div class="phase-bar">
+    <div class="phase done">
+      <div class="ph-num">Phase 1 · 地基 <span class="ph-status s-done">DONE</span></div>
+      <div class="ph-title">Core 数据改动</div>
+      <div class="ph-items">
+        <div class="ph-item done">D1 ObstacleLayer</div>
+        <div class="ph-item done">D2 ElimContext + ObstacleRules</div>
+        <div class="ph-item done">D3 旁击三路径</div>
+      </div>
+    </div>
+    <div class="phase done">
+      <div class="ph-num">Phase 2 · 行为链 <span class="ph-status s-done">DONE</span></div>
+      <div class="ph-title">效果与路由</div>
+      <div class="ph-items">
+        <div class="ph-item done">D4 DeathEffect + ProtectUntil</div>
+        <div class="ph-item skip">D5 SinkRouter（延后）</div>
+      </div>
+    </div>
+    <div class="phase done">
+      <div class="ph-num">Phase 3 · 表现 <span class="ph-status s-done">DONE</span></div>
+      <div class="ph-title">Presentation 扩展</div>
+      <div class="ph-items">
+        <div class="ph-item done">D6 ObstacleVisual + Choreographer</div>
+        <div class="ph-item done">D6 VisualEffect + RenderCommand</div>
+      </div>
+    </div>
+    <div class="phase done">
+      <div class="ph-num">Phase 4 · 全局 <span class="ph-status s-done">DONE</span></div>
+      <div class="ph-title">复杂状态机制</div>
+      <div class="ph-items">
+        <div class="ph-item done">D7 Curtain 全局监听</div>
+        <div class="ph-item done">D7 Obstacle.State 多用途</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dir-grid">
+
+    <!-- D1 -->
+    <div class="dc dc-done">
+      <div class="dc-head">
+        <div class="dc-id">D1</div>
+        <div><div class="dc-title">统一障碍层（ObstacleLayer）</div><div class="dc-sub">GameState 第 6 个并行数组</div></div>
+      </div>
+      <div class="dc-body">
+        <div class="dc-badges"><span class="dbadge dbadge-done">✓ 已完成</span><span class="dbadge dbadge-p">P2 P3 P6</span></div>
+        <div class="dc-impl">struct Obstacle {
+  ObstacleType Type;   // Box/Bush/Safe/ColorBox/MagicHat/Curtain
+  byte Stage;          // 当前阶段（4→3→2→1→0=销毁）
+  byte State;          // 多用途内部状态
+}</div>
+        <div class="dc-desc">Clone = Array.Copy(ObstacleLayer)。ObstacleType 枚举 6 个值已注册。IObstacleSystem 提供三条伤害路径。</div>
+      </div>
+    </div>
+
+    <!-- D2 -->
+    <div class="dc dc-done">
+      <div class="dc-head">
+        <div class="dc-id">D2</div>
+        <div><div class="dc-title">ElimContext + ObstacleRules</div><div class="dc-sub">消除来源语义 + 条件破坏</div></div>
+      </div>
+      <div class="dc-body">
+        <div class="dc-badges"><span class="dbadge dbadge-done">✓ 已完成</span><span class="dbadge dbadge-p">P4</span></div>
+        <div class="dc-impl">readonly struct ElimContext {
+  ElimSource Source;      // Match/Bomb/Projectile/ColorBomb/...
+  ElementType MatchColor; // 颜色匹配专用
+}
+// ObstacleRules.CanHit():
+//   Safe → 仅 Bomb/Projectile/ColorBomb
+//   ColorBox → 仅 Source=Match 且 MatchColor==State</div>
+        <div class="dc-desc">ElimSource 保持简单枚举（7 值），不用 flags。ElimContext 是 readonly struct，向后兼容隐式转换。ObstacleRules 是纯静态方法，无状态。</div>
+      </div>
+    </div>
+
+    <!-- D3 -->
+    <div class="dc dc-done">
+      <div class="dc-head">
+        <div class="dc-id">D3</div>
+        <div><div class="dc-title">旁击三路径</div><div class="dc-sub">直接命中 / 邻接反应 / 全局反应</div></div>
+      </div>
+      <div class="dc-body">
+        <div class="dc-badges"><span class="dbadge dbadge-done">✓ 已完成</span><span class="dbadge dbadge-p">P1 P5 P8</span></div>
+        <div class="dc-impl">interface IObstacleSystem {
+  // ① 直接命中（CellEliminator 调用）
+  ObstacleHitResult TryHit(ref state, pos, ctx, ...);
+  // ② 邻接反应（MatchProcessor 每组消除后调用）
+  void NotifyBatchElimination(ref state, tiles[], ...);
+  // ③ 全局反应（MatchProcessor 每组匹配颜色后调用）
+  void NotifyGlobalColorElimination(ref state, color, ...);
+}</div>
+        <div class="dc-desc">Per-group dedup 防止同一障碍在同一组内被重复旁击。ObstacleRules.CanReactAdjacent() 路由邻接响应。</div>
+      </div>
+    </div>
+
+    <!-- D4 -->
+    <div class="dc dc-done">
+      <div class="dc-head">
+        <div class="dc-id">D4</div>
+        <div><div class="dc-title">死亡效果 + ProtectUntil</div><div class="dc-sub">同 Tick 执行 + 保护窗口</div></div>
+      </div>
+      <div class="dc-body">
+        <div class="dc-badges"><span class="dbadge dbadge-done">✓ 已完成</span><span class="dbadge dbadge-p">P3</span></div>
+        <div class="dc-impl">// Bush Stage=0 时：
+SpreadGround(Grass, 4邻居, ProtectUntil=0.4s)
+// → Ground.ProtectUntil = simTime + 0.4
+// → Emit GroundSpawnedEvent
+
+// Tile 保护：
+struct Tile { float ProtectUntil; }
+// CellEliminator: if (tile.ProtectUntil > simTime) → Blocked
+// CanMatch(): if (ProtectUntil > SimulationTime) → false</div>
+        <div class="dc-desc">同 Tick 内写 GroundLayer / Grid，AI 模拟正确。保护时长各元素独立配置。各功能独立实现保护，积累后再考虑统一。</div>
+      </div>
+    </div>
+
+    <!-- D5 -->
+    <div class="dc dc-skip">
+      <div class="dc-head">
+        <div class="dc-id">D5</div>
+        <div><div class="dc-title">SinkRouter（跳过）</div><div class="dc-sub">Bird 实现时处理</div></div>
+      </div>
+      <div class="dc-body">
+        <div class="dc-badges"><span class="dbadge dbadge-skip">— 延后</span><span class="dbadge dbadge-p">P7</span></div>
+        <div class="dc-impl">// 已就位：
+ElementType.Bird  = 100  // Collectible
+ElementType.Pearl = 101  // Oyster 释放
+ElementType.Plate = 102  // Cupboard 释放
+
+// IsCollectible() 扩展方法已实现
+// Sink 路由待实现</div>
+        <div class="dc-desc">Bird 确认是 Tile 而非 Obstacle（随重力移动、无 Stage）。ElementType 枚举值已就位，到 Bird 实现时在 GravitySystem 加一行路由即可。</div>
+      </div>
+    </div>
+
+    <!-- D6 -->
+    <div class="dc dc-done">
+      <div class="dc-head">
+        <div class="dc-id">D6</div>
+        <div><div class="dc-title">ObstacleVisual + Choreographer</div><div class="dc-sub">Presentation 层全链路</div></div>
+      </div>
+      <div class="dc-body">
+        <div class="dc-badges"><span class="dbadge dbadge-done">✓ 已完成</span><span class="dbadge dbadge-p">P9</span></div>
+        <div class="dc-impl">class ObstacleVisual {
+  Position GridPosition;
+  ObstacleType Type;
+  byte CurrentStage;
+  float DamageProgress;   // 0→1 受击动画
+  float DeathProgress;    // 0→1 销毁动画
+  bool IsDestroying;
+}
+// VisualState.Obstacles: Dict&lt;Position, ObstacleVisual&gt;
+// VisualEffect { EffectType, Position, Duration, Progress }
+
+// ObstacleChoreographer:
+//   ObstacleDamagedEvent → DamageObstacleCommand
+//   ObstacleDestroyedEvent → DestroyObstacleCommand</div>
+        <div class="dc-desc">View 仍是无状态投影。IEventVisitor 新增 3 个 Visit 方法（ObstacleDamaged/Destroyed, GroundSpawned）。Choreographer 按类型配置动画时长。</div>
+      </div>
+    </div>
+
+    <!-- D7 -->
+    <div class="dc dc-done">
+      <div class="dc-head">
+        <div class="dc-id">D7</div>
+        <div><div class="dc-title">全局条件 + Obstacle.State</div><div class="dc-sub">Curtain 全局监听，State 多用途</div></div>
+      </div>
+      <div class="dc-body">
+        <div class="dc-badges"><span class="dbadge dbadge-done">✓ 已完成</span><span class="dbadge dbadge-p">P8</span></div>
+        <div class="dc-impl">// Obstacle.State 用途：
+//   MagicHat → 已旁击次数（0→3 触发生成）
+//   ColorBox → 颜色变体（1-6 对应 ElementType）
+//   Curtain  → 监听颜色（1-6）
+
+// NotifyGlobalColorElimination(color):
+//   遍历 ObstacleLayer 找 Curtain
+//   if (obstacle.State == color) → Stage--</div>
+        <div class="dc-desc">无 ObstacleMeta 数组——Obstacle.State byte 足够覆盖所有当前需求。Curtain 全局监听通过第三条伤害路径实现，不依赖 ObjectiveSystem。</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 映射表 -->
+  <div style="margin-top:2.5rem">
+    <div class="pipe-label" style="margin-bottom:1rem">P → G → D 映射关系</div>
+    <table class="map-table">
+      <thead><tr><th>问题</th><th>目标</th><th>方向</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td><span class="pt pt-done">P1</span> 旁击</td><td><span class="gt">G1</span></td><td><span class="dt dt-done">D3</span></td><td class="status-done">DONE</td></tr>
+        <tr><td><span class="pt pt-done">P2</span> 多层障碍</td><td><span class="gt">G3</span></td><td><span class="dt dt-done">D1</span></td><td class="status-done">DONE</td></tr>
+        <tr><td><span class="pt pt-done">P3</span> 死亡效果</td><td><span class="gt">G4</span></td><td><span class="dt dt-done">D1</span> <span class="dt dt-done">D4</span></td><td class="status-done">DONE</td></tr>
+        <tr><td><span class="pt pt-done">P4</span> 条件破坏</td><td><span class="gt">G2</span></td><td><span class="dt dt-done">D2</span></td><td class="status-done">DONE</td></tr>
+        <tr><td><span class="pt pt-done">P5</span> Honey</td><td><span class="gt">G1</span></td><td><span class="dt dt-done">D3</span></td><td class="status-done">DONE</td></tr>
+        <tr><td><span class="pt pt-done">P6</span> 生成器</td><td><span class="gt">G5</span></td><td><span class="dt dt-done">D1</span></td><td class="status-done">DONE</td></tr>
+        <tr><td><span class="pt pt-open">P7</span> Sink 路由</td><td><span class="gt">G6</span></td><td><span class="dt dt-skip">D5</span></td><td class="status-skip">DEFER</td></tr>
+        <tr><td><span class="pt pt-done">P8</span> Curtain</td><td><span class="gt">G8</span></td><td><span class="dt dt-done">D7</span></td><td class="status-done">DONE</td></tr>
+        <tr><td><span class="pt pt-done">P9</span> View</td><td><span class="gt">G7</span></td><td><span class="dt dt-done">D6</span></td><td class="status-done">DONE</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</section>
+
+<script>
+function show(idx, btn) {
+  document.querySelectorAll('.sec').forEach((s,i) => s.classList.toggle('on', i===idx));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  btn.classList.add('on');
+}
+
+const layers = [
+  {
+    icon:'🏗️', title:'Structure 结构层', color:'#1d4ed8',
+    struct:`enum CellKind : byte {
+  Void = 0, Slot = 1, Wall = 2,
+  Spawner = 3, Sink = 4
+}`,
+    fields:['CellKind[]','Width*Height','静态不变'],
+    note:'Sink 格子在 Bird 实现时需要路由逻辑（D5 延后）。',
+    warn:true
+  },
+  {
+    icon:'🟫', title:'Ground 地面层', color:'#b45309',
+    struct:`struct Ground {
+  GroundType Type;      // None/Ice/Grass/Leaves
+  byte Health;          // 所有类型默认 1
+  float ProtectUntil;   // NEW: 保护窗口
+}`,
+    fields:['Ground[]','GroundType','Health','ProtectUntil'],
+    note:'Grass/Leaves 由 D4 死亡效果写入，ProtectUntil=0.4s 防止同帧被消除。',
+    warn:false
+  },
+  {
+    icon:'💎', title:'Tile 宝石层', color:'#16a34a',
+    struct:`struct Tile {
+  ElementType Type;     // 1-6 颜色 / 10-14 炸弹
+                        // 100-102 收集物(Bird/Pearl/Plate)
+  Vector2 Position;     // 连续坐标（物理）
+  Vector2 Velocity;     // 物理速度
+  TileState State;      // Falling 等标志
+  int Id;               // 唯一标识
+  float ProtectUntil;   // NEW: 保护窗口
+}`,
+    fields:['Tile[]','ElementType','Position','Velocity','TileState','Id','ProtectUntil'],
+    note:'ProtectUntil 用于死亡效果释放的 Tile（Pearl/Plate）。CanMatch() 检查此字段。',
+    warn:false
+  },
+  {
+    icon:'🛡️', title:'Cover 保护层', color:'#7c3aed',
+    struct:`struct Cover {
+  CoverType Type;       // None / ...
+  byte Health;          // 层数
+  bool IsDynamic;       // 随 Tile 移动?
+}`,
+    fields:['Cover[]','CoverType','Health','IsDynamic'],
+    note:'Honey 将作为 CoverType，CoverRules 区分"保护型"和"非保护型"Cover。',
+    warn:true
+  },
+  {
+    icon:'🔒', title:'Lock 锁定层', color:'#475569',
+    struct:`// uint[] — 位掩码 ref-counted
+CellLockType {
+  Swap, Drop, Matching,
+  Receive, Indestructible
+}`,
+    fields:['uint[]','5种锁类型','ref-counted'],
+    note:'Indestructible 提供"完全不可破"。条件性破坏（Safe 仅 PowerUp）由 ObstacleRules 处理。',
+    warn:false
+  },
+  {
+    icon:'🧱', title:'Obstacle 障碍层（NEW · D1）', color:'#dc2626',
+    struct:`struct Obstacle {
+  ObstacleType Type;    // Box/Bush/Safe/ColorBox
+                        // MagicHat/Curtain/None
+  byte Stage;           // 当前阶段（0=空/销毁）
+  byte State;           // 多用途内部状态
+}
+// State 用途：
+//   MagicHat → hitCount
+//   ColorBox → color (1-6)
+//   Curtain  → color (1-6)`,
+    fields:['Obstacle[]','ObstacleType','Stage byte','State byte'],
+    note:'Clone = Array.Copy。IObstacleSystem 提供三条伤害路径：直接命中、邻接反应、全局反应。',
+    warn:false
+  }
+];
+
+function selLayer(idx, el) {
+  document.querySelectorAll('.layer-item').forEach(l => l.classList.remove('sel'));
+  el.classList.add('sel');
+  const d = layers[idx];
+  const det = document.getElementById('layer-detail');
+  det.innerHTML = `
+    <div class="ld-title"><span>${d.icon}</span> ${d.title}</div>
+    <div class="ld-struct">${d.struct}</div>
+    <div class="ld-fields">${d.fields.map(f=>`<span class="ftag">${f}</span>`).join('')}</div>
+    <div class="ld-note${d.warn?' warn':''}">${d.note}</div>`;
+}
+selLayer(0, document.querySelector('.layer-item'));
+</script>
+</body>
+</html>
