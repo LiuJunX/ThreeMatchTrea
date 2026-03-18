@@ -46,16 +46,17 @@ The Match3 Core is the heart of the game engine, designed with a **Slot-Based La
 ## 1. Grid System
 The game board is represented by `GameState`, a **mutable struct** containing parallel 1D arrays for each layer. Indexing: `y * Width + x`.
 
-### The 5-Layer Array Model
-`GameState` holds five parallel arrays — one per layer. This enforces the "One Item Per Layer" rule structurally.
+### The 6-Layer Array Model
+`GameState` holds six parallel arrays — one per layer. This enforces the "One Item Per Layer" rule structurally.
 
 | Layer | Field | Type | Description |
 | :--- | :--- | :--- | :--- |
 | **1. Structure** | `Cells` | `CellKind[]` | Static grid topology (Void, Slot, Wall, Spawner, Sink). |
-| **2. Ground** | `GroundLayer` | `Ground[]` | Floor elements (e.g., Jelly). `Ground` struct: `GroundType` + `Health`. |
-| **3. Tile** | `Grid` | `Tile[]` | Movable content (colors, bombs). `Tile` struct: `ElementType` + `Position` + `Velocity` + `State`. |
-| **4. Cover** | `CoverLayer` | `Cover[]` | Obstacles above tiles (e.g., Ice). `Cover` struct: `CoverType` + `Health` + `IsDynamic`. |
-| **5. Lock** | `CellLocks` | `uint[]` | Ref-counted per-cell locks (choreography synchronization). |
+| **2. Ground** | `GroundLayer` | `Ground[]` | Floor elements (Ice, Grass, Leaves). `Ground` struct: `GroundType` + `Health` + `ProtectUntil`. |
+| **3. Tile** | `Grid` | `Tile[]` | Movable content (colors, bombs, collectibles). `Tile` struct: `ElementType` + `Position` + `Velocity` + `State` + `ProtectUntil`. |
+| **4. Cover** | `CoverLayer` | `Cover[]` | Protective overlays (e.g., Chain, Bubble). `Cover` struct: `CoverType` + `Health` + `IsDynamic`. |
+| **5. Obstacle** | `ObstacleLayer` | `Obstacle[]` | Multi-stage blockers (Box, Bush, Safe, etc.). `Obstacle` struct: `ObstacleType` + `Stage` + `State`. Separate from Cover — obstacles are primary cell content, not protective overlays. |
+| **6. Lock** | `CellLocks` | `uint[]` | Ref-counted per-cell locks (choreography synchronization). |
 
 ### Coordinate System
 - **`Position`**: Grid coordinate struct `(int X, int Y)` for discrete grid positions.
@@ -72,15 +73,16 @@ Unified identity for all movable content — colors and bombs share one type fie
 | :--- | :--- | :--- |
 | Colors | `Item1`–`Item6` (1–6) | Matchable color tiles |
 | Bombs | `HorizontalRocket`(10), `VerticalRocket`(11), `ColorBomb`(12), `Ufo`(13), `Square5x5`(14) | Power-ups |
-| Special | `Unmatchable`(200) | Stone blocks |
+| Collectibles | `Bird`(100), `Pearl`(101), `Plate`(102) | Sink-bound collectibles (not matchable) |
+| Blockers | `Unmatchable`(200) | Stone blocks |
 
-Extension methods: `IsColor()`, `IsBomb()`, `IsRocket()`, `IsColorBomb()`, `IsUfo()`, `IsMatchable()`.
+Extension methods: `IsColor()`, `IsBomb()`, `IsRocket()`, `IsColorBomb()`, `IsUfo()`, `IsMatchable()`, `IsCollectible()`.
 
 ### CellKind (byte enum)
 Static structural role per grid slot: `Void`, `Slot`, `Wall`, `Spawner`, `Sink`.
 
 ### Tile (struct)
-The main movable element: `Id`, `Type` (ElementType), `Position` (Vector2), `Velocity` (Vector2), `State` (TileState flags).
+The main movable element: `Id`, `Type` (ElementType), `Position` (Vector2), `Velocity` (Vector2), `State` (TileState flags), `ProtectUntil` (float, spawn protection window).
 
 ## 3. Core Systems (Planned & Implemented)
 - **MatchFinder**: Scans `Unit` layer for matches based on `IMatchable`.
@@ -103,6 +105,9 @@ All state changes produce `GameEvent` records for presentation layer consumption
 | `ProjectileImpactEvent` | Projectile hit target |
 | `BombActivatedEvent` | Bomb explosion triggered |
 | `ScoreAddedEvent` | Score changed |
+| `ObstacleDamagedEvent` | Obstacle hit, stage reduced |
+| `ObstacleDestroyedEvent` | Obstacle fully destroyed (stage=0) |
+| `GroundSpawnedEvent` | Ground created by death effect (e.g., Bush→Grass) |
 
 ### Event Visitor Pattern
 Events use the **Visitor Pattern** for type-safe dispatch, enforcing compile-time exhaustive handling.
@@ -243,7 +248,7 @@ public interface IAIService
 - Board health indicators
 
 ## 8. Key Design Decisions
-- **Struct-of-Arrays (SoA)**: `GameState` uses parallel arrays of value types (`Tile[]`, `Cover[]`, `Ground[]`) for cache-friendly, GC-free simulation. Systems operate on these arrays by index.
+- **Struct-of-Arrays (SoA)**: `GameState` uses 6 parallel arrays of value types (`Tile[]`, `Cover[]`, `Ground[]`, `Obstacle[]`, `CellKind[]`, `uint[]`) for cache-friendly, GC-free simulation. Systems operate on these arrays by index.
 - **Unified Damage**: Clearing a block, breaking ice, or spreading jelly are all treated as `TakeDamage` events.
 - **Event Sourcing**: All state changes produce events, enabling replay, AI analysis, and decoupled presentation.
 - **Tick-Based Simulation**: Fixed time step (16ms default) enables deterministic simulation and time-based animations.

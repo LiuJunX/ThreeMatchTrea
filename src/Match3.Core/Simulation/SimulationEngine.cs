@@ -7,6 +7,7 @@ using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Objectives;
+using Match3.Core.Systems.Obstacles;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.PowerUps.ColorBomb;
@@ -526,8 +527,10 @@ public sealed class SimulationEngine : IDisposable
         var cloneConfig = _config.Clone();
         var clonePhysics = _physics.CloneForSimulation(cloneRandom);
 
+        // ObstacleSystem is stateless — create once, share with cloned CellEliminator
+        var cloneObstacleSystem = new ObstacleSystem(_objectiveSystem);
         var cloneContext = new SimulationContext(
-            new CellEliminator(new CoverSystem(_objectiveSystem), new GroundSystem(_objectiveSystem), _objectiveSystem),
+            new CellEliminator(new CoverSystem(_objectiveSystem), new GroundSystem(_objectiveSystem), _objectiveSystem, cloneObstacleSystem),
             BombEffectRegistry.CreateDefault(),
             _lockScheduler.Clone());
         var cloneExplosion = new ExplosionSystem(cloneContext);

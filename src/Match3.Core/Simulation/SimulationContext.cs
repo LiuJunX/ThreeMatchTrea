@@ -2,6 +2,7 @@ using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.Objectives;
+using Match3.Core.Systems.Obstacles;
 using Match3.Core.Systems.PowerUps;
 
 namespace Match3.Core.Simulation;
@@ -32,13 +33,16 @@ public sealed class SimulationContext
     /// Creates a coherent clone for parallel simulation.
     /// CoverSystem/GroundSystem/CellEliminator are new instances;
     /// LockScheduler is cloned; BombEffectRegistry is stateless and shared.
+    /// ObstacleSystem is stateless and safe to share across clones.
     /// </summary>
-    public SimulationContext Clone(ILevelObjectiveSystem? objectiveSystem = null)
+    public SimulationContext Clone(
+        ILevelObjectiveSystem? objectiveSystem = null,
+        IObstacleSystem? obstacleSystem = null)
     {
         var clonedLocks = LockScheduler.Clone();
         var cover = new CoverSystem(objectiveSystem);
         var ground = new GroundSystem(objectiveSystem);
-        var clonedElim = new CellEliminator(cover, ground, objectiveSystem);
+        var clonedElim = new CellEliminator(cover, ground, objectiveSystem, obstacleSystem);
         return new SimulationContext(clonedElim, BombEffectRegistry, clonedLocks);
     }
 }
