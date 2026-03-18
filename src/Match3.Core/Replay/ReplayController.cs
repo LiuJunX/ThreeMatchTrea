@@ -101,6 +101,29 @@ public sealed class ReplayController : IDisposable
     }
 
     /// <summary>
+    /// Moves a bookmark from one tick to another (single BookmarksChanged event).
+    /// </summary>
+    public void MoveBookmark(int oldTick, int newTick)
+    {
+        int nearIndex = FindNearestBookmarkIndex(oldTick, BookmarkSnapThreshold);
+        if (nearIndex >= 0)
+        {
+            _bookmarkSet.Remove(_bookmarks[nearIndex]);
+            _bookmarks.RemoveAt(nearIndex);
+        }
+
+        if (!_bookmarkSet.Contains(newTick))
+        {
+            int insertIndex = _bookmarks.BinarySearch(newTick);
+            if (insertIndex < 0) insertIndex = ~insertIndex;
+            _bookmarks.Insert(insertIndex, newTick);
+            _bookmarkSet.Add(newTick);
+        }
+
+        BookmarksChanged?.Invoke();
+    }
+
+    /// <summary>
     /// Removes the bookmark nearest to the specified tick within the snap threshold.
     /// Returns true if a bookmark was removed.
     /// </summary>

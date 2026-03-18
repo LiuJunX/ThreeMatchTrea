@@ -31,12 +31,18 @@ namespace Match3.Unity.UI
         private Button _exitButton;
         private Button _restartButton;
         private Button _bookmarkButton;
+        private BookmarkMarkerHandle _selectedMarker;
+
+        /// <summary>Tick of the currently selected bookmark, or -1 if none.</summary>
+        public int SelectedBookmarkTick => _selectedMarker != null ? _selectedMarker.BookmarkTick : -1;
 
         public event Action<float> OnSpeedChanged;
         public event Action OnPauseToggled;
         public event Action OnExitClicked;
         public event Action OnRestartClicked;
         public event Action OnBookmarkToggled;
+        /// <summary>Fired when a bookmark marker is dragged to a new position (oldTick, newTick).</summary>
+        public event Action<int, int> OnBookmarkMoved;
 
         public void Initialize()
         {
@@ -217,11 +223,13 @@ namespace Match3.Unity.UI
         }
 
         /// <summary>
-        /// Place bookmark markers on the progress bar.
+        /// Place draggable bookmark markers on the progress bar.
+        /// Each marker has a wide transparent hit area (16px) with a thin yellow visual line (3px).
         /// </summary>
         public void SetBookmarks(IReadOnlyList<int> bookmarkTicks, int totalTicks)
         {
-            // Clear old markers
+            // Clear selection and old markers
+            _selectedMarker = null;
             for (int i = 0; i < _bookmarkMarkers.Count; i++)
                 Destroy(_bookmarkMarkers[i]);
             _bookmarkMarkers.Clear();
@@ -232,18 +240,67 @@ namespace Match3.Unity.UI
             {
                 float t = (float)bookmarkTicks[i] / totalTicks;
 
+                // Hit area (wide, transparent)
                 var marker = new GameObject($"Bookmark_{i}");
                 var rect = marker.AddComponent<RectTransform>();
                 rect.SetParent(_progressBgRect, false);
                 rect.anchorMin = new Vector2(t, 0);
                 rect.anchorMax = new Vector2(t, 1);
                 rect.pivot = new Vector2(0.5f, 0.5f);
-                rect.sizeDelta = new Vector2(3f, 0); // 3px wide vertical line
+                rect.sizeDelta = new Vector2(16f, 0); // wide hit area for dragging
 
-                var img = marker.AddComponent<Image>();
-                img.color = new Color(1f, 0.85f, 0.2f, 1f); // yellow marker
+                var hitImg = marker.AddComponent<Image>();
+                hitImg.color = Color.clear; // invisible hit area
+
+                // Visual line (thin yellow, child)
+                var visual = new GameObject("Visual");
+                var vRect = visual.AddComponent<RectTransform>();
+                vRect.SetParent(rect, false);
+                vRect.anchorMin = new Vector2(0.5f, 0);
+                vRect.anchorMax = new Vector2(0.5f, 1);
+                vRect.pivot = new Vector2(0.5f, 0.5f);
+                vRect.sizeDelta = new Vector2(3f, 0); // 3px visible line
+
+                var vImg = visual.AddComponent<Image>();
+                vImg.color = new Color(1f, 0.85f, 0.2f, 1f); // yellow
+                vImg.raycastTarget = false;
+
+                // Drag + click handle
+                var handle = marker.AddComponent<BookmarkMarkerHandle>();
+                handle.Initialize(bookmarkTicks[i], totalTicks, _progressBgRect,
+                    (oldTick, newTick) => OnBookmarkMoved?.Invoke(oldTick, newTick),
+                    OnMarkerClicked);
 
                 _bookmarkMarkers.Add(marker);
+            }
+        }
+
+        private void OnMarkerClicked(BookmarkMarkerHandle handle)
+        {
+            if (_selectedMarker == handle)
+            {
+                // Deselect
+                _selectedMarker.Selected = false;
+                _selectedMarker = null;
+            }
+            else
+            {
+                // Deselect previous
+                if (_selectedMarker != null)
+                    _selectedMarker.Selected = false;
+                // Select new
+                _selectedMarker = handle;
+                _selectedMarker.Selected = true;
+            }
+        }
+
+        /// <summary>Clear the current bookmark selection (e.g. after deletion or rebuild).</summary>
+        public void ClearBookmarkSelection()
+        {
+            if (_selectedMarker != null)
+            {
+                _selectedMarker.Selected = false;
+                _selectedMarker = null;
             }
         }
 

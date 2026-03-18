@@ -50,6 +50,7 @@ namespace Match3.Unity.Bridge
         // Recording (always-on during gameplay)
         private GameRecorder _recorder;
         private LevelConfig _levelConfig;
+        private string _bookmarkSnapshotPath; // same session overwrites same file
 
         // Replay mode
         private ReplayController _replayController;
@@ -93,7 +94,7 @@ namespace Match3.Unity.Bridge
                 var layout = new bool[state.Height, state.Width];
                 for (int y = 0; y < state.Height; y++)
                     for (int x = 0; x < state.Width; x++)
-                        layout[y, x] = state.Grid[y * state.Width + x].Type != Core.Models.Enums.ElementType.None;
+                        layout[y, x] = state.Cells[y * state.Width + x] == Core.Models.Enums.CellKind.Slot;
                 return layout;
             }
         }
@@ -305,6 +306,7 @@ namespace Match3.Unity.Bridge
             // Start recording
             _recorder = new GameRecorder(in state, seed,
                 config.TileTypesCount, _levelConfig);
+            _bookmarkSnapshotPath = null;
 
             Debug.Log($"Match3Bridge initialized: {_width}x{_height}, seed={seed}, level={levelId}");
         }
@@ -384,6 +386,7 @@ namespace Match3.Unity.Bridge
             // Start recording
             _recorder = new GameRecorder(in state, seed,
                 config.TileTypesCount, _levelConfig);
+            _bookmarkSnapshotPath = null;
 
             Debug.Log($"Match3Bridge initialized: {width}x{height}, seed={seed}");
         }
@@ -472,8 +475,12 @@ namespace Match3.Unity.Bridge
                 buffered.DrainEventsTo(_eventBuffer);
             }
 
-            // Animation speed must match replay speed so events don't pile up
-            var effectiveDelta = deltaTime * _replayController.PlaybackSpeed;
+            // Animation speed must match replay speed so events don't pile up.
+            // Use 0 when not actively playing so animations freeze on pause.
+            bool isPlaying = _replayController.State == ReplayState.Playing;
+            var effectiveDelta = isPlaying
+                ? deltaTime * _replayController.PlaybackSpeed
+                : 0f;
             ProcessEventsAndAnimate(effectiveDelta, _replayController.Engine?.State ?? default);
 
             // Update UI (score, moves, objectives) during replay
@@ -1003,8 +1010,8 @@ namespace Match3.Unity.Bridge
         }
 
         /// <summary>
-        /// Adds a bookmark at the current tick.
-        /// Press during gameplay to mark a point for later investigation.
+        /// Adds a bookmark at the current tick and auto-saves a recording snapshot.
+        /// Same session always overwrites the same file.
         /// </summary>
         public void AddBookmark()
         {
@@ -1012,7 +1019,26 @@ namespace Match3.Unity.Bridge
 
             var tick = _session.Engine.CurrentTick;
             _recorder.AddBookmark(tick);
-            Debug.Log($"[Bookmark] Added at tick {tick} (move #{_session.Engine.State.MoveCount})");
+
+            // Auto-save snapshot
+            var state = _session.Engine.State;
+            var snapshot = _recorder.Snapshot(
+                _session.Engine.CurrentTick,
+                state.Score,
+                state.MoveCount);
+
+            if (_bookmarkSnapshotPath != null)
+            {
+                // Overwrite same file for this session
+                File.WriteAllText(_bookmarkSnapshotPath, GameRecordingSerializer.ToJson(snapshot));
+            }
+            else
+            {
+                // First bookmark in this session: save to ring buffer
+                _bookmarkSnapshotPath = SaveToRingBuffer(snapshot);
+            }
+
+            Debug.Log($"[Bookmark] Added at tick {tick} (move #{state.MoveCount}), saved to {Path.GetFileName(_bookmarkSnapshotPath)}");
         }
 
         /// <summary>
@@ -1029,6 +1055,30 @@ namespace Match3.Unity.Bridge
             var dir = RecordingBasePath;
             if (!Directory.Exists(dir)) return Array.Empty<string>();
             return Directory.GetFiles(dir, "*.json", SearchOption.TopDirectoryOnly);
+        }
+
+        /// <summary>
+        /// Overwrites the most recent recording file with updated data (e.g. bookmarks changed during replay).
+        /// </summary>
+        public static void OverwriteLatestRecording(GameRecording recording)
+        {
+            if (recording == null) return;
+
+            var dir = RecordingBasePath;
+            if (!Directory.Exists(dir)) return;
+
+            var indexPath = Path.Combine(dir, "index.txt");
+            int nextSlot = 0;
+            if (File.Exists(indexPath))
+                int.TryParse(File.ReadAllText(indexPath).Trim(), out nextSlot);
+
+            int latestSlot = (nextSlot - 1 + RingBufferSize) % RingBufferSize;
+            var latestPath = Path.Combine(dir, $"recording_{latestSlot}.json");
+
+            if (!File.Exists(latestPath)) return;
+
+            File.WriteAllText(latestPath, GameRecordingSerializer.ToJson(recording));
+            Debug.Log($"[Recording] Updated bookmarks in {Path.GetFileName(latestPath)}");
         }
 
         /// <summary>

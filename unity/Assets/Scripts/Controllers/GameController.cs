@@ -53,6 +53,7 @@ namespace Match3.Unity.Controllers
         private Action _onReplayExitHandler;
         private Action _onReplayRestartHandler;
         private Action _onReplayBookmarkToggledHandler;
+        private Action<int, int> _onReplayBookmarkMovedHandler;
 
         // Current replay recording (for restart support)
         private GameRecording _currentReplayRecording;
@@ -245,12 +246,14 @@ namespace Match3.Unity.Controllers
                 _onReplayExitHandler = ExitReplay;
                 _onReplayRestartHandler = RestartReplay;
                 _onReplayBookmarkToggledHandler = ToggleReplayBookmark;
+                _onReplayBookmarkMovedHandler = MoveReplayBookmark;
 
                 replayPanel.OnSpeedChanged += _onReplaySpeedChangedHandler;
                 replayPanel.OnPauseToggled += _onReplayPauseToggledHandler;
                 replayPanel.OnExitClicked += _onReplayExitHandler;
                 replayPanel.OnRestartClicked += _onReplayRestartHandler;
                 replayPanel.OnBookmarkToggled += _onReplayBookmarkToggledHandler;
+                replayPanel.OnBookmarkMoved += _onReplayBookmarkMovedHandler;
             }
         }
 
@@ -514,9 +517,9 @@ namespace Match3.Unity.Controllers
             if (Input.GetKeyDown(KeyCode.F5))
                 ToggleReplayBookmark();
 
-            // Delete: remove nearest bookmark
+            // Delete: remove selected bookmark
             if (Input.GetKeyDown(KeyCode.Delete))
-                ctrl.RemoveBookmarkNear(ctrl.CurrentTick);
+                DeleteSelectedBookmark();
 
             // Left/Right arrows: adjust speed
             if (Input.GetKeyDown(KeyCode.RightArrow))
@@ -653,11 +656,51 @@ namespace Match3.Unity.Controllers
                 : $"[Replay] Bookmark removed near tick {ctrl.CurrentTick}");
         }
 
+        private void MoveReplayBookmark(int oldTick, int newTick)
+        {
+            var ctrl = _bridge.ReplayCtrl;
+            if (ctrl == null) return;
+
+            ctrl.MoveBookmark(oldTick, newTick);
+            Debug.Log($"[Replay] Bookmark moved: tick {oldTick} → {newTick}");
+        }
+
+        private void DeleteSelectedBookmark()
+        {
+            var replayPanel = _uiManager?.ReplayPanel;
+            if (replayPanel == null) return;
+
+            int tick = replayPanel.SelectedBookmarkTick;
+            if (tick < 0) return;
+
+            var ctrl = _bridge.ReplayCtrl;
+            if (ctrl == null) return;
+
+            replayPanel.ClearBookmarkSelection();
+            ctrl.RemoveBookmarkNear(tick);
+            Debug.Log($"[Replay] Bookmark deleted at tick {tick}");
+        }
+
         private void RefreshReplayBookmarkMarkers()
         {
             var ctrl = _bridge.ReplayCtrl;
             if (ctrl == null) return;
             _uiManager?.ReplayPanel?.SetBookmarks(ctrl.Bookmarks, ctrl.TotalTicks);
+
+            // Persist updated bookmarks to disk
+            PersistBookmarks(ctrl);
+        }
+
+        private void PersistBookmarks(ReplayController ctrl)
+        {
+            if (_currentReplayRecording == null || ctrl == null) return;
+
+            var updatedBookmarks = new int[ctrl.Bookmarks.Count];
+            for (int i = 0; i < ctrl.Bookmarks.Count; i++)
+                updatedBookmarks[i] = ctrl.Bookmarks[i];
+
+            _currentReplayRecording = _currentReplayRecording with { Bookmarks = updatedBookmarks };
+            Match3Bridge.OverwriteLatestRecording(_currentReplayRecording);
         }
 
         private void OnBookmarkHit(int tick)
@@ -803,6 +846,7 @@ namespace Match3.Unity.Controllers
                     replayPanel.OnExitClicked -= _onReplayExitHandler;
                     replayPanel.OnRestartClicked -= _onReplayRestartHandler;
                     replayPanel.OnBookmarkToggled -= _onReplayBookmarkToggledHandler;
+                    replayPanel.OnBookmarkMoved -= _onReplayBookmarkMovedHandler;
                 }
 
                 Destroy(_uiManager.gameObject);

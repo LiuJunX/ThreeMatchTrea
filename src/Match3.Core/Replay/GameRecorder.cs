@@ -70,6 +70,24 @@ public sealed class GameRecorder : IDisposable
     }
 
     /// <summary>
+    /// Creates a snapshot of the current recording without stopping it.
+    /// The recorder continues to accumulate commands and bookmarks after this call.
+    /// </summary>
+    public GameRecording Snapshot(int durationTicks, int currentScore, int currentMoves)
+    {
+        return GameRecording.Create(
+            _initialState,
+            _seed,
+            _history.GetCommands(),
+            durationTicks,
+            currentScore,
+            currentMoves,
+            _bookmarks.ToArray(),
+            _tileTypesCount,
+            _levelConfig);
+    }
+
+    /// <summary>
     /// Completes the recording and returns a <see cref="GameRecording"/>.
     /// Stops further recording.
     /// </summary>
