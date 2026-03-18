@@ -35,7 +35,22 @@ public class GroundSystem : IGroundSystem
         // Damage the ground
         ground.Health--;
 
-        if (ground.Health <= 0)
+        if (ground.Health > 0)
+        {
+            // Damaged but not destroyed — emit damage event for view feedback
+            if (events.IsEnabled)
+            {
+                events.Emit(new GroundDamagedEvent
+                {
+                    Tick = tick,
+                    SimulationTime = simTime,
+                    GridPosition = position,
+                    Type = ground.Type,
+                    RemainingHealth = ground.Health
+                });
+            }
+        }
+        else
         {
             // Ground is destroyed
             var destroyedType = ground.Type;

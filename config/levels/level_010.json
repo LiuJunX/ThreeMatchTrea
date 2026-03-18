@@ -1,0 +1,45 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_010",
+  "name": "Box & Grass",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 25,
+  "targetDifficulty": 0.5,
+  "objectives": [
+    { "targetLayer": "Obstacle", "elementType": 1, "targetCount": 8 },
+    { "targetLayer": "Ground", "elementType": 2, "targetCount": 12 }
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","Box", "None","None","Box", "None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","Box", "None","None","None","None","Box", "None",
+    "None","Box", "None","None","None","None","Box", "None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","Box", "None","None","Box", "None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": "AAAAAAAAAAAAAAIAAAIAAAAAAAAAAAAAAAEAAAAAAQAAAQAAAAABAAAAAAAAAAAAAAACAAACAAAAAAAAAAAAAA==",
+  "grounds": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","Grass","Grass","None","None","None",
+    "None","None","Grass","Grass","Grass","Grass","None","None",
+    "None","None","Grass","Grass","Grass","Grass","None","None",
+    "None","None","Grass","Grass","Grass","Grass","None","None",
+    "None","None","Grass","Grass","Grass","Grass","None","None",
+    "None","None","None","Grass","Grass","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "groundHealths": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,1,1,0,0,0,
+    0,0,1,1,1,1,0,0,
+    0,0,1,2,2,1,0,0,
+    0,0,1,2,2,1,0,0,
+    0,0,1,1,1,1,0,0,
+    0,0,0,1,1,0,0,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "notes": "Mixed mechanics: 8 Boxes (corners HP=2, sides HP=1) guard a Grass diamond (outer HP=1, center 4 HP=2). Clear both to win."
+}

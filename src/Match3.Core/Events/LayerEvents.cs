@@ -23,6 +23,25 @@ public sealed record GroundSpawnedEvent : GameEvent
 }
 
 /// <summary>
+/// Event emitted when a ground element takes damage but survives (health > 0 after hit).
+/// Used by presentation layer to animate damage feedback (e.g., Grass crack/color change).
+/// </summary>
+public sealed record GroundDamagedEvent : GameEvent
+{
+    /// <summary>Grid position where ground was damaged.</summary>
+    public Position GridPosition { get; init; }
+
+    /// <summary>Type of the damaged ground.</summary>
+    public GroundType Type { get; init; }
+
+    /// <summary>Remaining health after damage.</summary>
+    public byte RemainingHealth { get; init; }
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
+}
+
+/// <summary>
 /// Event emitted when a cover element is destroyed.
 /// </summary>
 public sealed record CoverDestroyedEvent : GameEvent

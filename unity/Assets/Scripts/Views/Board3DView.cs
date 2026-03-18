@@ -5,6 +5,7 @@ using Match3.Presentation;
 using Match3.Unity.Bridge;
 using Match3.Unity.Pools;
 using Match3.Unity.Services;
+using Match3.Unity.Views.Grounds;
 using Match3.Unity.Views.Obstacles;
 using UnityEngine;
 
@@ -19,17 +20,21 @@ namespace Match3.Unity.Views
         private ObjectPool<Tile3DView> _tilePool;
         private ObjectPool<Projectile3DView> _projectilePool;
         private ObjectPool<ObstacleView> _obstaclePool;
+        private ObjectPool<GroundView> _groundPool;
         private readonly Dictionary<int, Tile3DView> _activeTiles = new();
         private readonly Dictionary<int, Projectile3DView> _activeProjectiles = new();
         private readonly Dictionary<Position, ObstacleView> _activeObstacles = new();
+        private readonly Dictionary<Position, GroundView> _activeGrounds = new();
 
         // Pre-allocated collections to avoid GC in hot path
         private readonly HashSet<int> _activeTileIds = new();
         private readonly HashSet<int> _activeProjectileIds = new();
         private readonly HashSet<Position> _activeObstaclePositions = new();
+        private readonly HashSet<Position> _activeGroundPositions = new();
         private readonly List<int> _tilesToRemove = new();
         private readonly List<int> _projectilesToRemove = new();
         private readonly List<Position> _obstaclesToRemove = new();
+        private readonly List<Position> _groundsToRemove = new();
 
         private Match3Bridge _bridge;
         private Transform _tileContainer;
@@ -122,6 +127,17 @@ namespace Match3.Unity.Views
                     parent: obstacleContainer,
                     initialSize: obsInitial,
                     maxSize: obsMax
+                );
+
+                var groundContainer = new GameObject("GroundContainer3D").transform;
+                groundContainer.SetParent(transform, false);
+
+                var (gndInitial, gndMax) = GetPoolSize("grounds", 16, 64);
+                _groundPool = new ObjectPool<GroundView>(
+                    factory: () => CreateGroundView(groundContainer),
+                    parent: groundContainer,
+                    initialSize: gndInitial,
+                    maxSize: gndMax
                 );
 
                 _viewInitialized = true;
@@ -399,6 +415,9 @@ namespace Match3.Unity.Views
             // Portal visual effects for tiles falling through holes
             UpdatePortalEffects(cellSize, origin, height);
 
+            // Render grounds (below obstacles and tiles)
+            RenderGrounds(state, cellSize, origin, height, dt);
+
             // Render obstacles
             RenderObstacles(state, cellSize, origin, height, dt);
 
@@ -491,6 +510,54 @@ namespace Match3.Unity.Views
                     _activeObstacles.Remove(pos);
                 }
             }
+        }
+
+        private void RenderGrounds(VisualState state, float cellSize, Vector2 origin, int height, float dt)
+        {
+            _activeGroundPositions.Clear();
+            _groundsToRemove.Clear();
+
+            foreach (var kvp in state.Grounds)
+            {
+                var pos = kvp.Key;
+                var visual = kvp.Value;
+                if (!visual.IsVisible) continue;
+
+                _activeGroundPositions.Add(pos);
+
+                if (!_activeGrounds.TryGetValue(pos, out var groundView))
+                {
+                    groundView = _groundPool.Rent();
+                    groundView.Setup(pos, visual.Type, visual.CurrentHealth);
+                    _activeGrounds[pos] = groundView;
+                }
+
+                groundView.UpdateFromVisual(visual, cellSize, origin, height, dt);
+            }
+
+            foreach (var kvp in _activeGrounds)
+            {
+                if (!_activeGroundPositions.Contains(kvp.Key))
+                    _groundsToRemove.Add(kvp.Key);
+            }
+
+            foreach (var pos in _groundsToRemove)
+            {
+                if (_activeGrounds.TryGetValue(pos, out var view))
+                {
+                    _groundPool.Return(view);
+                    _activeGrounds.Remove(pos);
+                }
+            }
+        }
+
+        private static GroundView CreateGroundView(Transform parent)
+        {
+            var go = new GameObject("Ground3D");
+            go.transform.SetParent(parent, false);
+            go.AddComponent<MeshFilter>();
+            go.AddComponent<MeshRenderer>();
+            return go.AddComponent<GroundView>();
         }
 
         private static ObstacleView CreateObstacleView(Transform parent)
@@ -588,6 +655,12 @@ namespace Match3.Unity.Views
                 _obstaclePool.Return(kvp.Value);
             }
             _activeObstacles.Clear();
+
+            foreach (var kvp in _activeGrounds)
+            {
+                _groundPool.Return(kvp.Value);
+            }
+            _activeGrounds.Clear();
 
             foreach (var kvp in _activeProjectiles)
             {
@@ -728,6 +801,7 @@ namespace Match3.Unity.Views
             Clear();
             _tilePool?.Clear();
             _obstaclePool?.Clear();
+            _groundPool?.Clear();
             _projectilePool?.Clear();
 
             // Lighting controller cleans up its own lights via its own OnDestroy

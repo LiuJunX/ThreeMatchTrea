@@ -26,7 +26,7 @@ namespace Match3.Core.Choreography;
 ///     (internal helper, not directly routed)
 ///
 ///   SurfaceChoreographer:
-///     CoverDestroyedEvent, GroundDestroyedEvent, GroundSpawnedEvent
+///     CoverDestroyedEvent, GroundDamagedEvent, GroundDestroyedEvent, GroundSpawnedEvent
 ///
 ///   ObstacleChoreographer:
 ///     ObstacleDamagedEvent, ObstacleDestroyedEvent
@@ -180,6 +180,9 @@ public sealed class Choreographer : IEventVisitor
 
     /// <inheritdoc />
     public void Visit(CoverDestroyedEvent evt) => _surface.Visit(evt);
+
+    /// <inheritdoc />
+    public void Visit(GroundDamagedEvent evt) => _surface.Visit(evt);
 
     /// <inheritdoc />
     public void Visit(GroundDestroyedEvent evt) => _surface.Visit(evt);

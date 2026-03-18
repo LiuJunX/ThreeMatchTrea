@@ -86,7 +86,9 @@ public class GroundSystemTests
         // Assert
         Assert.Equal(GroundType.Ice, state.GetGround(pos).Type); // Still exists
         Assert.Equal(2, state.GetGround(pos).Health);
-        Assert.Empty(events.GetEvents()); // No destroy event yet
+        Assert.Single(events.GetEvents()); // GroundDamagedEvent emitted
+        var evt = Assert.IsType<GroundDamagedEvent>(events.GetEvents()[0]);
+        Assert.Equal(2, evt.RemainingHealth);
     }
 
     [Fact]
@@ -98,15 +100,16 @@ public class GroundSystemTests
         state.SetGround(pos, new Ground(GroundType.Ice, health: 2));
         var events = new BufferedEventCollector();
 
-        // Act - First hit
+        // Act - First hit (damage)
         _groundSystem.OnTileDestroyed(ref state, pos, tick: 1, simTime: 0.1f, events);
-        // Act - Second hit
+        // Act - Second hit (destroy)
         _groundSystem.OnTileDestroyed(ref state, pos, tick: 2, simTime: 0.2f, events);
 
         // Assert
         Assert.Equal(GroundType.None, state.GetGround(pos).Type);
-        Assert.Single(events.GetEvents());
-        var evt = Assert.IsType<GroundDestroyedEvent>(events.GetEvents()[0]);
+        Assert.Equal(2, events.GetEvents().Count); // GroundDamagedEvent + GroundDestroyedEvent
+        Assert.IsType<GroundDamagedEvent>(events.GetEvents()[0]);
+        var evt = Assert.IsType<GroundDestroyedEvent>(events.GetEvents()[1]);
         Assert.Equal(pos, evt.GridPosition);
         Assert.Equal(GroundType.Ice, evt.Type);
     }
@@ -293,17 +296,19 @@ public class GroundSystemTests
         // Act - First hit
         _groundSystem.OnTileDestroyed(ref state, pos, tick: 1, simTime: 0.1f, events);
 
-        // Assert - Still exists
+        // Assert - Still exists, damaged
         Assert.Equal(GroundType.Ice, state.GetGround(pos).Type);
         Assert.Equal(1, state.GetGround(pos).Health);
-        Assert.Empty(events.GetEvents());
+        Assert.Single(events.GetEvents());
+        Assert.IsType<GroundDamagedEvent>(events.GetEvents()[0]);
 
         // Act - Second hit
         _groundSystem.OnTileDestroyed(ref state, pos, tick: 2, simTime: 0.2f, events);
 
         // Assert - Destroyed
         Assert.Equal(GroundType.None, state.GetGround(pos).Type);
-        Assert.Single(events.GetEvents());
+        Assert.Equal(2, events.GetEvents().Count);
+        Assert.IsType<GroundDestroyedEvent>(events.GetEvents()[1]);
     }
 
     [Fact]
@@ -328,8 +333,8 @@ public class GroundSystemTests
         // Act & Assert - Third hit
         _groundSystem.OnTileDestroyed(ref state, pos, tick: 3, simTime: 0.3f, events);
         Assert.Equal(GroundType.None, state.GetGround(pos).Type);
-        Assert.Single(events.GetEvents());
-        var evt = Assert.IsType<GroundDestroyedEvent>(events.GetEvents()[0]);
+        Assert.Equal(3, events.GetEvents().Count); // 2 damage + 1 destroy
+        var evt = Assert.IsType<GroundDestroyedEvent>(events.GetEvents()[2]);
         Assert.Equal(GroundType.Ice, evt.Type);
     }
 
@@ -353,7 +358,9 @@ public class GroundSystemTests
 
         // Assert - Destroyed after exactly hp hits
         Assert.Equal(GroundType.None, state.GetGround(pos).Type);
-        Assert.Single(events.GetEvents());
+        // hp events total: (hp-1) damage events + 1 destroy event
+        Assert.Equal(hp, events.GetEvents().Count);
+        Assert.IsType<GroundDestroyedEvent>(events.GetEvents()[hp - 1]);
     }
 
     [Fact]
@@ -415,7 +422,7 @@ public class GroundSystemTests
 
         // Assert
         Assert.Equal(GroundType.None, state.GetGround(pos).Type);
-        Assert.Single(events.GetEvents()); // Only one destroy event
+        Assert.Equal(3, events.GetEvents().Count); // 2 damage + 1 destroy event
     }
 
     #endregion

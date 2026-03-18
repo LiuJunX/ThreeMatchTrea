@@ -15,6 +15,7 @@ public sealed class VisualState : IVisualState
     private readonly Dictionary<int, TileVisual> _tiles = new();
     private readonly Dictionary<int, ProjectileVisual> _projectiles = new();
     private readonly Dictionary<Position, ObstacleVisual> _obstacles = new();
+    private readonly Dictionary<Position, GroundVisual> _grounds = new();
     private readonly List<VisualEffect> _effects = new();
     private readonly HashSet<int> _aliveTileIds = new();
     private readonly List<int> _tilesToRemove = new();
@@ -33,6 +34,11 @@ public sealed class VisualState : IVisualState
     /// All obstacle visuals indexed by grid position.
     /// </summary>
     public IReadOnlyDictionary<Position, ObstacleVisual> Obstacles => _obstacles;
+
+    /// <summary>
+    /// All ground visuals indexed by grid position.
+    /// </summary>
+    public IReadOnlyDictionary<Position, GroundVisual> Grounds => _grounds;
 
     /// <summary>
     /// All active visual effects.
@@ -60,6 +66,7 @@ public sealed class VisualState : IVisualState
 
         _tiles.Clear();
         _obstacles.Clear();
+        _grounds.Clear();
 
         for (int y = 0; y < state.Height; y++)
         {
@@ -89,6 +96,18 @@ public sealed class VisualState : IVisualState
                         GridPosition = pos,
                         Type = obstacle.Type,
                         CurrentStage = obstacle.Stage,
+                    };
+                }
+
+                var ground = state.GetGround(x, y);
+                if (ground.Type != GroundType.None)
+                {
+                    var pos = new Position(x, y);
+                    _grounds[pos] = new GroundVisual
+                    {
+                        GridPosition = pos,
+                        Type = ground.Type,
+                        CurrentHealth = ground.Health,
                     };
                 }
             }
@@ -234,6 +253,35 @@ public sealed class VisualState : IVisualState
     public ObstacleVisual? GetObstacle(Position pos)
     {
         return _obstacles.TryGetValue(pos, out var obs) ? obs : null;
+    }
+
+    /// <summary>
+    /// Add a new ground visual.
+    /// </summary>
+    public void AddGround(Position pos, GroundType type, byte health)
+    {
+        _grounds[pos] = new GroundVisual
+        {
+            GridPosition = pos,
+            Type = type,
+            CurrentHealth = health,
+        };
+    }
+
+    /// <summary>
+    /// Remove a ground visual.
+    /// </summary>
+    public void RemoveGround(Position pos)
+    {
+        _grounds.Remove(pos);
+    }
+
+    /// <summary>
+    /// Get ground visual by position. Returns null if not found.
+    /// </summary>
+    public GroundVisual? GetGround(Position pos)
+    {
+        return _grounds.TryGetValue(pos, out var gnd) ? gnd : null;
     }
 
     /// <inheritdoc />
@@ -478,6 +526,38 @@ public sealed class ObstacleVisual
     public bool IsDestroying { get; set; }
 
     /// <summary>Whether the obstacle is visible.</summary>
+    public bool IsVisible { get; set; } = true;
+}
+
+/// <summary>
+/// Visual representation of a ground element (Ice, Grass, Leaves).
+/// </summary>
+public sealed class GroundVisual
+{
+    /// <summary>Grid position (immutable — ground doesn't move).</summary>
+    public Position GridPosition { get; init; }
+
+    /// <summary>Type of ground.</summary>
+    public GroundType Type { get; init; }
+
+    /// <summary>Current health. Updated by Player on DamageGroundCommand start.</summary>
+    public byte CurrentHealth { get; set; }
+
+    /// <summary>
+    /// Damage animation progress (0→1). Driven by Player during DamageGroundCommand.
+    /// Reset to 0 at damage start, reaches 1 at end. View uses this for hit reaction.
+    /// </summary>
+    public float DamageProgress { get; set; }
+
+    /// <summary>
+    /// Destroy animation progress (0→1). Driven by Player during DestroyGroundCommand.
+    /// </summary>
+    public float DestroyProgress { get; set; }
+
+    /// <summary>Whether the destroy animation is playing.</summary>
+    public bool IsDestroying { get; set; }
+
+    /// <summary>Whether the ground is visible.</summary>
     public bool IsVisible { get; set; } = true;
 }
 

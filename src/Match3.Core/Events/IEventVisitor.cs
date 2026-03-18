@@ -54,6 +54,9 @@ public interface IEventVisitor
     /// <summary>Visit a cover destroyed event.</summary>
     void Visit(CoverDestroyedEvent evt);
 
+    /// <summary>Visit a ground damaged event.</summary>
+    void Visit(GroundDamagedEvent evt);
+
     /// <summary>Visit a ground destroyed event.</summary>
     void Visit(GroundDestroyedEvent evt);
 

@@ -365,6 +365,32 @@ public sealed class Player
                 }
                 break;
             }
+
+            case SpawnGroundCommand spawnGnd:
+                _visualState.AddGround(spawnGnd.GridPos, spawnGnd.GroundType, spawnGnd.Health);
+                break;
+
+            case DamageGroundCommand damageGnd:
+            {
+                var gndVisual = _visualState.GetGround(damageGnd.GridPos);
+                if (gndVisual != null)
+                {
+                    gndVisual.CurrentHealth = damageGnd.NewHealth;
+                    gndVisual.DamageProgress = 0f;
+                }
+                break;
+            }
+
+            case DestroyGroundCommand destroyGnd:
+            {
+                var gndVisual = _visualState.GetGround(destroyGnd.GridPos);
+                if (gndVisual != null)
+                {
+                    gndVisual.IsDestroying = true;
+                    gndVisual.DestroyProgress = 0f;
+                }
+                break;
+            }
         }
 
         // Mark tiles as being animated for position-affecting commands
@@ -403,6 +429,10 @@ public sealed class Player
 
             case RemoveObstacleCommand removeObs:
                 _visualState.RemoveObstacle(removeObs.GridPos);
+                break;
+
+            case RemoveGroundCommand removeGnd:
+                _visualState.RemoveGround(removeGnd.GridPos);
                 break;
         }
     }
@@ -486,6 +516,22 @@ public sealed class Player
                 var obsVisual = _visualState.GetObstacle(destroyObs.GridPos);
                 if (obsVisual != null)
                     obsVisual.DeathProgress = t;
+                break;
+            }
+
+            case DamageGroundCommand damageGnd:
+            {
+                var gndVisual = _visualState.GetGround(damageGnd.GridPos);
+                if (gndVisual != null)
+                    gndVisual.DamageProgress = t;
+                break;
+            }
+
+            case DestroyGroundCommand destroyGnd:
+            {
+                var gndVisual = _visualState.GetGround(destroyGnd.GridPos);
+                if (gndVisual != null)
+                    gndVisual.DestroyProgress = t;
                 break;
             }
 
@@ -607,6 +653,22 @@ public sealed class Player
                 var obsVisual = _visualState.GetObstacle(destroyObs.GridPos);
                 if (obsVisual != null)
                     obsVisual.DeathProgress = 1f;
+                break;
+            }
+
+            case DamageGroundCommand damageGnd:
+            {
+                var gndVisual = _visualState.GetGround(damageGnd.GridPos);
+                if (gndVisual != null)
+                    gndVisual.DamageProgress = 1f;
+                break;
+            }
+
+            case DestroyGroundCommand destroyGnd:
+            {
+                var gndVisual = _visualState.GetGround(destroyGnd.GridPos);
+                if (gndVisual != null)
+                    gndVisual.DestroyProgress = 1f;
                 break;
             }
         }
