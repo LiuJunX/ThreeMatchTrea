@@ -10,14 +10,14 @@ namespace Match3.Core.Choreography;
 /// <summary>
 /// Handles projectile/UFO events: launch, movement, retarget, and impact.
 /// </summary>
-internal sealed class UfoChoreographer
+internal sealed class ProjectileChoreographer
 {
     private readonly ChoreographerContext _ctx;
 
     /// <summary>
     /// Initializes a new instance with the shared choreographer context.
     /// </summary>
-    internal UfoChoreographer(ChoreographerContext ctx) => _ctx = ctx;
+    internal ProjectileChoreographer(ChoreographerContext ctx) => _ctx = ctx;
 
     /// <summary>
     /// Emit launch commands for projectiles, with special UFO handling for

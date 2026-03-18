@@ -289,7 +289,7 @@ public class BombResolution : IPowerUpHandler
                 {
                     SourceTileId = ufoTileId,
                     // Chain-triggered UFOs: tile was already eliminated by CellEliminator
-                    // (DestroyTileCommand + RemoveTileCommand), so UfoChoreographer must
+                    // (DestroyTileCommand + RemoveTileCommand), so ProjectileChoreographer must
                     // spawn a fresh tile visual for the flight animation.
                     SpawnVisual = isChainReaction
                 };

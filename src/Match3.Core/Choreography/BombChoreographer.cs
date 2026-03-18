@@ -108,7 +108,7 @@ internal sealed class BombChoreographer
                     evt.TileId, evt.Position, evt.AffectedPositions, startTime, origin);
                 break;
             case ElementType.Ufo:
-                // UFO effects emitted from ProjectileLaunchedEvent via UfoChoreographer
+                // UFO effects emitted from ProjectileLaunchedEvent via ProjectileChoreographer
                 break;
             default:
                 // Square5x5, etc. -- generic shockwave + explosion

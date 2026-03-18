@@ -15,30 +15,37 @@ namespace Match3.Core.Choreography;
 ///   BombChoreographer (delegates color bomb effects to ColorBombEffectsChoreographer):
 ///     BombCreatedEvent, BombActivatedEvent, BombComboEvent
 ///
-///   UfoChoreographer:
+///   ProjectileChoreographer:
 ///     ProjectileLaunchedEvent, ProjectileMovedEvent, ProjectileRetargetedEvent, ProjectileImpactEvent
 ///
-///   ColorBombChoreographer (session-based multi-tick events):
+///   ColorBombSessionChoreographer (session-based multi-tick events):
 ///     ColorBombSessionStartEvent, ColorBombBeamLaunchedEvent, ColorBombBatchDestroyEvent,
 ///     ColorBombComboTransformEvent, ColorBombComboBatchActivateEvent
 ///
 ///   ColorBombEffectsChoreographer (instant tap/swap color bomb + double color bomb):
 ///     (internal helper, not directly routed)
 ///
-///   LayerChoreographer:
-///     MatchDetectedEvent, CoverDestroyedEvent, GroundDestroyedEvent, GroundSpawnedEvent,
-///     ScoreAddedEvent, ComboChangedEvent, MoveCompletedEvent, DeadlockDetectedEvent,
-///     BoardShuffledEvent, ObjectiveProgressEvent, LevelCompletedEvent,
+///   SurfaceChoreographer:
+///     CoverDestroyedEvent, GroundDestroyedEvent, GroundSpawnedEvent
+///
+///   ObstacleChoreographer:
 ///     ObstacleDamagedEvent, ObstacleDestroyedEvent
+///
+///   BoardChoreographer:
+///     MatchDetectedEvent, BoardShuffledEvent,
+///     ScoreAddedEvent, ComboChangedEvent, MoveCompletedEvent, DeadlockDetectedEvent,
+///     ObjectiveProgressEvent, LevelCompletedEvent
 /// </summary>
 public sealed class Choreographer : IEventVisitor
 {
     private readonly ChoreographerContext _ctx = new();
     private readonly TileChoreographer _tile;
     private readonly BombChoreographer _bomb;
-    private readonly UfoChoreographer _ufo;
-    private readonly ColorBombChoreographer _colorBomb;
-    private readonly LayerChoreographer _layer;
+    private readonly ProjectileChoreographer _projectile;
+    private readonly ColorBombSessionChoreographer _colorBombSession;
+    private readonly SurfaceChoreographer _surface;
+    private readonly ObstacleChoreographer _obstacle;
+    private readonly BoardChoreographer _board;
 
     /// <summary>
     /// Initializes a new Choreographer with all domain sub-processors.
@@ -46,11 +53,13 @@ public sealed class Choreographer : IEventVisitor
     public Choreographer()
     {
         _tile = new TileChoreographer(_ctx);
-        _colorBomb = new ColorBombChoreographer(_ctx);
+        _colorBombSession = new ColorBombSessionChoreographer(_ctx);
         var colorBombEffects = new ColorBombEffectsChoreographer(_ctx);
         _bomb = new BombChoreographer(_ctx, colorBombEffects);
-        _ufo = new UfoChoreographer(_ctx);
-        _layer = new LayerChoreographer(_ctx);
+        _projectile = new ProjectileChoreographer(_ctx);
+        _surface = new SurfaceChoreographer(_ctx);
+        _obstacle = new ObstacleChoreographer(_ctx);
+        _board = new BoardChoreographer(_ctx);
     }
 
     /// <summary>
@@ -135,78 +144,86 @@ public sealed class Choreographer : IEventVisitor
     #region IEventVisitor — Projectile / UFO events
 
     /// <inheritdoc />
-    public void Visit(ProjectileLaunchedEvent evt) => _ufo.Visit(evt);
+    public void Visit(ProjectileLaunchedEvent evt) => _projectile.Visit(evt);
 
     /// <inheritdoc />
-    public void Visit(ProjectileMovedEvent evt) => _ufo.Visit(evt);
+    public void Visit(ProjectileMovedEvent evt) => _projectile.Visit(evt);
 
     /// <inheritdoc />
-    public void Visit(ProjectileRetargetedEvent evt) => _ufo.Visit(evt);
+    public void Visit(ProjectileRetargetedEvent evt) => _projectile.Visit(evt);
 
     /// <inheritdoc />
-    public void Visit(ProjectileImpactEvent evt) => _ufo.Visit(evt);
+    public void Visit(ProjectileImpactEvent evt) => _projectile.Visit(evt);
 
     #endregion
 
     #region IEventVisitor — Color bomb session events
 
     /// <inheritdoc />
-    public void Visit(ColorBombSessionStartEvent evt) => _colorBomb.Visit(evt);
+    public void Visit(ColorBombSessionStartEvent evt) => _colorBombSession.Visit(evt);
 
     /// <inheritdoc />
-    public void Visit(ColorBombBeamLaunchedEvent evt) => _colorBomb.Visit(evt);
+    public void Visit(ColorBombBeamLaunchedEvent evt) => _colorBombSession.Visit(evt);
 
     /// <inheritdoc />
-    public void Visit(ColorBombBatchDestroyEvent evt) => _colorBomb.Visit(evt);
+    public void Visit(ColorBombBatchDestroyEvent evt) => _colorBombSession.Visit(evt);
 
     /// <inheritdoc />
-    public void Visit(ColorBombComboTransformEvent evt) => _colorBomb.Visit(evt);
+    public void Visit(ColorBombComboTransformEvent evt) => _colorBombSession.Visit(evt);
 
     /// <inheritdoc />
-    public void Visit(ColorBombComboBatchActivateEvent evt) => _colorBomb.Visit(evt);
+    public void Visit(ColorBombComboBatchActivateEvent evt) => _colorBombSession.Visit(evt);
 
     #endregion
 
-    #region IEventVisitor — Layer / state events
+    #region IEventVisitor — Surface events
 
     /// <inheritdoc />
-    public void Visit(MatchDetectedEvent evt) => _layer.Visit(evt);
+    public void Visit(CoverDestroyedEvent evt) => _surface.Visit(evt);
 
     /// <inheritdoc />
-    public void Visit(CoverDestroyedEvent evt) => _layer.Visit(evt);
+    public void Visit(GroundDestroyedEvent evt) => _surface.Visit(evt);
 
     /// <inheritdoc />
-    public void Visit(GroundDestroyedEvent evt) => _layer.Visit(evt);
+    public void Visit(GroundSpawnedEvent evt) => _surface.Visit(evt);
+
+    #endregion
+
+    #region IEventVisitor — Obstacle events
 
     /// <inheritdoc />
-    public void Visit(ScoreAddedEvent evt) => _layer.Visit(evt);
+    public void Visit(ObstacleDamagedEvent evt) => _obstacle.Visit(evt);
 
     /// <inheritdoc />
-    public void Visit(ComboChangedEvent evt) => _layer.Visit(evt);
+    public void Visit(ObstacleDestroyedEvent evt) => _obstacle.Visit(evt);
+
+    #endregion
+
+    #region IEventVisitor — Board events
 
     /// <inheritdoc />
-    public void Visit(MoveCompletedEvent evt) => _layer.Visit(evt);
+    public void Visit(MatchDetectedEvent evt) => _board.Visit(evt);
 
     /// <inheritdoc />
-    public void Visit(DeadlockDetectedEvent evt) => _layer.Visit(evt);
+    public void Visit(BoardShuffledEvent evt) => _board.Visit(evt);
 
     /// <inheritdoc />
-    public void Visit(BoardShuffledEvent evt) => _layer.Visit(evt);
+    public void Visit(ScoreAddedEvent evt) => _board.Visit(evt);
 
     /// <inheritdoc />
-    public void Visit(ObjectiveProgressEvent evt) => _layer.Visit(evt);
+    public void Visit(ComboChangedEvent evt) => _board.Visit(evt);
 
     /// <inheritdoc />
-    public void Visit(LevelCompletedEvent evt) => _layer.Visit(evt);
+    public void Visit(MoveCompletedEvent evt) => _board.Visit(evt);
 
     /// <inheritdoc />
-    public void Visit(ObstacleDamagedEvent evt) => _layer.Visit(evt);
+    public void Visit(DeadlockDetectedEvent evt) => _board.Visit(evt);
 
     /// <inheritdoc />
-    public void Visit(ObstacleDestroyedEvent evt) => _layer.Visit(evt);
+    public void Visit(ObjectiveProgressEvent evt) => _board.Visit(evt);
 
     /// <inheritdoc />
-    public void Visit(GroundSpawnedEvent evt) => _layer.Visit(evt);
+    public void Visit(LevelCompletedEvent evt) => _board.Visit(evt);
 
     #endregion
 }

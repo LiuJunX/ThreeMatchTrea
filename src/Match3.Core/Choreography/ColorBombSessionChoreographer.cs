@@ -10,14 +10,14 @@ namespace Match3.Core.Choreography;
 /// batch destroy, combo transform, and combo batch activate.
 /// Instant color bomb effects (tap/swap paths) are in <see cref="ColorBombEffectsChoreographer"/>.
 /// </summary>
-internal sealed class ColorBombChoreographer
+internal sealed class ColorBombSessionChoreographer
 {
     private readonly ChoreographerContext _ctx;
 
     /// <summary>
     /// Initializes a new instance with the shared choreographer context.
     /// </summary>
-    internal ColorBombChoreographer(ChoreographerContext ctx) => _ctx = ctx;
+    internal ColorBombSessionChoreographer(ChoreographerContext ctx) => _ctx = ctx;
 
     /// <summary>
     /// Emit charge-up animation (scale + hop + spin + hold) for a new color bomb session.

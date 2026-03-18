@@ -53,7 +53,7 @@ internal sealed class TileChoreographer
 
         // ConsumeBomb: bomb tile is being activated (UFO flight, ColorBomb session, etc.).
         // Do NOT emit RemoveTileCommand here — the tile's lifecycle is managed by the
-        // downstream choreographer (UfoChoreographer at impact, ColorBombChoreographer at
+        // downstream choreographer (ProjectileChoreographer at impact, ColorBombSessionChoreographer at
         // batch destroy). For rockets/area bombs (no animation refs), the tile is naturally
         // cleaned up by SyncFallingTilesFromGameState when it sees type=None + not animated.
         if (evt.Reason == ElimSource.ConsumeBomb)

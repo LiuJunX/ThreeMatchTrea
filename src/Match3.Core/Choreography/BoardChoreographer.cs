@@ -2,23 +2,19 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Match3.Core.Events;
-using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 
 namespace Match3.Core.Choreography;
 
 /// <summary>
-/// Handles cover/ground destruction, match detection, objectives, scoring,
-/// board state changes (deadlock, shuffle), and move/level completion events.
+/// Handles board-level events: match highlight, shuffle animation,
+/// and game state notifications (score, combo, move, deadlock, objective, level).
 /// </summary>
-internal sealed class LayerChoreographer
+internal sealed class BoardChoreographer
 {
     private readonly ChoreographerContext _ctx;
 
-    /// <summary>
-    /// Initializes a new instance with the shared choreographer context.
-    /// </summary>
-    internal LayerChoreographer(ChoreographerContext ctx) => _ctx = ctx;
+    internal BoardChoreographer(ChoreographerContext ctx) => _ctx = ctx;
 
     /// <summary>
     /// Emit highlight command for matched tile positions.
@@ -37,70 +33,6 @@ internal sealed class LayerChoreographer
             Duration = _ctx.Config.MatchHighlightDuration
         });
     }
-
-    /// <summary>
-    /// Emit cover destruction and optional visual effect commands.
-    /// </summary>
-    internal void Visit(CoverDestroyedEvent evt)
-    {
-        float startTime = _ctx.GetStartTime(evt);
-        var position = new Vector2(evt.GridPosition.X, evt.GridPosition.Y);
-
-        _ctx.Commands.Add(new DestroyCoverCommand
-        {
-            GridPos = evt.GridPosition, CoverType = evt.Type,
-            StartTime = startTime, Duration = 0.25f
-        });
-        if (!evt.IsGoal)
-        {
-            _ctx.Commands.Add(new ShowEffectCommand
-            {
-                EffectType = "cover_destroyed", Position = position,
-                StartTime = startTime, Duration = 0.25f
-            });
-        }
-    }
-
-    /// <summary>
-    /// Emit ground destruction and optional visual effect commands.
-    /// </summary>
-    internal void Visit(GroundDestroyedEvent evt)
-    {
-        float startTime = _ctx.GetStartTime(evt);
-        var position = new Vector2(evt.GridPosition.X, evt.GridPosition.Y);
-
-        _ctx.Commands.Add(new DestroyGroundCommand
-        {
-            GridPos = evt.GridPosition, GroundType = evt.Type,
-            StartTime = startTime, Duration = 0.25f
-        });
-        if (!evt.IsGoal)
-        {
-            _ctx.Commands.Add(new ShowEffectCommand
-            {
-                EffectType = "ground_destroyed", Position = position,
-                StartTime = startTime, Duration = 0.25f
-            });
-        }
-    }
-
-    /// <summary>Score events don't generate render commands; UI handles display.</summary>
-    internal void Visit(ScoreAddedEvent evt) { }
-
-    /// <summary>Combo events don't generate render commands; UI handles display.</summary>
-    internal void Visit(ComboChangedEvent evt) { }
-
-    /// <summary>Move completed events don't generate render commands.</summary>
-    internal void Visit(MoveCompletedEvent evt) { }
-
-    /// <summary>Deadlock events don't generate render commands; UI handles notification.</summary>
-    internal void Visit(DeadlockDetectedEvent evt) { }
-
-    /// <summary>Objective progress events don't generate render commands.</summary>
-    internal void Visit(ObjectiveProgressEvent evt) { }
-
-    /// <summary>Level completed events don't generate render commands.</summary>
-    internal void Visit(LevelCompletedEvent evt) { }
 
     /// <summary>
     /// Emit gather/scatter shuffle animation with per-tile staggering,
@@ -210,80 +142,21 @@ internal sealed class LayerChoreographer
         });
     }
 
-    /// <summary>
-    /// Emit obstacle damage command (stage decreased but not destroyed).
-    /// </summary>
-    internal void Visit(ObstacleDamagedEvent evt)
-    {
-        float startTime = _ctx.GetStartTime(evt);
+    /// <summary>Score events don't generate render commands; UI handles display.</summary>
+    internal void Visit(ScoreAddedEvent evt) { }
 
-        float duration = evt.Type switch
-        {
-            ObstacleType.Box => 0.25f,
-            ObstacleType.Bush => 0.35f,
-            _ => 0.25f
-        };
+    /// <summary>Combo events don't generate render commands; UI handles display.</summary>
+    internal void Visit(ComboChangedEvent evt) { }
 
-        _ctx.Commands.Add(new DamageObstacleCommand
-        {
-            GridPos = evt.GridPosition,
-            ObstacleType = evt.Type,
-            NewStage = evt.RemainingStage,
-            StartTime = startTime,
-            Duration = duration
-        });
+    /// <summary>Move completed events don't generate render commands.</summary>
+    internal void Visit(MoveCompletedEvent evt) { }
 
-        _ctx.Commands.Add(new ShowEffectCommand
-        {
-            EffectType = "obstacle_hit",
-            Position = new Vector2(evt.GridPosition.X, evt.GridPosition.Y),
-            StartTime = startTime,
-            Duration = 0.2f
-        });
-    }
+    /// <summary>Deadlock events don't generate render commands; UI handles notification.</summary>
+    internal void Visit(DeadlockDetectedEvent evt) { }
 
-    /// <summary>
-    /// Emit obstacle destroy + remove commands (stage reached zero).
-    /// </summary>
-    internal void Visit(ObstacleDestroyedEvent evt)
-    {
-        float startTime = _ctx.GetStartTime(evt);
+    /// <summary>Objective progress events don't generate render commands.</summary>
+    internal void Visit(ObjectiveProgressEvent evt) { }
 
-        float destroyDuration = evt.Type switch
-        {
-            ObstacleType.Box => 0.3f,
-            ObstacleType.Bush => 0.4f,
-            _ => 0.3f
-        };
-
-        _ctx.Commands.Add(new DestroyObstacleCommand
-        {
-            GridPos = evt.GridPosition,
-            ObstacleType = evt.Type,
-            StartTime = startTime,
-            Duration = destroyDuration
-        });
-
-        // Remove from visual state after death animation
-        _ctx.Commands.Add(new RemoveObstacleCommand
-        {
-            GridPos = evt.GridPosition,
-            StartTime = startTime + destroyDuration,
-            Duration = 0
-        });
-
-        if (!evt.IsGoal)
-        {
-            _ctx.Commands.Add(new ShowEffectCommand
-            {
-                EffectType = "obstacle_destroyed",
-                Position = new Vector2(evt.GridPosition.X, evt.GridPosition.Y),
-                StartTime = startTime,
-                Duration = 0.3f
-            });
-        }
-    }
-
-    /// <summary>Ground spawned by death effect — placeholder for future animation.</summary>
-    internal void Visit(GroundSpawnedEvent evt) { }
+    /// <summary>Level completed events don't generate render commands.</summary>
+    internal void Visit(LevelCompletedEvent evt) { }
 }
