@@ -44,4 +44,11 @@ public enum ObstacleType : byte
     /// Color variant stored in Obstacle.State.
     /// </summary>
     Curtain = 6,
+
+    /// <summary>
+    /// Container obstacle (2 stages). Damaged by any source or adjacent match.
+    /// Death effect: releases a <see cref="Match3.Core.Models.Enums.ElementType.Plate"/>
+    /// collectible tile at its position.
+    /// </summary>
+    Cupboard = 7,
 }

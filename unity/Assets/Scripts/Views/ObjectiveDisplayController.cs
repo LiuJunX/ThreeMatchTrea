@@ -210,10 +210,11 @@ namespace Match3.Unity.Views
             else if (elementType != ElementType.None)
             {
                 mf.sharedMesh = MeshFactory.GetTileMesh(elementType);
-                var isColorType = elementType >= ElementType.Item1 && elementType <= ElementType.Item6;
-                mr.sharedMaterial = isColorType
-                    ? MeshFactory.GetTileMaterial(elementType)
-                    : MeshFactory.GetFallbackMaterial();
+                var mats = MeshFactory.GetTileMaterialArray(elementType);
+                if (mats != null && mats.Length > 0)
+                    mr.sharedMaterials = mats;
+                else
+                    mr.sharedMaterial = MeshFactory.GetFallbackMaterial();
             }
             else
             {

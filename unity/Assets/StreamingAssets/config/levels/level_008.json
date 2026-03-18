@@ -1,0 +1,26 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_008",
+  "name": "Box Fortress",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 22,
+  "targetDifficulty": 0.5,
+  "objectives": [
+    { "targetLayer": "Obstacle", "elementType": 1, "targetCount": 8 }
+  ],
+  "grid": null,
+  "obstacles": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","Box", "None","None","None","Box", "None","None",
+    "None","None","None","Box", "Box", "Box", "None","None","None",
+    "None","None","None","Box", "None","None","None","None","None",
+    "None","None","None","None","None","Box", "None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": "AAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAQAAAAAAAgMDAAAAAAAAAgAAAAAAAAAAAQAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "notes": "Box fortress: 8 boxes forming a barrier (stages 1-3). Flanks stage 1, center stage 3. Clear all boxes to win."
+}

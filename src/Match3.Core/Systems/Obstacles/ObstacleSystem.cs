@@ -6,6 +6,7 @@ using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Elimination;
+using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.Objectives;
 using Match3.Core.Utility.Pools;
 
@@ -19,10 +20,15 @@ namespace Match3.Core.Systems.Obstacles;
 public sealed class ObstacleSystem : IObstacleSystem
 {
     private readonly ILevelObjectiveSystem? _objectiveSystem;
+    private readonly LockScheduler? _lockScheduler;
 
-    public ObstacleSystem(ILevelObjectiveSystem? objectiveSystem = null)
+    /// <summary>Receive lock duration after obstacle destruction (seconds).</summary>
+    private const float DestroyReceiveLockDuration = 0.15f;
+
+    public ObstacleSystem(ILevelObjectiveSystem? objectiveSystem = null, LockScheduler? lockScheduler = null)
     {
         _objectiveSystem = objectiveSystem;
+        _lockScheduler = lockScheduler;
     }
 
     /// <inheritdoc />
@@ -155,6 +161,9 @@ public sealed class ObstacleSystem : IObstacleSystem
             _objectiveSystem?.OnObstacleDestroyed(ref state, type, tick, simTime, events);
             state.SetObstacle(pos, Obstacle.Empty);
 
+            // Receive lock: prevent tiles from filling this cell during death animation
+            _lockScheduler?.Acquire(ref state, pos, CellLockType.Receive, DestroyReceiveLockDuration);
+
             // Death effect: obstacle-specific board writes
             ExecuteDeathEffect(ref state, pos, type, tick, simTime, events);
 
@@ -196,7 +205,10 @@ public sealed class ObstacleSystem : IObstacleSystem
             case ObstacleType.Bush:
                 SpreadGround(ref state, pos, GroundType.Grass, simTime, tick, events);
                 break;
-            // Flowerpot, Oyster, Cupboard reserved for future ObstacleType additions
+            case ObstacleType.Cupboard:
+                ReleaseToSelf(ref state, pos, ElementType.Plate, simTime, tick, events);
+                break;
+            // Flowerpot, Oyster reserved for future ObstacleType additions
         }
     }
 

@@ -1,0 +1,26 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_011",
+  "name": "Cupboard Collection",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 25,
+  "targetDifficulty": 0.4,
+  "objectives": [
+    { "targetLayer": "Tile", "elementType": 102, "targetCount": 4 }
+  ],
+  "grid": null,
+  "obstacles": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","Cupboard","None","None","None","Cupboard","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","Cupboard","None","None","None","Cupboard","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": "AAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "notes": "Cupboard introduction: 4 cupboards (stage 2) releasing Plates. Collect all 4 Plates to win. Each cupboard needs 2 adjacent matches to open."
+}

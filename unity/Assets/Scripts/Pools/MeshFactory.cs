@@ -16,6 +16,7 @@ namespace Match3.Unity.Pools
         private static Mesh _fallbackMesh;
         private static readonly Dictionary<ElementType, Material> _materialCache = new();
         private static readonly Dictionary<ElementType, Material[]> _singleMaterialArrayCache = new();
+        private static readonly Dictionary<ElementType, Material[]> _collectibleMaterialCache = new();
         private static readonly Dictionary<ElementType, Mesh> _bombMeshCache = new();
         private static readonly Dictionary<ElementType, Material[]> _bombMaterialCache = new();
         private static readonly Dictionary<ObstacleType, Mesh> _obstacleMeshCache = new();
@@ -41,21 +42,39 @@ namespace Match3.Unity.Pools
             if (_tileMeshCache.TryGetValue(type, out var cached))
                 return cached;
 
+            // Collectibles use their own model name (no Gem_ prefix)
+            var collectibleName = GetCollectibleModelName(type);
+            if (collectibleName != null)
+                return LoadTileModel(type, collectibleName);
+
             var typeName = GetTileTypeName(type);
-            var model = ResourceService.Loader.Load<GameObject>($"Art/Gems/Models/Gem_{typeName}");
+            return LoadTileModel(type, $"Gem_{typeName}");
+        }
+
+        private static Mesh LoadTileModel(ElementType type, string modelName)
+        {
+            var model = ResourceService.Loader.Load<GameObject>($"Art/Gems/Models/{modelName}");
             if (model != null)
             {
                 var meshFilter = model.GetComponentInChildren<MeshFilter>();
                 if (meshFilter != null)
                 {
                     _tileMeshCache[type] = meshFilter.sharedMesh;
-                    Debug.Log($"[MeshFactory] Loaded Gem_{typeName} mesh from Resources");
+
+                    // Cache FBX-embedded materials for collectibles (clone with TileLit for clip support)
+                    if (type.IsCollectible())
+                    {
+                        var renderer = model.GetComponentInChildren<MeshRenderer>();
+                        if (renderer != null && renderer.sharedMaterials.Length > 0)
+                            _collectibleMaterialCache[type] = CloneMaterialsWithTileLit(renderer.sharedMaterials);
+                    }
+
+                    Debug.Log($"[MeshFactory] Loaded {modelName} mesh from Resources");
                     return meshFilter.sharedMesh;
                 }
             }
 
-            // Fallback: built-in sphere mesh
-            Debug.LogWarning($"[MeshFactory] Gem_{typeName} not found, using fallback sphere");
+            Debug.LogWarning($"[MeshFactory] {modelName} not found, using fallback sphere");
             return GetFallbackMesh();
         }
 
@@ -175,6 +194,7 @@ namespace Match3.Unity.Pools
             var typeName = type switch
             {
                 ObstacleType.Box => "Box_State3",
+                ObstacleType.Cupboard => "Cupboard",
                 _ => type.ToString()
             };
             var model = ResourceService.Loader.Load<GameObject>($"Art/Gems/Models/{typeName}");
@@ -303,6 +323,15 @@ namespace Match3.Unity.Pools
                 var bombMats = GetBombMaterials(type);
                 if (bombMats != null && bombMats.Length > 0)
                     return bombMats;
+            }
+
+            // Collectibles use FBX-embedded materials (cached during LoadTileModel)
+            if (type.IsCollectible())
+            {
+                if (!_collectibleMaterialCache.ContainsKey(type))
+                    GetTileMesh(type); // trigger load + material cache
+                if (_collectibleMaterialCache.TryGetValue(type, out var colMats) && colMats.Length > 0)
+                    return colMats;
             }
 
             // Cached single-element array for tile materials
@@ -472,6 +501,18 @@ namespace Match3.Unity.Pools
 
             _bombMeshCache.Clear();
 
+            // Destroy cloned collectible materials
+            foreach (var mats in _collectibleMaterialCache.Values)
+            {
+                if (mats == null) continue;
+                foreach (var mat in mats)
+                {
+                    if (mat != null)
+                        Object.Destroy(mat);
+                }
+            }
+            _collectibleMaterialCache.Clear();
+
             // Destroy cloned bomb materials (created by CloneMaterialsWithTileLit)
             foreach (var mats in _bombMaterialCache.Values)
             {
@@ -620,5 +661,16 @@ namespace Match3.Unity.Pools
             if (type == ElementType.Item6) return "Orange";
             return "Unknown";
         }
+
+        /// <summary>
+        /// Returns the model name for collectible tile types, or null for non-collectibles.
+        /// </summary>
+        private static string GetCollectibleModelName(ElementType type) => type switch
+        {
+            ElementType.Plate => "Plate",
+            ElementType.Pearl => "Pearl",
+            ElementType.Bird  => "Bird",
+            _ => null
+        };
     }
 }

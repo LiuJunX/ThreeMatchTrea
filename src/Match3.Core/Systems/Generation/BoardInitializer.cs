@@ -1,6 +1,7 @@
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Obstacles;
 using Match3.Core.Systems.Objectives;
 
 namespace Match3.Core.Systems.Generation;
@@ -51,6 +52,22 @@ public class BoardInitializer : IBoardInitializer
                     var cellKind = state.GetCell(x, y);
                     if (cellKind == CellKind.Void || cellKind == CellKind.Wall)
                         continue;
+
+                    // Initialize Obstacle layer (before tile — obstacle occupies the cell)
+                    if (levelConfig.Obstacles != null && i < levelConfig.Obstacles.Length)
+                    {
+                        var obstacleType = levelConfig.Obstacles[i];
+                        if (obstacleType != ObstacleType.None)
+                        {
+                            byte stage = ObstacleRules.GetDefaultStage(obstacleType);
+                            if (levelConfig.ObstacleStages != null && i < levelConfig.ObstacleStages.Length && levelConfig.ObstacleStages[i] > 0)
+                            {
+                                stage = levelConfig.ObstacleStages[i];
+                            }
+                            state.SetObstacle(x, y, new Obstacle { Type = obstacleType, Stage = stage });
+                            continue; // Obstacle occupies the cell — no tile here
+                        }
+                    }
 
                     // ElementType.None in a CellKind.Slot means "Generate Random".
                     var type = (levelConfig.Grid != null && i < levelConfig.Grid.Length)

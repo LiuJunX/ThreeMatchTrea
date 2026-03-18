@@ -139,6 +139,10 @@ public class StandardMatchProcessor : IMatchProcessor
                     _obstacleSystem.NotifyGlobalColorElimination(
                         ref state, g.Type, tick, simTime, events);
                 }
+
+                // Collectible adjacency: adjacent match eliminates neighboring collectible tiles
+                EliminateAdjacentCollectibles(
+                    ref state, groupEliminated, globalCleared, tick, simTime, events);
             }
         }
         finally
@@ -151,5 +155,42 @@ public class StandardMatchProcessor : IMatchProcessor
         }
 
         return points;
+    }
+
+    /// <summary>
+    /// After a batch elimination, check if any eliminated tile has a neighboring
+    /// collectible tile (Plate, Pearl, Bird) and eliminate it via CellEliminator.
+    /// Only Match sources trigger this (same rule as obstacle adjacency).
+    /// </summary>
+    private void EliminateAdjacentCollectibles(
+        ref GameState state, List<EliminatedTileInfo> eliminated,
+        HashSet<Position> globalCleared,
+        int tick, float simTime, IEventCollector events)
+    {
+        foreach (var info in eliminated)
+        {
+            if (info.Source != ElimSource.Match && info.Source != ElimSource.ColorBomb)
+                continue;
+
+            TryEliminateCollectibleAt(ref state, new Position(info.Pos.X - 1, info.Pos.Y), globalCleared, tick, simTime, events);
+            TryEliminateCollectibleAt(ref state, new Position(info.Pos.X + 1, info.Pos.Y), globalCleared, tick, simTime, events);
+            TryEliminateCollectibleAt(ref state, new Position(info.Pos.X, info.Pos.Y - 1), globalCleared, tick, simTime, events);
+            TryEliminateCollectibleAt(ref state, new Position(info.Pos.X, info.Pos.Y + 1), globalCleared, tick, simTime, events);
+        }
+    }
+
+    private void TryEliminateCollectibleAt(
+        ref GameState state, Position pos, HashSet<Position> globalCleared,
+        int tick, float simTime, IEventCollector events)
+    {
+        if (!state.IsValid(pos.X, pos.Y)) return;
+        if (globalCleared.Contains(pos)) return;
+
+        var tile = state.GetTile(pos.X, pos.Y);
+        if (!tile.Type.IsCollectible()) return;
+
+        var result = _cellEliminator.Eliminate(ref state, pos, ElimSource.Match, tick, simTime, events);
+        if (result.Outcome == EliminateOutcome.Eliminated)
+            globalCleared.Add(pos);
     }
 }

@@ -25,6 +25,7 @@ public static class ObstacleRules
         {
             ObstacleType.Box      => true,
             ObstacleType.Bush     => true,
+            ObstacleType.Cupboard => true,
             ObstacleType.Safe     => ctx.Source != ElimSource.Match,
             ObstacleType.ColorBox => false,   // immune to direct hits; only adjacent color match
             ObstacleType.MagicHat => false,   // passive — reacts to adjacent hits
@@ -32,6 +33,22 @@ public static class ObstacleRules
             _ => true
         };
     }
+
+    /// <summary>
+    /// Returns the default stage (HP) for an obstacle type when not explicitly
+    /// specified in the level config. Mirrors GroundRules.GetDefaultHealth pattern.
+    /// </summary>
+    public static byte GetDefaultStage(ObstacleType type) => type switch
+    {
+        ObstacleType.Box      => 1,
+        ObstacleType.Bush     => 1,
+        ObstacleType.Cupboard => 2,
+        ObstacleType.Safe     => 1,
+        ObstacleType.ColorBox => 1,
+        ObstacleType.MagicHat => 1,
+        ObstacleType.Curtain  => 1,
+        _ => 1
+    };
 
     /// <summary>
     /// Does this obstacle react when an adjacent tile is eliminated?
@@ -44,6 +61,7 @@ public static class ObstacleRules
         {
             ObstacleType.Box      => true,
             ObstacleType.Bush     => true,
+            ObstacleType.Cupboard => true,
             ObstacleType.Safe     => false,   // only power-up direct hits
             ObstacleType.ColorBox => triggerType == ElementType.ColorBomb
                                   || triggerType == (ElementType)obstacle.State,

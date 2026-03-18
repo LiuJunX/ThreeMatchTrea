@@ -1,0 +1,27 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_007",
+  "name": "Box Basics",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 25,
+  "targetDifficulty": 0.4,
+  "objectives": [
+    { "targetLayer": "Obstacle", "elementType": 1, "targetCount": 4 },
+    { "targetLayer": "Tile", "elementType": 1, "targetCount": 15 }
+  ],
+  "grid": null,
+  "obstacles": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","Box", "None","Box", "None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","Box", "None","Box", "None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "notes": "Box introduction: 4 single-stage boxes in center pairs. Clear all boxes + collect tiles."
+}
