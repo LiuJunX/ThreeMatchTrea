@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Match3.Core.Commands;
 using Match3.Core.DependencyInjection;
 using Match3.Core.Events;
@@ -8,14 +9,17 @@ namespace Match3.Core.Replay;
 
 /// <summary>
 /// Controls playback of a game recording.
-/// Supports variable playback speed, pause, and seeking.
+/// Supports variable playback speed, pause, seeking, and bookmark management.
 /// </summary>
 public sealed class ReplayController : IDisposable
 {
     private const float TickDuration = SimulationConfig.DefaultFixedDeltaTime;
+    private const int BookmarkSnapThreshold = 30; // ticks (~0.5s at 60fps)
 
     private readonly GameRecording _recording;
     private readonly IGameServiceFactory _factory;
+    private readonly List<int> _bookmarks;
+    private readonly HashSet<int> _bookmarkSet;
     private SimulationEngine? _engine;
     private int _currentCommandIndex;
     private int _currentTick;
@@ -48,16 +52,85 @@ public sealed class ReplayController : IDisposable
     /// <summary>The current simulation engine state.</summary>
     public SimulationEngine? Engine => _engine;
 
+    /// <summary>Current bookmarks (mutable copy, sorted).</summary>
+    public IReadOnlyList<int> Bookmarks => _bookmarks;
+
     /// <summary>Event raised when a command is executed during playback.</summary>
     public event Action<IGameCommand>? CommandExecuted;
 
     /// <summary>Event raised when playback completes.</summary>
     public event Action? PlaybackCompleted;
 
+    /// <summary>Event raised when playback hits a bookmark tick (auto-pauses).</summary>
+    public event Action<int>? BookmarkHit;
+
+    /// <summary>Event raised when bookmarks are added or removed.</summary>
+    public event Action? BookmarksChanged;
+
     public ReplayController(GameRecording recording, IGameServiceFactory factory)
     {
         _recording = recording ?? throw new ArgumentNullException(nameof(recording));
         _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+        _bookmarks = new List<int>(recording.Bookmarks);
+        _bookmarks.Sort();
+        _bookmarkSet = new HashSet<int>(_bookmarks);
+    }
+
+    /// <summary>
+    /// Adds a bookmark at the specified tick. If a bookmark already exists nearby, removes it instead (toggle).
+    /// Returns true if a bookmark was added, false if removed.
+    /// </summary>
+    public bool ToggleBookmark(int tick)
+    {
+        int nearIndex = FindNearestBookmarkIndex(tick, BookmarkSnapThreshold);
+        if (nearIndex >= 0)
+        {
+            _bookmarkSet.Remove(_bookmarks[nearIndex]);
+            _bookmarks.RemoveAt(nearIndex);
+            BookmarksChanged?.Invoke();
+            return false;
+        }
+
+        // Insert sorted
+        int insertIndex = _bookmarks.BinarySearch(tick);
+        if (insertIndex < 0) insertIndex = ~insertIndex;
+        _bookmarks.Insert(insertIndex, tick);
+        _bookmarkSet.Add(tick);
+        BookmarksChanged?.Invoke();
+        return true;
+    }
+
+    /// <summary>
+    /// Removes the bookmark nearest to the specified tick within the snap threshold.
+    /// Returns true if a bookmark was removed.
+    /// </summary>
+    public bool RemoveBookmarkNear(int tick)
+    {
+        int nearIndex = FindNearestBookmarkIndex(tick, BookmarkSnapThreshold);
+        if (nearIndex >= 0)
+        {
+            _bookmarkSet.Remove(_bookmarks[nearIndex]);
+            _bookmarks.RemoveAt(nearIndex);
+            BookmarksChanged?.Invoke();
+            return true;
+        }
+        return false;
+    }
+
+    private int FindNearestBookmarkIndex(int tick, int threshold)
+    {
+        int bestIndex = -1;
+        int bestDist = int.MaxValue;
+        for (int i = 0; i < _bookmarks.Count; i++)
+        {
+            int dist = Math.Abs(_bookmarks[i] - tick);
+            if (dist <= threshold && dist < bestDist)
+            {
+                bestDist = dist;
+                bestIndex = i;
+            }
+        }
+        return bestIndex;
     }
 
     /// <summary>
@@ -203,6 +276,15 @@ public sealed class ReplayController : IDisposable
             _engine.Tick(TickDuration);
             _currentTick++;
 
+            // Check for bookmark hit — auto-pause
+            if (IsBookmarkTick(_currentTick))
+            {
+                State = ReplayState.Paused;
+                _accumulatedTime = 0;
+                BookmarkHit?.Invoke(_currentTick);
+                return;
+            }
+
             // Check for completion
             if (_currentTick >= _recording.DurationTicks &&
                 _currentCommandIndex >= _recording.Commands.Count)
@@ -213,6 +295,8 @@ public sealed class ReplayController : IDisposable
             }
         }
     }
+
+    private bool IsBookmarkTick(int tick) => _bookmarkSet.Contains(tick);
 
     private void Initialize()
     {

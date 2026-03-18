@@ -30,11 +30,13 @@ namespace Match3.Unity.UI
         private TextMeshProUGUI _pauseButtonText;
         private Button _exitButton;
         private Button _restartButton;
+        private Button _bookmarkButton;
 
         public event Action<float> OnSpeedChanged;
         public event Action OnPauseToggled;
         public event Action OnExitClicked;
         public event Action OnRestartClicked;
+        public event Action OnBookmarkToggled;
 
         public void Initialize()
         {
@@ -126,6 +128,15 @@ namespace Match3.Unity.UI
             pauseLayout.preferredWidth = 80;
             pauseLayout.preferredHeight = 40;
             _pauseButtonText = _pauseButton.GetComponentInChildren<TextMeshProUGUI>();
+
+            // Bookmark toggle button
+            _bookmarkButton = UIFactory.CreateButton(
+                controlsRect, "Mark",
+                () => OnBookmarkToggled?.Invoke(),
+                new Color(0.7f, 0.6f, 0.15f, 1f), Color.white, FontSize, "BookmarkButton");
+            var bookmarkLayout = _bookmarkButton.gameObject.AddComponent<LayoutElement>();
+            bookmarkLayout.preferredWidth = 70;
+            bookmarkLayout.preferredHeight = 40;
 
             // Replay button (repeat playback)
             _restartButton = UIFactory.CreateButton(
