@@ -8,6 +8,11 @@ namespace Match3.Core.Commands;
 /// Represents a player command that can be executed, recorded, and replayed.
 /// All game inputs must go through commands for deterministic replay.
 /// </summary>
+/// <remarks>
+/// Not all implementations participate in replay recording.
+/// <see cref="UndoCommand"/> is a meta-action that modifies the command history itself
+/// and must be excluded from the replay stream.
+/// </remarks>
 public interface IGameCommand
 {
     /// <summary>Unique identifier for this command instance.</summary>

@@ -13,7 +13,7 @@ public class GameStateBuilder
 {
     private int _width = 8;
     private int _height = 8;
-    private int _TileTypesCount = 6;
+    private int _tileTypesCount = 6;
     private IRandom _random;
     private Func<int, int, Tile>? _tileFactory;
     private Action<GameState>? _customizer;
@@ -38,7 +38,7 @@ public class GameStateBuilder
     /// </summary>
     public GameStateBuilder WithTileTypesCount(int count)
     {
-        _TileTypesCount = count;
+        _tileTypesCount = count;
         return this;
     }
 
@@ -103,7 +103,7 @@ public class GameStateBuilder
     /// </summary>
     public GameState Build()
     {
-        var state = new GameState(_width, _height, _TileTypesCount, _random);
+        var state = new GameState(_width, _height, _tileTypesCount, _random);
         state.SelectedPosition = Position.Invalid;
 
         // Initialize tiles
@@ -285,5 +285,3 @@ public class GameStateBuilder
 
     #endregion
 }
-
-

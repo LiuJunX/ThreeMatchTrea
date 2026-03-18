@@ -222,7 +222,7 @@ public sealed class SimulationEngine : IDisposable
         }
 
         // Phase 1: Refill — spawn tiles at column tops before gravity pulls them
-        _orchestrator.ProcessRefill(ref state);
+        _orchestrator.UpdateRefill(ref state);
 
         // Phase 2: Projectiles — update in-flight projectiles (UFO, beams)
         var projectileCount = _orchestrator.UpdateProjectiles(
@@ -586,6 +586,41 @@ public sealed class SimulationEngine : IDisposable
     public void SetEventCollector(IEventCollector collector)
     {
         _eventCollector = collector ?? NullEventCollector.Instance;
+    }
+
+    /// <summary>
+    /// Restores the engine to a previously saved state (used by undo).
+    /// Resets all internal bookkeeping: tick counter, elapsed time, pending moves,
+    /// swap tracking, and active subsystem state (projectiles, explosions, sessions).
+    /// </summary>
+    /// <param name="state">The game state to restore (should be a Clone with its own IRandom).</param>
+    /// <param name="tick">The tick counter at the time of save.</param>
+    /// <param name="elapsedTime">The elapsed time at the time of save.</param>
+    public void RestoreState(GameState state, int tick, float elapsedTime)
+    {
+        _currentTick = tick;
+        _elapsedTime = elapsedTime;
+
+        // Clear move tracking
+        _pendingMoveState = PendingMoveState.None;
+        _lastSwapFrom = Position.Invalid;
+        _lastSwapTo = Position.Invalid;
+        _shuffleFailed = false;
+
+        // Clear cascade stats
+        _cascadeDepth = 0;
+        _tilesCleared = 0;
+        _matchesProcessed = 0;
+        _bombsActivated = 0;
+
+        // Clear all active subsystem state (projectiles, explosions, sessions)
+        _orchestrator.ClearActiveState();
+
+        // Clear lock scheduler — safe because undo only restores to stable states
+        // where no timed/choreography locks are active.
+        _lockScheduler.Reset(ref state);
+
+        State = state;
     }
 
     /// <summary>

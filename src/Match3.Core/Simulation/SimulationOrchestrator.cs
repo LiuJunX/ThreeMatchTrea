@@ -54,7 +54,7 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
     }
 
     /// <inheritdoc />
-    public void ProcessRefill(ref GameState state)
+    public void UpdateRefill(ref GameState state)
     {
         _refill.Update(ref state);
     }
@@ -164,6 +164,17 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
         {
             Pools.Release(triggeredBombs);
         }
+    }
+
+    /// <summary>
+    /// Clears all active subsystem state (projectiles, explosions, color bomb sessions).
+    /// Used by undo to ensure a clean restore to a prior board state.
+    /// </summary>
+    public void ClearActiveState()
+    {
+        _projectileSystem.Clear();
+        _explosionSystem.Reset();
+        _colorBombSessionManager?.Reset();
     }
 
     /// <summary>

@@ -7,12 +7,25 @@ namespace Match3.Core.Simulation;
 /// Orchestrates the simulation update cycle.
 /// Extracted from SimulationEngine to reduce complexity and improve testability.
 /// </summary>
+/// <remarks>
+/// <b>Naming conventions:</b>
+/// <list type="bullet">
+///   <item><b>Update* methods</b> — tick-phase updates called every frame (e.g. <see cref="UpdateRefill"/>,
+///     <see cref="UpdatePhysics"/>). Always executed unconditionally.</item>
+///   <item><b>Process* methods</b> — conditional processing that may skip work
+///     (e.g. <see cref="ProcessMatches"/> only processes settled, non-falling tiles).</item>
+///   <item><b>Properties</b> (<see cref="HasActiveProjectiles"/>, <see cref="HasActiveExplosions"/>)
+///     — query subsystem internal state; no external parameters needed.</item>
+///   <item><b>Has* methods</b> (<see cref="HasPendingMatches"/>) — queries that require
+///     an external <c>GameState</c> parameter for evaluation.</item>
+/// </list>
+/// </remarks>
 public interface ISimulationOrchestrator
 {
     /// <summary>
-    /// Process tile refill for empty columns.
+    /// Update tile refill for empty columns.
     /// </summary>
-    void ProcessRefill(ref GameState state);
+    void UpdateRefill(ref GameState state);
 
     /// <summary>
     /// Update physics (gravity) simulation.
@@ -33,6 +46,8 @@ public interface ISimulationOrchestrator
 
     /// <summary>
     /// Process stable matches on the board.
+    /// Only considers tiles that have settled (not falling); in-flight tiles are ignored
+    /// so that gravity can finish before match detection runs.
     /// </summary>
     /// <param name="state">Current game state.</param>
     /// <param name="tick">Current tick number.</param>

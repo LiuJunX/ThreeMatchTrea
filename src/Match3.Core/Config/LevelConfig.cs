@@ -1,6 +1,7 @@
 using System;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
+using Match3.Core.Models.Grid;
 
 namespace Match3.Core.Config;
 
@@ -44,6 +45,16 @@ public class LevelConfig
     /// Cover health values (optional, defaults to type's default health).
     /// </summary>
     public byte[] CoverHealths { get; set; }
+
+    /// <summary>
+    /// Obstacle layer configuration (Box, Bush, Safe, etc.).
+    /// </summary>
+    public ObstacleType[] Obstacles { get; set; }
+
+    /// <summary>
+    /// Obstacle initial stage/HP values (optional, defaults to 1).
+    /// </summary>
+    public byte[] ObstacleStages { get; set; }
 
     public int MoveLimit { get; set; } = 20;
 
@@ -98,6 +109,8 @@ public class LevelConfig
         GroundHealths = new byte[size];
         Covers = new CoverType[size];
         CoverHealths = new byte[size];
+        Obstacles = new ObstacleType[size];
+        ObstacleStages = new byte[size];
 
         // Default cells to Slot
         Array.Fill(Cells, CellKind.Slot);
@@ -114,7 +127,9 @@ public class LevelConfig
         GroundHealths = new byte[size];
         Covers = new CoverType[size];
         CoverHealths = new byte[size];
-        
+        Obstacles = new ObstacleType[size];
+        ObstacleStages = new byte[size];
+
         Array.Fill(Cells, CellKind.Slot);
     }
 
@@ -132,40 +147,10 @@ public class LevelConfig
         if (GroundHealths != null) Array.Copy(GroundHealths, copy.GroundHealths, Math.Min(GroundHealths.Length, copy.GroundHealths.Length));
         if (Covers != null) Array.Copy(Covers, copy.Covers, Math.Min(Covers.Length, copy.Covers.Length));
         if (CoverHealths != null) Array.Copy(CoverHealths, copy.CoverHealths, Math.Min(CoverHealths.Length, copy.CoverHealths.Length));
+        if (Obstacles != null) Array.Copy(Obstacles, copy.Obstacles, Math.Min(Obstacles.Length, copy.Obstacles.Length));
+        if (ObstacleStages != null) Array.Copy(ObstacleStages, copy.ObstacleStages, Math.Min(ObstacleStages.Length, copy.ObstacleStages.Length));
         for (int i = 0; i < Objectives.Length; i++)
             copy.Objectives[i] = Objectives[i];
         return copy;
-    }
-}
-
-/// <summary>
-/// 关卡分析缓存数据
-/// </summary>
-[Serializable]
-public class LevelAnalysisCacheData
-{
-    /// <summary>通过率 (0-1)</summary>
-    public float WinRate { get; set; }
-
-    /// <summary>死锁率 (0-1)</summary>
-    public float DeadlockRate { get; set; }
-
-    /// <summary>平均使用步数</summary>
-    public float AverageMovesUsed { get; set; }
-
-    /// <summary>难度评级</summary>
-    public string Difficulty { get; set; } = "";
-
-    /// <summary>分析时的模拟次数</summary>
-    public int SimulationCount { get; set; }
-
-    /// <summary>分析时间 (DateTime.Ticks)</summary>
-    public long AnalyzedAtTicks { get; set; }
-
-    /// <summary>分析时间</summary>
-    public DateTime AnalyzedAt
-    {
-        get => new DateTime(AnalyzedAtTicks);
-        set => AnalyzedAtTicks = value.Ticks;
     }
 }
