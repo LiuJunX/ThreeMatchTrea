@@ -20,15 +20,6 @@
     "None","None","Grass","Grass","Grass","Grass","None","None",
     "None","None","None","None","None","None","None","None"
   ],
-  "groundHealths": [
-    0,0,0,0,0,0,0,0,
-    0,0,1,1,1,1,0,0,
-    0,1,0,0,0,0,1,0,
-    0,1,0,2,2,0,1,0,
-    0,1,0,2,2,0,1,0,
-    0,1,0,0,0,0,1,0,
-    0,0,1,1,1,1,0,0,
-    0,0,0,0,0,0,0,0
-  ],
+  "groundHealths": "AAAAAAAAAAAAAAEBAQEAAAABAAAAAAEAAAEAAgIAAQAAAQACAgABAAABAAAAAAEAAAABAQEBAAAAAAAAAAAAAA==",
   "notes": "Grass introduction: ring of HP=1, center 4 cells HP=2 (deep). Clear all Grass + collect tiles."
 }
