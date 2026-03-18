@@ -5,6 +5,7 @@ using Match3.Presentation;
 using Match3.Unity.Bridge;
 using Match3.Unity.Pools;
 using Match3.Unity.Services;
+using Match3.Unity.Views.Obstacles;
 using UnityEngine;
 
 namespace Match3.Unity.Views
@@ -17,14 +18,18 @@ namespace Match3.Unity.Views
     {
         private ObjectPool<Tile3DView> _tilePool;
         private ObjectPool<Projectile3DView> _projectilePool;
+        private ObjectPool<ObstacleView> _obstaclePool;
         private readonly Dictionary<int, Tile3DView> _activeTiles = new();
         private readonly Dictionary<int, Projectile3DView> _activeProjectiles = new();
+        private readonly Dictionary<Position, ObstacleView> _activeObstacles = new();
 
         // Pre-allocated collections to avoid GC in hot path
         private readonly HashSet<int> _activeTileIds = new();
         private readonly HashSet<int> _activeProjectileIds = new();
+        private readonly HashSet<Position> _activeObstaclePositions = new();
         private readonly List<int> _tilesToRemove = new();
         private readonly List<int> _projectilesToRemove = new();
+        private readonly List<Position> _obstaclesToRemove = new();
 
         private Match3Bridge _bridge;
         private Transform _tileContainer;
@@ -106,6 +111,17 @@ namespace Match3.Unity.Views
                     parent: _projectileContainer,
                     initialSize: projInitial,
                     maxSize: projMax
+                );
+
+                var obstacleContainer = new GameObject("ObstacleContainer3D").transform;
+                obstacleContainer.SetParent(transform, false);
+
+                var (obsInitial, obsMax) = GetPoolSize("obstacles", 16, 64);
+                _obstaclePool = new ObjectPool<ObstacleView>(
+                    factory: () => CreateObstacleView(obstacleContainer),
+                    parent: obstacleContainer,
+                    initialSize: obsInitial,
+                    maxSize: obsMax
                 );
 
                 _viewInitialized = true;
@@ -383,6 +399,9 @@ namespace Match3.Unity.Views
             // Portal visual effects for tiles falling through holes
             UpdatePortalEffects(cellSize, origin, height);
 
+            // Render obstacles
+            RenderObstacles(state, cellSize, origin, height, dt);
+
             // Render projectiles
             RenderProjectiles(state, cellSize, origin, height);
         }
@@ -433,6 +452,54 @@ namespace Match3.Unity.Views
             }
 
             _highlightedTileId = selectedTileId;
+        }
+
+        private void RenderObstacles(VisualState state, float cellSize, Vector2 origin, int height, float dt)
+        {
+            _activeObstaclePositions.Clear();
+            _obstaclesToRemove.Clear();
+
+            foreach (var kvp in state.Obstacles)
+            {
+                var pos = kvp.Key;
+                var visual = kvp.Value;
+                if (!visual.IsVisible) continue;
+
+                _activeObstaclePositions.Add(pos);
+
+                if (!_activeObstacles.TryGetValue(pos, out var obstacleView))
+                {
+                    obstacleView = _obstaclePool.Rent();
+                    obstacleView.Setup(pos, visual.Type, visual.CurrentStage);
+                    _activeObstacles[pos] = obstacleView;
+                }
+
+                obstacleView.UpdateFromVisual(visual, cellSize, origin, height, dt);
+            }
+
+            foreach (var kvp in _activeObstacles)
+            {
+                if (!_activeObstaclePositions.Contains(kvp.Key))
+                    _obstaclesToRemove.Add(kvp.Key);
+            }
+
+            foreach (var pos in _obstaclesToRemove)
+            {
+                if (_activeObstacles.TryGetValue(pos, out var view))
+                {
+                    _obstaclePool.Return(view);
+                    _activeObstacles.Remove(pos);
+                }
+            }
+        }
+
+        private static ObstacleView CreateObstacleView(Transform parent)
+        {
+            var go = new GameObject("Obstacle3D");
+            go.transform.SetParent(parent, false);
+            go.AddComponent<MeshFilter>();
+            go.AddComponent<MeshRenderer>();
+            return go.AddComponent<ObstacleView>();
         }
 
         private void RenderProjectiles(VisualState state, float cellSize, Vector2 origin, int height)
@@ -515,6 +582,12 @@ namespace Match3.Unity.Views
                 _tilePool.Return(kvp.Value);
             }
             _activeTiles.Clear();
+
+            foreach (var kvp in _activeObstacles)
+            {
+                _obstaclePool.Return(kvp.Value);
+            }
+            _activeObstacles.Clear();
 
             foreach (var kvp in _activeProjectiles)
             {
@@ -654,6 +727,7 @@ namespace Match3.Unity.Views
         {
             Clear();
             _tilePool?.Clear();
+            _obstaclePool?.Clear();
             _projectilePool?.Clear();
 
             // Lighting controller cleans up its own lights via its own OnDestroy

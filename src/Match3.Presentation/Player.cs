@@ -339,6 +339,32 @@ public sealed class Player
             case UfoRetargetCommand retarget:
                 HandleUfoRetarget(retarget);
                 break;
+
+            case SpawnObstacleCommand spawnObs:
+                _visualState.AddObstacle(spawnObs.GridPos, spawnObs.ObstacleType, spawnObs.Stage);
+                break;
+
+            case DamageObstacleCommand damageObs:
+            {
+                var obsVisual = _visualState.GetObstacle(damageObs.GridPos);
+                if (obsVisual != null)
+                {
+                    obsVisual.CurrentStage = damageObs.NewStage;
+                    obsVisual.DamageProgress = 0f;
+                }
+                break;
+            }
+
+            case DestroyObstacleCommand destroyObs:
+            {
+                var obsVisual = _visualState.GetObstacle(destroyObs.GridPos);
+                if (obsVisual != null)
+                {
+                    obsVisual.IsDestroying = true;
+                    obsVisual.DeathProgress = 0f;
+                }
+                break;
+            }
         }
 
         // Mark tiles as being animated for position-affecting commands
@@ -373,6 +399,10 @@ public sealed class Player
 
             case RemoveProjectileCommand removeProj:
                 _visualState.RemoveProjectile(removeProj.ProjectileId);
+                break;
+
+            case RemoveObstacleCommand removeObs:
+                _visualState.RemoveObstacle(removeObs.GridPos);
                 break;
         }
     }
@@ -442,6 +472,22 @@ public sealed class Player
                 // Fade out projectile
                 _visualState.SetProjectileVisible(impact.ProjectileId, t < 0.5f);
                 break;
+
+            case DamageObstacleCommand damageObs:
+            {
+                var obsVisual = _visualState.GetObstacle(damageObs.GridPos);
+                if (obsVisual != null)
+                    obsVisual.DamageProgress = t;
+                break;
+            }
+
+            case DestroyObstacleCommand destroyObs:
+            {
+                var obsVisual = _visualState.GetObstacle(destroyObs.GridPos);
+                if (obsVisual != null)
+                    obsVisual.DeathProgress = t;
+                break;
+            }
 
             case UfoLaunchCommand ufo:
             {
@@ -547,6 +593,22 @@ public sealed class Player
                     _visualState.SetTilePosition(ufo.TileId, ufo.Target);
                 }
                 break;
+
+            case DamageObstacleCommand damageObs:
+            {
+                var obsVisual = _visualState.GetObstacle(damageObs.GridPos);
+                if (obsVisual != null)
+                    obsVisual.DamageProgress = 1f;
+                break;
+            }
+
+            case DestroyObstacleCommand destroyObs:
+            {
+                var obsVisual = _visualState.GetObstacle(destroyObs.GridPos);
+                if (obsVisual != null)
+                    obsVisual.DeathProgress = 1f;
+                break;
+            }
         }
 
         // Clear animation flag when animation completes

@@ -14,6 +14,7 @@ public sealed class VisualState : IVisualState
 {
     private readonly Dictionary<int, TileVisual> _tiles = new();
     private readonly Dictionary<int, ProjectileVisual> _projectiles = new();
+    private readonly Dictionary<Position, ObstacleVisual> _obstacles = new();
     private readonly List<VisualEffect> _effects = new();
     private readonly HashSet<int> _aliveTileIds = new();
     private readonly List<int> _tilesToRemove = new();
@@ -27,6 +28,11 @@ public sealed class VisualState : IVisualState
     /// All projectile visuals indexed by projectile ID.
     /// </summary>
     public IReadOnlyDictionary<int, ProjectileVisual> Projectiles => _projectiles;
+
+    /// <summary>
+    /// All obstacle visuals indexed by grid position.
+    /// </summary>
+    public IReadOnlyDictionary<Position, ObstacleVisual> Obstacles => _obstacles;
 
     /// <summary>
     /// All active visual effects.
@@ -53,24 +59,38 @@ public sealed class VisualState : IVisualState
         Height = state.Height;
 
         _tiles.Clear();
+        _obstacles.Clear();
 
         for (int y = 0; y < state.Height; y++)
         {
             for (int x = 0; x < state.Width; x++)
             {
                 var tile = state.GetTile(x, y);
-                if (tile.Type == ElementType.None) continue;
-
-                _tiles[tile.Id] = new TileVisual
+                if (tile.Type != ElementType.None)
                 {
-                    Id = tile.Id,
-                    Position = new Vector2(x, y),
-                    Scale = Vector2.One,
-                    Alpha = 1f,
-                    IsVisible = true,
-                    TileType = tile.Type,
-                    GridPosition = new Position(x, y)
-                };
+                    _tiles[tile.Id] = new TileVisual
+                    {
+                        Id = tile.Id,
+                        Position = new Vector2(x, y),
+                        Scale = Vector2.One,
+                        Alpha = 1f,
+                        IsVisible = true,
+                        TileType = tile.Type,
+                        GridPosition = new Position(x, y)
+                    };
+                }
+
+                var obstacle = state.GetObstacle(x, y);
+                if (obstacle.Type != ObstacleType.None)
+                {
+                    var pos = new Position(x, y);
+                    _obstacles[pos] = new ObstacleVisual
+                    {
+                        GridPosition = pos,
+                        Type = obstacle.Type,
+                        CurrentStage = obstacle.Stage,
+                    };
+                }
             }
         }
     }
@@ -185,6 +205,35 @@ public sealed class VisualState : IVisualState
     public void RemoveProjectile(int projectileId)
     {
         _projectiles.Remove(projectileId);
+    }
+
+    /// <summary>
+    /// Add a new obstacle visual.
+    /// </summary>
+    public void AddObstacle(Position pos, ObstacleType type, byte stage)
+    {
+        _obstacles[pos] = new ObstacleVisual
+        {
+            GridPosition = pos,
+            Type = type,
+            CurrentStage = stage,
+        };
+    }
+
+    /// <summary>
+    /// Remove an obstacle visual.
+    /// </summary>
+    public void RemoveObstacle(Position pos)
+    {
+        _obstacles.Remove(pos);
+    }
+
+    /// <summary>
+    /// Get obstacle visual by position. Returns null if not found.
+    /// </summary>
+    public ObstacleVisual? GetObstacle(Position pos)
+    {
+        return _obstacles.TryGetValue(pos, out var obs) ? obs : null;
     }
 
     /// <inheritdoc />
@@ -398,6 +447,38 @@ public sealed class ProjectileVisual
 
     /// <summary>Color index for multi-color projectiles (0-5 maps to Item1-Item6).</summary>
     public byte ColorIndex { get; init; }
+}
+
+/// <summary>
+/// Visual representation of an obstacle.
+/// </summary>
+public sealed class ObstacleVisual
+{
+    /// <summary>Grid position (immutable — obstacles don't move).</summary>
+    public Position GridPosition { get; init; }
+
+    /// <summary>Type of obstacle.</summary>
+    public ObstacleType Type { get; init; }
+
+    /// <summary>Current stage (HP). Updated by Player on DamageObstacleCommand start.</summary>
+    public byte CurrentStage { get; set; }
+
+    /// <summary>
+    /// Damage animation progress (0→1). Driven by Player during DamageObstacleCommand.
+    /// Reset to 0 at damage start, reaches 1 at end. View uses this for hit reaction.
+    /// </summary>
+    public float DamageProgress { get; set; }
+
+    /// <summary>
+    /// Death animation progress (0→1). Driven by Player during DestroyObstacleCommand.
+    /// </summary>
+    public float DeathProgress { get; set; }
+
+    /// <summary>Whether the destroy animation is playing.</summary>
+    public bool IsDestroying { get; set; }
+
+    /// <summary>Whether the obstacle is visible.</summary>
+    public bool IsVisible { get; set; } = true;
 }
 
 /// <summary>

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Match3.Core.Events;
+using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 
 namespace Match3.Core.Choreography;
@@ -209,11 +210,79 @@ internal sealed class LayerChoreographer
         });
     }
 
-    /// <summary>Obstacle damaged — placeholder for future animation.</summary>
-    internal void Visit(ObstacleDamagedEvent evt) { }
+    /// <summary>
+    /// Emit obstacle damage command (stage decreased but not destroyed).
+    /// </summary>
+    internal void Visit(ObstacleDamagedEvent evt)
+    {
+        float startTime = _ctx.GetStartTime(evt);
 
-    /// <summary>Obstacle destroyed — placeholder for future animation.</summary>
-    internal void Visit(ObstacleDestroyedEvent evt) { }
+        float duration = evt.Type switch
+        {
+            ObstacleType.Box => 0.25f,
+            ObstacleType.Bush => 0.35f,
+            _ => 0.25f
+        };
+
+        _ctx.Commands.Add(new DamageObstacleCommand
+        {
+            GridPos = evt.GridPosition,
+            ObstacleType = evt.Type,
+            NewStage = evt.RemainingStage,
+            StartTime = startTime,
+            Duration = duration
+        });
+
+        _ctx.Commands.Add(new ShowEffectCommand
+        {
+            EffectType = "obstacle_hit",
+            Position = new Vector2(evt.GridPosition.X, evt.GridPosition.Y),
+            StartTime = startTime,
+            Duration = 0.2f
+        });
+    }
+
+    /// <summary>
+    /// Emit obstacle destroy + remove commands (stage reached zero).
+    /// </summary>
+    internal void Visit(ObstacleDestroyedEvent evt)
+    {
+        float startTime = _ctx.GetStartTime(evt);
+
+        float destroyDuration = evt.Type switch
+        {
+            ObstacleType.Box => 0.3f,
+            ObstacleType.Bush => 0.4f,
+            _ => 0.3f
+        };
+
+        _ctx.Commands.Add(new DestroyObstacleCommand
+        {
+            GridPos = evt.GridPosition,
+            ObstacleType = evt.Type,
+            StartTime = startTime,
+            Duration = destroyDuration
+        });
+
+        // Remove from visual state after death animation
+        _ctx.Commands.Add(new RemoveObstacleCommand
+        {
+            GridPos = evt.GridPosition,
+            StartTime = startTime + destroyDuration,
+            Duration = 0
+        });
+
+        if (!evt.IsGoal)
+        {
+            _ctx.Commands.Add(new ShowEffectCommand
+            {
+                EffectType = "obstacle_destroyed",
+                Position = new Vector2(evt.GridPosition.X, evt.GridPosition.Y),
+                StartTime = startTime,
+                Duration = 0.3f
+            });
+        }
+    }
 
     /// <summary>Ground spawned by death effect — placeholder for future animation.</summary>
     internal void Visit(GroundSpawnedEvent evt) { }
