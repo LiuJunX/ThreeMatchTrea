@@ -61,9 +61,9 @@ namespace Match3.Unity.Views.Grounds
             // Push ground behind tiles (positive Z = further from camera)
             transform.localPosition = new Vector3(worldPos.x, worldPos.y, worldPos.z + 0.15f);
 
-            // Ground is flat — wider but thinner than tiles
-            _baseScale = cellSize * 0.45f;
-            transform.localScale = new Vector3(_baseScale, _baseScale, _baseScale * 0.3f);
+            // Uniform scale to fill cell (art model defines its own proportions)
+            _baseScale = cellSize * 0.4f;
+            transform.localScale = new Vector3(_baseScale, _baseScale, _baseScale);
 
             // Delegate to presenter based on state
             if (visual.IsDestroying)
@@ -91,13 +91,19 @@ namespace Match3.Unity.Views.Grounds
                 _meshFilter.sharedMesh = mesh;
         }
 
+        /// <summary>Set shared materials from FBX model.</summary>
+        public void SetMaterials(Material[] materials)
+        {
+            _meshRenderer.sharedMaterials = materials;
+        }
+
         /// <summary>
         /// Multiply current scale by a factor (used for shake/shrink animations).
         /// </summary>
         public void SetLocalScaleMultiplier(float multiplier)
         {
             float s = _baseScale * multiplier;
-            transform.localScale = new Vector3(s, s, s * 0.3f);
+            transform.localScale = new Vector3(s, s, s);
         }
 
         /// <summary>Set the base color via MaterialPropertyBlock.</summary>

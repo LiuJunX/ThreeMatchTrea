@@ -153,15 +153,21 @@ namespace Match3.Unity.Views
                 var elementType = p.TargetLayer == ObjectiveTargetLayer.Tile
                     ? (ElementType)p.ElementType
                     : ElementType.None;
+                var obstacleType = p.TargetLayer == ObjectiveTargetLayer.Obstacle
+                    ? (ObstacleType)p.ElementType
+                    : ObstacleType.None;
+                var groundType = p.TargetLayer == ObjectiveTargetLayer.Ground
+                    ? (GroundType)p.ElementType
+                    : GroundType.None;
 
                 float x = startX + slot * IconSpacing;
-                var icon = CreateIcon(i, elementType, p.CurrentCount, p.TargetCount, new Vector3(x, baseY, 0f));
+                var icon = CreateIcon(i, elementType, obstacleType, groundType, p.CurrentCount, p.TargetCount, new Vector3(x, baseY, 0f));
                 _icons.Add(icon);
                 slot++;
             }
         }
 
-        private ObjectiveIcon CreateIcon(int index, ElementType elementType, int current, int target, Vector3 position)
+        private ObjectiveIcon CreateIcon(int index, ElementType elementType, ObstacleType obstacleType, GroundType groundType, int current, int target, Vector3 position)
         {
             var go = new GameObject($"Objective_{index}");
             go.transform.SetParent(_iconContainer, false);
@@ -169,11 +175,36 @@ namespace Match3.Unity.Views
             go.transform.localEulerAngles = new Vector3(IconTiltX, 0f, 0f);
             go.transform.localScale = Vector3.one * (IconScale * _bridge.CellSize);
 
-            // Gem mesh
+            // Mesh + material
             var mf = go.AddComponent<MeshFilter>();
             var mr = go.AddComponent<MeshRenderer>();
 
-            if (elementType != ElementType.None)
+            if (obstacleType != ObstacleType.None)
+            {
+                mf.sharedMesh = MeshFactory.GetObstacleMesh(obstacleType);
+                var mats = MeshFactory.GetObstacleMaterials(obstacleType);
+                if (mats != null && mats.Length > 0)
+                    mr.sharedMaterials = mats;
+                else
+                    mr.sharedMaterial = MeshFactory.GetFallbackMaterial();
+
+                // Tint to stage-1 color (the "about to break" look)
+                var propBlock = new MaterialPropertyBlock();
+                var stage1Color = new Color(0.55f, 0.35f, 0.15f);
+                propBlock.SetColor("_BaseColor", stage1Color);
+                propBlock.SetColor("_Color", stage1Color);
+                mr.SetPropertyBlock(propBlock);
+            }
+            else if (groundType != GroundType.None)
+            {
+                mf.sharedMesh = MeshFactory.GetGroundMesh(groundType);
+                var mats = MeshFactory.GetGroundMaterials(groundType);
+                if (mats != null && mats.Length > 0)
+                    mr.sharedMaterials = mats;
+                else
+                    mr.sharedMaterial = MeshFactory.GetFallbackMaterial();
+            }
+            else if (elementType != ElementType.None)
             {
                 mf.sharedMesh = MeshFactory.GetTileMesh(elementType);
                 var isColorType = elementType >= ElementType.Item1 && elementType <= ElementType.Item6;

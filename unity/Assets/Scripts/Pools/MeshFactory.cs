@@ -18,6 +18,10 @@ namespace Match3.Unity.Pools
         private static readonly Dictionary<ElementType, Material[]> _singleMaterialArrayCache = new();
         private static readonly Dictionary<ElementType, Mesh> _bombMeshCache = new();
         private static readonly Dictionary<ElementType, Material[]> _bombMaterialCache = new();
+        private static readonly Dictionary<ObstacleType, Mesh> _obstacleMeshCache = new();
+        private static readonly Dictionary<ObstacleType, Material[]> _obstacleMaterialCache = new();
+        private static readonly Dictionary<GroundType, Mesh> _groundMeshCache = new();
+        private static readonly Dictionary<GroundType, Material[]> _groundMaterialCache = new();
         private static Shader _litShader;
         private static Shader _tileLitShader;
 
@@ -133,6 +137,124 @@ namespace Match3.Unity.Pools
 
             Debug.LogWarning($"[MeshFactory] Bomb_{typeName} mesh not found, using fallback sphere");
             _bombMeshCache[type] = GetFallbackMesh();
+        }
+
+        /// <summary>
+        /// Get the mesh for an obstacle type.
+        /// Loads from Resources/Art/Gems/Models/Box_State3 etc., falls back to fallback mesh.
+        /// </summary>
+        public static Mesh GetObstacleMesh(ObstacleType type)
+        {
+            if (type == ObstacleType.None) return GetFallbackMesh();
+
+            if (_obstacleMeshCache.TryGetValue(type, out var cached))
+                return cached;
+
+            LoadObstacleModel(type);
+            return _obstacleMeshCache.TryGetValue(type, out cached) ? cached : GetFallbackMesh();
+        }
+
+        /// <summary>
+        /// Get the cached materials array for an obstacle type.
+        /// Returns null if the model has no embedded materials.
+        /// </summary>
+        public static Material[] GetObstacleMaterials(ObstacleType type)
+        {
+            if (type == ObstacleType.None) return null;
+
+            if (!_obstacleMaterialCache.ContainsKey(type))
+                LoadObstacleModel(type);
+
+            return _obstacleMaterialCache.TryGetValue(type, out var mats) ? mats : null;
+        }
+
+        private static void LoadObstacleModel(ObstacleType type)
+        {
+            if (_obstacleMeshCache.ContainsKey(type)) return;
+
+            var typeName = type switch
+            {
+                ObstacleType.Box => "Box_State3",
+                _ => type.ToString()
+            };
+            var model = ResourceService.Loader.Load<GameObject>($"Art/Gems/Models/{typeName}");
+            if (model != null)
+            {
+                var meshFilter = model.GetComponentInChildren<MeshFilter>();
+                if (meshFilter != null)
+                {
+                    _obstacleMeshCache[type] = meshFilter.sharedMesh;
+
+                    var renderer = model.GetComponentInChildren<MeshRenderer>();
+                    if (renderer != null && renderer.sharedMaterials.Length > 0)
+                        _obstacleMaterialCache[type] = CloneMaterialsWithTileLit(renderer.sharedMaterials);
+
+                    Debug.Log($"[MeshFactory] Loaded {typeName} mesh from Resources ({renderer?.sharedMaterials.Length ?? 0} materials)");
+                    return;
+                }
+            }
+
+            Debug.LogWarning($"[MeshFactory] {typeName} mesh not found, using fallback");
+            _obstacleMeshCache[type] = GetFallbackMesh();
+        }
+
+        /// <summary>
+        /// Get the mesh for a ground type.
+        /// Loads from Resources/Art/Gems/Models/Grass etc., falls back to fallback mesh.
+        /// </summary>
+        public static Mesh GetGroundMesh(GroundType type)
+        {
+            if (type == GroundType.None) return GetFallbackMesh();
+
+            if (_groundMeshCache.TryGetValue(type, out var cached))
+                return cached;
+
+            LoadGroundModel(type);
+            return _groundMeshCache.TryGetValue(type, out cached) ? cached : GetFallbackMesh();
+        }
+
+        /// <summary>
+        /// Get the cached materials array for a ground type.
+        /// Returns null if the model has no embedded materials.
+        /// </summary>
+        public static Material[] GetGroundMaterials(GroundType type)
+        {
+            if (type == GroundType.None) return null;
+
+            if (!_groundMaterialCache.ContainsKey(type))
+                LoadGroundModel(type);
+
+            return _groundMaterialCache.TryGetValue(type, out var mats) ? mats : null;
+        }
+
+        private static void LoadGroundModel(GroundType type)
+        {
+            if (_groundMeshCache.ContainsKey(type)) return;
+
+            var typeName = type switch
+            {
+                GroundType.Grass => "Grass",
+                _ => type.ToString()
+            };
+            var model = ResourceService.Loader.Load<GameObject>($"Art/Gems/Models/{typeName}");
+            if (model != null)
+            {
+                var meshFilter = model.GetComponentInChildren<MeshFilter>();
+                if (meshFilter != null)
+                {
+                    _groundMeshCache[type] = meshFilter.sharedMesh;
+
+                    var renderer = model.GetComponentInChildren<MeshRenderer>();
+                    if (renderer != null && renderer.sharedMaterials.Length > 0)
+                        _groundMaterialCache[type] = CloneMaterialsWithTileLit(renderer.sharedMaterials);
+
+                    Debug.Log($"[MeshFactory] Loaded {typeName} mesh from Resources ({renderer?.sharedMaterials.Length ?? 0} materials)");
+                    return;
+                }
+            }
+
+            Debug.LogWarning($"[MeshFactory] {typeName} mesh not found, using fallback");
+            _groundMeshCache[type] = GetFallbackMesh();
         }
 
         /// <summary>
@@ -361,6 +483,31 @@ namespace Match3.Unity.Pools
                 }
             }
             _bombMaterialCache.Clear();
+
+            _obstacleMeshCache.Clear();
+            foreach (var mats in _obstacleMaterialCache.Values)
+            {
+                if (mats == null) continue;
+                foreach (var mat in mats)
+                {
+                    if (mat != null)
+                        Object.Destroy(mat);
+                }
+            }
+            _obstacleMaterialCache.Clear();
+
+            _groundMeshCache.Clear();
+            foreach (var mats in _groundMaterialCache.Values)
+            {
+                if (mats == null) continue;
+                foreach (var mat in mats)
+                {
+                    if (mat != null)
+                        Object.Destroy(mat);
+                }
+            }
+            _groundMaterialCache.Clear();
+
             _singleMaterialArrayCache.Clear();
             _tileMeshCache.Clear();
             _fallbackMesh = null;

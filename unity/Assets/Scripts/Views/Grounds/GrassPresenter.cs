@@ -1,11 +1,11 @@
+using Match3.Core.Models.Enums;
 using Match3.Unity.Pools;
 using UnityEngine;
 
 namespace Match3.Unity.Views.Grounds
 {
     /// <summary>
-    /// Presenter for Grass ground: health-based color, shake on damage, shrink+fade on death.
-    /// Falls back to a tinted cube when art meshes are not yet available.
+    /// Presenter for Grass ground: uses imported model + health-based color tint.
     /// </summary>
     public sealed class GrassPresenter : IGroundPresenter
     {
@@ -22,7 +22,14 @@ namespace Match3.Unity.Views.Grounds
         public void Setup(GroundView view, byte health)
         {
             _currentHealth = health;
-            view.SetMesh(MeshFactory.GetFallbackMesh());
+
+            var mesh = MeshFactory.GetGroundMesh(GroundType.Grass);
+            view.SetMesh(mesh);
+
+            var mats = MeshFactory.GetGroundMaterials(GroundType.Grass);
+            if (mats != null)
+                view.SetMaterials(mats);
+
             ApplyHealthColor(view, health);
         }
 
