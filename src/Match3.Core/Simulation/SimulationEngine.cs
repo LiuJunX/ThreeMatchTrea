@@ -661,6 +661,40 @@ public sealed class SimulationEngine : IDisposable
         _lockScheduler.Release(ref state, token);
     }
 
+    /// <summary>
+    /// Creates a snapshot of the current engine state for ring buffer storage.
+    /// Captures GameState (deep clone), RNG state, tick, and elapsed time.
+    /// </summary>
+    public EngineSnapshot CreateSnapshot()
+    {
+        var rng = State.Random as Match3.Random.XorShift64;
+        var rngState = rng?.GetState() ?? 0;
+
+        return new EngineSnapshot
+        {
+            State = State.Clone(new Match3.Random.XorShift64(rngState)),
+            RngState = rngState,
+            Tick = _currentTick,
+            ElapsedTime = _elapsedTime,
+            IsValid = true
+        };
+    }
+
+    /// <summary>
+    /// Restores the engine from a previously captured snapshot.
+    /// Delegates to <see cref="RestoreState"/> which clears all subsystem state.
+    /// </summary>
+    public void RestoreFromSnapshot(in EngineSnapshot snapshot)
+    {
+        // Clone the saved state so the ring buffer's snapshot remains untouched.
+        // This is a deliberate second clone (the first was in CreateSnapshot).
+        // The engine will mutate the restored state on subsequent ticks,
+        // so the snapshot must keep its own independent copy.
+        var restoredState = snapshot.State.Clone(
+            new Match3.Random.XorShift64(snapshot.RngState));
+        RestoreState(restoredState, snapshot.Tick, snapshot.ElapsedTime);
+    }
+
     public void Dispose()
     {
         // Cleanup resources if needed

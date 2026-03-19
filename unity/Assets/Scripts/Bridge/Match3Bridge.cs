@@ -45,7 +45,7 @@ namespace Match3.Unity.Bridge
         private WeightedMoveSelector _autoPlaySelector;
 
         private bool _initialized;
-        private float _timeAccumulator;
+        private GameEngine _gameEngine;
 
         // Recording (always-on during gameplay)
         private GameRecorder _recorder;
@@ -124,7 +124,7 @@ namespace Match3.Unity.Bridge
         /// </summary>
         public GameState CurrentState =>
             _isReplaying ? (_replayController?.Engine?.State ?? default)
-                         : (_session?.Engine.State ?? default);
+                         : (_gameEngine?.CurrentState ?? default);
 
         #region UI Properties
 
@@ -160,7 +160,7 @@ namespace Match3.Unity.Bridge
             set
             {
                 _isPaused = value;
-                _session?.Engine.SetPaused(value);
+                _gameEngine?.Engine.SetPaused(value);
             }
         }
 
@@ -300,13 +300,17 @@ namespace Match3.Unity.Bridge
             _isAutoPlaying = false;
             _gameEndFired = false;
             _lastObjectiveHash = -1;
-            _timeAccumulator = 0f;
+
             _isReplaying = false;
 
             // Start recording
             _recorder = new GameRecorder(in state, seed,
                 config.TileTypesCount, _levelConfig);
             _bookmarkSnapshotPath = null;
+
+            // Create GameEngine (ring buffer + speculative execution)
+            _gameEngine = new GameEngine(_session.Engine);
+            _gameEngine.SetRecorder(_recorder);
 
             Debug.Log($"Match3Bridge initialized: {_width}x{_height}, seed={seed}, level={levelId}");
         }
@@ -380,13 +384,17 @@ namespace Match3.Unity.Bridge
             _isAutoPlaying = false;
             _gameEndFired = false;
             _lastObjectiveHash = -1;
-            _timeAccumulator = 0f;
+
             _isReplaying = false;
 
             // Start recording
             _recorder = new GameRecorder(in state, seed,
                 config.TileTypesCount, _levelConfig);
             _bookmarkSnapshotPath = null;
+
+            // Create GameEngine (ring buffer + speculative execution)
+            _gameEngine = new GameEngine(_session.Engine);
+            _gameEngine.SetRecorder(_recorder);
 
             Debug.Log($"Match3Bridge initialized: {width}x{height}, seed={seed}");
         }
@@ -420,21 +428,15 @@ namespace Match3.Unity.Bridge
 
         private void TickNormal(float scaledDelta)
         {
-            if (_session == null) return;
+            if (_session == null || _gameEngine == null) return;
 
-            // Fixed timestep accumulator: ensures simulation uses identical dt
-            // to replay (1/60f), making recorded games deterministically reproducible.
-            const float fixedStep = SimulationConfig.DefaultFixedDeltaTime;
-            _timeAccumulator += scaledDelta;
-            while (_timeAccumulator >= fixedStep)
-            {
-                _timeAccumulator -= fixedStep;
-                _session.Engine.Tick(fixedStep);
-            }
+            // GameEngine handles fixed-timestep accumulation + speculative execution
+            _gameEngine.AdvanceFrame(scaledDelta);
 
-            // Drain events accumulated from all fixed ticks
-            _session.DrainEventsTo(_eventBuffer);
-            ProcessEventsAndAnimate(scaledDelta, _session.Engine.State);
+            // Drain events from the current ring buffer slot
+            _eventBuffer.Clear();
+            _gameEngine.DrainCurrentEvents(_eventBuffer);
+            ProcessEventsAndAnimate(scaledDelta, _gameEngine.CurrentState);
 
             // Check for UI state changes
             CheckStateChanges();
@@ -448,14 +450,14 @@ namespace Match3.Unity.Bridge
             // Handle auto-play
             if (_isAutoPlaying)
             {
-                if (_session.Engine.IsStable() && !HasActiveAnimations)
+                if (_gameEngine.IsStable && !HasActiveAnimations)
                 {
                     TryMakeAutoMove();
                 }
                 else if (Time.frameCount % 120 == 0)
                 {
-                    var st = _session.Engine.State;
-                    Debug.Log($"[AutoPlay] waiting: stable={_session.Engine.IsStable()} anim={HasActiveAnimations} moves={st.MoveCount}/{st.MoveLimit} | {_player.GetAnimationDiagnostics()}");
+                    var st = _gameEngine.CurrentState;
+                    Debug.Log($"[AutoPlay] waiting: stable={_gameEngine.IsStable} anim={HasActiveAnimations} moves={st.MoveCount}/{st.MoveLimit} | {_player.GetAnimationDiagnostics()}");
                 }
             }
         }
@@ -520,9 +522,9 @@ namespace Match3.Unity.Bridge
 
         private void TryMakeAutoMove()
         {
-            if (_autoPlaySelector == null) return;
+            if (_autoPlaySelector == null || _gameEngine == null) return;
 
-            var state = _session.Engine.State;
+            var state = _gameEngine.CurrentState;
             if (state.MoveCount >= state.MoveLimit)
             {
                 Debug.Log($"[AutoPlay] game over: {state.MoveCount}/{state.MoveLimit}");
@@ -660,7 +662,7 @@ namespace Match3.Unity.Bridge
         /// </summary>
         public bool ApplyMove(Position from, Position to)
         {
-            if (!_initialized || _session == null) return false;
+            if (!_initialized || _gameEngine == null) return false;
 
             if (!AreAdjacent(from, to))
                 return false;
@@ -669,15 +671,11 @@ namespace Match3.Unity.Bridge
             {
                 From = from,
                 To = to,
-                IssuedAtTick = _session.Engine.CurrentTick
+                IssuedAtTick = _gameEngine.CurrentTick
             };
 
-            if (cmd.Execute(_session.Engine))
-            {
-                _recorder?.RecordCommand(cmd);
-                return true;
-            }
-            return false;
+            // GameEngine.InjectCommand handles: undo + execute + record + invalidation
+            return _gameEngine.InjectCommand(cmd);
         }
 
         /// <summary>
@@ -687,7 +685,7 @@ namespace Match3.Unity.Bridge
         {
             if (!_initialized) return false;
             if (_isReplaying) return false;
-            return !HasActiveAnimations && _session != null && _session.Engine.IsStable();
+            return !HasActiveAnimations && _gameEngine != null && _gameEngine.IsStable;
         }
 
         /// <summary>
@@ -697,9 +695,9 @@ namespace Match3.Unity.Bridge
         public bool TryGetHintMove(out MoveAction action)
         {
             action = default;
-            if (!_initialized || _session == null || _autoPlaySelector == null) return false;
+            if (!_initialized || _gameEngine == null || _autoPlaySelector == null) return false;
 
-            var state = _session.Engine.State;
+            var state = _gameEngine.CurrentState;
             _autoPlaySelector.InvalidateCache();
             return _autoPlaySelector.TryGetMove(in state, out action);
         }
@@ -712,9 +710,9 @@ namespace Match3.Unity.Bridge
         public Position GetHintHighlightPosition(MoveAction action)
         {
             if (action.ActionType != MoveActionType.Swap) return action.From;
-            if (!_initialized || _session == null) return action.From;
+            if (!_initialized || _gameEngine == null) return action.From;
 
-            var state = _session.Engine.State;
+            var state = _gameEngine.CurrentState;
             var from = action.From;
             var to = action.To;
 
@@ -773,9 +771,9 @@ namespace Match3.Unity.Bridge
         public IReadOnlyList<Position> GetHintMatchPositions(Position hintFrom, Position hintTo)
         {
             _hintMatchPositions.Clear();
-            if (!_initialized || _session == null) return _hintMatchPositions;
+            if (!_initialized || _gameEngine == null) return _hintMatchPositions;
 
-            var state = _session.Engine.State;
+            var state = _gameEngine.CurrentState;
             var matchFinder = _hintMatchFinder;
 
             GridUtility.SwapTilesForCheck(ref state, hintFrom, hintTo);
@@ -809,8 +807,8 @@ namespace Match3.Unity.Bridge
         /// </summary>
         public void ClearSelection()
         {
-            if (!_initialized || _session == null) return;
-            _session.Engine.SetSelectedPosition(Position.Invalid);
+            if (!_initialized || _gameEngine == null) return;
+            _gameEngine.Engine.SetSelectedPosition(Position.Invalid);
         }
 
         /// <summary>
@@ -819,16 +817,16 @@ namespace Match3.Unity.Bridge
         /// </summary>
         public void HandleTap(Position pos)
         {
-            if (!_initialized || _session == null) return;
+            if (!_initialized || _gameEngine == null) return;
 
             var cmd = new TapCommand
             {
                 Position = pos,
-                IssuedAtTick = _session.Engine.CurrentTick
+                IssuedAtTick = _gameEngine.CurrentTick
             };
 
-            if (cmd.Execute(_session.Engine))
-                _recorder?.RecordCommand(cmd);
+            // GameEngine.InjectCommand handles: undo + execute + record + invalidation
+            _gameEngine.InjectCommand(cmd);
         }
 
         /// <summary>
@@ -884,11 +882,11 @@ namespace Match3.Unity.Bridge
         /// </summary>
         public string SaveRecording()
         {
-            if (_recorder == null || _session == null) return null;
+            if (_recorder == null || _gameEngine == null) return null;
 
-            var state = _session.Engine.State;
+            var state = _gameEngine.CurrentState;
             var recording = _recorder.Complete(
-                _session.Engine.CurrentTick,
+                _gameEngine.CurrentTick,
                 state.Score,
                 state.MoveCount);
 
@@ -898,6 +896,7 @@ namespace Match3.Unity.Bridge
             // Create a fresh recorder for continued play
             _recorder = new GameRecorder(in state, _seed,
                 _session.Configuration.TileTypesCount, _levelConfig);
+            _gameEngine.SetRecorder(_recorder);
 
             return path;
         }
@@ -907,11 +906,11 @@ namespace Match3.Unity.Bridge
         /// </summary>
         public string SaveRecordingAs(string name)
         {
-            if (_recorder == null || _session == null) return null;
+            if (_recorder == null || _gameEngine == null) return null;
 
-            var state = _session.Engine.State;
+            var state = _gameEngine.CurrentState;
             var recording = _recorder.Complete(
-                _session.Engine.CurrentTick,
+                _gameEngine.CurrentTick,
                 state.Score,
                 state.MoveCount);
 
@@ -923,16 +922,17 @@ namespace Match3.Unity.Bridge
 
             _recorder = new GameRecorder(in state, _seed,
                 _session.Configuration.TileTypesCount, _levelConfig);
+            _gameEngine.SetRecorder(_recorder);
             return path;
         }
 
         private void AutoSaveRecording()
         {
-            if (_recorder == null || !_recorder.IsRecording || _session == null) return;
+            if (_recorder == null || !_recorder.IsRecording || _gameEngine == null) return;
 
-            var state = _session.Engine.State;
+            var state = _gameEngine.CurrentState;
             var recording = _recorder.Complete(
-                _session.Engine.CurrentTick,
+                _gameEngine.CurrentTick,
                 state.Score,
                 state.MoveCount);
 
@@ -996,7 +996,7 @@ namespace Match3.Unity.Bridge
             _isAutoPlaying = false;
             _gameEndFired = false;
             _replayCompletedFired = false;
-            _timeAccumulator = 0f;
+
             _lastMovesRemaining = -1;
             _lastScore = -1;
             _lastObjectiveHash = -1;
@@ -1023,15 +1023,15 @@ namespace Match3.Unity.Bridge
         /// </summary>
         public void AddBookmark()
         {
-            if (_recorder == null || _session == null) return;
+            if (_recorder == null || _gameEngine == null) return;
 
-            var tick = _session.Engine.CurrentTick;
+            var tick = _gameEngine.CurrentTick;
             _recorder.AddBookmark(tick);
 
             // Auto-save snapshot
-            var state = _session.Engine.State;
+            var state = _gameEngine.CurrentState;
             var snapshot = _recorder.Snapshot(
-                _session.Engine.CurrentTick,
+                _gameEngine.CurrentTick,
                 state.Score,
                 state.MoveCount);
 
@@ -1136,6 +1136,8 @@ namespace Match3.Unity.Bridge
             StopReplay();
             _recorder?.Dispose();
             _recorder = null;
+            _gameEngine?.Dispose();
+            _gameEngine = null;
             _session?.Dispose();
             _session = null;
             _player = null;
