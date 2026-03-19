@@ -27,6 +27,15 @@ public struct Tile
         set => State = value ? State | TileState.Falling : State & ~TileState.Falling;
     }
 
+    /// <summary>
+    /// Whether tile is committed to a diagonal slide. Do not re-evaluate target.
+    /// </summary>
+    public bool IsSliding
+    {
+        get => (State & TileState.Sliding) != 0;
+        set => State = value ? State | TileState.Sliding : State & ~TileState.Sliding;
+    }
+
     public Tile(int id, ElementType type, int x, int y)
     {
         Id = id;

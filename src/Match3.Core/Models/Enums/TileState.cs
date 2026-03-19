@@ -25,6 +25,11 @@ public enum TileState : byte
     Destroying = 1 << 2,
 
     /// <summary>
+    /// Tile is committed to a diagonal slide. Do not re-evaluate target.
+    /// </summary>
+    Sliding = 1 << 1,
+
+    /// <summary>
     /// Position is reserved by another system (e.g., UFO target).
     /// </summary>
     Reserved = 1 << 3,

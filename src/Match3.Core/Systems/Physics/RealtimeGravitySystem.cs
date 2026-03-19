@@ -112,28 +112,30 @@ public class RealtimeGravitySystem : IPhysicsSimulation
     }
 
     /// <summary>
-    /// If the tile has active Velocity.X (set only by diagonal offset formula),
-    /// it's mid-slide — continue that direction without re-evaluating.
-    /// Prevents flickering from reservation races and collision-risk changes.
+    /// If tile.IsSliding, continue committed direction without re-evaluating.
+    /// Otherwise call DetermineTarget normally.
     /// </summary>
     private IGravityTargetResolver.TargetInfo ResolveTarget(
         ref GameState state, in Tile tile, int gx, int gy)
     {
-        if (Math.Abs(tile.Velocity.X) > SnapThreshold)
+        if (tile.IsSliding)
         {
             int slideDir = Math.Sign(tile.Velocity.X);
-            int targetX = gx + slideDir;
-            int checkY = GravityTargetResolver.SkipHolesBelow(in state, gx, gy);
-
-            if (checkY < state.Height &&
-                state.IsValid(targetX, checkY) &&
-                !state.IsHole(targetX, checkY) &&
-                !state.HasObstacle(targetX, checkY) &&
-                state.GetTile(targetX, checkY).Type == ElementType.None)
+            if (slideDir != 0)
             {
-                return new IGravityTargetResolver.TargetInfo(targetX, checkY);
+                int targetX = gx + slideDir;
+                int checkY = GravityTargetResolver.SkipHolesBelow(in state, gx, gy);
+
+                if (checkY < state.Height &&
+                    state.IsValid(targetX, checkY) &&
+                    !state.IsHole(targetX, checkY) &&
+                    !state.HasObstacle(targetX, checkY) &&
+                    state.GetTile(targetX, checkY).Type == ElementType.None)
+                {
+                    return new IGravityTargetResolver.TargetInfo(targetX, checkY);
+                }
             }
-            // Target became invalid — fall through to normal evaluation
+            // Target invalid or no velocity — clear sliding, re-evaluate
         }
 
         return _targetResolver.DetermineTarget(ref state, gx, gy);
@@ -173,6 +175,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
             // Diagonal: X derived from grid origin + Y offset (zero accumulation error)
             if (isDiagonal)
             {
+                tile.IsSliding = true;
                 float dirX = Math.Sign(target.X - gx);
                 float progress = Math.Max(0, tile.Position.Y - gy);
                 tile.Position.X = gx + progress * dirX;
@@ -188,8 +191,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
             }
             else if (Math.Abs(tile.Position.X - gx) > SnapThreshold)
             {
-                // X correction: complete previous diagonal's X movement toward gx.
-                // Do NOT set Velocity.X — this is correction, not an active slide.
+                // X correction: complete previous diagonal's X movement toward gx
                 float dirX = Math.Sign(gx - tile.Position.X);
                 tile.Position.X += deltaY * dirX;
                 if ((dirX > 0 && tile.Position.X > gx) ||
@@ -219,6 +221,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
         IGravityTargetResolver.TargetInfo target)
     {
         tile.Velocity.X = 0;
+        tile.IsSliding = false;
 
         var peek = _targetResolver.PeekNextMove(ref state, target.X, target.Y);
 

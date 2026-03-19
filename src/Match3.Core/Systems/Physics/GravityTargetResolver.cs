@@ -112,12 +112,8 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
 
         if (canLeft && canRight)
         {
-            // Deterministic per-tile-position: hash ensures same tile at same
-            // grid cell always picks the same direction across re-evaluations,
-            // while different tiles/positions get varied results.
-            var tile = state.GetTile(x, originalY);
-            int hash = tile.Id * 31 + x * 7 + originalY;
-            targetX = (hash % 2 == 0) ? x - 1 : x + 1;
+            // Random 50/50. Safe because IsSliding prevents re-evaluation mid-slide.
+            targetX = _random.Next(0, 2) == 0 ? x - 1 : x + 1;
         }
         else if (canLeft)
             targetX = x - 1;

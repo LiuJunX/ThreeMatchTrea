@@ -26,35 +26,24 @@ public class GravityBugTests
     }
 
     [Fact]
-    public void StackedTiles_ShouldFallTogether_End()
+    public void StackedTiles_TopWaitsForBottomToVacate()
     {
-        // Arrange
+        // No follow: A waits until B vacates (0,1), then starts falling independently.
         var state = new GameState(1, 5, 3, new StubRandom(0));
         var gravity = new RealtimeGravitySystem(new Match3Config(), new StubRandom(0));
 
-        // Setup:
-        // Y=4: Ground
-        // Y=1: Tile B (Bottom)
-        // Y=0: Tile A (Top)
-
         state.SetTile(0, 4, new Tile(99, ElementType.Item3, 0, 4)); // Floor
-        state.SetTile(0, 1, new Tile(2, ElementType.Item1, 0, 1));
-        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(0, 1, new Tile(2, ElementType.Item1, 0, 1));  // B (bottom)
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));  // A (top)
 
-        // Act - Frame 1
-        gravity.Update(ref state, 0.05f);
+        // Run enough frames for both to settle
+        for (int i = 0; i < 60; i++)
+            gravity.Update(ref state, 0.016f);
 
-        // Find tiles by ID (they may have moved to new grid positions)
-        var tileA = SimulationTestHelper.FindTileById(in state, 1);
-        var tileB = SimulationTestHelper.FindTileById(in state, 2);
-
-        // Check B
-        Assert.True(tileB.IsFalling, "Tile B should be falling");
-        Assert.True(tileB.Position.Y > 1.0f, "Tile B should have moved down");
-
-        // Check A
-        Assert.True(tileA.IsFalling, "Tile A should be falling together with B");
-        Assert.True(tileA.Position.Y > 0.0f, "Tile A should have moved down");
+        // Both should have settled: B at (0,3), A at (0,2) (above floor at row 4)
+        Assert.True(gravity.IsStable(in state), "Board should be stable");
+        Assert.Equal(ElementType.Item1, state.GetTile(0, 2).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(0, 3).Type);
     }
 
     [Fact]
