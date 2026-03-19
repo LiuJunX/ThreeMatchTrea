@@ -62,6 +62,29 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
     public bool IsColorReserved(ElementType color) => _reservedColors.Contains(color);
 
     /// <inheritdoc />
+    public ColorBombSessionSnapshot SaveState()
+    {
+        var snapshot = new ColorBombSessionSnapshot { NextSessionId = _nextSessionId };
+        foreach (var session in _sessions)
+            snapshot.Sessions.Add(session.Clone());
+        foreach (var color in _reservedColors)
+            snapshot.ReservedColors.Add(color);
+        return snapshot;
+    }
+
+    /// <inheritdoc />
+    public void RestoreState(ColorBombSessionSnapshot snapshot)
+    {
+        _sessions.Clear();
+        _reservedColors.Clear();
+        _nextSessionId = snapshot.NextSessionId;
+        foreach (var session in snapshot.Sessions)
+            _sessions.Add(session.Clone());
+        foreach (var color in snapshot.ReservedColors)
+            _reservedColors.Add(color);
+    }
+
+    /// <inheritdoc />
     public void CreateSession(ref GameState state, Position origin, int bombTileId,
         int tick, float simTime, IEventCollector events)
     {

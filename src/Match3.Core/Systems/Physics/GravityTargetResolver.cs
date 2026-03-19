@@ -111,7 +111,12 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
         int targetX = -1;
 
         if (canLeft && canRight)
-            targetX = _random.Next(0, 2) == 0 ? x - 1 : x + 1;
+        {
+            // Deterministic per-tile choice: tile ID decides direction.
+            // Avoids frame-to-frame flipping from RNG state changes.
+            var tile = state.GetTile(x, originalY);
+            targetX = (tile.Id % 2 == 0) ? x - 1 : x + 1;
+        }
         else if (canLeft)
             targetX = x - 1;
         else if (canRight)

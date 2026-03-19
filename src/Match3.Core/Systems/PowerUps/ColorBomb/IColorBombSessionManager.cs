@@ -48,4 +48,14 @@ public interface IColorBombSessionManager
     /// Reset all sessions (e.g., on game restart).
     /// </summary>
     void Reset();
+
+    /// <summary>
+    /// Capture current state for ring buffer snapshot.
+    /// </summary>
+    ColorBombSessionSnapshot SaveState();
+
+    /// <summary>
+    /// Restore state from a previously captured snapshot.
+    /// </summary>
+    void RestoreState(ColorBombSessionSnapshot snapshot);
 }

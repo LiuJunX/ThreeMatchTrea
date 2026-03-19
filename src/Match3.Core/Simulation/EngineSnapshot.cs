@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Match3.Core.Events;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.PowerUps.ColorBomb;
 
 namespace Match3.Core.Simulation;
 
@@ -35,6 +36,12 @@ public struct EngineSnapshot
 
     /// <summary>Whether the simulation was stable at capture time.</summary>
     public bool IsStable;
+
+    /// <summary>Snapshot of lock scheduler internal state (token tracking, timed locks).</summary>
+    public LockScheduler? LockSchedulerSnapshot;
+
+    /// <summary>Snapshot of ColorBomb session manager state (sessions, reserved colors).</summary>
+    public ColorBombSessionSnapshot? SessionManagerSnapshot;
 
     /// <summary>
     /// Ensures the Events list is allocated and cleared.

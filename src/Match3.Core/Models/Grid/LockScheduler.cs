@@ -127,6 +127,33 @@ public class LockScheduler
         Array.Clear(_timedTokens, 0, _timedTokens.Length);
     }
 
+    /// <summary>
+    /// Restore internal state from a previously cloned scheduler.
+    /// Does NOT modify GameState.CellLocks — the caller is responsible
+    /// for ensuring CellLocks come from the correct snapshot.
+    /// </summary>
+    public void RestoreFrom(LockScheduler source)
+    {
+        _nextId = source._nextId;
+        _activeIds.Clear();
+        foreach (var id in source._activeIds)
+            _activeIds.Add(id);
+
+        _timedCount = source._timedCount;
+        if (_timedTokens.Length < source._timedTokens.Length)
+        {
+            _timedTokens = new LockToken[source._timedTokens.Length];
+            _timedRemaining = new float[source._timedRemaining.Length];
+        }
+        else
+        {
+            Array.Clear(_timedTokens, 0, _timedTokens.Length);
+            Array.Clear(_timedRemaining, 0, _timedRemaining.Length);
+        }
+        Array.Copy(source._timedTokens, _timedTokens, source._timedCount);
+        Array.Copy(source._timedRemaining, _timedRemaining, source._timedCount);
+    }
+
     private void EnsureTimedCapacity()
     {
         if (_timedCount < _timedTokens.Length) return;

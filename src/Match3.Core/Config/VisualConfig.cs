@@ -102,7 +102,7 @@ public class GameConfigExtended
 public class PhysicsConfig
 {
     public float SwapSpeed { get; set; } = 15.0f;
-    public float InitialFallSpeed { get; set; } = 12.0f;
-    public float GravityAcceleration { get; set; } = 20.0f;
-    public float MaxFallSpeed { get; set; } = 25.0f;
+    public float InitialFallSpeed { get; set; } = 8.57f;
+    public float GravityAcceleration { get; set; } = 14.28f;
+    public float MaxFallSpeed { get; set; } = 17.85f;
 }

@@ -66,6 +66,33 @@ public sealed class ColorBombSession
         ReScanCount = 0;
         TargetedPositions.Clear();
     }
+
+    /// <summary>
+    /// Deep copy for snapshot/restore.
+    /// </summary>
+    public ColorBombSession Clone()
+    {
+        var clone = new ColorBombSession
+        {
+            SessionId = SessionId,
+            BombTileId = BombTileId,
+            BombPosition = BombPosition,
+            TargetColor = TargetColor,
+            Phase = Phase,
+            ComboBombType = ComboBombType,
+            PendingIndex = PendingIndex,
+            FiredBeamCount = FiredBeamCount,
+            ShootTimer = ShootTimer,
+            ReScanCount = ReScanCount,
+        };
+        clone.PendingTargets.AddRange(PendingTargets);
+        clone.ActiveBeams.AddRange(ActiveBeams);
+        clone.ArrivedTargets.AddRange(ArrivedTargets);
+        clone.LockTokens.AddRange(LockTokens);
+        foreach (var pos in TargetedPositions)
+            clone.TargetedPositions.Add(pos);
+        return clone;
+    }
 }
 
 /// <summary>

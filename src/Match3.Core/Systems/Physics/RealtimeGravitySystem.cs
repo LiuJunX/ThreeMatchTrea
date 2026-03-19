@@ -105,45 +105,10 @@ public class RealtimeGravitySystem : IPhysicsSimulation
                 continue;
             }
 
-            var target = ResolveTarget(ref state, ref tile, x, y);
+            var target = _targetResolver.DetermineTarget(ref state, x, y);
             SimulatePhysics(ref state, ref tile, target, x, y, dt);
             UpdateGridPosition(ref state, x, y, tile);
         }
-    }
-
-    /// <summary>
-    /// Single-cell lock: if the tile is mid-diagonal-slide (px ≠ gx),
-    /// continue the committed direction instead of re-evaluating.
-    /// </summary>
-    private IGravityTargetResolver.TargetInfo ResolveTarget(
-        ref GameState state, ref Tile tile, int gx, int gy)
-    {
-        float driftX = tile.Position.X - gx;
-        if (Math.Abs(driftX) > SnapThreshold)
-        {
-            // Tile is mid-slide — derive target from committed direction
-            int slideDir = Math.Sign(driftX);
-            int targetX = gx + slideDir;
-            int checkY = gy + 1;
-            // Skip holes below for the target row
-            while (checkY < state.Height && state.IsHole(gx, checkY))
-                checkY++;
-
-            if (checkY < state.Height &&
-                state.IsValid(targetX, checkY) &&
-                !state.IsHole(targetX, checkY) &&
-                !state.HasObstacle(targetX, checkY) &&
-                state.GetTile(targetX, checkY).Type == ElementType.None)
-            {
-                return new IGravityTargetResolver.TargetInfo(targetX, checkY);
-            }
-
-            // Target no longer available — abort slide, snap back to grid column
-            tile.Position.X = gx;
-            tile.Velocity.X = 0;
-        }
-
-        return _targetResolver.DetermineTarget(ref state, gx, gy);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

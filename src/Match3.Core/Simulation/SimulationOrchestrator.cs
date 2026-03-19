@@ -178,6 +178,23 @@ public sealed class SimulationOrchestrator : ISimulationOrchestrator
     }
 
     /// <summary>
+    /// Capture ColorBomb session manager state for ring buffer snapshot.
+    /// Returns null if no session manager is configured.
+    /// </summary>
+    public ColorBombSessionSnapshot? SaveColorBombState()
+    {
+        return _colorBombSessionManager?.SaveState();
+    }
+
+    /// <summary>
+    /// Restore ColorBomb session manager state from a snapshot.
+    /// </summary>
+    public void RestoreColorBombState(ColorBombSessionSnapshot snapshot)
+    {
+        _colorBombSessionManager?.RestoreState(snapshot);
+    }
+
+    /// <summary>
     /// Gets the projectile system for direct access.
     /// </summary>
     public IProjectileSystem ProjectileSystem => _projectileSystem;
