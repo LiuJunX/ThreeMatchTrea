@@ -29,6 +29,7 @@ public sealed class GameEngine : IPeekProvider, IDisposable
     private readonly EngineSnapshot[] _buffer;
     private readonly int _bufferSize;
     private readonly BufferedEventCollector _tickCollector;
+    private readonly List<GameEvent> _commandEvents = new();
 
     private int _current;   // Rendering reads this slot (absolute tick index)
     private int _write;     // Engine has written up to this slot (exclusive)
@@ -185,6 +186,15 @@ public sealed class GameEngine : IPeekProvider, IDisposable
     /// </summary>
     public void DrainCurrentEvents(IList<GameEvent> target)
     {
+        // First: drain events captured during InjectCommand (e.g. TilesSwappedEvent).
+        // These must come before tick events so choreography sees swap before its effects.
+        if (_commandEvents.Count > 0)
+        {
+            foreach (var evt in _commandEvents)
+                target.Add(evt);
+            _commandEvents.Clear();
+        }
+
         // Drain events from every slot consumed during this frame:
         // from _frameStartCurrent+1 through _current (inclusive).
         for (int i = _frameStartCurrent + 1; i <= _current; i++)
@@ -217,8 +227,20 @@ public sealed class GameEngine : IPeekProvider, IDisposable
         // 2. Restore engine to current state (discard speculation)
         RestoreToSlot(_current);
 
-        // 3. Execute the command
-        bool success = command.Execute(_engine);
+        // 3. Execute the command, capturing events (e.g. TilesSwappedEvent)
+        //    so they reach the choreographer via DrainCurrentEvents.
+        var originalCollector = _engine.EventCollector;
+        _engine.SetEventCollector(_tickCollector);
+        bool success;
+        try
+        {
+            success = command.Execute(_engine);
+            _tickCollector.DrainEventsTo(_commandEvents);
+        }
+        finally
+        {
+            _engine.SetEventCollector(originalCollector);
+        }
 
         if (success)
         {
