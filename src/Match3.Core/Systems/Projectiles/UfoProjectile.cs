@@ -241,6 +241,7 @@ public sealed class UfoProjectile : Projectile
 
                     var tile = state.GetTile(x, y);
                     if (tile.Type != ElementType.None
+                        && !tile.Type.IsColorBomb()
                         && !state.IsLocked(x, y, CellLockType.Targeting))
                     {
                         candidates.Add(new Position(x, y));

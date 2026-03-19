@@ -147,8 +147,9 @@ internal sealed class SimulationMatchHandler
             var tile = state.GetTile(pos.X, pos.Y);
             if (tile.Type == ElementType.None) continue;
 
-            // Bombs are triggered, not destroyed — let ActivateBomb handle them
-            if (tile.Type.IsBomb())
+            // Chain-activatable bombs are triggered, not destroyed — let ActivateBomb handle them.
+            // ColorBomb is excluded: only player swap can activate it.
+            if (tile.Type.IsChainActivatable())
             {
                 triggeredBombs.Add(pos);
                 continue;

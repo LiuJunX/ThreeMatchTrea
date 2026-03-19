@@ -238,8 +238,7 @@ public class ExplosionSystem : IExplosionSystem
             bool isOrigin = pos.X == explosion.Origin.X && pos.Y == explosion.Origin.Y;
             var tileAtPos = state.GetTile(pos.X, pos.Y);
             bool willChainActivate = triggeredBombs != null
-                && tileAtPos.Type.IsBomb()
-                && tileAtPos.Type != ElementType.ColorBomb
+                && tileAtPos.Type.IsChainActivatable()
                 && !isOrigin;
 
             var elimSource = willChainActivate ? ElimSource.ConsumeBomb : ElimSource.Bomb;

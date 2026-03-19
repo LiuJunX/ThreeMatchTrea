@@ -105,6 +105,11 @@ public static class ElementTypeExtensions
     public static bool IsUfo(this ElementType type)
         => type == ElementType.Ufo;
 
+    /// <summary>Whether this bomb can be chain-triggered (by explosions, projectiles, etc.).
+    /// ColorBomb is excluded — it can only be activated via player swap.</summary>
+    public static bool IsChainActivatable(this ElementType type)
+        => type.IsBomb() && type != ElementType.ColorBomb;
+
     /// <summary>Whether this is an area bomb (5x5).</summary>
     public static bool IsAreaBomb(this ElementType type)
         => type == ElementType.Square5x5;

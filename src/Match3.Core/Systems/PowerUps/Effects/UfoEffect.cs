@@ -38,6 +38,7 @@ public class UfoEffect : IBombEffect
 
                     var t = state.GetTile(x, y);
                     if (t.Type != ElementType.None
+                        && !t.Type.IsColorBomb()
                         && !state.IsLocked(x, y, CellLockType.Targeting))
                     {
                         candidates.Add(new Position(x, y));
