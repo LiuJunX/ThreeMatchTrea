@@ -54,50 +54,30 @@ public class DiagonalSlideRestrictTests
     [Fact]
     public void NormalTile_Should_SlideOffSuspendedTile()
     {
-        // Scenario:
-        // Col 0: Empty
-        // Col 1: TileA (Top), Obstacle (Bottom)
-        //
-        // TileA SHOULD slide into Col 0 because it's blocked by an obstacle.
+        // Scenario (2x2):
+        //   T O     TileA (1,0), Obstacle (0,0) makes (0,1) dead zone
+        //   O .     Obstacle (1,1) blocks vertical
+        // TileA slides right to (0,1) which is a dead zone.
+        // Wait — 2x2 grid, col 0 obstacle at row 0 means (0,1) is dead zone.
+        // Actually for a 2-wide grid: tile at col 1, obstacle at (1,1).
+        // Need (0,1) to be dead zone → obstacle at (0,0).
 
         var config = new Match3Config { GravitySpeed = 10f };
         var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(2, 2, 5, rng);
         var gravity = new RealtimeGravitySystem(config, rng);
 
-        state.SetTile(0, 0, new Tile(0, ElementType.None, 0, 0));
-        state.SetTile(0, 1, new Tile(0, ElementType.None, 0, 1));
-
         state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0)); // TileA
-        // Place obstacle at (1,1) — no tile, obstacle blocks direct fall
-        state.SetTile(1, 1, new Tile(0, ElementType.None, 1, 1));
-        state.SetObstacle(1, 1, new Obstacle(ObstacleType.Box, 1));
+        state.SetObstacle(1, 1, new Obstacle(ObstacleType.Box, 1)); // blocks vertical
+        state.SetObstacle(0, 0, new Obstacle(ObstacleType.Box, 1)); // makes (0,1) dead zone
 
-        // Act
-        gravity.Update(ref state, 0.02f);
+        // Act — run enough frames for the slide to complete
+        for (int i = 0; i < 30; i++)
+            gravity.Update(ref state, 0.02f);
 
-        // Assert
-        var tileAt10 = state.GetTile(1, 0);
-
-        // Should have moved or started moving
-        // With 0.02f and speed 10, it might have moved slightly or fully depending on logic
-        // But Velocity.X should be non-zero OR position changed
-
-        // Check if it appeared in Col 0?
-        // If it moved fully, (1,0) is None.
-
-        if (state.GetTile(1, 0).Type != ElementType.None)
-        {
-            // Still in source cell, check if moving
-            Assert.True(state.GetTile(1, 0).Position.X < 1.0f || state.GetTile(1, 0).Velocity.X != 0,
-                "Tile should start sliding left off the obstacle");
-        }
-        else
-        {
-            // Moved fully to (0,0) or (0,1) depending on gravity
-            // If it moved left, it should be in Col 0
-            Assert.True(state.GetTile(0, 0).Type != ElementType.None || state.GetTile(0, 1).Type != ElementType.None,
-                "Tile should have moved to Col 0");
-        }
+        // Assert: tile should have slid to (0,1)
+        Assert.True(
+            state.GetTile(0, 1).Type != ElementType.None,
+            "Tile should have slid to dead zone (0,1)");
     }
 }

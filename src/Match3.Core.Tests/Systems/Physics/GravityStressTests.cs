@@ -91,22 +91,24 @@ public class GravityStressTests
     }
 
     [Fact]
-    public void VelocityInheritance_ShouldNotSlowDown_WhenStacked()
+    public void StackedTiles_ShouldFallIndependently()
     {
+        // No follow mechanism — stacked tiles fall independently.
+        // B (top) waits until A (bottom) vacates, then falls on its own.
         var state = new GameState(1, 10, 3, StubRandom.WithFixedValue(0));
         var gravity = new RealtimeGravitySystem(new Match3Config(), StubRandom.WithFixedValue(0));
 
-        // Tile A (Bottom) falling at speed 10
+        // Tile A (Bottom) at row 5, falling
         var tileA = new Tile(1, ElementType.Item1, 0, 5);
         tileA.Position = new Vector2(0, 5.0f);
         tileA.Velocity = new Vector2(0, 10.0f);
         tileA.IsFalling = true;
         state.SetTile(0, 5, tileA);
 
-        // Tile B (Top) falling at speed 15 (catching up)
+        // Tile B (Top) at row 4, also falling
         var tileB = new Tile(2, ElementType.Item3, 0, 4);
-        tileB.Position = new Vector2(0, 4.05f); // Very close to A (Gap 0.95 < 1.0) -> Should collide
-        tileB.Velocity = new Vector2(0, 15.0f);
+        tileB.Position = new Vector2(0, 4.0f);
+        tileB.Velocity = new Vector2(0, 10.0f);
         tileB.IsFalling = true;
         state.SetTile(0, 4, tileB);
 
@@ -115,22 +117,13 @@ public class GravityStressTests
 
         var newA = state.GetTile(0, 5);
         var newB = state.GetTile(0, 4);
-        
-        // A should accelerate. 10 + 35*0.016 = 10.56.
-        // Pos A: 5.0 + 10*0.016 = 5.16. (approx)
-        
-        // B should collide with A
-        // TargetY for B is A.Pos - 1 = 4.16.
-        // B.Pos was 4.05.
-        // B physics: 4.05 + 15*0.016 = 4.29.
-        // 4.29 > 4.16. Snap to 4.16.
-        
-        Assert.Equal(newA.Position.Y - 1.0f, newB.Position.Y, 0.01f);
-        
-        // Crucial: Velocity should be A's velocity (10.56)
-        // My code sets it to A.Velocity (10.56).
-        Assert.Equal(newA.Velocity.Y, newB.Velocity.Y, 0.01f);
-        Assert.True(newB.IsFalling);
+
+        // A should advance (below is empty → target row 6)
+        Assert.True(newA.Position.Y > 5.0f, "A should have fallen");
+        Assert.True(newA.IsFalling);
+
+        // B is blocked by A (cell 5 occupied) → stays put at row 4
+        Assert.Equal(4.0f, newB.Position.Y, 0.01f);
     }
 
 }

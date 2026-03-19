@@ -78,31 +78,18 @@ public class RealtimeGravityTests
     [Fact]
     public void Update_ShouldSlideDiagonal()
     {
-        // Arrange
-        // Grid 3x3
-        // (1,0) = Red (Falling)
-        // (1,1) = Obstacle (Box) — blocks direct fall
-        // (0,1) = None (Target)
-        // (2,1) = Tile — blocks right diagonal
+        // Arrange: 3x3 grid
+        //   O T B     O=obstacle(0,0), T=tile(1,0), B=blocker(2,1)
+        //   . O B     obstacle(1,1), (0,1) is dead zone (obstacle above)
+        //   B B .
         var state = new GameState(3, 3, 5, new StubRandom(0));
 
-        // Place obstacle at (1,1) to force slide
-        state.SetTile(1, 1, new Tile(0, ElementType.None, 1, 1));
-        state.SetObstacle(1, 1, new Obstacle(ObstacleType.Box, 1));
-
-        // Target at (0,1) is empty
-        state.SetTile(0, 1, new Tile(0, ElementType.None, 0, 1));
-
-        // Falling tile at (1,0)
         state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
+        state.SetObstacle(1, 1, new Obstacle(ObstacleType.Box, 1));
+        state.SetObstacle(0, 0, new Obstacle(ObstacleType.Box, 1)); // makes (0,1) dead zone
 
-        // Block Right side (2,1) to force Left Slide
         state.SetTile(2, 1, new Tile(8, ElementType.Item3, 2, 1));
-
-        // Block (0,2) so it stops at (0,1)
         state.SetTile(0, 2, new Tile(10, ElementType.Item2, 0, 2));
-
-        // Block (1,2) to prevent dead-zone diagonal from (0,1) into column 1
         state.SetTile(1, 2, new Tile(11, ElementType.Item3, 1, 2));
 
         var physics = new RealtimeGravitySystem(new Match3Config { GravitySpeed = 35.0f }, new StubRandom(0));
