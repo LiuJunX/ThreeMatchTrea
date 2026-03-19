@@ -33,6 +33,7 @@ public sealed class GameEngine : IPeekProvider, IDisposable
     private int _current;   // Rendering reads this slot (absolute tick index)
     private int _write;     // Engine has written up to this slot (exclusive)
     private float _accumulator;
+    private int _frameStartCurrent; // _current at the start of AdvanceFrame, for multi-tick event drain
 
     // Optional integrations
     private UndoSystem? _undoSystem;
@@ -65,6 +66,7 @@ public sealed class GameEngine : IPeekProvider, IDisposable
         _buffer[0] = _engine.CreateSnapshot();
         _buffer[0].Events = new List<GameEvent>();
         _buffer[0].IsValid = true;
+        _buffer[0].IsStable = _engine.IsStable();
         StoreStateHash(ref _buffer[0]);
 
         // Pre-allocate event lists for remaining slots
@@ -106,9 +108,10 @@ public sealed class GameEngine : IPeekProvider, IDisposable
     public float CurrentElapsedTime => _buffer[_current % _bufferSize].ElapsedTime;
 
     /// <summary>
-    /// Whether the engine is at a stable state (no active effects).
+    /// Whether the current rendered state is stable (no active effects).
+    /// Reads from the ring buffer snapshot, not the engine's speculated state.
     /// </summary>
-    public bool IsStable => _engine.IsStable();
+    public bool IsStable => _buffer[_current % _bufferSize].IsStable;
 
     #region IPeekProvider
 
@@ -147,6 +150,7 @@ public sealed class GameEngine : IPeekProvider, IDisposable
     /// </summary>
     public void AdvanceFrame(float scaledDelta)
     {
+        _frameStartCurrent = _current;
         _accumulator += scaledDelta;
         int ticksThisFrame = 0;
 
@@ -175,18 +179,24 @@ public sealed class GameEngine : IPeekProvider, IDisposable
     }
 
     /// <summary>
-    /// Drain events for the current frame into the target list.
-    /// Events are from the tick that produced the current state.
+    /// Drain events for all ticks consumed in the last AdvanceFrame call.
+    /// When multiple fixed steps occur in one frame (e.g., GameSpeed > 1x or frame drops),
+    /// this returns events from ALL consumed ticks, not just the last one.
     /// </summary>
     public void DrainCurrentEvents(IList<GameEvent> target)
     {
-        var slot = _current % _bufferSize;
-        var events = _buffer[slot].Events;
-        if (events == null || events.Count == 0) return;
+        // Drain events from every slot consumed during this frame:
+        // from _frameStartCurrent+1 through _current (inclusive).
+        for (int i = _frameStartCurrent + 1; i <= _current; i++)
+        {
+            var slot = i % _bufferSize;
+            var events = _buffer[slot].Events;
+            if (events == null || events.Count == 0) continue;
 
-        foreach (var evt in events)
-            target.Add(evt);
-        events.Clear();
+            foreach (var evt in events)
+                target.Add(evt);
+            events.Clear();
+        }
     }
 
     #endregion
@@ -254,11 +264,12 @@ public sealed class GameEngine : IPeekProvider, IDisposable
         _buffer[slot].PrepareEvents();
 
         // Tick with event collection (try/finally ensures collector is restored on exception)
+        TickResult tickResult;
         var originalCollector = _engine.EventCollector;
         _engine.SetEventCollector(_tickCollector);
         try
         {
-            _engine.Tick(FixedDeltaTime);
+            tickResult = _engine.Tick(FixedDeltaTime);
             _tickCollector.DrainEventsTo(_buffer[slot].Events!);
         }
         finally
@@ -266,10 +277,11 @@ public sealed class GameEngine : IPeekProvider, IDisposable
             _engine.SetEventCollector(originalCollector);
         }
 
-        // Snapshot the post-tick state
+        // Snapshot the post-tick state (including stability from TickResult)
         var snapshot = _engine.CreateSnapshot();
         snapshot.Events = _buffer[slot].Events;
         snapshot.IsValid = true;
+        snapshot.IsStable = tickResult.IsStable;
         StoreStateHash(ref snapshot);
         _buffer[slot] = snapshot;
 
@@ -316,6 +328,8 @@ public sealed class GameEngine : IPeekProvider, IDisposable
         snapshot.Events = _buffer[slot].Events;
         snapshot.Events?.Clear();
         snapshot.IsValid = true;
+        snapshot.IsStable = _engine.IsStable();
+        StoreStateHash(ref snapshot);
         _buffer[slot] = snapshot;
     }
 

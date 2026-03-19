@@ -33,6 +33,9 @@ public struct EngineSnapshot
     /// <summary>Hash of State at capture time, for debug divergence detection.</summary>
     public uint StateHash;
 
+    /// <summary>Whether the simulation was stable at capture time.</summary>
+    public bool IsStable;
+
     /// <summary>
     /// Ensures the Events list is allocated and cleared.
     /// </summary>

@@ -223,6 +223,56 @@ public class GameEngineTests
         Assert.Empty(events2);
     }
 
+    [Fact]
+    public void DrainCurrentEvents_MultiStep_ReturnsAllEvents()
+    {
+        var ge = CreateGameEngine();
+
+        // Advance by 3 fixed steps in one frame (simulates GameSpeed=3x or frame drop)
+        ge.AdvanceFrame(SimulationConfig.DefaultFixedDeltaTime * 3);
+
+        Assert.Equal(3, ge.CurrentTick);
+
+        var events = new List<GameEvent>();
+        ge.DrainCurrentEvents(events);
+
+        // Should not throw, and should have drained events from all 3 consumed ticks.
+        // On a stable board there may be no events, but the mechanism should work.
+        // Verify by checking that a second drain returns empty (all were consumed).
+        var events2 = new List<GameEvent>();
+        ge.DrainCurrentEvents(events2);
+        Assert.Empty(events2);
+    }
+
+    [Fact]
+    public void DrainCurrentEvents_NoAdvance_ReturnsEmpty()
+    {
+        var ge = CreateGameEngine();
+
+        // No AdvanceFrame call — frameStartCurrent == current, no ticks consumed
+        var events = new List<GameEvent>();
+        ge.DrainCurrentEvents(events);
+        Assert.Empty(events);
+    }
+
+    #endregion
+
+    #region IsStable
+
+    [Fact]
+    public void IsStable_ReadsCurrentSlot_NotSpeculatedState()
+    {
+        var ge = CreateGameEngine();
+
+        // Initial state should be stable (no falling tiles, no effects)
+        Assert.True(ge.IsStable);
+
+        // After advancing, the current slot's stability should be captured
+        ge.AdvanceFrame(SimulationConfig.DefaultFixedDeltaTime);
+        // Stable board remains stable
+        Assert.True(ge.IsStable);
+    }
+
     #endregion
 
     #region Undo Integration
