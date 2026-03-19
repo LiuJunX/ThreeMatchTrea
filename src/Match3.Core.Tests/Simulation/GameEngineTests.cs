@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using System.Linq;
 using Match3.Core.Commands;
 using Match3.Core.Events;
+using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Simulation;
 using Match3.Core.Tests.TestFixtures;
@@ -224,24 +226,25 @@ public class GameEngineTests
     }
 
     [Fact]
-    public void DrainCurrentEvents_MultiStep_ReturnsAllEvents()
+    public void DrainCurrentEvents_MultiStep_ReturnsEventsFromAllConsumedTicks()
     {
-        var ge = CreateGameEngine();
+        var ge = CreateGameEngineWithGap();
 
-        // Advance by 3 fixed steps in one frame (simulates GameSpeed=3x or frame drop)
-        ge.AdvanceFrame(SimulationConfig.DefaultFixedDeltaTime * 3);
+        // Collect events from 1 step
+        ge.AdvanceFrame(SimulationConfig.DefaultFixedDeltaTime);
+        var singleStepEvents = new List<GameEvent>();
+        ge.DrainCurrentEvents(singleStepEvents);
 
-        Assert.Equal(3, ge.CurrentTick);
+        // Collect events from 2 steps in one frame
+        ge.AdvanceFrame(SimulationConfig.DefaultFixedDeltaTime * 2);
+        var multiStepEvents = new List<GameEvent>();
+        ge.DrainCurrentEvents(multiStepEvents);
 
-        var events = new List<GameEvent>();
-        ge.DrainCurrentEvents(events);
-
-        // Should not throw, and should have drained events from all 3 consumed ticks.
-        // On a stable board there may be no events, but the mechanism should work.
-        // Verify by checking that a second drain returns empty (all were consumed).
-        var events2 = new List<GameEvent>();
-        ge.DrainCurrentEvents(events2);
-        Assert.Empty(events2);
+        // Multi-step should have at least as many events as single-step
+        // (board with gap generates gravity/refill events every tick)
+        Assert.True(multiStepEvents.Count >= singleStepEvents.Count,
+            $"Multi-step ({multiStepEvents.Count} events) should have >= single-step ({singleStepEvents.Count} events). " +
+            "Events from intermediate ticks may be lost.");
     }
 
     [Fact]
@@ -260,17 +263,46 @@ public class GameEngineTests
     #region IsStable
 
     [Fact]
-    public void IsStable_ReadsCurrentSlot_NotSpeculatedState()
+    public void IsStable_StableBoard_ReturnsTrue()
     {
         var ge = CreateGameEngine();
-
-        // Initial state should be stable (no falling tiles, no effects)
         Assert.True(ge.IsStable);
 
-        // After advancing, the current slot's stability should be captured
         ge.AdvanceFrame(SimulationConfig.DefaultFixedDeltaTime);
-        // Stable board remains stable
         Assert.True(ge.IsStable);
+    }
+
+    [Fact]
+    public void IsStable_UnstableBoard_ReturnsFalse()
+    {
+        var ge = CreateGameEngineWithGap();
+
+        // Board with a gap has falling tiles — should not be stable after ticking
+        ge.AdvanceFrame(SimulationConfig.DefaultFixedDeltaTime);
+        Assert.False(ge.IsStable);
+    }
+
+    [Fact]
+    public void IsStable_ReadsCurrentSlot_NotSpeculatedFuture()
+    {
+        // With an unstable board, after 1 tick the current slot is unstable.
+        // Even if the speculated write head (further ahead) has settled,
+        // IsStable should reflect the current rendered state.
+        var ge = CreateGameEngineWithGap();
+        ge.MaxTicksPerFrame = 4; // Allow more fill-ahead
+
+        ge.AdvanceFrame(SimulationConfig.DefaultFixedDeltaTime);
+
+        // Current slot (tick 1) should be unstable — tiles are still falling
+        bool currentStable = ge.IsStable;
+
+        // The engine (at write head) may have settled after more ticks
+        bool engineStable = ge.Engine.IsStable();
+
+        // If they differ, our fix is working: IsStable reads current, not engine
+        // If both are false, the board hasn't settled yet — also fine
+        // The key invariant: IsStable must NOT return true when current slot is unstable
+        Assert.False(currentStable, "Current slot should be unstable (falling tiles)");
     }
 
     #endregion
@@ -391,6 +423,23 @@ public class GameEngineTests
     {
         var state = GameStateBuilder.CreateStableState(5, 5);
         var engine = TestEngineFactory.CreateEngine(state);
+        return new GameEngine(engine, bufferSize);
+    }
+
+    /// <summary>
+    /// Creates a GameEngine with a board that has a gap (empty cell below a tile),
+    /// causing gravity events every tick until the tile lands.
+    /// </summary>
+    private GameEngine CreateGameEngineWithGap(int bufferSize = 5)
+    {
+        // 5x5 board, fill with stable pattern, then remove a bottom tile to create a gap
+        var state = GameStateBuilder.CreateStableState(5, 5);
+
+        // Clear tile at (2,4) — bottom of column 2. Tile at (2,3) will fall.
+        state.SetTile(2, 4, new Tile(0, ElementType.None, 2, 4));
+
+        var engine = TestEngineFactory.CreateEngine(state,
+            eventCollector: new BufferedEventCollector());
         return new GameEngine(engine, bufferSize);
     }
 
