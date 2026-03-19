@@ -262,7 +262,7 @@ public class HoleGravityTests
     public void DiagonalSlide_AvoidsHoles()
     {
         // Arrange: 3x3 grid
-        // (1,0) = Red, (1,1) = Suspended (blocker), (0,1) = HOLE, (2,1) = None
+        // (1,0) = Red, (1,1) = Obstacle (Box), (0,1) = HOLE, (2,1) = None
         // Tile should slide to (2,1), NOT into hole at (0,1)
         var state = new GameState(3, 3, 5, new StubRandom());
         for (int y = 0; y < 3; y++)
@@ -271,14 +271,17 @@ public class HoleGravityTests
 
         state.SetTile(1, 0, new Tile(100, ElementType.Item1, 1, 0));
 
-        state.SetTile(1, 1, new Tile(9, ElementType.Item2, 1, 1));
-        state.Lock(1, 1, CellLockType.Drop);
+        // Place obstacle at (1,1) — persistent blocker, no tile
+        state.SetObstacle(1, 1, new Obstacle(ObstacleType.Box, 1));
 
         // Mark (0,1) as hole — diagonal slide should avoid it
         state.Cells[1 * 3 + 0] = CellKind.Void;
 
         // Block (2,2) so tile stops at (2,1)
         state.SetTile(2, 2, new Tile(10, ElementType.Item3, 2, 2));
+
+        // Block (1,2) to prevent dead-zone diagonal from (2,1) into column 1
+        state.SetTile(1, 2, new Tile(11, ElementType.Item2, 1, 2));
 
         var physics = new RealtimeGravitySystem(DefaultConfig, new StubRandom());
         RunUntilStable(physics, ref state);

@@ -109,46 +109,44 @@ public class RaceConditionTests
         // Scenario: Tile moves from Col 0 to Col 1.
         // If Col 0 is processed first, tile moves to Col 1.
         // Then Col 1 is processed. If no check, tile moves again (Double Gravity/Move).
-        
+
         // Setup 2x5
         var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(2, 5, 3, rng);
         var gravity = new RealtimeGravitySystem(new Match3Config { GravitySpeed = 10f, InitialFallSpeed = 0f }, rng);
-        
-        // Setup stable column 0
-        var blockFloor = new Tile(1, ElementType.Item1, 0, 4);
-        state.SetTile(0, 4, blockFloor); // Floor Block
-        state.Lock(new Position(0, 4), CellLockType.Drop);
-        var blockStack = new Tile(2, ElementType.Item1, 0, 3);
-        state.SetTile(0, 3, blockStack); // Stacked Block
-        state.Lock(new Position(0, 3), CellLockType.Drop);
-        
+
+        // Setup stable column 0 with obstacles (persistent blockers)
+        state.SetTile(0, 4, new Tile(0, ElementType.None, 0, 4));
+        state.SetObstacle(0, 4, new Obstacle(ObstacleType.Box, 1));
+        state.SetTile(0, 3, new Tile(0, ElementType.None, 0, 3));
+        state.SetObstacle(0, 3, new Obstacle(ObstacleType.Box, 1));
+
         // Tile A at (0, 2)
         var tileA = new Tile(3, ElementType.Item1, 0, 2);
         // Position it close to the border so it crosses into Col 1 in one frame
-        tileA.Position = new System.Numerics.Vector2(0.49f, 2f); 
+        tileA.Position = new System.Numerics.Vector2(0.49f, 2f);
         state.SetTile(0, 2, tileA);
-        
+
         // Column 1 is empty
         // Target is (1, 2) (Slide Right)
         // Below target is (1, 3) (Empty)
-        
+
         // Ensure Col 0 processed before Col 1.
-        rng.EnqueueValues(1); 
-        
+        rng.EnqueueValues(1);
+
         // Act
         gravity.Update(ref state, 0.02f);
-        
+
         // Assert
         // Tile should have moved to (1, 2) because X crossed 0.5 (0.49 + slide > 0.5)
         var tileAtTarget = state.GetTile(1, 2);
-        
+
         // Should be at (1, 2)
         Assert.Equal(tileA.Id, tileAtTarget.Id);
-        
+
         // Should NOT be at (1, 3) (which would mean it fell after sliding in same frame)
         Assert.Equal(ElementType.None, state.GetTile(1, 3).Type);
-        
+
         // Velocity Check
         // If processed once: v = 0 + g*dt = 10*0.02 = 0.2.
         // But since we are sliding (Velocity.X > 0), gravity is reduced by SlideGravityFactor (0.6).

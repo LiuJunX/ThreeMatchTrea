@@ -295,6 +295,17 @@ public struct GameState
     /// </summary>
     public readonly bool CanMove(Position p) => CanMove(p.X, p.Y);
 
+    /// <summary>
+    /// Returns true if the tile can move ignoring temporary CellLocks.
+    /// Only checks persistent blockers (static covers).
+    /// Used by dead-zone detection to distinguish permanent vs temporary blocks.
+    /// </summary>
+    public readonly bool CanMoveIgnoringLocks(int x, int y)
+    {
+        var cover = CoverLayer[y * Width + x];
+        return !CoverRules.BlocksMovement(cover.Type);
+    }
+
     #endregion
 
     #region Cell Lock Operations

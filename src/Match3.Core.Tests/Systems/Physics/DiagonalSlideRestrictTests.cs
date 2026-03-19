@@ -56,10 +56,10 @@ public class DiagonalSlideRestrictTests
     {
         // Scenario:
         // Col 0: Empty
-        // Col 1: TileA (Top), Obstacle (Bottom, Suspended)
+        // Col 1: TileA (Top), Obstacle (Bottom)
         //
         // TileA SHOULD slide into Col 0 because it's blocked by an obstacle.
-        
+
         var config = new Match3Config { GravitySpeed = 10f };
         var rng = StubRandom.WithFixedValue(0);
         var state = new GameState(2, 2, 5, rng);
@@ -67,43 +67,29 @@ public class DiagonalSlideRestrictTests
 
         state.SetTile(0, 0, new Tile(0, ElementType.None, 0, 0));
         state.SetTile(0, 1, new Tile(0, ElementType.None, 0, 1));
-        
+
         state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0)); // TileA
-        state.SetTile(1, 1, new Tile(2, ElementType.Item1, 1, 1)); // Obstacle
-        state.Lock(1, 1, CellLockType.Drop);
+        // Place obstacle at (1,1) — no tile, obstacle blocks direct fall
+        state.SetTile(1, 1, new Tile(0, ElementType.None, 1, 1));
+        state.SetObstacle(1, 1, new Obstacle(ObstacleType.Box, 1));
 
         // Act
         gravity.Update(ref state, 0.02f);
 
         // Assert
         var tileAt10 = state.GetTile(1, 0);
-        
+
         // Should have moved or started moving
         // With 0.02f and speed 10, it might have moved slightly or fully depending on logic
         // But Velocity.X should be non-zero OR position changed
-        
-        bool hasMoved = tileAt10.Type == ElementType.None || // Moved fully
-                        tileAt10.Velocity.X != 0 ||       // Moving
-                        tileAt10.Position.X < 0.99f;      // Position changed
 
         // Check if it appeared in Col 0?
         // If it moved fully, (1,0) is None.
-        
-        // Actually, let's just check if it decided to move.
-        // If it decided to move, Velocity.X should be set (if physics runs)
-        // Or Position updated.
-        
-        // In current logic:
-        // ApplyHorizontalMotion sets Velocity.X = 0 if reached, or updates Position.
-        // If it starts slide, IsFalling = true.
-        
-        // Let's check state.
-        // If it stays put, test fails.
-        
+
         if (state.GetTile(1, 0).Type != ElementType.None)
         {
             // Still in source cell, check if moving
-            Assert.True(state.GetTile(1, 0).Position.X < 1.0f || state.GetTile(1, 0).Velocity.X != 0, 
+            Assert.True(state.GetTile(1, 0).Position.X < 1.0f || state.GetTile(1, 0).Velocity.X != 0,
                 "Tile should start sliding left off the obstacle");
         }
         else

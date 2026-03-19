@@ -1097,6 +1097,62 @@ public class ColorBombSessionManagerTests
 
     #endregion
 
+    #region Color Reservation Across Phases
+
+    [Fact]
+    public void SecondSession_DuringWaitingForBeams_PicksDifferentColor()
+    {
+        // Reproduces: click rainbow ball, first session enters WaitingForBeams,
+        // then click second rainbow ball — must pick a different color.
+        var manager = CreateManager();
+        var state = CreateState(6, 6);
+
+        // Fill with Item1 and Item2 alternating
+        int id = 1;
+        for (int y = 0; y < 6; y++)
+            for (int x = 0; x < 6; x++)
+            {
+                var type = (x + y) % 2 == 0 ? ElementType.Item1 : ElementType.Item2;
+                state.SetTile(x, y, new Tile(id++, type, x, y));
+            }
+
+        // First rainbow ball
+        state.SetTile(0, 0, new Tile(100, ElementType.None, 0, 0));
+        manager.CreateSession(ref state, new Position(0, 0), 100, 1, 0f, _events);
+
+        var firstStart = _events.Events.OfType<ColorBombSessionStartEvent>().Single();
+        var firstColor = firstStart.TargetColor;
+        Assert.True(manager.IsColorReserved(firstColor));
+
+        // Advance until shooting phase ends (all beams fired, some still in flight)
+        float t = 0f;
+        for (int i = 0; i < 200; i++)
+        {
+            manager.Update(ref state, 0.02f, i + 10, t += 0.02f, _events);
+            if (!manager.HasActiveSessions) break;
+
+            // Check: during the entire session, color must remain reserved
+            Assert.True(manager.IsColorReserved(firstColor),
+                $"Color {firstColor} was released prematurely at iteration {i}");
+        }
+
+        // If session still active (beams in flight), create second session now
+        if (manager.HasActiveSessions)
+        {
+            _events.Clear();
+            state.SetTile(5, 5, new Tile(200, ElementType.None, 5, 5));
+            manager.CreateSession(ref state, new Position(5, 5), 200, 300, t, _events);
+
+            var secondStarts = _events.Events.OfType<ColorBombSessionStartEvent>().ToList();
+            if (secondStarts.Count > 0)
+            {
+                Assert.NotEqual(firstColor, secondStarts[0].TargetColor);
+            }
+        }
+    }
+
+    #endregion
+
     #region PowerUpHandler Integration
 
     [Fact]

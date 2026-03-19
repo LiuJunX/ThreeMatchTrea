@@ -197,9 +197,14 @@ public class SimulationInvariantTests
                 int idx = y * state.Width + x;
                 if (state.Cells[idx] == CellKind.Void) continue;
 
-                if (state.Grid[idx].Type == ElementType.None)
+                if (state.Grid[idx].Type == ElementType.None && !state.HasObstacle(x, y))
                 {
                     gapBelow = true;
+                }
+                else if (state.HasObstacle(x, y))
+                {
+                    // Obstacle occupies the cell — tiles above rest on it, not floating
+                    gapBelow = false;
                 }
                 else if (!state.CanMove(x, y))
                 {

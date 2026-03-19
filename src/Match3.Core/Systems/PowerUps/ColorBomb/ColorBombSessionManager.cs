@@ -221,13 +221,13 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
                 }
                 else
                 {
-                    ReleaseColor(session);
+                    // Color stays reserved until BatchDestroy/BatchActivate
                     _beamController.TransitionFromShooting(session);
                 }
                 break;
             }
             case ShootingResult.Finished:
-                ReleaseColor(session);
+                // Color stays reserved until BatchDestroy/BatchActivate
                 _beamController.TransitionFromShooting(session);
                 break;
         }

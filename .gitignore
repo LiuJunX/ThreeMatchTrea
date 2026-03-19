@@ -51,3 +51,6 @@ builds/
 
 # Runtime screenshots
 unity/Screenshots/
+
+# Dev tools (temporary)
+tools/

@@ -3,47 +3,58 @@ using Match3.Core.Models.Grid;
 namespace Match3.Core.Systems.Physics;
 
 /// <summary>
+/// What a tile would do from a given position.
+/// Used by physics snap logic to decide whether to preserve velocity/overshoot.
+/// </summary>
+public enum NextMoveType
+{
+    /// <summary>No further movement — tile stops here.</summary>
+    Stop,
+    /// <summary>Tile can fall vertically to the next cell.</summary>
+    Vertical,
+    /// <summary>Tile can slide diagonally to an adjacent dead-zone cell.</summary>
+    Diagonal
+}
+
+/// <summary>
 /// Interface for resolving gravity targets for falling tiles.
-/// Allows different gravity behaviors to be plugged in.
+/// Targets are always single-cell (one cell at a time).
 /// </summary>
 public interface IGravityTargetResolver
 {
     /// <summary>
-    /// Target information for a tile's movement.
+    /// Target information for a tile's single-cell movement.
     /// </summary>
     public readonly struct TargetInfo
     {
         /// <summary>
-        /// Target position for the tile.
+        /// Target position (always one cell away from current grid position).
         /// </summary>
         public readonly System.Numerics.Vector2 Position;
 
-        /// <summary>
-        /// Inherited velocity from a falling tile below.
-        /// </summary>
-        public readonly float InheritedVelocityY;
-
-        /// <summary>
-        /// Whether the target was found dynamically (following a falling tile).
-        /// </summary>
-        public readonly bool FoundDynamicTarget;
-
-        public TargetInfo(System.Numerics.Vector2 position, float inheritedVelocityY, bool foundDynamicTarget)
+        public TargetInfo(System.Numerics.Vector2 position)
         {
             Position = position;
-            InheritedVelocityY = inheritedVelocityY;
-            FoundDynamicTarget = foundDynamicTarget;
+        }
+
+        public TargetInfo(int x, int y)
+        {
+            Position = new System.Numerics.Vector2(x, y);
         }
     }
 
     /// <summary>
-    /// Determine the target position for a tile at the given position.
+    /// Determine the single-cell target for a tile at the given grid position.
+    /// Returns the tile's current position if it cannot move.
     /// </summary>
-    /// <param name="state">Current game state.</param>
-    /// <param name="x">X coordinate of the tile.</param>
-    /// <param name="y">Y coordinate of the tile.</param>
-    /// <returns>Target information for the tile.</returns>
     TargetInfo DetermineTarget(ref GameState state, int x, int y);
+
+    /// <summary>
+    /// Lightweight lookahead: what would a tile at (x, y) do next?
+    /// Does not require a tile to exist at the position.
+    /// Does not modify reservations or any state.
+    /// </summary>
+    NextMoveType PeekNextMove(ref GameState state, int x, int y);
 
     /// <summary>
     /// Clear any reserved slots at the start of a new frame.

@@ -10,15 +10,13 @@ using Match3.Random;
 namespace Match3.Core.Systems.Physics;
 
 /// <summary>
-/// Standard physics simulation with gravity, diagonal slide, and tile following.
-/// Note: Prefer using StandardGravitySystem for new code (same implementation, standardized name).
+/// Physics simulation with single-cell gravity, diagonal dead-zone slide,
+/// and one-frame lookahead snap strategy.
 /// </summary>
 public class RealtimeGravitySystem : IPhysicsSimulation
 {
     private const float SnapThreshold = 0.01f;
     private const float FloorSnapDistance = 0.001f;
-    private const float SlideSpeedMultiplier = 8.0f;
-    private const float SlideGravityFactor = 0.6f;
 
     private readonly Match3Config _config;
     private readonly IRandom _random;
@@ -55,9 +53,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
             for (int y = 0; y < state.Height; y++)
             {
                 if (!IsTileStable(in state, x, y))
-                {
                     return false;
-                }
             }
         }
         return true;
@@ -75,23 +71,15 @@ public class RealtimeGravitySystem : IPhysicsSimulation
         var columnIndices = Pools.ObtainList<int>(state.Width);
         try
         {
-            InitializeColumnIndices(columnIndices, state.Width);
+            for (int i = 0; i < state.Width; i++) columnIndices.Add(i);
             ShuffleColumnIndices(columnIndices);
-
             foreach (var x in columnIndices)
-            {
                 ProcessColumn(ref state, x, dt);
-            }
         }
         finally
         {
             Pools.Release(columnIndices);
         }
-    }
-
-    private void InitializeColumnIndices(List<int> indices, int width)
-    {
-        for (int i = 0; i < width; i++) indices.Add(i);
     }
 
     private void ShuffleColumnIndices(List<int> indices)
@@ -113,7 +101,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
 
             if (ShouldSkipTile(in state, tile, x, y))
             {
-                // Clear falling state and snap position for immovable tiles (e.g. under Drop lock or cover)
+                // Clear falling state for immovable tiles (e.g. under Drop lock or cover)
                 if (tile.IsFalling && tile.Type != ElementType.None && !state.CanMove(x, y))
                 {
                     tile.IsFalling = false;
@@ -127,7 +115,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
             }
 
             var target = _targetResolver.DetermineTarget(ref state, x, y);
-            SimulatePhysics(ref tile, target, dt);
+            SimulatePhysics(ref state, ref tile, target, x, y, dt);
             UpdateGridPosition(ref state, x, y, tile);
         }
     }
@@ -137,85 +125,107 @@ public class RealtimeGravitySystem : IPhysicsSimulation
     {
         if (tile.Type == ElementType.None) return true;
         if (_newlyOccupiedSlots.Contains(y * state.Width + x)) return true;
-
-        // Check if static cover or Drop lock blocks movement
         if (!state.CanMove(x, y)) return true;
-
         return false;
     }
 
-    private void SimulatePhysics(ref Tile tile, IGravityTargetResolver.TargetInfo target, float dt)
+    private void SimulatePhysics(
+        ref GameState state, ref Tile tile,
+        IGravityTargetResolver.TargetInfo target,
+        int gx, int gy, float dt)
     {
-        ApplyHorizontalMotion(ref tile, target.Position.X, dt);
-        ApplyVerticalMotion(ref tile, target, dt);
-    }
+        bool isDiagonal = (int)target.Position.X != gx;
 
-    private void ApplyHorizontalMotion(ref Tile tile, float targetX, float dt)
-    {
-        float diffX = targetX - tile.Position.X;
-        if (Math.Abs(diffX) > SnapThreshold)
-        {
-            float moveX = Math.Sign(diffX) * SlideSpeedMultiplier * dt;
-            if (Math.Abs(moveX) > Math.Abs(diffX)) moveX = diffX;
-
-            tile.Position.X += moveX;
-            tile.Velocity.X = Math.Sign(diffX) * SlideSpeedMultiplier;
-            tile.IsFalling = true;
-        }
-        else
-        {
-            tile.Position.X = targetX;
-            tile.Velocity.X = 0;
-        }
-    }
-
-    private void ApplyVerticalMotion(ref Tile tile, IGravityTargetResolver.TargetInfo target, float dt)
-    {
         if (tile.Position.Y < target.Position.Y - FloorSnapDistance)
         {
-            // Apply Gravity
+            // Apply gravity (identical for vertical and diagonal)
             tile.IsFalling = true;
 
             if (tile.Velocity.Y < _config.InitialFallSpeed)
-            {
                 tile.Velocity.Y = _config.InitialFallSpeed;
-            }
 
-            float gravityScale = (Math.Abs(tile.Velocity.X) > SnapThreshold) ? SlideGravityFactor : 1.0f;
-            tile.Velocity.Y += _config.GravitySpeed * gravityScale * dt;
-
+            tile.Velocity.Y += _config.GravitySpeed * dt;
             if (tile.Velocity.Y > _config.MaxFallSpeed)
                 tile.Velocity.Y = _config.MaxFallSpeed;
 
-            tile.Position.Y += tile.Velocity.Y * dt;
+            float deltaY = tile.Velocity.Y * dt;
+            tile.Position.Y += deltaY;
 
-            if (tile.Position.Y >= target.Position.Y)
+            // Diagonal: X derived from grid origin + Y offset (zero accumulation error)
+            if (isDiagonal)
             {
-                SnapToTargetY(ref tile, target);
+                float dirX = Math.Sign(target.Position.X - gx);
+                float progress = Math.Max(0, tile.Position.Y - gy);
+                tile.Position.X = gx + progress * dirX;
+                tile.Velocity.X = tile.Velocity.Y * dirX;
+
+                // Clamp: X must not overshoot target
+                if ((dirX > 0 && tile.Position.X > target.Position.X) ||
+                    (dirX < 0 && tile.Position.X < target.Position.X))
+                {
+                    tile.Position.X = target.Position.X;
+                    tile.Velocity.X = 0;
+                }
             }
+            else if (Math.Abs(tile.Position.X - gx) > SnapThreshold)
+            {
+                // Not diagonal, but px misaligned — complete previous diagonal's X movement
+                float dirX = Math.Sign(gx - tile.Position.X);
+                tile.Position.X += Math.Abs(deltaY) * dirX;
+                tile.Velocity.X = Math.Abs(tile.Velocity.Y) * dirX;
+                if ((dirX > 0 && tile.Position.X > gx) ||
+                    (dirX < 0 && tile.Position.X < gx))
+                {
+                    tile.Position.X = gx;
+                    tile.Velocity.X = 0;
+                }
+            }
+
+            // Snap if overshot target
+            if (tile.Position.Y >= target.Position.Y)
+                SnapWithPeek(ref state, ref tile, target);
         }
         else
         {
-            if (tile.IsFalling || Math.Abs(tile.Position.Y - target.Position.Y) > float.Epsilon)
-            {
-                SnapToTargetY(ref tile, target);
-            }
+            if (tile.IsFalling || Math.Abs(tile.Position.Y - target.Position.Y) > FloorSnapDistance)
+                SnapWithPeek(ref state, ref tile, target);
         }
     }
 
-    private void SnapToTargetY(ref Tile tile, IGravityTargetResolver.TargetInfo target)
+    /// <summary>
+    /// One-frame lookahead snap: peek at the target cell to decide strategy.
+    /// </summary>
+    private void SnapWithPeek(
+        ref GameState state, ref Tile tile,
+        IGravityTargetResolver.TargetInfo target)
     {
-        tile.Position.Y = target.Position.Y;
+        tile.Velocity.X = 0;
+        int tx = (int)target.Position.X;
+        int ty = (int)target.Position.Y;
 
-        if (target.FoundDynamicTarget)
+        var peek = _targetResolver.PeekNextMove(ref state, tx, ty);
+
+        switch (peek)
         {
-            tile.Velocity.Y = target.InheritedVelocityY;
-            tile.IsFalling = true;
-        }
-        else
-        {
-            tile.Velocity.Y = 0;
-            tile.IsFalling = false;
+            case NextMoveType.Vertical:
+                // Continue vertically — snap X, preserve Y overshoot + vy
+                tile.Position.X = tx;
+                tile.IsFalling = true;
+                break;
+
+            case NextMoveType.Diagonal:
+                // Continue with diagonal — snap both (prevent cross-direction error), preserve vy
+                tile.Position.Y = ty;
+                tile.Position.X = tx;
+                tile.IsFalling = true;
+                break;
+
+            default: // Stop
+                tile.Position.Y = ty;
+                tile.Position.X = tx;
+                tile.Velocity.Y = 0;
+                tile.IsFalling = false;
+                break;
         }
     }
 
@@ -226,25 +236,36 @@ public class RealtimeGravitySystem : IPhysicsSimulation
 
         if (HasMovedToNewCell(state, visualX, visualY, currentX, currentY))
         {
-            // Don't snap to hole cells — tile passes through
+            // Hole = doesn't exist. Teleport to exit, as if cells are directly connected.
             if (state.IsVoid(visualX, visualY))
             {
-                state.SetTile(currentX, currentY, tile);
+                int lastHole = GravityTargetResolver.FindHoleZoneExit(in state, visualX, visualY);
+                int exitY = lastHole + 1;
+                if (exitY < state.Height &&
+                    state.GetTile(visualX, exitY).Type == ElementType.None &&
+                    !state.HasObstacle(visualX, exitY))
+                {
+                    tile.Position.Y += exitY - visualY; // skip hole zone distance
+                    state.SetTile(visualX, exitY, tile);
+                    state.SetTile(currentX, currentY, new Tile(0, ElementType.None, currentX, currentY));
+                    SyncDynamicCover(ref state, currentX, currentY, visualX, exitY);
+                    _newlyOccupiedSlots.Add(exitY * state.Width + visualX);
+                }
+                else
+                {
+                    // Exit blocked: stay above hole
+                    state.SetTile(currentX, currentY, tile);
+                }
                 return;
             }
 
             var targetSlot = state.GetTile(visualX, visualY);
             if (targetSlot.Type == ElementType.None && !state.HasObstacle(visualX, visualY))
             {
-                // Move tile to new position
                 state.SetTile(visualX, visualY, tile);
                 state.SetTile(currentX, currentY, new Tile(0, ElementType.None, currentX, currentY));
-
-                // Sync dynamic cover with the tile
                 SyncDynamicCover(ref state, currentX, currentY, visualX, visualY);
-
                 _newlyOccupiedSlots.Add(visualY * state.Width + visualX);
-
                 return;
             }
         }
@@ -252,15 +273,9 @@ public class RealtimeGravitySystem : IPhysicsSimulation
         state.SetTile(currentX, currentY, tile);
     }
 
-    /// <summary>
-    /// Sync dynamic cover when a tile moves to a new position.
-    /// Dynamic covers should not enter hole cells.
-    /// </summary>
     private void SyncDynamicCover(ref GameState state, int fromX, int fromY, int toX, int toY)
     {
         var cover = state.GetCover(fromX, fromY);
-
-        // Only move if cover is dynamic and destination is not a hole
         if (cover.Type != CoverType.None && cover.IsDynamic && !state.IsVoid(toX, toY))
         {
             state.SetCover(toX, toY, cover);
@@ -279,13 +294,8 @@ public class RealtimeGravitySystem : IPhysicsSimulation
     private bool IsTileStable(in GameState state, int x, int y)
     {
         var tile = state.GetTile(x, y);
-
         if (tile.Type == ElementType.None) return true;
-
-        // A tile with IsFalling needs at least one more tick for gravity to clear it
         if (tile.IsFalling) return false;
-
-        // Tiles blocked by static cover are considered stable (IsFalling cleared during Update)
         if (!state.CanMove(x, y)) return true;
 
         return Math.Abs(tile.Velocity.Y) <= SnapThreshold &&
@@ -294,12 +304,6 @@ public class RealtimeGravitySystem : IPhysicsSimulation
                Math.Abs(tile.Position.X - x) <= SnapThreshold;
     }
 
-    /// <summary>
-    /// Clear stale IsFalling flags on tiles that are physically at rest.
-    /// Prevents self-reinforcing follow cycles where tiles at grid position
-    /// with zero velocity retain IsFalling from a previous SnapToTargetY
-    /// with FoundDynamicTarget, causing tiles above to endlessly "follow".
-    /// </summary>
     private void ClearStaleFallingFlags(ref GameState state)
     {
         for (int x = 0; x < state.Width; x++)
@@ -322,10 +326,6 @@ public class RealtimeGravitySystem : IPhysicsSimulation
     }
 
     /// <inheritdoc />
-    /// <remarks>
-    /// Match3Config is shared (read-only in practice). If it ever becomes mutable
-    /// during simulation, it must be cloned here as well.
-    /// </remarks>
     public virtual IPhysicsSimulation CloneForSimulation(IRandom newRandom)
     {
         return new RealtimeGravitySystem(_config, newRandom);
@@ -334,7 +334,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
 
 /// <summary>
 /// Standard physics simulation with gravity.
-/// This is an alias for RealtimeGravitySystem with a standardized name.
+/// Alias for RealtimeGravitySystem with a standardized name.
 /// </summary>
 public class StandardGravitySystem : RealtimeGravitySystem
 {

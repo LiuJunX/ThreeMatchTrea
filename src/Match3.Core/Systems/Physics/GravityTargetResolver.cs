@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Numerics;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Random;
@@ -7,8 +6,9 @@ using Match3.Random;
 namespace Match3.Core.Systems.Physics;
 
 /// <summary>
-/// Default implementation of IGravityTargetResolver.
-/// Resolves gravity targets for falling tiles with diagonal slide support.
+/// Single-cell gravity target resolver with dead-zone diagonal slide support.
+/// Each call returns at most one cell of movement. The physics system uses
+/// <see cref="PeekNextMove"/> for one-frame lookahead snap decisions.
 /// </summary>
 public sealed class GravityTargetResolver : IGravityTargetResolver
 {
@@ -30,178 +30,135 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
     /// <inheritdoc />
     public IGravityTargetResolver.TargetInfo DetermineTarget(ref GameState state, int x, int y)
     {
-        var currentTile = state.GetTile(x, y);
-
         // Skip past holes below current position
         int checkY = y + 1;
         while (checkY < state.Height && state.IsHole(x, checkY))
             checkY++;
 
-        // 1. Try Vertical Move
-        if (checkY < state.Height)
+        if (checkY >= state.Height)
+            return new IGravityTargetResolver.TargetInfo(x, y);
+
+        // ① Single-cell vertical: target the next cell below
+        if (CanMoveTo(ref state, x, checkY))
         {
-            if (CanMoveTo(ref state, x, checkY))
-            {
-                return GuardHoleTransit(
-                    FindLowestVerticalTarget(ref state, x, checkY),
-                    currentTile, y);
-            }
-
-            // 2. Check if blocked by a falling tile (follow it)
-            var tileBelow = state.GetTile(x, checkY);
-            if (tileBelow.Type != ElementType.None && tileBelow.IsFalling)
-            {
-                // If current tile is already falling (chasing from above), follow immediately
-                // Otherwise, wait until the tile below has cleared the midpoint
-                bool shouldFollow = currentTile.IsFalling ||
-                                    tileBelow.Position.Y >= checkY + 0.5f;
-
-                if (shouldFollow)
-                {
-                    // Follow the falling tile below
-                    float targetY = tileBelow.Position.Y - 1.0f;
-
-                    // Clamp follow target above any hole zone in this column.
-                    // Prevents follower from entering the hole zone where it could
-                    // get stuck if the leader lands and blocks the exit.
-                    targetY = ClampAboveHoleZone(ref state, x, y, targetY);
-
-                    // If clamped target is at or above current row, treat as blocked
-                    if (targetY <= y)
-                    {
-                        return GuardHoleTransit(
-                            new IGravityTargetResolver.TargetInfo(new Vector2(x, y), 0f, false),
-                            currentTile, y);
-                    }
-
-                    return GuardHoleTransit(
-                        new IGravityTargetResolver.TargetInfo(
-                            new Vector2(x, targetY),
-                            tileBelow.Velocity.Y,
-                            foundDynamicTarget: true),
-                        currentTile, y);
-                }
-                // Tile below is falling but hasn't cleared the cell yet - stay put
-                return GuardHoleTransit(
-                    new IGravityTargetResolver.TargetInfo(new Vector2(x, y), 0f, false),
-                    currentTile, y);
-            }
-
-            // 3. Try Diagonal Slide
-            if (state.IsLocked(x, checkY, CellLockType.Drop))
-            {
-                return GuardHoleTransit(
-                    FindDiagonalTarget(ref state, x, checkY, y),
-                    currentTile, y);
-            }
-
-            // If blocked by a normal tile, stay put.
-            return GuardHoleTransit(
-                new IGravityTargetResolver.TargetInfo(new Vector2(x, y), 0f, false),
-                currentTile, y);
+            ReserveSlot(x, checkY, state.Width);
+            return new IGravityTargetResolver.TargetInfo(x, checkY);
         }
 
-        // Bottom of grid (or only holes below)
-        return GuardHoleTransit(
-            new IGravityTargetResolver.TargetInfo(new Vector2(x, y), 0f, false),
-            currentTile, y);
-    }
-
-    /// <summary>
-    /// Prevent hole-transit tiles from being pulled backward (upward).
-    /// During hole transit, a tile's physical Position.Y is far past its grid row
-    /// because UpdateGridPosition freezes the grid slot while traversing holes.
-    /// Without this guard, targets based on the grid row would snap the tile backward.
-    /// </summary>
-    private static IGravityTargetResolver.TargetInfo GuardHoleTransit(
-        IGravityTargetResolver.TargetInfo target, Tile tile, int gridY)
-    {
-        // Only activate when tile has physically moved well past its grid row (hole transit)
-        if (tile.Position.Y <= gridY + 1.0f) return target;
-
-        // Target is at or below current position — forward motion, no issue
-        if (target.Position.Y >= tile.Position.Y) return target;
-
-        // Tile is stuck in hole zone (zero velocity, not falling):
-        // allow backward movement so it can exit the hole zone.
-        // This handles the case where the exit became blocked after the tile entered.
-        if (!tile.IsFalling && System.Math.Abs(tile.Velocity.Y) < 0.1f)
-            return target;
-
-        // Target would pull the tile backward — hold at current physical position.
-        // The tile decelerates and waits until a forward target becomes available
-        // (e.g., the blocking tile below clears).
-        return new IGravityTargetResolver.TargetInfo(
-            new Vector2(target.Position.X, tile.Position.Y), 0f, false);
-    }
-
-    /// <summary>
-    /// Clamp a follow target Y so it stays above any hole zone in the column.
-    /// Returns the clamped targetY.
-    /// </summary>
-    private static float ClampAboveHoleZone(ref GameState state, int x, int currentY, float targetY)
-    {
-        for (int h = currentY + 1; h < state.Height; h++)
+        // ② Obstacle — always try diagonal
+        if (state.HasObstacle(x, checkY))
         {
-            if (state.IsHole(x, h))
-            {
-                // Clamp to the cell just before the hole entry
-                return System.Math.Min(targetY, h - 1.0f);
-            }
-        }
-        return targetY;
-    }
-
-    private IGravityTargetResolver.TargetInfo FindLowestVerticalTarget(ref GameState state, int x, int startY)
-    {
-        int floorY = startY;
-
-        for (int k = startY + 1; k < state.Height; k++)
-        {
-            // Skip holes — tiles pass through them
-            if (state.IsHole(x, k)) continue;
-
-            if (CanMoveTo(ref state, x, k))
-            {
-                floorY = k;
-            }
-            else
-            {
-                break;
-            }
+            var diag = FindDiagonalTarget(ref state, x, checkY, y);
+            if (diag.HasValue)
+                return diag.Value;
+            return new IGravityTargetResolver.TargetInfo(x, y);
         }
 
-        ReserveSlot(x, floorY, state.Width);
-        return new IGravityTargetResolver.TargetInfo(new Vector2(x, floorY), 0f, false);
+        // ③ Tile blocking — try diagonal to dead zone
+        if (state.GetTile(x, checkY).Type != ElementType.None)
+        {
+            var diag = FindDiagonalTarget(ref state, x, checkY, y);
+            if (diag.HasValue)
+                return diag.Value;
+        }
+
+        // ④ Temporary CellLock on empty cell — wait
+
+        return new IGravityTargetResolver.TargetInfo(x, y);
     }
 
-    private IGravityTargetResolver.TargetInfo FindDiagonalTarget(ref GameState state, int x, int checkY, int originalY)
+    /// <inheritdoc />
+    public NextMoveType PeekNextMove(ref GameState state, int x, int y)
     {
-        bool canLeft = x > 0 && CanMoveTo(ref state, x - 1, checkY) && IsOverheadClear(ref state, x - 1, originalY);
-        bool canRight = x < state.Width - 1 && CanMoveTo(ref state, x + 1, checkY) && IsOverheadClear(ref state, x + 1, originalY);
+        int checkY = y + 1;
+        while (checkY < state.Height && state.IsHole(x, checkY))
+            checkY++;
+
+        if (checkY >= state.Height)
+            return NextMoveType.Stop;
+
+        // Can move down? (no reservation check — this is a peek)
+        if (state.IsValid(x, checkY) &&
+            !state.IsHole(x, checkY) &&
+            !state.HasObstacle(x, checkY) &&
+            state.GetTile(x, checkY).Type == ElementType.None &&
+            state.CanReceive(x, checkY))
+        {
+            return NextMoveType.Vertical;
+        }
+
+        // Blocked — would diagonal to dead zone be possible?
+        if (state.HasObstacle(x, checkY) ||
+            state.GetTile(x, checkY).Type != ElementType.None)
+        {
+            if (x > 0 && CanPeek(ref state, x - 1, checkY) && IsDeadZone(ref state, x - 1, checkY))
+                return NextMoveType.Diagonal;
+            if (x < state.Width - 1 && CanPeek(ref state, x + 1, checkY) && IsDeadZone(ref state, x + 1, checkY))
+                return NextMoveType.Diagonal;
+        }
+
+        return NextMoveType.Stop;
+    }
+
+    private IGravityTargetResolver.TargetInfo? FindDiagonalTarget(
+        ref GameState state, int x, int checkY, int originalY)
+    {
+        bool canLeft = x > 0 &&
+                       CanMoveTo(ref state, x - 1, checkY) &&
+                       !HasCollisionRisk(ref state, x - 1, originalY) &&
+                       IsDeadZone(ref state, x - 1, checkY);
+
+        bool canRight = x < state.Width - 1 &&
+                        CanMoveTo(ref state, x + 1, checkY) &&
+                        !HasCollisionRisk(ref state, x + 1, originalY) &&
+                        IsDeadZone(ref state, x + 1, checkY);
 
         int targetX = -1;
 
         if (canLeft && canRight)
-        {
             targetX = _random.Next(0, 2) == 0 ? x - 1 : x + 1;
-        }
         else if (canLeft)
-        {
             targetX = x - 1;
-        }
         else if (canRight)
-        {
             targetX = x + 1;
-        }
 
         if (targetX != -1)
         {
             ReserveSlot(targetX, checkY, state.Width);
-            return new IGravityTargetResolver.TargetInfo(new Vector2(targetX, checkY), 0f, false);
+            return new IGravityTargetResolver.TargetInfo(targetX, checkY);
         }
 
-        return new IGravityTargetResolver.TargetInfo(new Vector2(x, originalY), 0f, false);
+        return null;
+    }
+
+    /// <summary>
+    /// Returns true if the cell at (x, y) cannot be reached by refill from above.
+    /// </summary>
+    private static bool IsDeadZone(ref GameState state, int x, int y)
+    {
+        for (int row = y - 1; row >= 0; row--)
+        {
+            if (state.IsHole(x, row))
+                continue;
+
+            if (state.HasObstacle(x, row))
+                return true;
+
+            var tile = state.GetTile(x, row);
+            if (tile.Type != ElementType.None)
+                return !state.CanMoveIgnoringLocks(x, row);
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Check if there's a movable tile at (x, y) that could fall into the cell below.
+    /// </summary>
+    private static bool HasCollisionRisk(ref GameState state, int x, int y)
+    {
+        var tile = state.GetTile(x, y);
+        return tile.Type != ElementType.None;
     }
 
     private bool CanMoveTo(ref GameState state, int x, int y)
@@ -214,9 +171,16 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
                !IsReserved(x, y, state.Width);
     }
 
-    private bool IsOverheadClear(ref GameState state, int targetX, int targetY)
+    /// <summary>
+    /// CanMoveTo without reservation check (for peek only).
+    /// </summary>
+    private static bool CanPeek(ref GameState state, int x, int y)
     {
-        return state.GetTile(targetX, targetY).Type == ElementType.None;
+        return state.IsValid(x, y) &&
+               !state.IsHole(x, y) &&
+               !state.HasObstacle(x, y) &&
+               state.GetTile(x, y).Type == ElementType.None &&
+               state.CanReceive(x, y);
     }
 
     private void ReserveSlot(int x, int y, int width)
@@ -230,7 +194,7 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
     }
 
     /// <summary>
-    /// Find the exit Y coordinate of a hole zone starting at or below entryY in the given column.
+    /// Find the exit Y coordinate of a hole zone starting at or below entryY.
     /// Returns -1 if no hole zone exists at entryY.
     /// </summary>
     public static int FindHoleZoneExit(in GameState state, int x, int entryY)
