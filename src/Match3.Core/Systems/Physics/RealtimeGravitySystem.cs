@@ -105,10 +105,38 @@ public class RealtimeGravitySystem : IPhysicsSimulation
                 continue;
             }
 
-            var target = _targetResolver.DetermineTarget(ref state, x, y);
+            var target = ResolveTarget(ref state, in tile, x, y);
             SimulatePhysics(ref state, ref tile, target, x, y, dt);
             UpdateGridPosition(ref state, x, y, tile);
         }
+    }
+
+    /// <summary>
+    /// If the tile has active Velocity.X (set only by diagonal offset formula),
+    /// it's mid-slide — continue that direction without re-evaluating.
+    /// Prevents flickering from reservation races and collision-risk changes.
+    /// </summary>
+    private IGravityTargetResolver.TargetInfo ResolveTarget(
+        ref GameState state, in Tile tile, int gx, int gy)
+    {
+        if (Math.Abs(tile.Velocity.X) > SnapThreshold)
+        {
+            int slideDir = Math.Sign(tile.Velocity.X);
+            int targetX = gx + slideDir;
+            int checkY = GravityTargetResolver.SkipHolesBelow(in state, gx, gy);
+
+            if (checkY < state.Height &&
+                state.IsValid(targetX, checkY) &&
+                !state.IsHole(targetX, checkY) &&
+                !state.HasObstacle(targetX, checkY) &&
+                state.GetTile(targetX, checkY).Type == ElementType.None)
+            {
+                return new IGravityTargetResolver.TargetInfo(targetX, checkY);
+            }
+            // Target became invalid — fall through to normal evaluation
+        }
+
+        return _targetResolver.DetermineTarget(ref state, gx, gy);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -160,16 +188,16 @@ public class RealtimeGravitySystem : IPhysicsSimulation
             }
             else if (Math.Abs(tile.Position.X - gx) > SnapThreshold)
             {
-                // Not diagonal, but px misaligned — complete previous diagonal's X movement
+                // X correction: complete previous diagonal's X movement toward gx.
+                // Do NOT set Velocity.X — this is correction, not an active slide.
                 float dirX = Math.Sign(gx - tile.Position.X);
                 tile.Position.X += deltaY * dirX;
-                tile.Velocity.X = tile.Velocity.Y * dirX;
                 if ((dirX > 0 && tile.Position.X > gx) ||
                     (dirX < 0 && tile.Position.X < gx))
                 {
                     tile.Position.X = gx;
-                    tile.Velocity.X = 0;
                 }
+                tile.Velocity.X = 0;
             }
 
             // Snap if overshot target

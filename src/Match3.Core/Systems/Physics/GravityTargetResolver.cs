@@ -33,7 +33,7 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
     {
         EnsureReservedCapacity(state);
 
-        int checkY = SkipHolesBelow(ref state, x, y);
+        int checkY = SkipHolesBelow(in state, x, y);
         if (checkY >= state.Height)
             return new IGravityTargetResolver.TargetInfo(x, y);
 
@@ -68,7 +68,7 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
     /// <inheritdoc />
     public NextMoveType PeekNextMove(ref GameState state, int x, int y)
     {
-        int checkY = SkipHolesBelow(ref state, x, y);
+        int checkY = SkipHolesBelow(in state, x, y);
         if (checkY >= state.Height)
             return NextMoveType.Stop;
 
@@ -112,10 +112,12 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
 
         if (canLeft && canRight)
         {
-            // Deterministic per-tile choice: tile ID decides direction.
-            // Avoids frame-to-frame flipping from RNG state changes.
+            // Deterministic per-tile-position: hash ensures same tile at same
+            // grid cell always picks the same direction across re-evaluations,
+            // while different tiles/positions get varied results.
             var tile = state.GetTile(x, originalY);
-            targetX = (tile.Id % 2 == 0) ? x - 1 : x + 1;
+            int hash = tile.Id * 31 + x * 7 + originalY;
+            targetX = (hash % 2 == 0) ? x - 1 : x + 1;
         }
         else if (canLeft)
             targetX = x - 1;
@@ -181,7 +183,7 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
     /// Skip past holes below (x, y), returning the first non-hole row.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int SkipHolesBelow(ref GameState state, int x, int y)
+    public static int SkipHolesBelow(in GameState state, int x, int y)
     {
         int checkY = y + 1;
         while (checkY < state.Height && state.IsHole(x, checkY))
