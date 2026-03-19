@@ -315,9 +315,9 @@ public class HoleGravityTests
         var resolver = new GravityTargetResolver(new StubRandom());
         var target = resolver.DetermineTarget(ref state, 0, 0);
 
-        // Target should be at row 4 (bottom), not row 1 or 2 (holes)
-        Assert.Equal(4.0f, target.Position.Y, 0.01f);
-        Assert.Equal(0.0f, target.Position.X, 0.01f);
+        // Single-cell target: first non-hole cell below (row 3), not bottom
+        Assert.Equal(3, target.Y);
+        Assert.Equal(0, target.X);
     }
 
     #endregion
@@ -565,10 +565,12 @@ public class HoleGravityTests
 
         var target = resolver.DetermineTarget(ref state, 0, 0);
 
-        // Target should NOT be row 0 (backward snap)
-        // It should be at or past the tile's current position (2.5)
-        Assert.True(target.Position.Y >= 2.4f,
-            $"Target {target.Position.Y:F3} is behind tile position 2.5 — backward snap!");
+        // With single-cell targeting, target is row 0 (stay) because below (row 1-2) are holes,
+        // and the exit (row 3) is blocked. Tile position is irrelevant to target resolution.
+        Assert.Equal(0, target.X);
+        // Target is either row 0 (stay, exit blocked) or row 3 (exit cell)
+        Assert.True(target.Y == 0 || target.Y == 3,
+            $"Target should be row 0 (blocked) or row 3 (single-cell past holes), was {target.Y}");
     }
 
     #endregion

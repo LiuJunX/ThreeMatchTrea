@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Random;
@@ -13,39 +13,38 @@ namespace Match3.Core.Systems.Physics;
 public sealed class GravityTargetResolver : IGravityTargetResolver
 {
     private readonly IRandom _random;
-    private readonly HashSet<int> _reservedSlots;
+    private bool[] _reserved;
+    private int _reservedWidth;
 
     public GravityTargetResolver(IRandom random)
     {
         _random = random;
-        _reservedSlots = new HashSet<int>();
+        _reserved = System.Array.Empty<bool>();
     }
 
     /// <inheritdoc />
     public void ClearReservations()
     {
-        _reservedSlots.Clear();
+        System.Array.Clear(_reserved, 0, _reserved.Length);
     }
 
     /// <inheritdoc />
     public IGravityTargetResolver.TargetInfo DetermineTarget(ref GameState state, int x, int y)
     {
-        // Skip past holes below current position
-        int checkY = y + 1;
-        while (checkY < state.Height && state.IsHole(x, checkY))
-            checkY++;
+        EnsureReservedCapacity(state);
 
+        int checkY = SkipHolesBelow(ref state, x, y);
         if (checkY >= state.Height)
             return new IGravityTargetResolver.TargetInfo(x, y);
 
-        // ① Single-cell vertical: target the next cell below
-        if (CanMoveTo(ref state, x, checkY))
+        // ① Single-cell vertical
+        if (IsCellAvailable(ref state, x, checkY) && !IsReserved(x, checkY))
         {
-            ReserveSlot(x, checkY, state.Width);
+            Reserve(x, checkY);
             return new IGravityTargetResolver.TargetInfo(x, checkY);
         }
 
-        // ② Obstacle — always try diagonal
+        // ② Obstacle — try diagonal to dead zone
         if (state.HasObstacle(x, checkY))
         {
             var diag = FindDiagonalTarget(ref state, x, checkY, y);
@@ -63,37 +62,31 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
         }
 
         // ④ Temporary CellLock on empty cell — wait
-
         return new IGravityTargetResolver.TargetInfo(x, y);
     }
 
     /// <inheritdoc />
     public NextMoveType PeekNextMove(ref GameState state, int x, int y)
     {
-        int checkY = y + 1;
-        while (checkY < state.Height && state.IsHole(x, checkY))
-            checkY++;
-
+        int checkY = SkipHolesBelow(ref state, x, y);
         if (checkY >= state.Height)
             return NextMoveType.Stop;
 
         // Can move down? (no reservation check — this is a peek)
-        if (state.IsValid(x, checkY) &&
-            !state.IsHole(x, checkY) &&
-            !state.HasObstacle(x, checkY) &&
-            state.GetTile(x, checkY).Type == ElementType.None &&
-            state.CanReceive(x, checkY))
-        {
+        if (IsCellAvailable(ref state, x, checkY))
             return NextMoveType.Vertical;
-        }
 
         // Blocked — would diagonal to dead zone be possible?
         if (state.HasObstacle(x, checkY) ||
             state.GetTile(x, checkY).Type != ElementType.None)
         {
-            if (x > 0 && CanPeek(ref state, x - 1, checkY) && IsDeadZone(ref state, x - 1, checkY))
+            if (x > 0 && IsCellAvailable(ref state, x - 1, checkY)
+                      && !HasTileAt(ref state, x - 1, y)
+                      && IsDeadZone(ref state, x - 1, checkY))
                 return NextMoveType.Diagonal;
-            if (x < state.Width - 1 && CanPeek(ref state, x + 1, checkY) && IsDeadZone(ref state, x + 1, checkY))
+            if (x < state.Width - 1 && IsCellAvailable(ref state, x + 1, checkY)
+                                    && !HasTileAt(ref state, x + 1, y)
+                                    && IsDeadZone(ref state, x + 1, checkY))
                 return NextMoveType.Diagonal;
         }
 
@@ -104,13 +97,15 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
         ref GameState state, int x, int checkY, int originalY)
     {
         bool canLeft = x > 0 &&
-                       CanMoveTo(ref state, x - 1, checkY) &&
-                       !HasCollisionRisk(ref state, x - 1, originalY) &&
+                       IsCellAvailable(ref state, x - 1, checkY) &&
+                       !IsReserved(x - 1, checkY) &&
+                       !HasTileAt(ref state, x - 1, originalY) &&
                        IsDeadZone(ref state, x - 1, checkY);
 
         bool canRight = x < state.Width - 1 &&
-                        CanMoveTo(ref state, x + 1, checkY) &&
-                        !HasCollisionRisk(ref state, x + 1, originalY) &&
+                        IsCellAvailable(ref state, x + 1, checkY) &&
+                        !IsReserved(x + 1, checkY) &&
+                        !HasTileAt(ref state, x + 1, originalY) &&
                         IsDeadZone(ref state, x + 1, checkY);
 
         int targetX = -1;
@@ -124,11 +119,36 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
 
         if (targetX != -1)
         {
-            ReserveSlot(targetX, checkY, state.Width);
+            Reserve(targetX, checkY);
             return new IGravityTargetResolver.TargetInfo(targetX, checkY);
         }
 
         return null;
+    }
+
+    #region Cell Queries
+
+    /// <summary>
+    /// Whether the cell is structurally available (empty, no obstacle, can receive).
+    /// Does NOT check reservations.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsCellAvailable(ref GameState state, int x, int y)
+    {
+        return state.IsValid(x, y) &&
+               !state.IsHole(x, y) &&
+               !state.HasObstacle(x, y) &&
+               state.GetTile(x, y).Type == ElementType.None &&
+               state.CanReceive(x, y);
+    }
+
+    /// <summary>
+    /// Whether there is any tile at (x, y) that could compete for a diagonal slot.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool HasTileAt(ref GameState state, int x, int y)
+    {
+        return state.GetTile(x, y).Type != ElementType.None;
     }
 
     /// <summary>
@@ -153,45 +173,44 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
     }
 
     /// <summary>
-    /// Check if there's a movable tile at (x, y) that could fall into the cell below.
+    /// Skip past holes below (x, y), returning the first non-hole row.
     /// </summary>
-    private static bool HasCollisionRisk(ref GameState state, int x, int y)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int SkipHolesBelow(ref GameState state, int x, int y)
     {
-        var tile = state.GetTile(x, y);
-        return tile.Type != ElementType.None;
+        int checkY = y + 1;
+        while (checkY < state.Height && state.IsHole(x, checkY))
+            checkY++;
+        return checkY;
     }
 
-    private bool CanMoveTo(ref GameState state, int x, int y)
+    #endregion
+
+    #region Reservation (bool[] for hot-path performance)
+
+    private void EnsureReservedCapacity(GameState state)
     {
-        return state.IsValid(x, y) &&
-               !state.IsHole(x, y) &&
-               !state.HasObstacle(x, y) &&
-               state.GetTile(x, y).Type == ElementType.None &&
-               state.CanReceive(x, y) &&
-               !IsReserved(x, y, state.Width);
+        int size = state.Width * state.Height;
+        if (_reserved.Length < size)
+        {
+            _reserved = new bool[size];
+            _reservedWidth = state.Width;
+        }
     }
 
-    /// <summary>
-    /// CanMoveTo without reservation check (for peek only).
-    /// </summary>
-    private static bool CanPeek(ref GameState state, int x, int y)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void Reserve(int x, int y)
     {
-        return state.IsValid(x, y) &&
-               !state.IsHole(x, y) &&
-               !state.HasObstacle(x, y) &&
-               state.GetTile(x, y).Type == ElementType.None &&
-               state.CanReceive(x, y);
+        _reserved[y * _reservedWidth + x] = true;
     }
 
-    private void ReserveSlot(int x, int y, int width)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool IsReserved(int x, int y)
     {
-        _reservedSlots.Add(y * width + x);
+        return _reserved[y * _reservedWidth + x];
     }
 
-    private bool IsReserved(int x, int y, int width)
-    {
-        return _reservedSlots.Contains(y * width + x);
-    }
+    #endregion
 
     /// <summary>
     /// Find the exit Y coordinate of a hole zone starting at or below entryY.

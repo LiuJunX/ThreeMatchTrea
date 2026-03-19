@@ -1,10 +1,8 @@
 using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
-using Match3.Core.Utility.Pools;
 using Match3.Random;
 
 namespace Match3.Core.Systems.Physics;
@@ -20,12 +18,11 @@ public class RealtimeGravitySystem : IPhysicsSimulation
 
     private readonly Match3Config _config;
     private readonly IRandom _random;
-
-    // Frame buffers
-    private readonly HashSet<int> _newlyOccupiedSlots = new HashSet<int>();
-
-    // Target resolver
     private readonly IGravityTargetResolver _targetResolver;
+
+    // Frame buffers (bool[] for hot-path performance)
+    private bool[] _newlyOccupied = Array.Empty<bool>();
+    private int[] _columnOrder = Array.Empty<int>();
 
     public RealtimeGravitySystem(Match3Config config, IRandom random)
         : this(config, random, new GravityTargetResolver(random))
@@ -41,56 +38,50 @@ public class RealtimeGravitySystem : IPhysicsSimulation
 
     public void Update(ref GameState state, float deltaTime)
     {
-        ResetFrameBuffers();
+        EnsureBufferCapacity(state);
+        ResetFrameBuffers(state);
         ProcessShuffledColumns(ref state, deltaTime);
-        ClearStaleFallingFlags(ref state);
     }
 
     public bool IsStable(in GameState state)
     {
         for (int x = 0; x < state.Width; x++)
-        {
             for (int y = 0; y < state.Height; y++)
-            {
                 if (!IsTileStable(in state, x, y))
                     return false;
-            }
-        }
         return true;
     }
 
+    private void EnsureBufferCapacity(GameState state)
+    {
+        int size = state.Width * state.Height;
+        if (_newlyOccupied.Length < size)
+            _newlyOccupied = new bool[size];
+        if (_columnOrder.Length < state.Width)
+            _columnOrder = new int[state.Width];
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void ResetFrameBuffers()
+    private void ResetFrameBuffers(GameState state)
     {
         _targetResolver.ClearReservations();
-        _newlyOccupiedSlots.Clear();
+        Array.Clear(_newlyOccupied, 0, state.Width * state.Height);
     }
 
     private void ProcessShuffledColumns(ref GameState state, float dt)
     {
-        var columnIndices = Pools.ObtainList<int>(state.Width);
-        try
-        {
-            for (int i = 0; i < state.Width; i++) columnIndices.Add(i);
-            ShuffleColumnIndices(columnIndices);
-            foreach (var x in columnIndices)
-                ProcessColumn(ref state, x, dt);
-        }
-        finally
-        {
-            Pools.Release(columnIndices);
-        }
-    }
+        int w = state.Width;
+        for (int i = 0; i < w; i++) _columnOrder[i] = i;
 
-    private void ShuffleColumnIndices(List<int> indices)
-    {
-        int n = indices.Count;
-        while (n > 1)
+        // Fisher-Yates shuffle
+        for (int n = w - 1; n > 0; n--)
         {
-            n--;
             int k = _random.Next(0, n + 1);
-            (indices[k], indices[n]) = (indices[n], indices[k]);
+            (_columnOrder[k], _columnOrder[n]) = (_columnOrder[n], _columnOrder[k]);
         }
+
+        for (int i = 0; i < w; i++)
+            ProcessColumn(ref state, _columnOrder[i], dt);
     }
 
     private void ProcessColumn(ref GameState state, int x, float dt)
@@ -114,17 +105,52 @@ public class RealtimeGravitySystem : IPhysicsSimulation
                 continue;
             }
 
-            var target = _targetResolver.DetermineTarget(ref state, x, y);
+            var target = ResolveTarget(ref state, ref tile, x, y);
             SimulatePhysics(ref state, ref tile, target, x, y, dt);
             UpdateGridPosition(ref state, x, y, tile);
         }
+    }
+
+    /// <summary>
+    /// Single-cell lock: if the tile is mid-diagonal-slide (px ≠ gx),
+    /// continue the committed direction instead of re-evaluating.
+    /// </summary>
+    private IGravityTargetResolver.TargetInfo ResolveTarget(
+        ref GameState state, ref Tile tile, int gx, int gy)
+    {
+        float driftX = tile.Position.X - gx;
+        if (Math.Abs(driftX) > SnapThreshold)
+        {
+            // Tile is mid-slide — derive target from committed direction
+            int slideDir = Math.Sign(driftX);
+            int targetX = gx + slideDir;
+            int checkY = gy + 1;
+            // Skip holes below for the target row
+            while (checkY < state.Height && state.IsHole(gx, checkY))
+                checkY++;
+
+            if (checkY < state.Height &&
+                state.IsValid(targetX, checkY) &&
+                !state.IsHole(targetX, checkY) &&
+                !state.HasObstacle(targetX, checkY) &&
+                state.GetTile(targetX, checkY).Type == ElementType.None)
+            {
+                return new IGravityTargetResolver.TargetInfo(targetX, checkY);
+            }
+
+            // Target no longer available — abort slide, snap back to grid column
+            tile.Position.X = gx;
+            tile.Velocity.X = 0;
+        }
+
+        return _targetResolver.DetermineTarget(ref state, gx, gy);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool ShouldSkipTile(in GameState state, Tile tile, int x, int y)
     {
         if (tile.Type == ElementType.None) return true;
-        if (_newlyOccupiedSlots.Contains(y * state.Width + x)) return true;
+        if (_newlyOccupied[state.Index(x, y)]) return true;
         if (!state.CanMove(x, y)) return true;
         return false;
     }
@@ -134,9 +160,9 @@ public class RealtimeGravitySystem : IPhysicsSimulation
         IGravityTargetResolver.TargetInfo target,
         int gx, int gy, float dt)
     {
-        bool isDiagonal = (int)target.Position.X != gx;
+        bool isDiagonal = target.X != gx;
 
-        if (tile.Position.Y < target.Position.Y - FloorSnapDistance)
+        if (tile.Position.Y < target.Y - FloorSnapDistance)
         {
             // Apply gravity (identical for vertical and diagonal)
             tile.IsFalling = true;
@@ -154,16 +180,16 @@ public class RealtimeGravitySystem : IPhysicsSimulation
             // Diagonal: X derived from grid origin + Y offset (zero accumulation error)
             if (isDiagonal)
             {
-                float dirX = Math.Sign(target.Position.X - gx);
+                float dirX = Math.Sign(target.X - gx);
                 float progress = Math.Max(0, tile.Position.Y - gy);
                 tile.Position.X = gx + progress * dirX;
                 tile.Velocity.X = tile.Velocity.Y * dirX;
 
                 // Clamp: X must not overshoot target
-                if ((dirX > 0 && tile.Position.X > target.Position.X) ||
-                    (dirX < 0 && tile.Position.X < target.Position.X))
+                if ((dirX > 0 && tile.Position.X > target.X) ||
+                    (dirX < 0 && tile.Position.X < target.X))
                 {
-                    tile.Position.X = target.Position.X;
+                    tile.Position.X = target.X;
                     tile.Velocity.X = 0;
                 }
             }
@@ -171,8 +197,8 @@ public class RealtimeGravitySystem : IPhysicsSimulation
             {
                 // Not diagonal, but px misaligned — complete previous diagonal's X movement
                 float dirX = Math.Sign(gx - tile.Position.X);
-                tile.Position.X += Math.Abs(deltaY) * dirX;
-                tile.Velocity.X = Math.Abs(tile.Velocity.Y) * dirX;
+                tile.Position.X += deltaY * dirX;
+                tile.Velocity.X = tile.Velocity.Y * dirX;
                 if ((dirX > 0 && tile.Position.X > gx) ||
                     (dirX < 0 && tile.Position.X < gx))
                 {
@@ -182,12 +208,12 @@ public class RealtimeGravitySystem : IPhysicsSimulation
             }
 
             // Snap if overshot target
-            if (tile.Position.Y >= target.Position.Y)
+            if (tile.Position.Y >= target.Y)
                 SnapWithPeek(ref state, ref tile, target);
         }
         else
         {
-            if (tile.IsFalling || Math.Abs(tile.Position.Y - target.Position.Y) > FloorSnapDistance)
+            if (tile.IsFalling || Math.Abs(tile.Position.Y - target.Y) > FloorSnapDistance)
                 SnapWithPeek(ref state, ref tile, target);
         }
     }
@@ -200,29 +226,27 @@ public class RealtimeGravitySystem : IPhysicsSimulation
         IGravityTargetResolver.TargetInfo target)
     {
         tile.Velocity.X = 0;
-        int tx = (int)target.Position.X;
-        int ty = (int)target.Position.Y;
 
-        var peek = _targetResolver.PeekNextMove(ref state, tx, ty);
+        var peek = _targetResolver.PeekNextMove(ref state, target.X, target.Y);
 
         switch (peek)
         {
             case NextMoveType.Vertical:
                 // Continue vertically — snap X, preserve Y overshoot + vy
-                tile.Position.X = tx;
+                tile.Position.X = target.X;
                 tile.IsFalling = true;
                 break;
 
             case NextMoveType.Diagonal:
                 // Continue with diagonal — snap both (prevent cross-direction error), preserve vy
-                tile.Position.Y = ty;
-                tile.Position.X = tx;
+                tile.Position.Y = target.Y;
+                tile.Position.X = target.X;
                 tile.IsFalling = true;
                 break;
 
             default: // Stop
-                tile.Position.Y = ty;
-                tile.Position.X = tx;
+                tile.Position.Y = target.Y;
+                tile.Position.X = target.X;
                 tile.Velocity.Y = 0;
                 tile.IsFalling = false;
                 break;
@@ -240,20 +264,25 @@ public class RealtimeGravitySystem : IPhysicsSimulation
             if (state.IsVoid(visualX, visualY))
             {
                 int lastHole = GravityTargetResolver.FindHoleZoneExit(in state, visualX, visualY);
+                if (lastHole < 0)
+                {
+                    state.SetTile(currentX, currentY, tile);
+                    return;
+                }
+
                 int exitY = lastHole + 1;
                 if (exitY < state.Height &&
                     state.GetTile(visualX, exitY).Type == ElementType.None &&
                     !state.HasObstacle(visualX, exitY))
                 {
-                    tile.Position.Y += exitY - visualY; // skip hole zone distance
+                    tile.Position.Y += exitY - visualY;
                     state.SetTile(visualX, exitY, tile);
                     state.SetTile(currentX, currentY, new Tile(0, ElementType.None, currentX, currentY));
                     SyncDynamicCover(ref state, currentX, currentY, visualX, exitY);
-                    _newlyOccupiedSlots.Add(exitY * state.Width + visualX);
+                    _newlyOccupied[state.Index(visualX, exitY)] = true;
                 }
                 else
                 {
-                    // Exit blocked: stay above hole
                     state.SetTile(currentX, currentY, tile);
                 }
                 return;
@@ -265,7 +294,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
                 state.SetTile(visualX, visualY, tile);
                 state.SetTile(currentX, currentY, new Tile(0, ElementType.None, currentX, currentY));
                 SyncDynamicCover(ref state, currentX, currentY, visualX, visualY);
-                _newlyOccupiedSlots.Add(visualY * state.Width + visualX);
+                _newlyOccupied[state.Index(visualX, visualY)] = true;
                 return;
             }
         }
@@ -273,7 +302,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
         state.SetTile(currentX, currentY, tile);
     }
 
-    private void SyncDynamicCover(ref GameState state, int fromX, int fromY, int toX, int toY)
+    private static void SyncDynamicCover(ref GameState state, int fromX, int fromY, int toX, int toY)
     {
         var cover = state.GetCover(fromX, fromY);
         if (cover.Type != CoverType.None && cover.IsDynamic && !state.IsVoid(toX, toY))
@@ -284,45 +313,29 @@ public class RealtimeGravitySystem : IPhysicsSimulation
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private bool HasMovedToNewCell(GameState state, int visualX, int visualY, int currentX, int currentY)
+    private static bool HasMovedToNewCell(GameState state, int visualX, int visualY, int currentX, int currentY)
     {
         return (visualX != currentX || visualY != currentY) &&
                visualX >= 0 && visualX < state.Width &&
                visualY >= 0 && visualY < state.Height;
     }
 
-    private bool IsTileStable(in GameState state, int x, int y)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsAtRest(in Tile tile, int x, int y)
     {
-        var tile = state.GetTile(x, y);
-        if (tile.Type == ElementType.None) return true;
-        if (tile.IsFalling) return false;
-        if (!state.CanMove(x, y)) return true;
-
         return Math.Abs(tile.Velocity.Y) <= SnapThreshold &&
                Math.Abs(tile.Velocity.X) <= SnapThreshold &&
                Math.Abs(tile.Position.Y - y) <= SnapThreshold &&
                Math.Abs(tile.Position.X - x) <= SnapThreshold;
     }
 
-    private void ClearStaleFallingFlags(ref GameState state)
+    private static bool IsTileStable(in GameState state, int x, int y)
     {
-        for (int x = 0; x < state.Width; x++)
-        {
-            for (int y = 0; y < state.Height; y++)
-            {
-                var tile = state.GetTile(x, y);
-                if (!tile.IsFalling || tile.Type == ElementType.None) continue;
-
-                if (Math.Abs(tile.Velocity.Y) <= SnapThreshold &&
-                    Math.Abs(tile.Velocity.X) <= SnapThreshold &&
-                    Math.Abs(tile.Position.Y - y) <= SnapThreshold &&
-                    Math.Abs(tile.Position.X - x) <= SnapThreshold)
-                {
-                    tile.IsFalling = false;
-                    state.SetTile(x, y, tile);
-                }
-            }
-        }
+        var tile = state.GetTile(x, y);
+        if (tile.Type == ElementType.None) return true;
+        if (tile.IsFalling) return false;
+        if (!state.CanMove(x, y)) return true;
+        return IsAtRest(in tile, x, y);
     }
 
     /// <inheritdoc />

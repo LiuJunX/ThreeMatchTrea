@@ -27,20 +27,13 @@ public interface IGravityTargetResolver
     /// </summary>
     public readonly struct TargetInfo
     {
-        /// <summary>
-        /// Target position (always one cell away from current grid position).
-        /// </summary>
-        public readonly System.Numerics.Vector2 Position;
+        /// <summary>Target column (always one cell away from current grid position).</summary>
+        public readonly int X;
 
-        public TargetInfo(System.Numerics.Vector2 position)
-        {
-            Position = position;
-        }
+        /// <summary>Target row.</summary>
+        public readonly int Y;
 
-        public TargetInfo(int x, int y)
-        {
-            Position = new System.Numerics.Vector2(x, y);
-        }
+        public TargetInfo(int x, int y) { X = x; Y = y; }
     }
 
     /// <summary>

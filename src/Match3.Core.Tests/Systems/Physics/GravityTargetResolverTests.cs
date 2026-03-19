@@ -22,8 +22,8 @@ public class GravityTargetResolverTests
         resolver.ClearReservations();
         var result = resolver.DetermineTarget(ref state, 1, 0);
 
-        Assert.Equal(1f, result.Position.X);
-        Assert.Equal(1f, result.Position.Y); // single-cell, not bottom
+        Assert.Equal(1, result.X);
+        Assert.Equal(1, result.Y); // single-cell, not bottom
     }
 
     [Fact]
@@ -39,8 +39,8 @@ public class GravityTargetResolverTests
         resolver.ClearReservations();
         var result = resolver.DetermineTarget(ref state, 1, 0);
 
-        Assert.Equal(1f, result.Position.X);
-        Assert.Equal(0f, result.Position.Y);
+        Assert.Equal(1, result.X);
+        Assert.Equal(0, result.Y);
     }
 
     [Fact]
@@ -55,8 +55,8 @@ public class GravityTargetResolverTests
         resolver.ClearReservations();
         var result = resolver.DetermineTarget(ref state, 1, 2);
 
-        Assert.Equal(1f, result.Position.X);
-        Assert.Equal(2f, result.Position.Y);
+        Assert.Equal(1, result.X);
+        Assert.Equal(2, result.Y);
     }
 
     [Fact]
@@ -70,8 +70,8 @@ public class GravityTargetResolverTests
         resolver.ClearReservations();
         var result = resolver.DetermineTarget(ref state, 0, 0);
 
-        Assert.Equal(0f, result.Position.X);
-        Assert.Equal(0f, result.Position.Y);
+        Assert.Equal(0, result.X);
+        Assert.Equal(0, result.Y);
     }
 
     [Theory]
@@ -89,8 +89,8 @@ public class GravityTargetResolverTests
         resolver.ClearReservations();
         var result = resolver.DetermineTarget(ref state, column, 0);
 
-        Assert.Equal((float)column, result.Position.X);
-        Assert.Equal(1f, result.Position.Y);
+        Assert.Equal(column, result.X);
+        Assert.Equal(1, result.Y);
     }
 
     [Fact]
@@ -106,8 +106,8 @@ public class GravityTargetResolverTests
         resolver.ClearReservations();
         var result = resolver.DetermineTarget(ref state, 1, 0);
 
-        Assert.Equal(1f, result.Position.X);
-        Assert.Equal(0f, result.Position.Y);
+        Assert.Equal(1, result.X);
+        Assert.Equal(0, result.Y);
     }
 
     #endregion
@@ -131,8 +131,8 @@ public class GravityTargetResolverTests
         resolver.ClearReservations();
         var result = resolver.DetermineTarget(ref state, 1, 0);
 
-        Assert.Equal(0f, result.Position.X);
-        Assert.Equal(1f, result.Position.Y);
+        Assert.Equal(0, result.X);
+        Assert.Equal(1, result.Y);
     }
 
     [Fact]
@@ -151,8 +151,8 @@ public class GravityTargetResolverTests
         resolver.ClearReservations();
         var result = resolver.DetermineTarget(ref state, 1, 0);
 
-        Assert.Equal(1f, result.Position.X);
-        Assert.Equal(0f, result.Position.Y);
+        Assert.Equal(1, result.X);
+        Assert.Equal(0, result.Y);
     }
 
     [Fact]
@@ -176,8 +176,8 @@ public class GravityTargetResolverTests
         resolver.ClearReservations();
         var result2 = resolver.DetermineTarget(ref state, 1, 0);
 
-        Assert.Equal(0f, result1.Position.X);
-        Assert.Equal(2f, result2.Position.X);
+        Assert.Equal(0, result1.X);
+        Assert.Equal(2, result2.X);
     }
 
     [Fact]
@@ -197,8 +197,8 @@ public class GravityTargetResolverTests
         resolver.ClearReservations();
         var result = resolver.DetermineTarget(ref state, 0, 0);
 
-        Assert.Equal(1f, result.Position.X);
-        Assert.Equal(1f, result.Position.Y);
+        Assert.Equal(1, result.X);
+        Assert.Equal(1, result.Y);
     }
 
     [Fact]
@@ -216,8 +216,8 @@ public class GravityTargetResolverTests
         resolver.ClearReservations();
         var result = resolver.DetermineTarget(ref state, 1, 0);
 
-        Assert.Equal(1f, result.Position.X);
-        Assert.Equal(0f, result.Position.Y);
+        Assert.Equal(1, result.X);
+        Assert.Equal(0, result.Y);
     }
 
     [Fact]
@@ -238,8 +238,8 @@ public class GravityTargetResolverTests
         resolver.ClearReservations();
         var result = resolver.DetermineTarget(ref state, 1, 0);
 
-        Assert.Equal(1f, result.Position.X);
-        Assert.Equal(0f, result.Position.Y);
+        Assert.Equal(1, result.X);
+        Assert.Equal(0, result.Y);
     }
 
     #endregion
@@ -260,8 +260,8 @@ public class GravityTargetResolverTests
         var r1 = resolver.DetermineTarget(ref state, 0, 0);
         var r2 = resolver.DetermineTarget(ref state, 1, 0);
 
-        Assert.Equal(1f, r1.Position.Y);
-        Assert.Equal(1f, r2.Position.Y);
+        Assert.Equal(1, r1.Y);
+        Assert.Equal(1, r2.Y);
     }
 
     [Fact]
@@ -277,8 +277,8 @@ public class GravityTargetResolverTests
         var r1 = resolver.DetermineTarget(ref state, 0, 0);
         var r2 = resolver.DetermineTarget(ref state, 0, 0);
 
-        Assert.Equal(1f, r1.Position.Y);
-        Assert.Equal(0f, r2.Position.Y);
+        Assert.Equal(1, r1.Y);
+        Assert.Equal(0, r2.Y);
     }
 
     [Fact]
@@ -295,7 +295,7 @@ public class GravityTargetResolverTests
         resolver.ClearReservations();
         var r2 = resolver.DetermineTarget(ref state, 0, 0);
 
-        Assert.Equal(r1.Position.Y, r2.Position.Y);
+        Assert.Equal(r1.Y, r2.Y);
     }
 
     #endregion
@@ -365,7 +365,7 @@ public class GravityTargetResolverTests
         resolver.PeekNextMove(ref state, 1, 0);
         var result = resolver.DetermineTarget(ref state, 1, 0);
 
-        Assert.Equal(1f, result.Position.Y); // not blocked by peek
+        Assert.Equal(1, result.Y); // not blocked by peek
     }
 
     #endregion
