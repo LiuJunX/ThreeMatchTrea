@@ -57,3 +57,21 @@ public sealed record RemoveObstacleCommand : RenderCommand
     /// <summary>Grid position of the obstacle to remove.</summary>
     public Position GridPos { get; init; }
 }
+
+/// <summary>
+/// Activate a generator obstacle (e.g., Mailbox opens, product flies out, closes).
+/// </summary>
+public sealed record ActivateGeneratorCommand : RenderCommand
+{
+    /// <summary>Grid position of the generator.</summary>
+    public Position GridPos { get; init; }
+
+    /// <summary>Type of the generator obstacle.</summary>
+    public ObstacleType ObstacleType { get; init; }
+
+    /// <summary>Type of the spawned product.</summary>
+    public ElementType ProductType { get; init; }
+
+    /// <summary>Grid position where the product was spawned.</summary>
+    public Position ProductPosition { get; init; }
+}

@@ -175,6 +175,7 @@ public static class SimulationTestHelper
             "Irregular7x7" => (CreateIrregularConfig(), 5),
             "WithObjectives" => (CreateObjectiveConfig(), 4),
             "WithObstacles" => (CreateObstacleConfig(), 5),
+            "WithMailbox" => (CreateMailboxConfig(), 5),
             _ => throw new ArgumentException($"Unknown level preset: {name}")
         };
     }
@@ -182,7 +183,8 @@ public static class SimulationTestHelper
     public static readonly string[] AllPresetNames =
     {
         "Standard8x8", "Small5x5_3Colors", "WithCover",
-        "WithGround", "Irregular7x7", "WithObjectives", "WithObstacles"
+        "WithGround", "Irregular7x7", "WithObjectives", "WithObstacles",
+        "WithMailbox"
     };
 
     // ── Level config presets ──────────────────────────────────────────
@@ -191,7 +193,7 @@ public static class SimulationTestHelper
     {
         var config = new LevelConfig(8, 8) { MoveLimit = 25 };
         config.Covers = new CoverType[64];
-        config.CoverHealths = new byte[64];
+        config.CoverHealths = new int[64];
 
         // Scatter Cage covers on a diagonal
         for (int i = 0; i < 8; i++)
@@ -214,7 +216,7 @@ public static class SimulationTestHelper
     {
         var config = new LevelConfig(8, 8) { MoveLimit = 25 };
         config.Grounds = new GroundType[64];
-        config.GroundHealths = new byte[64];
+        config.GroundHealths = new int[64];
 
         // Bottom 2 rows covered with Ice (health 2)
         for (int y = 0; y < 2; y++)
@@ -264,6 +266,35 @@ public static class SimulationTestHelper
                 ElementType = (int)ElementType.Item2,
                 TargetCount = 15
             },
+            default,
+            default
+        ];
+        return config;
+    }
+
+    private static LevelConfig CreateMailboxConfig()
+    {
+        var config = new LevelConfig(8, 8) { MoveLimit = 30 };
+
+        void PlaceMailbox(int x, int y)
+        {
+            int i = y * 8 + x;
+            config.Obstacles[i] = ObstacleType.Mailbox;
+            config.ObstacleStages[i] = 1;
+        }
+
+        PlaceMailbox(3, 3);
+        PlaceMailbox(5, 5);
+
+        config.Objectives =
+        [
+            new LevelObjective
+            {
+                TargetLayer = ObjectiveTargetLayer.Tile,
+                ElementType = (int)ElementType.Envelope,
+                TargetCount = 4
+            },
+            default,
             default,
             default
         ];

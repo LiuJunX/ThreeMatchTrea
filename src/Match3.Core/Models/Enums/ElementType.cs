@@ -71,6 +71,11 @@ public enum ElementType : byte
     /// </summary>
     Plate = 102,
 
+    /// <summary>
+    /// Envelope spawned by Mailbox generator. Collectible, counts toward objectives.
+    /// </summary>
+    Envelope = 103,
+
     // --- Blockers ---
 
     /// <summary>
@@ -120,5 +125,5 @@ public static class ElementTypeExtensions
 
     /// <summary>Whether this is a collectible element (Bird, etc.).</summary>
     public static bool IsCollectible(this ElementType type)
-        => type == ElementType.Bird || type == ElementType.Pearl || type == ElementType.Plate;
+        => type == ElementType.Bird || type == ElementType.Pearl || type == ElementType.Plate || type == ElementType.Envelope;
 }

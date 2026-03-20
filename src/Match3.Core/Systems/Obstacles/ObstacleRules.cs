@@ -30,6 +30,7 @@ public static class ObstacleRules
             ObstacleType.ColorBox => false,   // immune to direct hits; only adjacent color match
             ObstacleType.MagicHat => false,   // passive — reacts to adjacent hits
             ObstacleType.Curtain  => false,   // passive — reacts to global color elimination
+            ObstacleType.Mailbox  => false,   // indestructible generator — reacts to adjacent/power-up
             _ => true
         };
     }
@@ -47,6 +48,7 @@ public static class ObstacleRules
         ObstacleType.ColorBox => 1,
         ObstacleType.MagicHat => 1,
         ObstacleType.Curtain  => 1,
+        ObstacleType.Mailbox  => 1,
         _ => 1
     };
 
@@ -67,7 +69,18 @@ public static class ObstacleRules
                                   || triggerType == (ElementType)obstacle.State,
             ObstacleType.MagicHat => true,    // accumulates (processing logic separate)
             ObstacleType.Curtain  => false,   // global, not adjacent
+            ObstacleType.Mailbox  => true,    // any adjacent elimination triggers generation
             _ => false
         };
     }
+
+    /// <summary>
+    /// Is this obstacle a generator? Generators are permanent (never damaged)
+    /// and spawn product tiles when triggered instead of taking damage.
+    /// </summary>
+    public static bool IsGenerator(ObstacleType type) => type switch
+    {
+        ObstacleType.Mailbox => true,
+        _ => false
+    };
 }

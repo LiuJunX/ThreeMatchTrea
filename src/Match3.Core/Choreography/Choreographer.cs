@@ -29,7 +29,7 @@ namespace Match3.Core.Choreography;
 ///     CoverDestroyedEvent, GroundDamagedEvent, GroundDestroyedEvent, GroundSpawnedEvent
 ///
 ///   ObstacleChoreographer:
-///     ObstacleDamagedEvent, ObstacleDestroyedEvent
+///     ObstacleDamagedEvent, ObstacleDestroyedEvent, GeneratorActivatedEvent
 ///
 ///   BoardChoreographer:
 ///     MatchDetectedEvent, BoardShuffledEvent,
@@ -199,6 +199,9 @@ public sealed class Choreographer : IEventVisitor
 
     /// <inheritdoc />
     public void Visit(ObstacleDestroyedEvent evt) => _obstacle.Visit(evt);
+
+    /// <inheritdoc />
+    public void Visit(GeneratorActivatedEvent evt) => _obstacle.Visit(evt);
 
     #endregion
 

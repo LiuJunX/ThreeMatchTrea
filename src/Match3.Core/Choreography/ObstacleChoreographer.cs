@@ -5,9 +5,9 @@ using Match3.Core.Models.Enums;
 namespace Match3.Core.Choreography;
 
 /// <summary>
-/// Handles obstacle damage and destruction events.
-/// Converts <see cref="ObstacleDamagedEvent"/> and <see cref="ObstacleDestroyedEvent"/>
-/// into render commands.
+/// Handles obstacle damage, destruction, and generator activation events.
+/// Converts <see cref="ObstacleDamagedEvent"/>, <see cref="ObstacleDestroyedEvent"/>,
+/// and <see cref="GeneratorActivatedEvent"/> into render commands.
 /// </summary>
 internal sealed class ObstacleChoreographer
 {
@@ -89,5 +89,23 @@ internal sealed class ObstacleChoreographer
                 Duration = 0.3f
             });
         }
+    }
+
+    /// <summary>
+    /// Emit generator activation command (e.g., mailbox open → envelope fly out → close).
+    /// </summary>
+    internal void Visit(GeneratorActivatedEvent evt)
+    {
+        float startTime = _ctx.GetStartTime(evt);
+
+        _ctx.Commands.Add(new ActivateGeneratorCommand
+        {
+            GridPos = evt.GridPosition,
+            ObstacleType = evt.ObstacleType,
+            ProductType = evt.ProductType,
+            ProductPosition = evt.ProductPosition,
+            StartTime = startTime,
+            Duration = 0.4f
+        });
     }
 }

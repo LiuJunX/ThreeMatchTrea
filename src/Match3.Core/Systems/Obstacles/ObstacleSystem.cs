@@ -55,6 +55,7 @@ public sealed class ObstacleSystem : IObstacleSystem
         var hit = Pools.ObtainHashSet<Position>();
         try
         {
+            // Pass 1: standard adjacent reactions (Match/ColorBomb sources only)
             foreach (ref readonly var info in eliminated)
             {
                 if (!IsAdjacentSource(info.Source, info.Tile))
@@ -62,6 +63,16 @@ public sealed class ObstacleSystem : IObstacleSystem
 
                 ProcessNeighborReactions(ref state, info.Pos, info.Tile.Type,
                     hit, tick, simTime, events);
+            }
+
+            // Pass 2: generator reactions (ALL sources — Bomb/Projectile also trigger generators)
+            // The shared dedup HashSet prevents double activation from Pass 1.
+            foreach (ref readonly var info in eliminated)
+            {
+                if (IsAdjacentSource(info.Source, info.Tile))
+                    continue; // already processed in Pass 1
+
+                ProcessGeneratorReactions(ref state, info.Pos, hit, tick, simTime, events);
             }
         }
         finally
@@ -132,7 +143,38 @@ public sealed class ObstacleSystem : IObstacleSystem
         if (!ObstacleRules.CanReactAdjacent(in obstacle, triggerType))
             return;
 
-        ApplyDamage(ref state, neighbor, ref obstacle, tick, simTime, events);
+        if (ObstacleRules.IsGenerator(obstacle.Type))
+            ActivateGenerator(ref state, neighbor, ref obstacle, tick, simTime, events);
+        else
+            ApplyDamage(ref state, neighbor, ref obstacle, tick, simTime, events);
+    }
+
+    private void ProcessGeneratorReactions(
+        ref GameState state, Position pos,
+        HashSet<Position> hit, int tick, float simTime, IEventCollector events)
+    {
+        TryGeneratorAt(ref state, new Position(pos.X - 1, pos.Y), hit, tick, simTime, events);
+        TryGeneratorAt(ref state, new Position(pos.X + 1, pos.Y), hit, tick, simTime, events);
+        TryGeneratorAt(ref state, new Position(pos.X, pos.Y - 1), hit, tick, simTime, events);
+        TryGeneratorAt(ref state, new Position(pos.X, pos.Y + 1), hit, tick, simTime, events);
+    }
+
+    private void TryGeneratorAt(
+        ref GameState state, Position neighbor,
+        HashSet<Position> hit, int tick, float simTime, IEventCollector events)
+    {
+        if (!state.IsValid(neighbor.X, neighbor.Y))
+            return;
+        if (!hit.Add(neighbor))
+            return; // dedup: already hit in this batch
+
+        ref var obstacle = ref state.GetObstacle(neighbor);
+        if (!obstacle.HasObstacle)
+            return;
+        if (!ObstacleRules.IsGenerator(obstacle.Type))
+            return;
+
+        ActivateGenerator(ref state, neighbor, ref obstacle, tick, simTime, events);
     }
 
     private ObstacleHitResult ApplyDamage(
@@ -187,6 +229,84 @@ public sealed class ObstacleSystem : IObstacleSystem
 
         return ObstacleHitResult.Damaged;
     }
+
+    #region Generator Activation
+
+    private void ActivateGenerator(
+        ref GameState state, Position pos, ref Obstacle obstacle,
+        int tick, float simTime, IEventCollector events)
+    {
+        var productType = obstacle.Type switch
+        {
+            ObstacleType.Mailbox => ElementType.Envelope,
+            _ => ElementType.None
+        };
+
+        if (productType == ElementType.None)
+            return;
+
+        var slot = FindEmptyAdjacentSlot(in state, pos);
+        if (slot == null)
+            return; // no room — skip silently
+
+        var target = slot.Value;
+        float protectUntil = simTime + TileProtectDuration;
+        var tile = new Tile(state.NextTileId++, productType, target.X, target.Y)
+        {
+            ProtectUntil = protectUntil
+        };
+        state.SetTile(target, tile);
+
+        if (events.IsEnabled)
+        {
+            events.Emit(new GeneratorActivatedEvent
+            {
+                Tick = tick,
+                SimulationTime = simTime,
+                GridPosition = pos,
+                ObstacleType = obstacle.Type,
+                ProductType = productType,
+                ProductPosition = target
+            });
+
+            events.Emit(new TileSpawnedEvent
+            {
+                Tick = tick,
+                SimulationTime = simTime,
+                TileId = tile.Id,
+                GridPosition = target,
+                Type = productType,
+                SpawnPosition = new Vector2(pos.X, pos.Y), // fly out from generator
+            });
+        }
+    }
+
+    /// <summary>
+    /// Find an empty adjacent cell (up, right, down, left) suitable for product placement.
+    /// </summary>
+    internal static Position? FindEmptyAdjacentSlot(in GameState state, Position center)
+    {
+        ReadOnlySpan<Position> neighbors = stackalloc Position[]
+        {
+            new(center.X, center.Y - 1), // up
+            new(center.X + 1, center.Y), // right
+            new(center.X, center.Y + 1), // down
+            new(center.X - 1, center.Y), // left
+        };
+
+        foreach (var n in neighbors)
+        {
+            if (!state.IsValid(n.X, n.Y)) continue;
+            if (state.GetCell(n.X, n.Y) != CellKind.Slot) continue;
+            if (state.GetTile(n).Type != ElementType.None) continue;
+            if (state.GetObstacle(n).HasObstacle) continue;
+            return n;
+        }
+
+        return null;
+    }
+
+    #endregion
 
     #region Death Effects
 

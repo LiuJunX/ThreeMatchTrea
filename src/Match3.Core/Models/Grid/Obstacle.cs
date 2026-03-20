@@ -27,6 +27,7 @@ public struct Obstacle
     ///   <item>ColorBox: color variant (cast of ElementType, e.g., 1=Red)</item>
     ///   <item>MagicHat: accumulated adjacent hit count</item>
     ///   <item>Curtain: color variant (cast of ElementType)</item>
+    ///   <item>Mailbox: unused (0) — permanent generator, never decremented</item>
     ///   <item>Others: unused (0)</item>
     /// </list>
     /// </summary>

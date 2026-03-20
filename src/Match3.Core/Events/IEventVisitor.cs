@@ -95,4 +95,7 @@ public interface IEventVisitor
 
     /// <summary>Visit a ground spawned event (death effect).</summary>
     void Visit(GroundSpawnedEvent evt);
+
+    /// <summary>Visit a generator activated event (e.g., Mailbox spawns Envelope).</summary>
+    void Visit(GeneratorActivatedEvent evt);
 }

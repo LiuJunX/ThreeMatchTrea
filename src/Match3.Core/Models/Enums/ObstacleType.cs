@@ -51,4 +51,11 @@ public enum ObstacleType : byte
     /// collectible tile at its position.
     /// </summary>
     Cupboard = 7,
+
+    /// <summary>
+    /// Generator obstacle (permanent, indestructible). Reacts to any adjacent elimination
+    /// or power-up hit by spawning an <see cref="Match3.Core.Models.Enums.ElementType.Envelope"/>
+    /// collectible tile in an adjacent empty cell.
+    /// </summary>
+    Mailbox = 8,
 }
