@@ -9,7 +9,7 @@ static class AnalyzeCommand
     {
         if (args.Length == 0)
         {
-            Console.WriteLine("Usage: levelcli analyze <path> [--count N]");
+            Console.WriteLine("Usage: levelcli analyze <path> [--count N] [--mode random|greedy|population]");
             return 1;
         }
 
@@ -21,25 +21,35 @@ static class AnalyzeCommand
         }
 
         int simCount = 1000;
+        string modeName = "random";
+
         for (int i = 1; i < args.Length - 1; i++)
         {
             if (args[i] == "--count" && int.TryParse(args[i + 1], out var n))
-            {
                 simCount = n;
-                break;
-            }
+            if (args[i] == "--mode")
+                modeName = args[i + 1].ToLowerInvariant();
         }
+
+        var mode = modeName switch
+        {
+            "greedy" => SimulationMode.Greedy,
+            "population" or "pop" => SimulationMode.PlayerPopulation,
+            "bomb" => SimulationMode.BombPriority,
+            _ => SimulationMode.Random
+        };
 
         var json = File.ReadAllText(path);
         var config = ConfigParser.ParseLevelConfig(json);
 
         Console.WriteLine($"=== Analyze: {Path.GetFileName(path)} ({config.Width}x{config.Height}) ===");
-        Console.WriteLine($"Moves: {config.MoveLimit} | Difficulty: {config.TargetDifficulty:F2} | Sims: {simCount}");
+        Console.WriteLine($"Moves: {config.MoveLimit} | Mode: {modeName} | Sims: {simCount}");
 
         var analysisConfig = new AnalysisConfig
         {
             SimulationCount = simCount,
-            UseParallel = true
+            UseParallel = true,
+            Mode = mode
         };
 
         var progress = new Progress<SimulationProgress>(p =>
@@ -47,7 +57,10 @@ static class AnalyzeCommand
             Console.Write($"\r  Running... {p.CompletedCount}/{p.TotalCount} ({p.Progress:P0}) | Win: {p.WinRate:P1} | Deadlock: {p.DeadlockRate:P1}");
         });
 
-        var service = new LevelAnalysisService();
+        ILevelAnalysisService service = mode == SimulationMode.Random
+            ? new LevelAnalysisService()
+            : new StrategyDrivenAnalysisService();
+
         var result = await service.AnalyzeAsync(config, analysisConfig, progress);
 
         // Clear progress line
@@ -63,6 +76,17 @@ static class AnalyzeCommand
         Console.WriteLine($"  Loss Objective:  {result.AvgLossObjectiveCompletion:P1}  (失败时平均完成度)");
         Console.WriteLine($"  Win Remaining:   {result.AvgWinRemainingMoves:F1} +/- {result.StdDevWinRemainingMoves:F1} moves  (赢时剩余步数)");
         Console.WriteLine($"  Score/Move:      {result.AvgScorePerMove:F1}  (每步消除量)");
+
+        // Show tier results for population mode
+        if (result.TierResults != null)
+        {
+            Console.WriteLine("--- Player Tiers ---");
+            foreach (var tier in result.TierResults)
+            {
+                Console.WriteLine($"  {tier.TierName,-8} Win: {tier.WinRate:P1}  Avg Moves: {tier.AverageMovesUsed:F1}  ({tier.SimulationCount} sims)");
+            }
+        }
+
         Console.WriteLine($"  Elapsed:         {result.ElapsedMs:F0}ms");
 
         return 0;

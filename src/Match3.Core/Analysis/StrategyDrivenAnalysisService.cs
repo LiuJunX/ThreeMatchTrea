@@ -100,6 +100,12 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
         int remaining0to2 = 0, remaining3to5 = 0, remaining6to10 = 0, remaining10plus = 0;
         int totalWinsForRemaining = 0;
 
+        // L1 diagnostics
+        float totalLossCompletionRate = 0;
+        long totalWinRemainingMoves = 0;
+        long totalWinRemainingMovesSquared = 0;
+        long totalTilesSpawned = 0;
+
         // 创建所有模拟任务（混合各分层）
         var simTasks = new List<(int tierIdx, int simIdx)>();
         int globalSimIdx = 0;
@@ -131,6 +137,8 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
                     MovesUsed = result.MovesUsed,
                     Score = result.Score,
                     ProgressByMove = result.ProgressByMove,
+                    ObjectiveCompletionRate = result.ObjectiveCompletionRate,
+                    TilesSpawned = result.TilesSpawned,
                     TierIndex = tierIdx
                 };
             },
@@ -141,12 +149,15 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
                     ref globalMoves, ref globalScores,
                     progressAccumulator, progressCounts, moveLimit,
                     ref remaining0to2, ref remaining3to5, ref remaining6to10, ref remaining10plus,
-                    ref totalWinsForRemaining);
+                    ref totalWinsForRemaining,
+                    ref totalLossCompletionRate, ref totalWinRemainingMoves,
+                    ref totalWinRemainingMovesSquared, ref totalTilesSpawned);
             },
             buildResult: (completed, totalCount, elapsedMs, wasCancelled) =>
                 BuildResult(completed, globalWins, globalDeadlocks, globalOutOfMoves,
                     globalMoves, globalScores, tierStats, progressAccumulator, progressCounts,
                     moveLimit, remaining0to2, remaining3to5, remaining6to10, remaining10plus, totalWinsForRemaining,
+                    totalLossCompletionRate, totalWinRemainingMoves, totalWinRemainingMovesSquared, totalTilesSpawned,
                     elapsedMs, wasCancelled, popConfig.OutputTierResults),
             reportProgress: progress != null
                 ? (completed, totalCount) => progress.Report(new SimulationProgress
@@ -229,13 +240,16 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
         ref long globalMoves, ref long globalScores,
         float[] progressAccumulator, int[] progressCounts, int moveLimit,
         ref int remaining0to2, ref int remaining3to5, ref int remaining6to10, ref int remaining10plus,
-        ref int totalWinsForRemaining)
+        ref int totalWinsForRemaining,
+        ref float totalLossCompletionRate, ref long totalWinRemainingMoves,
+        ref long totalWinRemainingMovesSquared, ref long totalTilesSpawned)
     {
         tierStats.SimCount++;
         tierStats.TotalMoves += result.MovesUsed;
         tierStats.TotalScore += result.Score;
         globalMoves += result.MovesUsed;
         globalScores += result.Score;
+        totalTilesSpawned += result.TilesSpawned;
 
         switch (result.EndReason)
         {
@@ -246,6 +260,8 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
                 // 统计剩余步数分布
                 int remaining = moveLimit - result.MovesUsed;
                 totalWinsForRemaining++;
+                totalWinRemainingMoves += remaining;
+                totalWinRemainingMovesSquared += (long)remaining * remaining;
                 if (remaining <= 2) remaining0to2++;
                 else if (remaining <= 5) remaining3to5++;
                 else if (remaining <= 10) remaining6to10++;
@@ -255,11 +271,13 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
             case GameEndReason.Deadlock:
                 tierStats.Deadlocks++;
                 globalDeadlocks++;
+                totalLossCompletionRate += result.ObjectiveCompletionRate;
                 break;
 
             case GameEndReason.OutOfMoves:
                 tierStats.OutOfMoves++;
                 globalOutOfMoves++;
+                totalLossCompletionRate += result.ObjectiveCompletionRate;
                 break;
         }
 
@@ -296,6 +314,8 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
         long totalMoves, long totalScores, TierStatistics[] tierStats,
         float[] progressAccumulator, int[] progressCounts, int moveLimit,
         int remaining0to2, int remaining3to5, int remaining6to10, int remaining10plus, int totalWinsForRemaining,
+        float totalLossCompletionRate, long totalWinRemainingMoves,
+        long totalWinRemainingMovesSquared, long totalTilesSpawned,
         double elapsedMs, bool wasCancelled, bool outputTierResults)
     {
         // 构建分层结果
@@ -351,6 +371,8 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
             };
         }
 
+        int lossCount = deadlockCount + outOfMovesCount;
+
         return new LevelAnalysisResult
         {
             TotalSimulations = completedCount,
@@ -361,6 +383,14 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
             AverageScore = completedCount > 0 ? (float)totalScores / completedCount : 0,
             ElapsedMs = elapsedMs,
             WasCancelled = wasCancelled,
+            AvgLossObjectiveCompletion = lossCount > 0 ? totalLossCompletionRate / lossCount : 0,
+            AvgWinRemainingMoves = winCount > 0 ? (float)totalWinRemainingMoves / winCount : 0,
+            StdDevWinRemainingMoves = winCount > 1
+                ? (float)System.Math.Sqrt(System.Math.Max(0,
+                    (double)totalWinRemainingMovesSquared / winCount
+                    - System.Math.Pow((double)totalWinRemainingMoves / winCount, 2)))
+                : 0,
+            AvgScorePerMove = totalMoves > 0 ? (float)totalTilesSpawned / totalMoves : 0,
             TierResults = tierResults,
             ProgressDistribution = new StageProgressDistribution
             {
@@ -398,6 +428,7 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
         using var engine = ctx.CreateEngine(state, objectiveSystem);
 
         int movesUsed = 0;
+        int initialTileId = engine.State.NextTileId;
         var endReason = GameEndReason.OutOfMoves;
         var progressByMove = new float[moveLimit + 1];
 
@@ -441,12 +472,31 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
             }
         }
 
+        // Calculate objective completion rate
+        float completionRate = 0f;
+        int activeObjectives = 0;
+        var finalState = engine.State;
+        for (int i = 0; i < 4; i++)
+        {
+            var prog = finalState.ObjectiveProgress[i];
+            if (prog.IsActive)
+            {
+                completionRate += prog.TargetCount > 0
+                    ? System.Math.Min(1f, (float)prog.CurrentCount / prog.TargetCount)
+                    : 1f;
+                activeObjectives++;
+            }
+        }
+        if (activeObjectives > 0) completionRate /= activeObjectives;
+
         return new SingleGameResult
         {
             EndReason = endReason,
             MovesUsed = movesUsed,
-            Score = engine.State.Score,
+            Score = finalState.Score,
             ProgressByMove = progressByMove,
+            ObjectiveCompletionRate = completionRate,
+            TilesSpawned = finalState.NextTileId - initialTileId,
             TierIndex = -1 // Will be set by caller context
         };
     }
@@ -497,6 +547,8 @@ public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
         public int MovesUsed { get; init; }
         public long Score { get; init; }
         public float[]? ProgressByMove { get; init; }
+        public float ObjectiveCompletionRate { get; init; }
+        public int TilesSpawned { get; init; }
         /// <summary>
         /// Index into the tiers array, used by the aggregation step to route results.
         /// </summary>

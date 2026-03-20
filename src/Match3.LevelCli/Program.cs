@@ -28,7 +28,7 @@ class Program
         Console.WriteLine();
         Console.WriteLine("Usage:");
         Console.WriteLine("  levelcli validate <path>              验证关卡合法性");
-        Console.WriteLine("  levelcli analyze <path> [--count N]   模拟分析（默认1000次）");
+        Console.WriteLine("  levelcli analyze <path> [--count N] [--mode random|greedy|population]");
         Console.WriteLine("  levelcli create <w> <h> -o <path>     创建空白关卡模板");
         Console.WriteLine();
         return 1;

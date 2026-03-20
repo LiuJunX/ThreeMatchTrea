@@ -145,6 +145,9 @@ internal sealed class SharedSimulationContext : IDisposable
     /// </summary>
     public MovePreview PreviewMove(in GameState currentState, Position from, Position to)
     {
+        // Save RNG state to prevent preview from corrupting main simulation
+        var savedState = StateRandom.GetState();
+
         // 克隆状态用于预览
         _previewState = currentState.Clone(StateRandom);
 
@@ -169,13 +172,18 @@ internal sealed class SharedSimulationContext : IDisposable
         var stateAfter = engine.State;
         int tilesAfter = AnalysisUtility.CountTiles(in stateAfter);
 
-        return new MovePreview
+        var preview = new MovePreview
         {
             Move = new Move { From = from, To = to },
             ScoreGained = stateAfter.Score - scoreBefore,
             TilesCleared = Math.Max(0, tilesBefore - tilesAfter),
             FinalState = stateAfter
         };
+
+        // Restore RNG state so main simulation is not affected by preview
+        StateRandom.SetState(savedState);
+
+        return preview;
     }
 
     /// <summary>
@@ -185,6 +193,9 @@ internal sealed class SharedSimulationContext : IDisposable
     public (int scoreGained, int tilesCleared, bool isValid) QuickPreviewMove(
         in GameState currentState, Position from, Position to)
     {
+        // Save RNG state to prevent preview from corrupting main simulation
+        var savedState = StateRandom.GetState();
+
         _previewState = currentState.Clone(StateRandom);
 
         var objectiveSystem = new LevelObjectiveSystem();
@@ -201,7 +212,12 @@ internal sealed class SharedSimulationContext : IDisposable
         int tilesAfter = AnalysisUtility.CountTiles(in stateAfter);
         int tilesCleared = Math.Max(0, tilesBefore - tilesAfter);
 
-        return (stateAfter.Score - scoreBefore, tilesCleared, tilesCleared > 0);
+        var result = (stateAfter.Score - scoreBefore, tilesCleared, tilesCleared > 0);
+
+        // Restore RNG state so main simulation is not affected by preview
+        StateRandom.SetState(savedState);
+
+        return result;
     }
 
     /// <summary>
