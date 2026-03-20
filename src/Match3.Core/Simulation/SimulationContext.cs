@@ -76,7 +76,7 @@ public sealed class SimulationContext
     public (ICellEliminator Eliminator, IObstacleSystem? Obstacle, ICoverSystem? Cover) CreateMatchSystems()
     {
         var cover = CoverSystem ?? new CoverSystem();
-        var ground = new GroundSystem();
+        var ground = new GroundSystem(_objectiveSystem);
         // No lockScheduler — only the engine's lockScheduler should manage lock lifecycle
         var obstacle = new ObstacleSystem(_objectiveSystem);
         var elim = new CellEliminator(cover, ground, null, obstacle);
