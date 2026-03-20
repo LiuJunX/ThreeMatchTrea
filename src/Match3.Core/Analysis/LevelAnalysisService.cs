@@ -327,12 +327,12 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
         var powerUpHandler = ctx.GetPowerUpHandler();
         var objectiveSystem = ctx.GetObjectiveSystem();
 
-        // 创建 ExplosionSystem 并传入 objectiveSystem 以追踪目标进度
+        // 统一 CellEliminator — 共享给 ExplosionSystem 和 SimulationEngine
         var coverSystem = new Systems.Layers.CoverSystem(objectiveSystem);
         var groundSystem = new Systems.Layers.GroundSystem(objectiveSystem);
-        var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem);
         var obstacleSystem = new ObstacleSystem(objectiveSystem);
         var cellEliminator = new Systems.Elimination.CellEliminator(coverSystem, groundSystem, objectiveSystem, obstacleSystem);
+        var explosionSystem = new ExplosionSystem(cellEliminator, BombEffectRegistry.CreateDefault(), null);
 
         using var engine = new SimulationEngine(
             state,
@@ -475,7 +475,10 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
                 var objSys = GetObjectiveSystem();
                 var coverSys = new CoverSystem(objSys);
                 var groundSys = new GroundSystem(objSys);
-                _matchProcessor = new StandardMatchProcessor(ScoreSystem, coverSys, groundSys, BombEffects);
+                var obsSys = new ObstacleSystem(objSys);
+                // CellEliminator 不传 objectiveSystem — tile 目标由 EmitTileDestroyedEvents 统一追踪，避免双重计数
+                var elim = new Systems.Elimination.CellEliminator(coverSys, groundSys, null, obsSys);
+                _matchProcessor = new StandardMatchProcessor(ScoreSystem, elim, BombEffects, obsSys, coverSys);
             }
             return _matchProcessor;
         }

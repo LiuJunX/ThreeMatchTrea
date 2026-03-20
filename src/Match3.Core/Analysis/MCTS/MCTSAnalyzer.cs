@@ -16,6 +16,7 @@ using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Objectives;
 using Match3.Core.Systems.Scoring;
+using Match3.Core.Systems.Obstacles;
 using Match3.Core.Utility;
 using Match3.Random;
 
@@ -610,7 +611,9 @@ public sealed class MCTSAnalyzer
                 var objSys = GetObjectiveSystem();
                 _coverSystem ??= new CoverSystem(objSys);
                 _groundSystem ??= new GroundSystem(objSys);
-                _matchProcessor = new StandardMatchProcessor(ScoreSystem, _coverSystem, _groundSystem, BombEffects);
+                var obsSys = new ObstacleSystem(objSys);
+                var elim = new Systems.Elimination.CellEliminator(_coverSystem, _groundSystem, null, obsSys);
+                _matchProcessor = new StandardMatchProcessor(ScoreSystem, elim, BombEffects, obsSys, _coverSystem);
             }
             return _matchProcessor;
         }
@@ -628,7 +631,9 @@ public sealed class MCTSAnalyzer
                 var objSys = GetObjectiveSystem();
                 _coverSystem = new CoverSystem(objSys);
                 _groundSystem = new GroundSystem(objSys);
-                _explosionSystem = new ExplosionSystem(_coverSystem, _groundSystem, objSys);
+                var obsSys = new ObstacleSystem(objSys);
+                var elim = new Systems.Elimination.CellEliminator(_coverSystem, _groundSystem, objSys, obsSys);
+                _explosionSystem = new ExplosionSystem(elim, BombEffectRegistry.CreateDefault(), null);
             }
             return _explosionSystem;
         }

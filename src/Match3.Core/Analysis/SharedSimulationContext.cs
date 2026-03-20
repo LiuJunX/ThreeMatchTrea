@@ -68,20 +68,13 @@ internal sealed class SharedSimulationContext : IDisposable
     {
         if (_matchProcessor == null)
         {
-            var objSys = CreateObjectiveSystem(); // Use new instance or shared? Shared context seems to create new ObjectiveSystem for preview, but main simulation might need one.
-            // Wait, CreateObjectiveSystem returns a NEW one.
-            // But GetMatchProcessor is used for the "main" simulation context.
-            // I should probably use a persistent one if this context is long-lived.
-            // But SharedSimulationContext says "thread unsafe, each thread should have its own".
-            // So I can create one and store it?
-            // But CreateObjectiveSystem() is public.
-            // Let's create one here locally or use null if not needed?
-            // StandardMatchProcessor needs CoverSystem and GroundSystem.
-            // They need ObjectiveSystem.
             var obj = CreateObjectiveSystem();
             var cover = new Systems.Layers.CoverSystem(obj);
             var ground = new Systems.Layers.GroundSystem(obj);
-            _matchProcessor = new StandardMatchProcessor(_scoreSystem, cover, ground, BombEffects);
+            var obs = new ObstacleSystem(obj);
+            // CellEliminator 不传 objectiveSystem — tile 目标由 EmitTileDestroyedEvents 统一追踪，避免双重计数
+            var elim = new Systems.Elimination.CellEliminator(cover, ground, null, obs);
+            _matchProcessor = new StandardMatchProcessor(_scoreSystem, elim, BombEffects, obs, cover);
         }
         return _matchProcessor;
     }
@@ -119,8 +112,8 @@ internal sealed class SharedSimulationContext : IDisposable
         var coverSystem = new Systems.Layers.CoverSystem(objectiveSystem);
         var groundSystem = new Systems.Layers.GroundSystem(objectiveSystem);
         var obstacleSystem = new ObstacleSystem(objectiveSystem);
-        var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem);
         var cellEliminator = new Systems.Elimination.CellEliminator(coverSystem, groundSystem, objectiveSystem, obstacleSystem);
+        var explosionSystem = new ExplosionSystem(cellEliminator, BombEffectRegistry.CreateDefault(), null);
 
         return new SimulationEngine(
             state,
