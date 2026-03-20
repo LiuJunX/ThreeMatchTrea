@@ -309,7 +309,7 @@ public static class GameRecordingSerializer
         for (int i = 0; i < size; i++)
         {
             if (i < config.Covers.Length) covers[i] = (byte)config.Covers[i];
-            if (i < config.CoverHealths.Length) coverHealths[i] = config.CoverHealths[i];
+            if (i < config.CoverHealths.Length) coverHealths[i] = (byte)config.CoverHealths[i];
         }
 
         var grounds = new byte[size];
@@ -317,7 +317,7 @@ public static class GameRecordingSerializer
         for (int i = 0; i < size; i++)
         {
             if (i < config.Grounds.Length) grounds[i] = (byte)config.Grounds[i];
-            if (i < config.GroundHealths.Length) groundHealths[i] = config.GroundHealths[i];
+            if (i < config.GroundHealths.Length) groundHealths[i] = (byte)config.GroundHealths[i];
         }
 
         var obstacles = new byte[size];
@@ -325,7 +325,7 @@ public static class GameRecordingSerializer
         for (int i = 0; i < size; i++)
         {
             if (i < config.Obstacles.Length) obstacles[i] = (byte)config.Obstacles[i];
-            if (i < config.ObstacleStages.Length) obstacleStages[i] = config.ObstacleStages[i];
+            if (i < config.ObstacleStages.Length) obstacleStages[i] = (byte)config.ObstacleStages[i];
         }
 
         var objectives = new List<ObjectiveDto>(4);

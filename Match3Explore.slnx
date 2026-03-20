@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Match3.ConfigTool/Match3.ConfigTool.csproj" />
+    <Project Path="src/Match3.LevelCli/Match3.LevelCli.csproj" />
     <Project Path="src/Match3.Core/Match3.Core.csproj" />
     <Project Path="src/Match3.Editor.Tests/Match3.Editor.Tests.csproj" />
     <Project Path="src/Match3.Presentation/Match3.Presentation.csproj" />

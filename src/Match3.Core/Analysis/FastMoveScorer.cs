@@ -262,6 +262,16 @@ public static class FastMoveScorer
                     contribution += 25f * (1f + completionRatio);
                 }
             }
+
+            if (progress.TargetLayer == Models.Enums.ObjectiveTargetLayer.Obstacle)
+            {
+                if (HasNearbyObstacle(in state, move.From) ||
+                    HasNearbyObstacle(in state, move.To))
+                {
+                    float completionRatio = (float)progress.CurrentCount / progress.TargetCount;
+                    contribution += 25f * (1f + completionRatio);
+                }
+            }
         }
 
         return contribution;
@@ -269,7 +279,6 @@ public static class FastMoveScorer
 
     private static bool HasNearbyLayer(in GameState state, Position pos, bool checkCover)
     {
-        // 检查该位置及其4个邻居
         if (checkCover)
         {
             if (state.HasCover(pos)) return true;
@@ -279,27 +288,27 @@ public static class FastMoveScorer
             if (state.HasGround(pos)) return true;
         }
 
-        // 检查邻居
-        int[] dx = { -1, 1, 0, 0 };
-        int[] dy = { 0, 0, -1, 1 };
+        return CheckNeighbors(in state, pos, checkCover
+            ? static (in GameState s, int x, int y) => s.HasCover(x, y)
+            : static (in GameState s, int x, int y) => s.HasGround(x, y));
+    }
 
-        for (int i = 0; i < 4; i++)
-        {
-            int nx = pos.X + dx[i];
-            int ny = pos.Y + dy[i];
+    private static bool HasNearbyObstacle(in GameState state, Position pos)
+    {
+        if (state.HasObstacle(pos)) return true;
+        return CheckNeighbors(in state, pos,
+            static (in GameState s, int x, int y) => s.HasObstacle(x, y));
+    }
 
-            if (!state.IsValid(nx, ny)) continue;
+    private delegate bool CellCheck(in GameState state, int x, int y);
 
-            if (checkCover)
-            {
-                if (state.HasCover(nx, ny)) return true;
-            }
-            else
-            {
-                if (state.HasGround(nx, ny)) return true;
-            }
-        }
-
+    private static bool CheckNeighbors(in GameState state, Position pos, CellCheck check)
+    {
+        int x = pos.X, y = pos.Y;
+        if (state.IsValid(x - 1, y) && check(in state, x - 1, y)) return true;
+        if (state.IsValid(x + 1, y) && check(in state, x + 1, y)) return true;
+        if (state.IsValid(x, y - 1) && check(in state, x, y - 1)) return true;
+        if (state.IsValid(x, y + 1) && check(in state, x, y + 1)) return true;
         return false;
     }
 

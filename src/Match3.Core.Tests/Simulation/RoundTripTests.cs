@@ -143,7 +143,7 @@ public class RoundTripTests
 
         // Covers
         config.Covers = new CoverType[7 * 9];
-        config.CoverHealths = new byte[7 * 9];
+        config.CoverHealths = new int[7 * 9];
         config.Covers[5] = CoverType.Cage;
         config.CoverHealths[5] = 2;
         config.Covers[15] = CoverType.Chain;
@@ -153,7 +153,7 @@ public class RoundTripTests
 
         // Grounds
         config.Grounds = new GroundType[7 * 9];
-        config.GroundHealths = new byte[7 * 9];
+        config.GroundHealths = new int[7 * 9];
         config.Grounds[1] = GroundType.Ice;
         config.GroundHealths[1] = 3;
         config.Grounds[8] = GroundType.Ice;

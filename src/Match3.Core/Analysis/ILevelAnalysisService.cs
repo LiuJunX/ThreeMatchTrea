@@ -81,6 +81,18 @@ public sealed class LevelAnalysisResult
         _ => DifficultyRating.VeryHard
     };
 
+    /// <summary>失败局的平均目标完成率 (0-1)</summary>
+    public float AvgLossObjectiveCompletion { get; init; }
+
+    /// <summary>胜利局的平均剩余步数</summary>
+    public float AvgWinRemainingMoves { get; init; }
+
+    /// <summary>胜利局剩余步数的标准差</summary>
+    public float StdDevWinRemainingMoves { get; init; }
+
+    /// <summary>每步平均得分（消除量的代理指标）</summary>
+    public float AvgScorePerMove { get; init; }
+
     /// <summary>
     /// 分层玩家统计结果（当使用 PlayerPopulation 模式时）
     /// </summary>

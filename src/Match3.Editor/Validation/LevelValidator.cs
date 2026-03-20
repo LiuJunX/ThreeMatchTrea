@@ -18,6 +18,7 @@ public class LevelValidator
         {
             new BoardContentChecker(),
             new ObjectiveChecker(),
+            new ObjectiveConsistencyChecker(),
             new MoveLimitChecker()
         };
     }

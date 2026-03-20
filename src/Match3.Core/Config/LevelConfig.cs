@@ -34,7 +34,7 @@ public class LevelConfig
     /// <summary>
     /// Ground health values (optional, defaults to type's default health).
     /// </summary>
-    public byte[] GroundHealths { get; set; }
+    public int[] GroundHealths { get; set; }
 
     /// <summary>
     /// Cover layer configuration.
@@ -44,7 +44,7 @@ public class LevelConfig
     /// <summary>
     /// Cover health values (optional, defaults to type's default health).
     /// </summary>
-    public byte[] CoverHealths { get; set; }
+    public int[] CoverHealths { get; set; }
 
     /// <summary>
     /// Obstacle layer configuration (Box, Bush, Safe, etc.).
@@ -54,7 +54,7 @@ public class LevelConfig
     /// <summary>
     /// Obstacle initial stage/HP values (optional, defaults to 1).
     /// </summary>
-    public byte[] ObstacleStages { get; set; }
+    public int[] ObstacleStages { get; set; }
 
     public int MoveLimit { get; set; } = 20;
 
@@ -106,11 +106,11 @@ public class LevelConfig
         Grid = new ElementType[size];
         Cells = new CellKind[size];
         Grounds = new GroundType[size];
-        GroundHealths = new byte[size];
+        GroundHealths = new int[size];
         Covers = new CoverType[size];
-        CoverHealths = new byte[size];
+        CoverHealths = new int[size];
         Obstacles = new ObstacleType[size];
-        ObstacleStages = new byte[size];
+        ObstacleStages = new int[size];
 
         // Default cells to Slot
         Array.Fill(Cells, CellKind.Slot);
@@ -124,11 +124,11 @@ public class LevelConfig
         Grid = new ElementType[size];
         Cells = new CellKind[size];
         Grounds = new GroundType[size];
-        GroundHealths = new byte[size];
+        GroundHealths = new int[size];
         Covers = new CoverType[size];
-        CoverHealths = new byte[size];
+        CoverHealths = new int[size];
         Obstacles = new ObstacleType[size];
-        ObstacleStages = new byte[size];
+        ObstacleStages = new int[size];
 
         Array.Fill(Cells, CellKind.Slot);
     }

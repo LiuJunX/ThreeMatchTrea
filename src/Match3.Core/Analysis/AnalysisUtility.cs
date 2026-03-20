@@ -90,7 +90,7 @@ internal static class AnalysisUtility
                         byte health = GroundRules.GetDefaultHealth(groundType);
                         if (levelConfig.GroundHealths != null && idx < levelConfig.GroundHealths.Length && levelConfig.GroundHealths[idx] > 0)
                         {
-                            health = levelConfig.GroundHealths[idx];
+                            health = (byte)levelConfig.GroundHealths[idx];
                         }
                         state.SetGround(x, y, new Ground(groundType, health));
                     }
@@ -104,7 +104,7 @@ internal static class AnalysisUtility
                         byte health = CoverRules.GetDefaultHealth(coverType);
                         if (levelConfig.CoverHealths != null && idx < levelConfig.CoverHealths.Length && levelConfig.CoverHealths[idx] > 0)
                         {
-                            health = levelConfig.CoverHealths[idx];
+                            health = (byte)levelConfig.CoverHealths[idx];
                         }
                         bool isDynamic = CoverRules.IsDynamicType(coverType);
                         state.SetCover(x, y, new Cover(coverType, health, isDynamic));

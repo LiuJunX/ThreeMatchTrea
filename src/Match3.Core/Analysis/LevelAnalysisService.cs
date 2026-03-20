@@ -88,6 +88,11 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
         int outOfMovesCount = 0;
         long totalMovesUsed = 0;
         long totalScore = 0;
+        float totalLossCompletionRate = 0;
+        long totalWinRemainingMoves = 0;
+        long totalWinRemainingMovesSquared = 0;
+        long totalTilesSpawned = 0;
+        int moveLimit = initialState.MoveLimit > 0 ? initialState.MoveLimit : 20;
 
         var runner = new AnalysisSimulationRunner<int, SingleGameResult, LevelAnalysisResult>(
             simulate: i => SimulateSingleGame(initialState, AnalysisSeedDerivation.FromSimulationIndex(i)),
@@ -95,30 +100,48 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
             {
                 totalMovesUsed += result.MovesUsed;
                 totalScore += result.Score;
+                totalTilesSpawned += result.TilesSpawned;
 
                 switch (result.EndReason)
                 {
                     case GameEndReason.Win:
                         winCount++;
+                        int remaining = moveLimit - result.MovesUsed;
+                        totalWinRemainingMoves += remaining;
+                        totalWinRemainingMovesSquared += (long)remaining * remaining;
                         break;
                     case GameEndReason.Deadlock:
                         deadlockCount++;
+                        totalLossCompletionRate += result.ObjectiveCompletionRate;
                         break;
                     case GameEndReason.OutOfMoves:
                         outOfMovesCount++;
+                        totalLossCompletionRate += result.ObjectiveCompletionRate;
                         break;
                 }
             },
-            buildResult: (completed, total, elapsedMs, wasCancelled) => new LevelAnalysisResult
+            buildResult: (completed, total, elapsedMs, wasCancelled) =>
             {
-                TotalSimulations = completed,
-                WinCount = winCount,
-                DeadlockCount = deadlockCount,
-                OutOfMovesCount = outOfMovesCount,
-                AverageMovesUsed = completed > 0 ? (float)totalMovesUsed / completed : 0,
-                AverageScore = completed > 0 ? (float)totalScore / completed : 0,
-                ElapsedMs = elapsedMs,
-                WasCancelled = wasCancelled
+                int lossCount = deadlockCount + outOfMovesCount;
+                return new LevelAnalysisResult
+                {
+                    TotalSimulations = completed,
+                    WinCount = winCount,
+                    DeadlockCount = deadlockCount,
+                    OutOfMovesCount = outOfMovesCount,
+                    AverageMovesUsed = completed > 0 ? (float)totalMovesUsed / completed : 0,
+                    AverageScore = completed > 0 ? (float)totalScore / completed : 0,
+                    ElapsedMs = elapsedMs,
+                    WasCancelled = wasCancelled,
+                    AvgLossObjectiveCompletion = lossCount > 0 ? totalLossCompletionRate / lossCount : 0,
+                    AvgWinRemainingMoves = winCount > 0 ? (float)totalWinRemainingMoves / winCount : 0,
+                    StdDevWinRemainingMoves = winCount > 1
+                        ? (float)System.Math.Sqrt(System.Math.Max(0,
+                            (double)totalWinRemainingMovesSquared / winCount
+                            - System.Math.Pow((double)totalWinRemainingMoves / winCount, 2)))
+                        : 0,
+                    AvgScorePerMove = totalMovesUsed > 0 ? (float)totalTilesSpawned / totalMovesUsed : 0
+                };
             },
             reportProgress: progress != null
                 ? (completed, total) => progress.Report(new SimulationProgress
@@ -210,7 +233,7 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
                         byte health = GroundRules.GetDefaultHealth(groundType);
                         if (levelConfig.GroundHealths != null && idx < levelConfig.GroundHealths.Length && levelConfig.GroundHealths[idx] > 0)
                         {
-                            health = levelConfig.GroundHealths[idx];
+                            health = (byte)levelConfig.GroundHealths[idx];
                         }
                         state.SetGround(x, y, new Ground(groundType, health));
                     }
@@ -225,7 +248,7 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
                         byte health = CoverRules.GetDefaultHealth(coverType);
                         if (levelConfig.CoverHealths != null && idx < levelConfig.CoverHealths.Length && levelConfig.CoverHealths[idx] > 0)
                         {
-                            health = levelConfig.CoverHealths[idx];
+                            health = (byte)levelConfig.CoverHealths[idx];
                         }
                         bool isDynamic = CoverRules.IsDynamicType(coverType);
                         state.SetCover(x, y, new Cover(coverType, health, isDynamic));
@@ -325,6 +348,7 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
 
         int movesUsed = 0;
         int moveLimit = initialState.MoveLimit > 0 ? initialState.MoveLimit : 20;
+        int initialTileId = engine.State.NextTileId;
         var endReason = GameEndReason.OutOfMoves;
 
         while (movesUsed < moveLimit)
@@ -357,11 +381,32 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
             }
         }
 
+        // Calculate objective completion rate
+        float completionRate = 0f;
+        int activeObjectives = 0;
+        var finalState = engine.State;
+        for (int i = 0; i < 4; i++)
+        {
+            var prog = finalState.ObjectiveProgress[i];
+            if (prog.IsActive)
+            {
+                completionRate += prog.TargetCount > 0
+                    ? System.Math.Min(1f, (float)prog.CurrentCount / prog.TargetCount)
+                    : 1f;
+                activeObjectives++;
+            }
+        }
+        if (activeObjectives > 0) completionRate /= activeObjectives;
+
+        int tilesSpawned = finalState.NextTileId - initialTileId;
+
         return new SingleGameResult
         {
             EndReason = endReason,
             MovesUsed = movesUsed,
-            Score = engine.State.Score
+            Score = finalState.Score,
+            ObjectiveCompletionRate = completionRate,
+            TilesSpawned = tilesSpawned
         };
     }
 
@@ -377,6 +422,8 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
         public GameEndReason EndReason { get; init; }
         public int MovesUsed { get; init; }
         public long Score { get; init; }
+        public float ObjectiveCompletionRate { get; init; }
+        public int TilesSpawned { get; init; }
     }
 
     /// <summary>

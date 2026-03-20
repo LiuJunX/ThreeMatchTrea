@@ -62,7 +62,7 @@ public class BoardInitializer : IBoardInitializer
                             byte stage = ObstacleRules.GetDefaultStage(obstacleType);
                             if (levelConfig.ObstacleStages != null && i < levelConfig.ObstacleStages.Length && levelConfig.ObstacleStages[i] > 0)
                             {
-                                stage = levelConfig.ObstacleStages[i];
+                                stage = (byte)levelConfig.ObstacleStages[i];
                             }
                             state.SetObstacle(x, y, new Obstacle { Type = obstacleType, Stage = stage });
                             continue; // Obstacle occupies the cell — no tile here
@@ -90,7 +90,7 @@ public class BoardInitializer : IBoardInitializer
                             byte health = GroundRules.GetDefaultHealth(groundType);
                             if (levelConfig.GroundHealths != null && i < levelConfig.GroundHealths.Length && levelConfig.GroundHealths[i] > 0)
                             {
-                                health = levelConfig.GroundHealths[i];
+                                health = (byte)levelConfig.GroundHealths[i];
                             }
                             state.SetGround(x, y, new Ground(groundType, health));
                         }
@@ -105,7 +105,7 @@ public class BoardInitializer : IBoardInitializer
                             byte health = CoverRules.GetDefaultHealth(coverType);
                             if (levelConfig.CoverHealths != null && i < levelConfig.CoverHealths.Length && levelConfig.CoverHealths[i] > 0)
                             {
-                                health = levelConfig.CoverHealths[i];
+                                health = (byte)levelConfig.CoverHealths[i];
                             }
                             bool isDynamic = CoverRules.IsDynamicType(coverType);
                             state.SetCover(x, y, new Cover(coverType, health, isDynamic));

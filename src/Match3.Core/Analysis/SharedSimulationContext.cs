@@ -10,6 +10,7 @@ using Match3.Core.Systems.Matching.Generation;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Objectives;
+using Match3.Core.Systems.Obstacles;
 using Match3.Core.Systems.Scoring;
 using Match3.Random;
 
@@ -117,7 +118,9 @@ internal sealed class SharedSimulationContext : IDisposable
     {
         var coverSystem = new Systems.Layers.CoverSystem(objectiveSystem);
         var groundSystem = new Systems.Layers.GroundSystem(objectiveSystem);
+        var obstacleSystem = new ObstacleSystem(objectiveSystem);
         var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem);
+        var cellEliminator = new Systems.Elimination.CellEliminator(coverSystem, groundSystem, objectiveSystem, obstacleSystem);
 
         return new SimulationEngine(
             state,
@@ -132,7 +135,8 @@ internal sealed class SharedSimulationContext : IDisposable
             explosionSystem,
             null,
             null,
-            objectiveSystem);
+            objectiveSystem,
+            cellEliminator: cellEliminator);
     }
 
     /// <summary>
