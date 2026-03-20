@@ -30,4 +30,10 @@ public enum CoverType : byte
     /// </summary>
     [AIMapping(2, "Bubble")]
     Bubble = 3,
+
+    /// <summary>
+    /// Honey that blocks match/swap/movement. Destroyed by adjacent elimination.
+    /// </summary>
+    [AIMapping(3, "Honey")]
+    Honey = 4,
 }

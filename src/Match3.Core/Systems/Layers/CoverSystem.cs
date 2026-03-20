@@ -1,7 +1,12 @@
+using System;
+using System.Collections.Generic;
 using Match3.Core.Events;
+using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Obstacles;
 using Match3.Core.Systems.Objectives;
+using Match3.Core.Utility.Pools;
 
 namespace Match3.Core.Systems.Layers;
 
@@ -17,6 +22,7 @@ public class CoverSystem : ICoverSystem
     {
         _objectiveSystem = objectiveSystem;
     }
+
     /// <inheritdoc />
     public bool TryDamageCover(ref GameState state, Position position, int tick, float simTime, IEventCollector events)
     {
@@ -84,5 +90,62 @@ public class CoverSystem : ICoverSystem
             state.SetCover(to, fromCover);
             state.SetCover(from, Cover.Empty);
         }
+    }
+
+    /// <inheritdoc />
+    public void NotifyBatchElimination(
+        ref GameState state,
+        ReadOnlySpan<EliminatedTileInfo> eliminated,
+        int tick, float simTime, IEventCollector events)
+    {
+        var hit = Pools.ObtainHashSet<Position>();
+        try
+        {
+            foreach (ref readonly var info in eliminated)
+            {
+                if (!IsAdjacentSource(info.Source, info.Tile))
+                    continue;
+
+                TryDamageAdjacentCover(ref state, new Position(info.Pos.X - 1, info.Pos.Y), hit, tick, simTime, events);
+                TryDamageAdjacentCover(ref state, new Position(info.Pos.X + 1, info.Pos.Y), hit, tick, simTime, events);
+                TryDamageAdjacentCover(ref state, new Position(info.Pos.X, info.Pos.Y - 1), hit, tick, simTime, events);
+                TryDamageAdjacentCover(ref state, new Position(info.Pos.X, info.Pos.Y + 1), hit, tick, simTime, events);
+            }
+        }
+        finally
+        {
+            Pools.Release(hit);
+        }
+    }
+
+    /// <summary>
+    /// Determines whether an elimination source triggers adjacent cover reactions.
+    /// Same rules as obstacle adjacency: Match, ColorBomb, and consumed ColorBomb.
+    /// </summary>
+    private static bool IsAdjacentSource(ElimSource source, Tile tile) => source switch
+    {
+        ElimSource.Match => true,
+        ElimSource.ColorBomb => true,
+        ElimSource.ConsumeBomb => tile.Type == ElementType.ColorBomb,
+        _ => false
+    };
+
+    private void TryDamageAdjacentCover(
+        ref GameState state, Position neighbor,
+        HashSet<Position> hit,
+        int tick, float simTime, IEventCollector events)
+    {
+        if (!state.IsValid(neighbor.X, neighbor.Y))
+            return;
+        if (!hit.Add(neighbor))
+            return; // dedup: already hit in this batch
+
+        var cover = state.GetCover(neighbor);
+        if (cover.Type == CoverType.None || cover.Health <= 0)
+            return;
+        if (!CoverRules.DamagedByAdjacent(cover.Type))
+            return;
+
+        TryDamageCover(ref state, neighbor, tick, simTime, events);
     }
 }

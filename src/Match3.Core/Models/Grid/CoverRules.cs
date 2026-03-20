@@ -19,6 +19,7 @@ public static class CoverRules
         CoverType.Cage => true,      // Cage blocks matching
         CoverType.Chain => false,    // Chain allows matching
         CoverType.Bubble => false,   // Bubble (dynamic) allows matching
+        CoverType.Honey => true,     // Honey blocks matching
         _ => false
     };
 
@@ -38,6 +39,7 @@ public static class CoverRules
         CoverType.Cage => true,      // Static - blocks movement
         CoverType.Chain => true,     // Static - blocks movement
         CoverType.Bubble => false,   // Dynamic - allows movement
+        CoverType.Honey => true,     // Honey - blocks movement
         _ => false
     };
 
@@ -59,6 +61,17 @@ public static class CoverRules
         CoverType.Cage => 1,
         CoverType.Chain => 1,
         CoverType.Bubble => 1,
+        CoverType.Honey => 1,
         _ => 1
+    };
+
+    /// <summary>
+    /// Returns true if the cover type is damaged by adjacent tile elimination
+    /// (as opposed to direct-hit damage via CellEliminator guard chain).
+    /// </summary>
+    public static bool DamagedByAdjacent(CoverType type) => type switch
+    {
+        CoverType.Honey => true,
+        _ => false
     };
 }

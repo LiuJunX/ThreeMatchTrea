@@ -1,7 +1,11 @@
-﻿using Match3.Core.Events;
+﻿using System;
+using System.Linq;
+using Match3.Core.Events;
+using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Layers;
+using Match3.Core.Systems.Obstacles;
 using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
 using Xunit;
@@ -212,6 +216,7 @@ public class CoverSystemTests
     [InlineData(CoverType.Cage)]
     [InlineData(CoverType.Chain)]
     [InlineData(CoverType.Bubble)]
+    [InlineData(CoverType.Honey)]
     public void IsTileProtected_AllCoverTypes_ReturnsTrue(CoverType coverType)
     {
         // Arrange
@@ -548,6 +553,7 @@ public class CoverSystemTests
     [InlineData(CoverType.Cage)]
     [InlineData(CoverType.Chain)]
     [InlineData(CoverType.Bubble)]
+    [InlineData(CoverType.Honey)]
     public void TryDamageCover_AllCoverTypes_EmitsCorrectEvent(CoverType coverType)
     {
         // Arrange
@@ -605,6 +611,377 @@ public class CoverSystemTests
         // Assert
         var evt = Assert.IsType<CoverDestroyedEvent>(events.GetEvents()[0]);
         Assert.Equal(expectedSimTime, evt.SimulationTime);
+    }
+
+    #endregion
+
+    #region Honey CoverRules Tests
+
+    [Fact]
+    public void CoverRules_Honey_BlocksMatch()
+    {
+        Assert.True(CoverRules.BlocksMatch(CoverType.Honey));
+    }
+
+    [Fact]
+    public void CoverRules_Honey_BlocksSwap()
+    {
+        Assert.True(CoverRules.BlocksSwap(CoverType.Honey));
+    }
+
+    [Fact]
+    public void CoverRules_Honey_BlocksMovement()
+    {
+        Assert.True(CoverRules.BlocksMovement(CoverType.Honey));
+    }
+
+    [Fact]
+    public void CoverRules_Honey_IsNotDynamic()
+    {
+        Assert.False(CoverRules.IsDynamicType(CoverType.Honey));
+    }
+
+    [Fact]
+    public void CoverRules_Honey_DefaultHealth_Is1()
+    {
+        Assert.Equal(1, CoverRules.GetDefaultHealth(CoverType.Honey));
+    }
+
+    [Fact]
+    public void CoverRules_Honey_DamagedByAdjacent()
+    {
+        Assert.True(CoverRules.DamagedByAdjacent(CoverType.Honey));
+    }
+
+    [Theory]
+    [InlineData(CoverType.None)]
+    [InlineData(CoverType.Cage)]
+    [InlineData(CoverType.Chain)]
+    [InlineData(CoverType.Bubble)]
+    public void CoverRules_NonHoney_NotDamagedByAdjacent(CoverType type)
+    {
+        Assert.False(CoverRules.DamagedByAdjacent(type));
+    }
+
+    #endregion
+
+    #region NotifyBatchElimination Tests
+
+    [Fact]
+    public void NotifyBatchElimination_HoneyAdjacentToMatch_Destroyed()
+    {
+        // Arrange: Honey at (3,3), tile eliminated at (3,2) — directly above
+        var state = CreateState();
+        state.SetCover(new Position(3, 3), new Cover(CoverType.Honey, health: 1));
+        var events = new BufferedEventCollector();
+
+        var eliminated = new EliminatedTileInfo[]
+        {
+            new(new Position(3, 2), new Tile(1, ElementType.Item1, 3, 2), ElimSource.Match)
+        };
+
+        // Act
+        _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
+
+        // Assert: Honey destroyed
+        Assert.Equal(CoverType.None, state.GetCover(new Position(3, 3)).Type);
+        var evt = Assert.IsType<CoverDestroyedEvent>(events.GetEvents()[0]);
+        Assert.Equal(CoverType.Honey, evt.Type);
+        Assert.Equal(new Position(3, 3), evt.GridPosition);
+    }
+
+    [Fact]
+    public void NotifyBatchElimination_HoneyAdjacentToMultipleEliminations_DamagedOnce()
+    {
+        // Arrange: Honey at (3,3), eliminated tiles at (3,2) and (2,3) — both adjacent
+        var state = CreateState();
+        state.SetCover(new Position(3, 3), new Cover(CoverType.Honey, health: 2));
+        var events = new BufferedEventCollector();
+
+        var eliminated = new EliminatedTileInfo[]
+        {
+            new(new Position(3, 2), new Tile(1, ElementType.Item1, 3, 2), ElimSource.Match),
+            new(new Position(2, 3), new Tile(2, ElementType.Item1, 2, 3), ElimSource.Match)
+        };
+
+        // Act
+        _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
+
+        // Assert: Honey damaged only once (dedup), still alive
+        Assert.Equal(CoverType.Honey, state.GetCover(new Position(3, 3)).Type);
+        Assert.Equal(1, state.GetCover(new Position(3, 3)).Health);
+    }
+
+    [Fact]
+    public void NotifyBatchElimination_CageNotAffectedByAdjacency()
+    {
+        // Arrange: Cage at (3,3), tile eliminated at (3,2)
+        var state = CreateState();
+        state.SetCover(new Position(3, 3), new Cover(CoverType.Cage, health: 1));
+        var events = new BufferedEventCollector();
+
+        var eliminated = new EliminatedTileInfo[]
+        {
+            new(new Position(3, 2), new Tile(1, ElementType.Item1, 3, 2), ElimSource.Match)
+        };
+
+        // Act
+        _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
+
+        // Assert: Cage unchanged
+        Assert.Equal(CoverType.Cage, state.GetCover(new Position(3, 3)).Type);
+        Assert.Equal(1, state.GetCover(new Position(3, 3)).Health);
+    }
+
+    [Fact]
+    public void NotifyBatchElimination_BombSource_DoesNotTriggerAdjacency()
+    {
+        // Arrange: Honey at (3,3), tile eliminated at (3,2) by Bomb
+        var state = CreateState();
+        state.SetCover(new Position(3, 3), new Cover(CoverType.Honey, health: 1));
+        var events = new BufferedEventCollector();
+
+        var eliminated = new EliminatedTileInfo[]
+        {
+            new(new Position(3, 2), new Tile(1, ElementType.Item1, 3, 2), ElimSource.Bomb)
+        };
+
+        // Act
+        _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
+
+        // Assert: Honey unchanged — Bomb source doesn't trigger adjacency
+        Assert.Equal(CoverType.Honey, state.GetCover(new Position(3, 3)).Type);
+        Assert.Equal(1, state.GetCover(new Position(3, 3)).Health);
+    }
+
+    [Fact]
+    public void NotifyBatchElimination_ColorBombSource_TriggersAdjacency()
+    {
+        // Arrange: Honey at (3,3), tile eliminated at (3,2) by ColorBomb
+        var state = CreateState();
+        state.SetCover(new Position(3, 3), new Cover(CoverType.Honey, health: 1));
+        var events = new BufferedEventCollector();
+
+        var eliminated = new EliminatedTileInfo[]
+        {
+            new(new Position(3, 2), new Tile(1, ElementType.Item1, 3, 2), ElimSource.ColorBomb)
+        };
+
+        // Act
+        _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
+
+        // Assert: Honey destroyed
+        Assert.Equal(CoverType.None, state.GetCover(new Position(3, 3)).Type);
+    }
+
+    [Fact]
+    public void NotifyBatchElimination_HoneyNotAdjacentToElimination_Unchanged()
+    {
+        // Arrange: Honey at (3,3), tile eliminated at (0,0) — not adjacent
+        var state = CreateState();
+        state.SetCover(new Position(3, 3), new Cover(CoverType.Honey, health: 1));
+        var events = new BufferedEventCollector();
+
+        var eliminated = new EliminatedTileInfo[]
+        {
+            new(new Position(0, 0), new Tile(1, ElementType.Item1, 0, 0), ElimSource.Match)
+        };
+
+        // Act
+        _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
+
+        // Assert: Honey unchanged
+        Assert.Equal(CoverType.Honey, state.GetCover(new Position(3, 3)).Type);
+        Assert.Equal(1, state.GetCover(new Position(3, 3)).Health);
+    }
+
+    [Fact]
+    public void NotifyBatchElimination_AllFourDirections_DamageHoney()
+    {
+        // Arrange: Honey at (3,3), test each direction independently
+        var honeyPos = new Position(3, 3);
+
+        var directions = new[]
+        {
+            new Position(2, 3), // left
+            new Position(4, 3), // right
+            new Position(3, 2), // up
+            new Position(3, 4), // down
+        };
+
+        foreach (var dir in directions)
+        {
+            var state = CreateState();
+            state.SetCover(honeyPos, new Cover(CoverType.Honey, health: 1));
+            var events = new BufferedEventCollector();
+
+            var eliminated = new EliminatedTileInfo[]
+            {
+                new(dir, new Tile(1, ElementType.Item1, dir.X, dir.Y), ElimSource.Match)
+            };
+
+            _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
+
+            Assert.Equal(CoverType.None, state.GetCover(honeyPos).Type);
+        }
+    }
+
+    #endregion
+
+    #region NotifyBatchElimination Edge Cases
+
+    [Fact]
+    public void NotifyBatchElimination_EmptySpan_NoCrash()
+    {
+        var state = CreateState();
+        state.SetCover(new Position(3, 3), new Cover(CoverType.Honey, health: 1));
+        var events = new BufferedEventCollector();
+
+        _coverSystem.NotifyBatchElimination(ref state, ReadOnlySpan<EliminatedTileInfo>.Empty, 1, 0.1f, events);
+
+        Assert.Equal(CoverType.Honey, state.GetCover(new Position(3, 3)).Type);
+        Assert.Empty(events.GetEvents());
+    }
+
+    [Fact]
+    public void NotifyBatchElimination_MultipleHoneysAdjacentToSameElimination_AllDamaged()
+    {
+        // Eliminated tile at (3,3), Honey at (2,3) and (4,3) and (3,2) and (3,4)
+        var state = CreateState();
+        state.SetCover(new Position(2, 3), new Cover(CoverType.Honey, health: 1));
+        state.SetCover(new Position(4, 3), new Cover(CoverType.Honey, health: 1));
+        state.SetCover(new Position(3, 2), new Cover(CoverType.Honey, health: 1));
+        state.SetCover(new Position(3, 4), new Cover(CoverType.Honey, health: 1));
+        var events = new BufferedEventCollector();
+
+        var eliminated = new EliminatedTileInfo[]
+        {
+            new(new Position(3, 3), new Tile(1, ElementType.Item1, 3, 3), ElimSource.Match)
+        };
+
+        _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
+
+        Assert.Equal(CoverType.None, state.GetCover(new Position(2, 3)).Type);
+        Assert.Equal(CoverType.None, state.GetCover(new Position(4, 3)).Type);
+        Assert.Equal(CoverType.None, state.GetCover(new Position(3, 2)).Type);
+        Assert.Equal(CoverType.None, state.GetCover(new Position(3, 4)).Type);
+
+        var destroyEvents = events.GetEvents().OfType<CoverDestroyedEvent>().ToList();
+        Assert.Equal(4, destroyEvents.Count);
+    }
+
+    [Fact]
+    public void NotifyBatchElimination_HoneyAtBoardCorner_SafeWithPartialNeighbors()
+    {
+        // Honey at (0,0) — only 2 valid neighbors: (1,0) and (0,1)
+        var state = CreateState();
+        state.SetCover(new Position(0, 0), new Cover(CoverType.Honey, health: 1));
+        var events = new BufferedEventCollector();
+
+        // Eliminated tile at (1,0) — adjacent to Honey at (0,0)
+        var eliminated = new EliminatedTileInfo[]
+        {
+            new(new Position(1, 0), new Tile(1, ElementType.Item1, 1, 0), ElimSource.Match)
+        };
+
+        _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
+
+        Assert.Equal(CoverType.None, state.GetCover(new Position(0, 0)).Type);
+    }
+
+    [Fact]
+    public void NotifyBatchElimination_HoneyAtBoardEdge_NoCrashOnOutOfBounds()
+    {
+        // Honey at (7,7) — only (6,7) and (7,6) are valid
+        // Eliminated at (6,7) — should damage Honey without crash
+        var state = CreateState();
+        state.SetCover(new Position(7, 7), new Cover(CoverType.Honey, health: 1));
+        var events = new BufferedEventCollector();
+
+        var eliminated = new EliminatedTileInfo[]
+        {
+            new(new Position(6, 7), new Tile(1, ElementType.Item1, 6, 7), ElimSource.Match)
+        };
+
+        _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
+
+        Assert.Equal(CoverType.None, state.GetCover(new Position(7, 7)).Type);
+    }
+
+    [Theory]
+    [InlineData(ElimSource.Projectile)]
+    [InlineData(ElimSource.ChainReaction)]
+    [InlineData(ElimSource.SideItem)]
+    [InlineData(ElimSource.ConsumeBomb)]
+    public void NotifyBatchElimination_NonTriggeringSources_HoneyUnchanged(ElimSource source)
+    {
+        var state = CreateState();
+        state.SetCover(new Position(3, 3), new Cover(CoverType.Honey, health: 1));
+        var events = new BufferedEventCollector();
+
+        var eliminated = new EliminatedTileInfo[]
+        {
+            new(new Position(3, 2), new Tile(1, ElementType.Item1, 3, 2), source)
+        };
+
+        _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
+
+        Assert.Equal(CoverType.Honey, state.GetCover(new Position(3, 3)).Type);
+        Assert.Equal(1, state.GetCover(new Position(3, 3)).Health);
+    }
+
+    [Fact]
+    public void NotifyBatchElimination_DiagonalPosition_NoAdjacencyDamage()
+    {
+        // Honey at (3,3), eliminated at (4,4) — diagonal, not adjacent
+        var state = CreateState();
+        state.SetCover(new Position(3, 3), new Cover(CoverType.Honey, health: 1));
+        var events = new BufferedEventCollector();
+
+        var eliminated = new EliminatedTileInfo[]
+        {
+            new(new Position(4, 4), new Tile(1, ElementType.Item1, 4, 4), ElimSource.Match)
+        };
+
+        _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
+
+        Assert.Equal(CoverType.Honey, state.GetCover(new Position(3, 3)).Type);
+    }
+
+    #endregion
+
+    #region Honey GameState Integration Tests
+
+    [Fact]
+    public void GameState_HoneyCover_CanInteract_ReturnsFalse()
+    {
+        var state = CreateState();
+        state.SetCover(new Position(3, 3), new Cover(CoverType.Honey, health: 1));
+        Assert.False(state.CanInteract(3, 3));
+    }
+
+    [Fact]
+    public void GameState_HoneyCover_CanMatch_ReturnsFalse()
+    {
+        var state = CreateState();
+        state.SetCover(new Position(3, 3), new Cover(CoverType.Honey, health: 1));
+        Assert.False(state.CanMatch(3, 3));
+    }
+
+    [Fact]
+    public void GameState_HoneyCover_CanMove_ReturnsFalse()
+    {
+        var state = CreateState();
+        state.SetCover(new Position(3, 3), new Cover(CoverType.Honey, health: 1));
+        Assert.False(state.CanMove(3, 3));
+    }
+
+    [Fact]
+    public void GameState_HoneyCover_CanMoveIgnoringLocks_ReturnsFalse()
+    {
+        var state = CreateState();
+        state.SetCover(new Position(3, 3), new Cover(CoverType.Honey, health: 1));
+        Assert.False(state.CanMoveIgnoringLocks(3, 3));
     }
 
     #endregion

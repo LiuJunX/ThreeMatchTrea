@@ -27,7 +27,7 @@ public sealed class GameServiceBuilder
     private Func<Match3Config, IRandom, IPhysicsSimulation>? _physicsFactory;
     private Func<ISpawnModel, IRefillSystem>? _refillFactory;
     private Func<IBombGenerator, IMatchFinder>? _matchFinderFactory;
-    private Func<IScoreSystem, ICellEliminator, BombEffectRegistry, IObstacleSystem?, IMatchProcessor>? _matchProcessorFactory;
+    private Func<IScoreSystem, ICellEliminator, BombEffectRegistry, IObstacleSystem?, ICoverSystem?, IMatchProcessor>? _matchProcessorFactory;
     private Func<IScoreSystem, IPowerUpHandler>? _powerUpFactory;
     private Func<IProjectileSystem>? _projectileFactory;
     private Func<IExplosionSystem>? _explosionFactory;
@@ -70,7 +70,7 @@ public sealed class GameServiceBuilder
     /// <summary>
     /// Configure custom match processor factory.
     /// </summary>
-    public GameServiceBuilder WithMatchProcessor(Func<IScoreSystem, ICellEliminator, BombEffectRegistry, IObstacleSystem?, IMatchProcessor> factory)
+    public GameServiceBuilder WithMatchProcessor(Func<IScoreSystem, ICellEliminator, BombEffectRegistry, IObstacleSystem?, ICoverSystem?, IMatchProcessor> factory)
     {
         _matchProcessorFactory = factory;
         return this;
@@ -183,7 +183,7 @@ public sealed class GameServiceBuilder
         _physicsFactory = (config, rng) => new RealtimeGravitySystem(config, rng);
         _refillFactory = spawnModel => new RealtimeRefillSystem(spawnModel);
         _matchFinderFactory = bombGen => new ClassicMatchFinder(bombGen);
-        _matchProcessorFactory = (score, elim, registry, obs) => new StandardMatchProcessor(score, elim, registry, obs);
+        _matchProcessorFactory = (score, elim, registry, obs, cover) => new StandardMatchProcessor(score, elim, registry, obs, cover);
         _powerUpFactory = score => new BombResolution(score);
         _projectileFactory = () => new ProjectileSystem();
         _explosionFactory = () => new ExplosionSystem();
@@ -230,7 +230,7 @@ public sealed class GameServiceBuilder
         _physicsFactory ??= (config, rng) => new RealtimeGravitySystem(config, rng);
         _refillFactory ??= spawnModel => new RealtimeRefillSystem(spawnModel);
         _matchFinderFactory ??= bombGen => new ClassicMatchFinder(bombGen);
-        _matchProcessorFactory ??= (score, elim, registry, obs) => new StandardMatchProcessor(score, elim, registry, obs);
+        _matchProcessorFactory ??= (score, elim, registry, obs, cover) => new StandardMatchProcessor(score, elim, registry, obs, cover);
         _powerUpFactory ??= score => new BombResolution(score);
         _projectileFactory ??= () => new ProjectileSystem();
         _explosionFactory ??= () => new ExplosionSystem();

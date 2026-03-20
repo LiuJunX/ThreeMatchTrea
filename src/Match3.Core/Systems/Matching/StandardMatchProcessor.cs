@@ -23,6 +23,7 @@ public class StandardMatchProcessor : IMatchProcessor
     private readonly ICellEliminator _cellEliminator;
     private readonly BombEffectRegistry _bombRegistry;
     private readonly IObstacleSystem? _obstacleSystem;
+    private readonly ICoverSystem? _coverSystem;
 
     /// <summary>
     /// Backward-compatible constructor — creates a <see cref="CellEliminator"/> internally.
@@ -32,7 +33,8 @@ public class StandardMatchProcessor : IMatchProcessor
         ICoverSystem coverSystem,
         IGroundSystem groundSystem,
         BombEffectRegistry bombRegistry)
-        : this(scoreSystem, new CellEliminator(coverSystem, groundSystem), bombRegistry)
+        : this(scoreSystem, new CellEliminator(coverSystem, groundSystem), bombRegistry,
+            obstacleSystem: null, coverSystem: coverSystem)
     {
     }
 
@@ -40,12 +42,14 @@ public class StandardMatchProcessor : IMatchProcessor
         IScoreSystem scoreSystem,
         ICellEliminator cellEliminator,
         BombEffectRegistry bombRegistry,
-        IObstacleSystem? obstacleSystem = null)
+        IObstacleSystem? obstacleSystem = null,
+        ICoverSystem? coverSystem = null)
     {
         _scoreSystem = scoreSystem;
         _cellEliminator = cellEliminator;
         _bombRegistry = bombRegistry;
         _obstacleSystem = obstacleSystem;
+        _coverSystem = coverSystem;
     }
 
     public int ProcessMatches(ref GameState state, List<MatchGroup> groups)
@@ -103,7 +107,7 @@ public class StandardMatchProcessor : IMatchProcessor
                     var result = _cellEliminator.Eliminate(ref state, p, ElimSource.Match, tick, simTime, events);
                     globalCleared.Add(p);
 
-                    // Collect eliminated tiles for obstacle notification
+                    // Collect eliminated tiles for obstacle/cover adjacency notification
                     if (result.Outcome == EliminateOutcome.Eliminated)
                     {
                         groupEliminated.Add(new EliminatedTileInfo(p, result.Tile, ElimSource.Match));
@@ -127,17 +131,23 @@ public class StandardMatchProcessor : IMatchProcessor
                     }
                 }
 
-                // Obstacle adjacency + global notification (per group = per dedup scope)
-                if (_obstacleSystem != null && groupEliminated.Count > 0)
+                // Obstacle + Cover adjacency notification (per group = per dedup scope)
+                if (groupEliminated.Count > 0)
                 {
-                    _obstacleSystem.NotifyBatchElimination(
-                        ref state,
-                        new ReadOnlySpan<EliminatedTileInfo>(
-                            groupEliminated.ToArray()),
-                        tick, simTime, events);
+                    var eliminatedSpan = new ReadOnlySpan<EliminatedTileInfo>(
+                        groupEliminated.ToArray());
 
-                    _obstacleSystem.NotifyGlobalColorElimination(
-                        ref state, g.Type, tick, simTime, events);
+                    if (_obstacleSystem != null)
+                    {
+                        _obstacleSystem.NotifyBatchElimination(
+                            ref state, eliminatedSpan, tick, simTime, events);
+
+                        _obstacleSystem.NotifyGlobalColorElimination(
+                            ref state, g.Type, tick, simTime, events);
+                    }
+
+                    _coverSystem?.NotifyBatchElimination(
+                        ref state, eliminatedSpan, tick, simTime, events);
                 }
 
                 // Collectible adjacency: adjacent match eliminates neighboring collectible tiles

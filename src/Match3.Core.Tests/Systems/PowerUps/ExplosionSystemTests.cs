@@ -4,6 +4,7 @@ using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Layers;
+using Match3.Core.Systems.Obstacles;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Tests.TestFixtures;
 using Xunit;
@@ -222,6 +223,7 @@ public class ExplosionSystemTests : IDisposable
         public bool IsTileProtected(in GameState state, Position pos) => false;
         public bool TryDamageCover(ref GameState state, Position pos, int tick, float simTime, IEventCollector events) => false;
         public void SyncDynamicCovers(ref GameState state, Position from, Position to) { }
+        public void NotifyBatchElimination(ref GameState state, ReadOnlySpan<EliminatedTileInfo> eliminated, int tick, float simTime, IEventCollector events) { }
     }
 
     private class StubGroundSystem : IGroundSystem

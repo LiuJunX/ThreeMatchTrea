@@ -29,7 +29,7 @@ public sealed class GameServiceFactory : IGameServiceFactory
     private readonly Func<Match3Config, IRandom, IPhysicsSimulation> _physicsFactory;
     private readonly Func<ISpawnModel, IRefillSystem> _refillFactory;
     private readonly Func<IBombGenerator, IMatchFinder> _matchFinderFactory;
-    private readonly Func<IScoreSystem, ICellEliminator, BombEffectRegistry, IObstacleSystem?, IMatchProcessor> _matchProcessorFactory;
+    private readonly Func<IScoreSystem, ICellEliminator, BombEffectRegistry, IObstacleSystem?, ICoverSystem?, IMatchProcessor> _matchProcessorFactory;
     private readonly Func<IScoreSystem, IPowerUpHandler> _powerUpFactory;
     private readonly Func<IProjectileSystem> _projectileFactory;
     private readonly Func<IExplosionSystem> _explosionFactory;
@@ -47,7 +47,7 @@ public sealed class GameServiceFactory : IGameServiceFactory
         Func<Match3Config, IRandom, IPhysicsSimulation> physicsFactory,
         Func<ISpawnModel, IRefillSystem> refillFactory,
         Func<IBombGenerator, IMatchFinder> matchFinderFactory,
-        Func<IScoreSystem, ICellEliminator, BombEffectRegistry, IObstacleSystem?, IMatchProcessor> matchProcessorFactory,
+        Func<IScoreSystem, ICellEliminator, BombEffectRegistry, IObstacleSystem?, ICoverSystem?, IMatchProcessor> matchProcessorFactory,
         Func<IScoreSystem, IPowerUpHandler> powerUpFactory,
         Func<IProjectileSystem> projectileFactory,
         Func<IExplosionSystem> explosionFactory,
@@ -127,7 +127,7 @@ public sealed class GameServiceFactory : IGameServiceFactory
         var coverSystem = new CoverSystem(objectiveSystem);
         var groundSystem = new GroundSystem(objectiveSystem);
         var cellEliminator = new CellEliminator(coverSystem, groundSystem, objectiveSystem, obstacleSystem);
-        var matchProcessor = _matchProcessorFactory(scoreSystem, cellEliminator, bombRegistry, obstacleSystem);
+        var matchProcessor = _matchProcessorFactory(scoreSystem, cellEliminator, bombRegistry, obstacleSystem, coverSystem);
         var context = new Simulation.SimulationContext(cellEliminator, bombRegistry, lockScheduler);
         var explosionSystem = new ExplosionSystem(context);
         var colorBombSessionManager = new ColorBombSessionManager(context);
