@@ -9,14 +9,12 @@ using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Simulation;
-using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Matching.Generation;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Objectives;
 using Match3.Core.Systems.Scoring;
-using Match3.Core.Systems.Obstacles;
 using Match3.Core.Utility;
 using Match3.Random;
 
@@ -559,9 +557,6 @@ public sealed class MCTSAnalyzer
         private BombResolution? _powerUpHandler;
         private LevelObjectiveSystem? _objectiveSystem;
 
-        // 缓存的层系统对象（避免重复创建）
-        private CoverSystem? _coverSystem;
-        private GroundSystem? _groundSystem;
         private ExplosionSystem? _explosionSystem;
 
         public SimulationContext(XorShift64 random, int tileTypesCount)
@@ -586,9 +581,8 @@ public sealed class MCTSAnalyzer
         {
             _objectiveSystem = new LevelObjectiveSystem();
             // 重置依赖 ObjectiveSystem 的系统
-            _coverSystem = null;
-            _groundSystem = null;
             _explosionSystem = null;
+            _matchProcessor = null;
             return _objectiveSystem;
         }
 
@@ -608,12 +602,8 @@ public sealed class MCTSAnalyzer
         {
             if (_matchProcessor == null)
             {
-                var objSys = GetObjectiveSystem();
-                _coverSystem ??= new CoverSystem(objSys);
-                _groundSystem ??= new GroundSystem(objSys);
-                var obsSys = new ObstacleSystem(objSys);
-                var elim = new Systems.Elimination.CellEliminator(_coverSystem, _groundSystem, null, obsSys);
-                _matchProcessor = new StandardMatchProcessor(ScoreSystem, elim, BombEffects, obsSys, _coverSystem);
+                var (elim, obs, cover) = Simulation.SimulationContext.Create(GetObjectiveSystem()).CreateMatchSystems();
+                _matchProcessor = new StandardMatchProcessor(ScoreSystem, elim, BombEffects, obs, cover);
             }
             return _matchProcessor;
         }
@@ -628,12 +618,8 @@ public sealed class MCTSAnalyzer
         {
             if (_explosionSystem == null)
             {
-                var objSys = GetObjectiveSystem();
-                _coverSystem = new CoverSystem(objSys);
-                _groundSystem = new GroundSystem(objSys);
-                var obsSys = new ObstacleSystem(objSys);
-                var elim = new Systems.Elimination.CellEliminator(_coverSystem, _groundSystem, objSys, obsSys);
-                _explosionSystem = new ExplosionSystem(elim, BombEffectRegistry.CreateDefault(), null);
+                var simCtx = Simulation.SimulationContext.Create(GetObjectiveSystem());
+                _explosionSystem = new ExplosionSystem(simCtx);
             }
             return _explosionSystem;
         }

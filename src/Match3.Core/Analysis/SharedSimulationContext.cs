@@ -10,7 +10,6 @@ using Match3.Core.Systems.Matching.Generation;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Objectives;
-using Match3.Core.Systems.Obstacles;
 using Match3.Core.Systems.Scoring;
 using Match3.Random;
 
@@ -68,12 +67,8 @@ internal sealed class SharedSimulationContext : IDisposable
     {
         if (_matchProcessor == null)
         {
-            var obj = CreateObjectiveSystem();
-            var cover = new Systems.Layers.CoverSystem(obj);
-            var ground = new Systems.Layers.GroundSystem(obj);
-            var obs = new ObstacleSystem(obj);
             // CellEliminator 不传 objectiveSystem — tile 目标由 EmitTileDestroyedEvents 统一追踪，避免双重计数
-            var elim = new Systems.Elimination.CellEliminator(cover, ground, null, obs);
+            var (elim, obs, cover) = SimulationContext.Create(CreateObjectiveSystem()).CreateMatchSystems();
             _matchProcessor = new StandardMatchProcessor(_scoreSystem, elim, BombEffects, obs, cover);
         }
         return _matchProcessor;
@@ -105,15 +100,12 @@ internal sealed class SharedSimulationContext : IDisposable
     }
 
     /// <summary>
-    /// 构建预览/分析用 SimulationEngine 的统一入口，封装 CoverSystem、GroundSystem、ExplosionSystem 的创建
+    /// 构建预览/分析用 SimulationEngine 的统一入口
     /// </summary>
     private SimulationEngine CreateEngineForPreview(GameState state, LevelObjectiveSystem objectiveSystem)
     {
-        var coverSystem = new Systems.Layers.CoverSystem(objectiveSystem);
-        var groundSystem = new Systems.Layers.GroundSystem(objectiveSystem);
-        var obstacleSystem = new ObstacleSystem(objectiveSystem);
-        var cellEliminator = new Systems.Elimination.CellEliminator(coverSystem, groundSystem, objectiveSystem, obstacleSystem);
-        var explosionSystem = new ExplosionSystem(cellEliminator, BombEffectRegistry.CreateDefault(), null);
+        var simCtx = SimulationContext.Create(objectiveSystem);
+        var explosionSystem = new ExplosionSystem(simCtx);
 
         return new SimulationEngine(
             state,
@@ -129,7 +121,8 @@ internal sealed class SharedSimulationContext : IDisposable
             null,
             null,
             objectiveSystem,
-            cellEliminator: cellEliminator);
+            lockScheduler: simCtx.LockScheduler,
+            cellEliminator: simCtx.CellEliminator);
     }
 
     /// <summary>

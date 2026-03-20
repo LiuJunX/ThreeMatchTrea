@@ -15,7 +15,6 @@ using Match3.Core.Utility;
 using Match3.Core.Systems.Spawning;
 using Match3.Core.Models.Enums;
 using Match3.Core.Systems.Layers;
-using Match3.Core.Systems.Obstacles;
 using Match3.Random;
 
 namespace Match3.Core.Analysis;
@@ -327,12 +326,8 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
         var powerUpHandler = ctx.GetPowerUpHandler();
         var objectiveSystem = ctx.GetObjectiveSystem();
 
-        // 统一 CellEliminator — 共享给 ExplosionSystem 和 SimulationEngine
-        var coverSystem = new Systems.Layers.CoverSystem(objectiveSystem);
-        var groundSystem = new Systems.Layers.GroundSystem(objectiveSystem);
-        var obstacleSystem = new ObstacleSystem(objectiveSystem);
-        var cellEliminator = new Systems.Elimination.CellEliminator(coverSystem, groundSystem, objectiveSystem, obstacleSystem);
-        var explosionSystem = new ExplosionSystem(cellEliminator, BombEffectRegistry.CreateDefault(), null);
+        var simCtx = Simulation.SimulationContext.Create(objectiveSystem);
+        var explosionSystem = new ExplosionSystem(simCtx);
 
         using var engine = new SimulationEngine(
             state,
@@ -348,7 +343,8 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
             null, // deadlockDetector
             null, // shuffleSystem
             objectiveSystem,
-            cellEliminator: cellEliminator);
+            lockScheduler: simCtx.LockScheduler,
+            cellEliminator: simCtx.CellEliminator);
 
         int movesUsed = 0;
         int moveLimit = initialState.MoveLimit > 0 ? initialState.MoveLimit : 20;
@@ -472,13 +468,9 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
         {
             if (_matchProcessor == null)
             {
-                var objSys = GetObjectiveSystem();
-                var coverSys = new CoverSystem(objSys);
-                var groundSys = new GroundSystem(objSys);
-                var obsSys = new ObstacleSystem(objSys);
                 // CellEliminator 不传 objectiveSystem — tile 目标由 EmitTileDestroyedEvents 统一追踪，避免双重计数
-                var elim = new Systems.Elimination.CellEliminator(coverSys, groundSys, null, obsSys);
-                _matchProcessor = new StandardMatchProcessor(ScoreSystem, elim, BombEffects, obsSys, coverSys);
+                var (elim, obs, cover) = Simulation.SimulationContext.Create(GetObjectiveSystem()).CreateMatchSystems();
+                _matchProcessor = new StandardMatchProcessor(ScoreSystem, elim, BombEffects, obs, cover);
             }
             return _matchProcessor;
         }

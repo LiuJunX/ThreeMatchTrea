@@ -4,10 +4,8 @@ using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Elimination;
-using Match3.Core.Systems.Layers;
 using Match3.Core.Systems.Matching;
 using Match3.Core.Systems.Objectives;
-using Match3.Core.Systems.Obstacles;
 using Match3.Core.Systems.Physics;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.PowerUps.ColorBomb;
@@ -527,12 +525,7 @@ public sealed class SimulationEngine : IDisposable
         var cloneConfig = _config.Clone();
         var clonePhysics = _physics.CloneForSimulation(cloneRandom);
 
-        // ObstacleSystem is stateless — create once, share with cloned CellEliminator
-        var cloneObstacleSystem = new ObstacleSystem(_objectiveSystem);
-        var cloneContext = new SimulationContext(
-            new CellEliminator(new CoverSystem(_objectiveSystem), new GroundSystem(_objectiveSystem), _objectiveSystem, cloneObstacleSystem),
-            BombEffectRegistry.CreateDefault(),
-            _lockScheduler.Clone());
+        var cloneContext = SimulationContext.CloneFrom(_lockScheduler, _objectiveSystem);
         var cloneExplosion = new ExplosionSystem(cloneContext);
         var cloneProjectile = new ProjectileSystem();
         var cloneColorBomb = new ColorBombSessionManager(cloneContext);
@@ -598,6 +591,25 @@ public sealed class SimulationEngine : IDisposable
     /// <param name="elapsedTime">The elapsed time at the time of save.</param>
     public void RestoreState(GameState state, int tick, float elapsedTime)
     {
+        RestoreBookkeeping(state, tick, elapsedTime);
+
+        // Clear all active subsystem state (projectiles, explosions, sessions)
+        _orchestrator.ClearActiveState();
+
+        // Clear lock scheduler — safe because undo only restores to stable states
+        // where no timed/choreography locks are active.
+        _lockScheduler.Reset(ref state);
+
+        State = state;
+    }
+
+    /// <summary>
+    /// Resets engine bookkeeping (counters, pending moves) without touching subsystem state.
+    /// Subsystem state is restored separately by <see cref="RestoreFromSnapshot"/>
+    /// or cleared by <see cref="RestoreState"/>.
+    /// </summary>
+    private void RestoreBookkeeping(GameState state, int tick, float elapsedTime)
+    {
         _currentTick = tick;
         _elapsedTime = elapsedTime;
 
@@ -612,15 +624,6 @@ public sealed class SimulationEngine : IDisposable
         _tilesCleared = 0;
         _matchesProcessed = 0;
         _bombsActivated = 0;
-
-        // Clear all active subsystem state (projectiles, explosions, sessions)
-        _orchestrator.ClearActiveState();
-
-        // Clear lock scheduler — safe because undo only restores to stable states
-        // where no timed/choreography locks are active.
-        _lockScheduler.Reset(ref state);
-
-        State = state;
     }
 
     /// <summary>
@@ -663,7 +666,8 @@ public sealed class SimulationEngine : IDisposable
 
     /// <summary>
     /// Creates a snapshot of the current engine state for ring buffer storage.
-    /// Captures GameState (deep clone), RNG state, tick, and elapsed time.
+    /// Captures GameState (deep clone), RNG state, tick, elapsed time,
+    /// and subsystem state (lock scheduler, ColorBomb sessions).
     /// </summary>
     public EngineSnapshot CreateSnapshot()
     {
@@ -676,23 +680,38 @@ public sealed class SimulationEngine : IDisposable
             RngState = rngState,
             Tick = _currentTick,
             ElapsedTime = _elapsedTime,
-            IsValid = true
+            IsValid = true,
+            LockSchedulerSnapshot = _lockScheduler.Clone(),
+            SessionManagerSnapshot = _orchestrator.SaveColorBombState()
         };
     }
 
     /// <summary>
     /// Restores the engine from a previously captured snapshot.
-    /// Delegates to <see cref="RestoreState"/> which clears all subsystem state.
+    /// Restores subsystem state (lock scheduler, ColorBomb sessions) from
+    /// the snapshot instead of clearing, preserving active sessions and locks.
     /// </summary>
     public void RestoreFromSnapshot(in EngineSnapshot snapshot)
     {
         // Clone the saved state so the ring buffer's snapshot remains untouched.
-        // This is a deliberate second clone (the first was in CreateSnapshot).
-        // The engine will mutate the restored state on subsequent ticks,
-        // so the snapshot must keep its own independent copy.
         var restoredState = snapshot.State.Clone(
             new Match3.Random.XorShift64(snapshot.RngState));
-        RestoreState(restoredState, snapshot.Tick, snapshot.ElapsedTime);
+
+        // Restore bookkeeping (without clearing subsystems)
+        RestoreBookkeeping(restoredState, snapshot.Tick, snapshot.ElapsedTime);
+
+        // Restore subsystem state from snapshot (instead of clearing)
+        if (snapshot.LockSchedulerSnapshot != null)
+            _lockScheduler.RestoreFrom(snapshot.LockSchedulerSnapshot);
+        else
+            _lockScheduler.Reset(ref restoredState);
+
+        if (snapshot.SessionManagerSnapshot != null)
+            _orchestrator.RestoreColorBombState(snapshot.SessionManagerSnapshot);
+        else
+            _orchestrator.ClearActiveState();
+
+        State = restoredState;
     }
 
     public void Dispose()
