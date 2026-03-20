@@ -247,20 +247,17 @@ internal sealed class SharedSimulationContext : IDisposable
     private sealed class AnalysisSpawnModel : Systems.Spawning.ISpawnModel
     {
         private int _typeCount;
-        private int _counter;
 
         public AnalysisSpawnModel(int typeCount) => _typeCount = typeCount;
 
         public void Reset(int typeCount)
         {
             _typeCount = typeCount;
-            _counter = 0;
         }
 
         public ElementType Predict(ref GameState state, int spawnX, in Systems.Spawning.SpawnContext context)
         {
-            int idx = (_counter++ + spawnX) % _typeCount;
-            // Map index to ElementType (1-based, assuming Item1...Item6)
+            int idx = state.Random.Next(0, _typeCount);
             return (ElementType)(idx + 1);
         }
     }

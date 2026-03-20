@@ -15,6 +15,7 @@ using Match3.Core.Utility;
 using Match3.Core.Systems.Spawning;
 using Match3.Core.Models.Enums;
 using Match3.Core.Systems.Layers;
+using Match3.Core.Systems.Obstacles;
 using Match3.Random;
 
 namespace Match3.Core.Analysis;
@@ -330,6 +331,8 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
         var coverSystem = new Systems.Layers.CoverSystem(objectiveSystem);
         var groundSystem = new Systems.Layers.GroundSystem(objectiveSystem);
         var explosionSystem = new ExplosionSystem(coverSystem, groundSystem, objectiveSystem);
+        var obstacleSystem = new ObstacleSystem(objectiveSystem);
+        var cellEliminator = new Systems.Elimination.CellEliminator(coverSystem, groundSystem, objectiveSystem, obstacleSystem);
 
         using var engine = new SimulationEngine(
             state,
@@ -344,7 +347,8 @@ public sealed class LevelAnalysisService : ILevelAnalysisService
             explosionSystem,
             null, // deadlockDetector
             null, // shuffleSystem
-            objectiveSystem);
+            objectiveSystem,
+            cellEliminator: cellEliminator);
 
         int movesUsed = 0;
         int moveLimit = initialState.MoveLimit > 0 ? initialState.MoveLimit : 20;
