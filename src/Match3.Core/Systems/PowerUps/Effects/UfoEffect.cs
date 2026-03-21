@@ -1,6 +1,9 @@
+using System;
 using System.Collections.Generic;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Projectiles;
+using Match3.Core.Systems.Projectiles.Targeting;
 using Match3.Core.Utility.Pools;
 
 namespace Match3.Core.Systems.PowerUps.Effects;
@@ -18,45 +21,34 @@ public class UfoEffect : IBombEffect
     }
 
     /// <summary>
-    /// Pick a random remote target for the UFO projectile (outside the cross area).
+    /// Pick the best remote target for the UFO projectile (outside the cross area).
+    /// Uses smart targeting: layer-stack evaluation with tier-based scoring.
+    /// For payload UFOs, evaluates total range value at each candidate drop point.
     /// </summary>
-    public static Position? PickRemoteTarget(in GameState state, Position origin)
+    public static Position? PickRemoteTarget(
+        in GameState state, Position origin, UfoPayload payload = UfoPayload.Default)
     {
-        var candidates = Pools.ObtainList<Position>();
+        // Build exclude area (small cross around origin)
+        var excludeArea = Pools.ObtainHashSet<Position>();
         try
         {
-            for (int y = 0; y < state.Height; y++)
-            {
-                for (int x = 0; x < state.Width; x++)
-                {
-                    // 跳过小十字范围内的位置
-                    if (x == origin.X && y == origin.Y) continue;
-                    if (x == origin.X - 1 && y == origin.Y) continue;
-                    if (x == origin.X + 1 && y == origin.Y) continue;
-                    if (x == origin.X && y == origin.Y - 1) continue;
-                    if (x == origin.X && y == origin.Y + 1) continue;
+            excludeArea.Add(origin);
+            if (origin.X > 0) excludeArea.Add(new Position(origin.X - 1, origin.Y));
+            if (origin.X < state.Width - 1) excludeArea.Add(new Position(origin.X + 1, origin.Y));
+            if (origin.Y > 0) excludeArea.Add(new Position(origin.X, origin.Y - 1));
+            if (origin.Y < state.Height - 1) excludeArea.Add(new Position(origin.X, origin.Y + 1));
 
-                    var t = state.GetTile(x, y);
-                    if (t.Type != ElementType.None
-                        && !t.Type.IsColorBomb()
-                        && !state.IsLocked(x, y, CellLockType.Targeting))
-                    {
-                        candidates.Add(new Position(x, y));
-                    }
-                }
-            }
-
-            if (candidates.Count > 0)
-            {
-                int idx = state.Random.Next(0, candidates.Count);
-                return candidates[idx];
-            }
-
-            return null;
+            return UfoTargetSelector.SelectTarget(
+                in state,
+                origin,
+                ReadOnlySpan<PendingAttack>.Empty,
+                UfoTargetConfig.Default,
+                excludeArea,
+                payload);
         }
         finally
         {
-            Pools.Release(candidates);
+            Pools.Release(excludeArea);
         }
     }
 }

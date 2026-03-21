@@ -87,7 +87,7 @@ internal static class UfoLaunchHelper
         int tick, float simTime, IEventCollector events,
         int? passengerTileId = null, Position? passengerPos = null)
     {
-        var target = UfoEffect.PickRemoteTarget(in state, ufoPos);
+        var target = UfoEffect.PickRemoteTarget(in state, ufoPos, payload);
         if (target.HasValue)
         {
             var proj = new UfoProjectile(

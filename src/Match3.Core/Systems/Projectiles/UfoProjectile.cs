@@ -6,6 +6,7 @@ using Match3.Core.Events.Enums;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.PowerUps;
+using Match3.Core.Systems.Projectiles.Targeting;
 using Match3.Core.Utility.Pools;
 
 namespace Match3.Core.Systems.Projectiles;
@@ -228,36 +229,10 @@ public sealed class UfoProjectile : Projectile
 
     private Position? FindBestTarget(ref GameState state)
     {
-        var candidates = Pools.ObtainList<Position>();
-
-        try
-        {
-            for (int y = 0; y < state.Height; y++)
-            {
-                for (int x = 0; x < state.Width; x++)
-                {
-                    if (x == OriginPosition.X && y == OriginPosition.Y)
-                        continue;
-
-                    var tile = state.GetTile(x, y);
-                    if (tile.Type != ElementType.None
-                        && !tile.Type.IsColorBomb()
-                        && !state.IsLocked(x, y, CellLockType.Targeting))
-                    {
-                        candidates.Add(new Position(x, y));
-                    }
-                }
-            }
-
-            if (candidates.Count == 0)
-                return null;
-
-            int idx = state.Random.Next(0, candidates.Count);
-            return candidates[idx];
-        }
-        finally
-        {
-            Pools.Release(candidates);
-        }
+        return UfoTargetSelector.SelectTarget(
+            in state,
+            OriginPosition,
+            ReadOnlySpan<PendingAttack>.Empty,
+            UfoTargetConfig.Default);
     }
 }
