@@ -16,6 +16,8 @@ namespace Match3.Unity.Views.Obstacles
                 ObstacleType.Bush => new BushPresenter(),
                 ObstacleType.Safe => new SafePresenter(),
                 ObstacleType.Cupboard => new CupboardPresenter(),
+                ObstacleType.Owl => new OwlPresenter(),
+                ObstacleType.Stone => new StonePresenter(),
                 _ => new BoxPresenter(), // fallback: all types look like boxes until art is ready
             };
         }

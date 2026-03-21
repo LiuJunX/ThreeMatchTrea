@@ -59,4 +59,14 @@ public enum ObstacleType : byte
     /// collectible tile in an adjacent empty cell.
     /// </summary>
     Mailbox = 8,
+
+    /// <summary>
+    /// Stone owl statue (1 stage). Immune to Match; only damaged by power-up sources.
+    /// </summary>
+    Owl = 9,
+
+    /// <summary>
+    /// Stone block (3 stages). Immune to Match; only damaged by power-up sources.
+    /// </summary>
+    Stone = 10,
 }

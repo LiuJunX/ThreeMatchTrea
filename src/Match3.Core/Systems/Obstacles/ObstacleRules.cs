@@ -26,12 +26,13 @@ public static class ObstacleRules
             ObstacleType.Box      => true,
             ObstacleType.Bush     => true,
             ObstacleType.Cupboard => true,
-            ObstacleType.Safe     => ctx.Source is ElimSource.Bomb
-                                                      or ElimSource.Projectile
-                                                      or ElimSource.ChainReaction
-                                                      or ElimSource.ColorBomb
-                                                      or ElimSource.SideItem
-                                                      or ElimSource.ConsumeBomb,
+            ObstacleType.Safe or ObstacleType.Owl or ObstacleType.Stone
+                              => ctx.Source is ElimSource.Bomb
+                                           or ElimSource.Projectile
+                                           or ElimSource.ChainReaction
+                                           or ElimSource.ColorBomb
+                                           or ElimSource.SideItem
+                                           or ElimSource.ConsumeBomb,
             ObstacleType.ColorBox => false,   // immune to direct hits; only adjacent color match
             ObstacleType.MagicHat => false,   // passive — reacts to adjacent hits
             ObstacleType.Curtain  => false,   // passive — reacts to global color elimination
@@ -50,6 +51,8 @@ public static class ObstacleRules
         ObstacleType.Bush     => 5,
         ObstacleType.Cupboard => 2,
         ObstacleType.Safe     => 5,
+        ObstacleType.Owl      => 1,
+        ObstacleType.Stone    => 3,
         ObstacleType.ColorBox => 1,
         ObstacleType.MagicHat => 1,
         ObstacleType.Curtain  => 1,
@@ -69,7 +72,8 @@ public static class ObstacleRules
             ObstacleType.Box      => true,
             ObstacleType.Bush     => true,
             ObstacleType.Cupboard => true,
-            ObstacleType.Safe     => false,   // only power-up direct hits
+            ObstacleType.Safe or ObstacleType.Owl or ObstacleType.Stone
+                              => false,   // only power-up direct hits
             ObstacleType.ColorBox => triggerType == ElementType.ColorBomb
                                   || triggerType == (ElementType)obstacle.State,
             ObstacleType.MagicHat => true,    // accumulates (processing logic separate)

@@ -197,6 +197,8 @@ namespace Match3.Unity.Pools
                 ObstacleType.Bush => "Bush",
                 ObstacleType.Safe => "Safe",
                 ObstacleType.Cupboard => "Cupboard",
+                ObstacleType.Owl => "Owl",
+                ObstacleType.Stone => "Stone",
                 _ => type.ToString()
             };
             var model = ResourceService.Loader.Load<GameObject>($"Art/Gems/Models/{typeName}");
