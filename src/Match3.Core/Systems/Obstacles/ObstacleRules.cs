@@ -26,7 +26,12 @@ public static class ObstacleRules
             ObstacleType.Box      => true,
             ObstacleType.Bush     => true,
             ObstacleType.Cupboard => true,
-            ObstacleType.Safe     => ctx.Source != ElimSource.Match,
+            ObstacleType.Safe     => ctx.Source is ElimSource.Bomb
+                                                      or ElimSource.Projectile
+                                                      or ElimSource.ChainReaction
+                                                      or ElimSource.ColorBomb
+                                                      or ElimSource.SideItem
+                                                      or ElimSource.ConsumeBomb,
             ObstacleType.ColorBox => false,   // immune to direct hits; only adjacent color match
             ObstacleType.MagicHat => false,   // passive — reacts to adjacent hits
             ObstacleType.Curtain  => false,   // passive — reacts to global color elimination
@@ -41,10 +46,10 @@ public static class ObstacleRules
     /// </summary>
     public static byte GetDefaultStage(ObstacleType type) => type switch
     {
-        ObstacleType.Box      => 1,
-        ObstacleType.Bush     => 1,
+        ObstacleType.Box      => 4,
+        ObstacleType.Bush     => 5,
         ObstacleType.Cupboard => 2,
-        ObstacleType.Safe     => 1,
+        ObstacleType.Safe     => 5,
         ObstacleType.ColorBox => 1,
         ObstacleType.MagicHat => 1,
         ObstacleType.Curtain  => 1,

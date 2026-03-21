@@ -23,7 +23,8 @@ public enum ObstacleType : byte
     Bush = 2,
 
     /// <summary>
-    /// Reinforced safe (up to 5 stages). Only damaged by PowerUp sources (Bomb/Projectile/ColorBomb).
+    /// Reinforced safe (up to 5 stages). Immune to Match; only damaged by explicit
+    /// power-up sources (Bomb, Projectile, ChainReaction, ColorBomb, SideItem, ConsumeBomb).
     /// </summary>
     Safe = 3,
 

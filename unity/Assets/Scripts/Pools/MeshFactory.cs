@@ -194,6 +194,8 @@ namespace Match3.Unity.Pools
             var typeName = type switch
             {
                 ObstacleType.Box => "Box_State3",
+                ObstacleType.Bush => "Bush",
+                ObstacleType.Safe => "Safe",
                 ObstacleType.Cupboard => "Cupboard",
                 _ => type.ToString()
             };

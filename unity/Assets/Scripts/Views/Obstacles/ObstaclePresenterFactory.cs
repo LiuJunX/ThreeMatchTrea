@@ -13,8 +13,9 @@ namespace Match3.Unity.Views.Obstacles
             return type switch
             {
                 ObstacleType.Box => new BoxPresenter(),
+                ObstacleType.Bush => new BushPresenter(),
+                ObstacleType.Safe => new SafePresenter(),
                 ObstacleType.Cupboard => new CupboardPresenter(),
-                // Future: ObstacleType.Bush => new BushPresenter(),
                 _ => new BoxPresenter(), // fallback: all types look like boxes until art is ready
             };
         }

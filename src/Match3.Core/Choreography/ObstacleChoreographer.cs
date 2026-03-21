@@ -26,6 +26,7 @@ internal sealed class ObstacleChoreographer
         {
             ObstacleType.Box => 0.25f,
             ObstacleType.Bush => 0.35f,
+            ObstacleType.Safe => 0.30f,
             ObstacleType.Cupboard => 0.25f,
             _ => 0.25f
         };
@@ -59,6 +60,7 @@ internal sealed class ObstacleChoreographer
         {
             ObstacleType.Box => 0.3f,
             ObstacleType.Bush => 0.4f,
+            ObstacleType.Safe => 0.40f,
             ObstacleType.Cupboard => 0.35f,
             _ => 0.3f
         };
