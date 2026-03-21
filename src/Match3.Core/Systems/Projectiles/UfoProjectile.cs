@@ -103,7 +103,7 @@ public sealed class UfoProjectile : Projectile
 
         _elapsedTime += deltaTime;
 
-        // Check target validity — retarget if target cell is empty,
+        // Check target validity — retarget if target cell has no attackable value,
         // but only if we're outside the lock-in window
         float remainingTime = _totalDuration - _elapsedTime;
         if (remainingTime > UfoConstants.LockInTime && TargetGridPosition.HasValue)
@@ -111,8 +111,13 @@ public sealed class UfoProjectile : Projectile
             var tp = TargetGridPosition.Value;
             if (state.IsValid(tp))
             {
-                var tile = state.GetTile(tp.X, tp.Y);
-                if (tile.Type == ElementType.None)
+                // Re-evaluate the target cell using the same scoring system
+                var eval = Targeting.CellEvaluator.Evaluate(
+                    in state, tp.X, tp.Y,
+                    Targeting.UfoTargetConfig.Default,
+                    Targeting.Capacity.MaxCapacityRule.Instance);
+
+                if (!eval.CanAttack || eval.MeaningfulHits <= 0)
                 {
                     TryRetarget(ref state, tick, simTime, events);
                 }

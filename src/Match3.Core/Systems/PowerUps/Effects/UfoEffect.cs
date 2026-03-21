@@ -26,7 +26,9 @@ public class UfoEffect : IBombEffect
     /// For payload UFOs, evaluates total range value at each candidate drop point.
     /// </summary>
     public static Position? PickRemoteTarget(
-        in GameState state, Position origin, UfoPayload payload = UfoPayload.Default)
+        in GameState state, Position origin,
+        UfoPayload payload = UfoPayload.Default,
+        ReadOnlySpan<PendingAttack> pendingAttacks = default)
     {
         // Build exclude area (small cross around origin)
         var excludeArea = Pools.ObtainHashSet<Position>();
@@ -41,7 +43,7 @@ public class UfoEffect : IBombEffect
             return UfoTargetSelector.SelectTarget(
                 in state,
                 origin,
-                ReadOnlySpan<PendingAttack>.Empty,
+                pendingAttacks,
                 UfoTargetConfig.Default,
                 excludeArea,
                 payload);

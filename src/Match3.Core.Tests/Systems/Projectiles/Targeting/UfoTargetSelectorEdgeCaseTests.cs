@@ -119,6 +119,56 @@ public class UfoTargetSelectorEdgeCaseTests
     }
 
     [Fact]
+    public void SelectTarget_WithPendingAttack_SkipsExhaustedCell()
+    {
+        // Two tiles: (0,0) has HP=1, (2,0) has HP=1
+        // PendingAttack on (0,0) → exhausted → should pick (2,0)
+        var state = new GameStateBuilder().WithSize(3, 3).WithRandom(new StubRandom())
+            .WithEmptyTiles()
+            .WithCustomization(s =>
+            {
+                s.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+                s.SetTile(2, 0, new Tile(2, ElementType.Item1, 2, 0));
+            })
+            .Build();
+
+        var pending = new PendingAttack[]
+        {
+            new() { GridIndex = 0, HitLayer = 2 } // (0,0) grid index = 0
+        };
+
+        var result = UfoTargetSelector.SelectTarget(
+            in state, new Position(1, 1),
+            pending.AsSpan(), Config);
+
+        Assert.NotNull(result);
+        Assert.Equal(new Position(2, 0), result.Value); // (0,0) exhausted, picks (2,0)
+    }
+
+    [Fact]
+    public void SelectTarget_WithPendingAttack_HighHPCellStillValid()
+    {
+        // Box obstacle with Stage=3 and 1 pending attack → still 2 remaining → valid
+        var state = new GameStateBuilder().WithSize(3, 3).WithRandom(new StubRandom())
+            .WithEmptyTiles()
+            .WithCustomization(s =>
+                s.SetObstacle(0, 0, new Obstacle { Type = ObstacleType.Box, Stage = 3 }))
+            .Build();
+
+        var pending = new PendingAttack[]
+        {
+            new() { GridIndex = 0, HitLayer = 1 }
+        };
+
+        var result = UfoTargetSelector.SelectTarget(
+            in state, new Position(2, 2),
+            pending.AsSpan(), Config);
+
+        Assert.NotNull(result);
+        Assert.Equal(new Position(0, 0), result.Value); // Still valid
+    }
+
+    [Fact]
     public void SelectTarget_AllCellsExcluded_ReturnsNull()
     {
         var state = new GameStateBuilder().WithSize(2, 2).WithRandom(new StubRandom())
