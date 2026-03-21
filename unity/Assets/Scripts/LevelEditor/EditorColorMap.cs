@@ -36,6 +36,8 @@ namespace Match3.Unity.LevelEditor
             { CoverType.Cage,    new Color(0.60f, 0.60f, 0.60f, 0.7f) },
             { CoverType.Chain,   new Color(0.50f, 0.50f, 0.50f, 0.7f) },
             { CoverType.Bubble,  new Color(0.70f, 0.85f, 1.00f, 0.5f) },
+            { CoverType.Honey,   new Color(0.95f, 0.75f, 0.20f, 0.7f) },
+            { CoverType.Frost,   new Color(0.70f, 0.85f, 1.00f, 0.6f) },
         };
 
         private static readonly Dictionary<GroundType, Color> GroundColors = new Dictionary<GroundType, Color>

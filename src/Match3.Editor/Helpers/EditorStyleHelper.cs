@@ -31,6 +31,7 @@ public static class EditorStyleHelper
     public const string ICON_COVER_CAGE = "🔒";
     public const string ICON_COVER_CHAIN = "⛓️";
     public const string ICON_COVER_BUBBLE = "🫧";
+    public const string ICON_COVER_FROST = "❄️";
 
     public static string GetTileColor(ElementType t) => t switch
     {
@@ -80,6 +81,7 @@ public static class EditorStyleHelper
         CoverType.Cage => ICON_COVER_CAGE,
         CoverType.Chain => ICON_COVER_CHAIN,
         CoverType.Bubble => ICON_COVER_BUBBLE,
+        CoverType.Frost => ICON_COVER_FROST,
         _ => ""
     };
 

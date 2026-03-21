@@ -5,6 +5,7 @@ using Match3.Presentation;
 using Match3.Unity.Bridge;
 using Match3.Unity.Pools;
 using Match3.Unity.Services;
+using Match3.Unity.Views.Covers;
 using Match3.Unity.Views.Grounds;
 using Match3.Unity.Views.Obstacles;
 using UnityEngine;
@@ -21,20 +22,24 @@ namespace Match3.Unity.Views
         private ObjectPool<Projectile3DView> _projectilePool;
         private ObjectPool<ObstacleView> _obstaclePool;
         private ObjectPool<GroundView> _groundPool;
+        private ObjectPool<CoverView> _coverPool;
         private readonly Dictionary<int, Tile3DView> _activeTiles = new();
         private readonly Dictionary<int, Projectile3DView> _activeProjectiles = new();
         private readonly Dictionary<Position, ObstacleView> _activeObstacles = new();
         private readonly Dictionary<Position, GroundView> _activeGrounds = new();
+        private readonly Dictionary<Position, CoverView> _activeCovers = new();
 
         // Pre-allocated collections to avoid GC in hot path
         private readonly HashSet<int> _activeTileIds = new();
         private readonly HashSet<int> _activeProjectileIds = new();
         private readonly HashSet<Position> _activeObstaclePositions = new();
         private readonly HashSet<Position> _activeGroundPositions = new();
+        private readonly HashSet<Position> _activeCoverPositions = new();
         private readonly List<int> _tilesToRemove = new();
         private readonly List<int> _projectilesToRemove = new();
         private readonly List<Position> _obstaclesToRemove = new();
         private readonly List<Position> _groundsToRemove = new();
+        private readonly List<Position> _coversToRemove = new();
 
         private Match3Bridge _bridge;
         private Transform _tileContainer;
@@ -138,6 +143,17 @@ namespace Match3.Unity.Views
                     parent: groundContainer,
                     initialSize: gndInitial,
                     maxSize: gndMax
+                );
+
+                var coverContainer = new GameObject("CoverContainer3D").transform;
+                coverContainer.SetParent(transform, false);
+
+                var (covInitial, covMax) = GetPoolSize("covers", 8, 32);
+                _coverPool = new ObjectPool<CoverView>(
+                    factory: () => CreateCoverView(coverContainer),
+                    parent: coverContainer,
+                    initialSize: covInitial,
+                    maxSize: covMax
                 );
 
                 _viewInitialized = true;
@@ -418,6 +434,9 @@ namespace Match3.Unity.Views
             // Render grounds (below obstacles and tiles)
             RenderGrounds(state, cellSize, origin, height, dt);
 
+            // Render covers (above tiles)
+            RenderCovers(state, cellSize, origin, height, dt);
+
             // Render obstacles
             RenderObstacles(state, cellSize, origin, height, dt);
 
@@ -560,6 +579,54 @@ namespace Match3.Unity.Views
             return go.AddComponent<GroundView>();
         }
 
+        private void RenderCovers(VisualState state, float cellSize, Vector2 origin, int height, float dt)
+        {
+            _activeCoverPositions.Clear();
+            _coversToRemove.Clear();
+
+            foreach (var kvp in state.Covers)
+            {
+                var pos = kvp.Key;
+                var visual = kvp.Value;
+                if (!visual.IsVisible) continue;
+
+                _activeCoverPositions.Add(pos);
+
+                if (!_activeCovers.TryGetValue(pos, out var coverView))
+                {
+                    coverView = _coverPool.Rent();
+                    coverView.Setup(pos, visual.Type, visual.CurrentHealth);
+                    _activeCovers[pos] = coverView;
+                }
+
+                coverView.UpdateFromVisual(visual, cellSize, origin, height, dt);
+            }
+
+            foreach (var kvp in _activeCovers)
+            {
+                if (!_activeCoverPositions.Contains(kvp.Key))
+                    _coversToRemove.Add(kvp.Key);
+            }
+
+            foreach (var pos in _coversToRemove)
+            {
+                if (_activeCovers.TryGetValue(pos, out var view))
+                {
+                    _coverPool.Return(view);
+                    _activeCovers.Remove(pos);
+                }
+            }
+        }
+
+        private static CoverView CreateCoverView(Transform parent)
+        {
+            var go = new GameObject("Cover3D");
+            go.transform.SetParent(parent, false);
+            go.AddComponent<MeshFilter>();
+            go.AddComponent<MeshRenderer>();
+            return go.AddComponent<CoverView>();
+        }
+
         private static ObstacleView CreateObstacleView(Transform parent)
         {
             var go = new GameObject("Obstacle3D");
@@ -661,6 +728,12 @@ namespace Match3.Unity.Views
                 _groundPool.Return(kvp.Value);
             }
             _activeGrounds.Clear();
+
+            foreach (var kvp in _activeCovers)
+            {
+                _coverPool.Return(kvp.Value);
+            }
+            _activeCovers.Clear();
 
             foreach (var kvp in _activeProjectiles)
             {
@@ -802,6 +875,7 @@ namespace Match3.Unity.Views
             _tilePool?.Clear();
             _obstaclePool?.Clear();
             _groundPool?.Clear();
+            _coverPool?.Clear();
             _projectilePool?.Clear();
 
             // Lighting controller cleans up its own lights via its own OnDestroy

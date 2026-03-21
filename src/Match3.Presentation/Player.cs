@@ -391,6 +391,17 @@ public sealed class Player
                 }
                 break;
             }
+
+            case DestroyCoverCommand destroyCov:
+            {
+                var covVisual = _visualState.GetCover(destroyCov.GridPos);
+                if (covVisual != null)
+                {
+                    covVisual.IsDestroying = true;
+                    covVisual.DestroyProgress = 0f;
+                }
+                break;
+            }
         }
 
         // Mark tiles as being animated for position-affecting commands
@@ -433,6 +444,10 @@ public sealed class Player
 
             case RemoveGroundCommand removeGnd:
                 _visualState.RemoveGround(removeGnd.GridPos);
+                break;
+
+            case RemoveCoverCommand removeCov:
+                _visualState.RemoveCover(removeCov.GridPos);
                 break;
         }
     }
@@ -532,6 +547,14 @@ public sealed class Player
                 var gndVisual = _visualState.GetGround(destroyGnd.GridPos);
                 if (gndVisual != null)
                     gndVisual.DestroyProgress = t;
+                break;
+            }
+
+            case DestroyCoverCommand destroyCov:
+            {
+                var covVisual = _visualState.GetCover(destroyCov.GridPos);
+                if (covVisual != null)
+                    covVisual.DestroyProgress = t;
                 break;
             }
 
@@ -669,6 +692,14 @@ public sealed class Player
                 var gndVisual = _visualState.GetGround(destroyGnd.GridPos);
                 if (gndVisual != null)
                     gndVisual.DestroyProgress = 1f;
+                break;
+            }
+
+            case DestroyCoverCommand destroyCov:
+            {
+                var covVisual = _visualState.GetCover(destroyCov.GridPos);
+                if (covVisual != null)
+                    covVisual.DestroyProgress = 1f;
                 break;
             }
         }

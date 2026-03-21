@@ -455,6 +455,28 @@ public class ChoreographerTests
     }
 
     [Fact]
+    public void Choreograph_CoverDestroyed_GeneratesRemoveAfterDestroy()
+    {
+        var events = new GameEvent[]
+        {
+            new CoverDestroyedEvent
+            {
+                GridPosition = new Position(3, 4),
+                Type = CoverType.Frost,
+                SimulationTime = 0f
+            }
+        };
+
+        var commands = _choreographer.Choreograph(events);
+
+        var destroy = Assert.Single(commands, c => c is DestroyCoverCommand);
+        var remove = Assert.Single(commands, c => c is RemoveCoverCommand);
+        // RemoveCoverCommand scheduled after DestroyCoverCommand ends
+        Assert.Equal(destroy.StartTime + destroy.Duration, remove.StartTime, 0.001f);
+        Assert.Equal(0f, remove.Duration);
+    }
+
+    [Fact]
     public void Choreograph_GroundDestroyed_GeneratesCommandAndEffect()
     {
         var events = new GameEvent[]

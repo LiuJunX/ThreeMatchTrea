@@ -36,4 +36,11 @@ public enum CoverType : byte
     /// </summary>
     [AIMapping(3, "Honey")]
     Honey = 4,
+
+    /// <summary>
+    /// Frost that freezes tile in place. Allows matching but blocks swap/movement.
+    /// Destroyed by direct hit or adjacent elimination. 1 HP.
+    /// </summary>
+    [AIMapping(4, "Frost")]
+    Frost = 5,
 }

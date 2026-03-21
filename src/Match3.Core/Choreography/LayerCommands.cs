@@ -16,6 +16,16 @@ public sealed record DestroyCoverCommand : RenderCommand
 }
 
 /// <summary>
+/// Remove a cover visual from VisualState after death animation completes.
+/// Instant command (Duration=0), scheduled after DestroyCoverCommand ends.
+/// </summary>
+public sealed record RemoveCoverCommand : RenderCommand
+{
+    /// <summary>Grid position of the cover to remove.</summary>
+    public Position GridPos { get; init; }
+}
+
+/// <summary>
 /// Destroy a ground layer at a position.
 /// </summary>
 public sealed record DestroyGroundCommand : RenderCommand

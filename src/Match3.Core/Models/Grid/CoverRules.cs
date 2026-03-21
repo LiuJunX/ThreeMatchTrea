@@ -20,6 +20,7 @@ public static class CoverRules
         CoverType.Chain => false,    // Chain allows matching
         CoverType.Bubble => false,   // Bubble (dynamic) allows matching
         CoverType.Honey => true,     // Honey blocks matching
+        CoverType.Frost => false,    // Frost allows matching (like Chain)
         _ => false
     };
 
@@ -40,6 +41,7 @@ public static class CoverRules
         CoverType.Chain => true,     // Static - blocks movement
         CoverType.Bubble => false,   // Dynamic - allows movement
         CoverType.Honey => true,     // Honey - blocks movement
+        CoverType.Frost => true,     // Frost - blocks movement
         _ => false
     };
 
@@ -62,6 +64,7 @@ public static class CoverRules
         CoverType.Chain => 1,
         CoverType.Bubble => 1,
         CoverType.Honey => 1,
+        CoverType.Frost => 1,
         _ => 1
     };
 
@@ -72,6 +75,7 @@ public static class CoverRules
     public static bool DamagedByAdjacent(CoverType type) => type switch
     {
         CoverType.Honey => true,
+        CoverType.Frost => true,     // Frost - damaged by adjacent elimination
         _ => false
     };
 }

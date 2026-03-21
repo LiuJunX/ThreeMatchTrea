@@ -170,8 +170,9 @@ public class ObjectiveEditorHelperTests
     {
         var types = ObjectiveEditorHelper.GetElementTypesForLayer(ObjectiveTargetLayer.Cover);
 
-        Assert.Equal(3, types.Length);
+        Assert.Equal(4, types.Length);
         Assert.Contains(types, t => t.Value == (int)CoverType.Cage && t.Name == "Cage");
+        Assert.Contains(types, t => t.Value == (int)CoverType.Frost && t.Name == "Frost");
     }
 
     [Fact]

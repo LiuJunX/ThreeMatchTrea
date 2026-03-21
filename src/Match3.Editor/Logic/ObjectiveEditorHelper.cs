@@ -132,6 +132,7 @@ public static class ObjectiveEditorHelper
                 ((int)CoverType.Cage, "Cage"),
                 ((int)CoverType.Chain, "Chain"),
                 ((int)CoverType.Bubble, "Bubble"),
+                ((int)CoverType.Frost, "Frost"),
             },
             ObjectiveTargetLayer.Ground => new[]
             {

@@ -217,6 +217,7 @@ public class CoverSystemTests
     [InlineData(CoverType.Chain)]
     [InlineData(CoverType.Bubble)]
     [InlineData(CoverType.Honey)]
+    [InlineData(CoverType.Frost)]
     public void IsTileProtected_AllCoverTypes_ReturnsTrue(CoverType coverType)
     {
         // Arrange
@@ -343,6 +344,7 @@ public class CoverSystemTests
     [InlineData(CoverType.Cage, false)]    // Cage blocks swap
     [InlineData(CoverType.Chain, false)]   // Chain blocks swap
     [InlineData(CoverType.Bubble, false)]  // Bubble blocks swap
+    [InlineData(CoverType.Frost, false)]   // Frost blocks swap
     [InlineData(CoverType.None, true)]     // No cover allows swap
     public void CanInteract_WithCoverType_ReturnsExpected(CoverType coverType, bool expectedCanInteract)
     {
@@ -364,6 +366,7 @@ public class CoverSystemTests
     [InlineData(CoverType.Cage, false)]    // Cage blocks match
     [InlineData(CoverType.Chain, true)]    // Chain allows match
     [InlineData(CoverType.Bubble, true)]   // Bubble allows match
+    [InlineData(CoverType.Frost, true)]    // Frost allows match
     [InlineData(CoverType.None, true)]     // No cover allows match
     public void CanMatch_WithCoverType_ReturnsExpected(CoverType coverType, bool expectedCanMatch)
     {
@@ -385,6 +388,7 @@ public class CoverSystemTests
     [InlineData(CoverType.Cage, false)]    // Cage blocks movement
     [InlineData(CoverType.Chain, false)]   // Chain blocks movement
     [InlineData(CoverType.Bubble, true)]   // Bubble allows movement (dynamic)
+    [InlineData(CoverType.Frost, false)]   // Frost blocks movement
     [InlineData(CoverType.None, true)]     // No cover allows movement
     public void CanMove_WithCoverType_ReturnsExpected(CoverType coverType, bool expectedCanMove)
     {
@@ -480,6 +484,7 @@ public class CoverSystemTests
     [InlineData(CoverType.Cage, 1)]
     [InlineData(CoverType.Chain, 1)]
     [InlineData(CoverType.Bubble, 1)]
+    [InlineData(CoverType.Frost, 1)]
     public void GetDefaultHealth_ReturnsExpectedValue(CoverType coverType, byte expectedHealth)
     {
         // Act
@@ -494,6 +499,7 @@ public class CoverSystemTests
     [InlineData(CoverType.Cage, false)]
     [InlineData(CoverType.Chain, false)]
     [InlineData(CoverType.Bubble, true)]
+    [InlineData(CoverType.Frost, false)]
     public void IsDynamicType_ReturnsExpectedValue(CoverType coverType, bool expectedIsDynamic)
     {
         // Act
@@ -508,6 +514,7 @@ public class CoverSystemTests
     [InlineData(CoverType.Cage, true)]
     [InlineData(CoverType.Chain, false)]
     [InlineData(CoverType.Bubble, false)]
+    [InlineData(CoverType.Frost, false)]
     public void BlocksMatch_ReturnsExpectedValue(CoverType coverType, bool expectedBlocks)
     {
         // Act
@@ -522,6 +529,7 @@ public class CoverSystemTests
     [InlineData(CoverType.Cage, true)]
     [InlineData(CoverType.Chain, true)]
     [InlineData(CoverType.Bubble, true)]
+    [InlineData(CoverType.Frost, true)]
     public void BlocksSwap_ReturnsExpectedValue(CoverType coverType, bool expectedBlocks)
     {
         // Act
@@ -536,6 +544,7 @@ public class CoverSystemTests
     [InlineData(CoverType.Cage, true)]
     [InlineData(CoverType.Chain, true)]
     [InlineData(CoverType.Bubble, false)]
+    [InlineData(CoverType.Frost, true)]
     public void BlocksMovement_ReturnsExpectedValue(CoverType coverType, bool expectedBlocks)
     {
         // Act
@@ -554,6 +563,7 @@ public class CoverSystemTests
     [InlineData(CoverType.Chain)]
     [InlineData(CoverType.Bubble)]
     [InlineData(CoverType.Honey)]
+    [InlineData(CoverType.Frost)]
     public void TryDamageCover_AllCoverTypes_EmitsCorrectEvent(CoverType coverType)
     {
         // Arrange
@@ -658,7 +668,7 @@ public class CoverSystemTests
     [InlineData(CoverType.Cage)]
     [InlineData(CoverType.Chain)]
     [InlineData(CoverType.Bubble)]
-    public void CoverRules_NonHoney_NotDamagedByAdjacent(CoverType type)
+    public void CoverRules_NonAdjacentDamage_NotDamagedByAdjacent(CoverType type)
     {
         Assert.False(CoverRules.DamagedByAdjacent(type));
     }
@@ -982,6 +992,175 @@ public class CoverSystemTests
         var state = CreateState();
         state.SetCover(new Position(3, 3), new Cover(CoverType.Honey, health: 1));
         Assert.False(state.CanMoveIgnoringLocks(3, 3));
+    }
+
+    #endregion
+
+    #region Frost CoverRules Tests
+
+    [Fact]
+    public void CoverRules_Frost_DoesNotBlockMatch()
+    {
+        Assert.False(CoverRules.BlocksMatch(CoverType.Frost));
+    }
+
+    [Fact]
+    public void CoverRules_Frost_BlocksSwap()
+    {
+        Assert.True(CoverRules.BlocksSwap(CoverType.Frost));
+    }
+
+    [Fact]
+    public void CoverRules_Frost_BlocksMovement()
+    {
+        Assert.True(CoverRules.BlocksMovement(CoverType.Frost));
+    }
+
+    [Fact]
+    public void CoverRules_Frost_IsNotDynamic()
+    {
+        Assert.False(CoverRules.IsDynamicType(CoverType.Frost));
+    }
+
+    [Fact]
+    public void CoverRules_Frost_DefaultHealth_Is1()
+    {
+        Assert.Equal(1, CoverRules.GetDefaultHealth(CoverType.Frost));
+    }
+
+    [Fact]
+    public void CoverRules_Frost_DamagedByAdjacent()
+    {
+        Assert.True(CoverRules.DamagedByAdjacent(CoverType.Frost));
+    }
+
+    #endregion
+
+    #region Frost NotifyBatchElimination Tests
+
+    [Fact]
+    public void NotifyBatchElimination_FrostAdjacentToMatch_Destroyed()
+    {
+        var state = CreateState();
+        state.SetCover(new Position(3, 3), new Cover(CoverType.Frost, health: 1));
+        var events = new BufferedEventCollector();
+
+        var eliminated = new EliminatedTileInfo[]
+        {
+            new(new Position(3, 2), new Tile(1, ElementType.Item1, 3, 2), ElimSource.Match)
+        };
+
+        _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
+
+        Assert.Equal(CoverType.None, state.GetCover(new Position(3, 3)).Type);
+        var evt = Assert.IsType<CoverDestroyedEvent>(events.GetEvents()[0]);
+        Assert.Equal(CoverType.Frost, evt.Type);
+    }
+
+    [Fact]
+    public void NotifyBatchElimination_FrostNotAdjacentToElimination_Unchanged()
+    {
+        var state = CreateState();
+        state.SetCover(new Position(3, 3), new Cover(CoverType.Frost, health: 1));
+        var events = new BufferedEventCollector();
+
+        var eliminated = new EliminatedTileInfo[]
+        {
+            new(new Position(0, 0), new Tile(1, ElementType.Item1, 0, 0), ElimSource.Match)
+        };
+
+        _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
+
+        Assert.Equal(CoverType.Frost, state.GetCover(new Position(3, 3)).Type);
+    }
+
+    [Fact]
+    public void GameState_FrostCover_CanMoveIgnoringLocks_ReturnsFalse()
+    {
+        var state = CreateState();
+        state.SetCover(new Position(3, 3), new Cover(CoverType.Frost, health: 1));
+        Assert.False(state.CanMoveIgnoringLocks(3, 3));
+    }
+
+    [Fact]
+    public void NotifyBatchElimination_FrostAdjacentToColorBomb_Destroyed()
+    {
+        var state = CreateState();
+        state.SetCover(new Position(3, 3), new Cover(CoverType.Frost, health: 1));
+        var events = new BufferedEventCollector();
+
+        var eliminated = new EliminatedTileInfo[]
+        {
+            new(new Position(3, 2), new Tile(1, ElementType.Item1, 3, 2), ElimSource.ColorBomb)
+        };
+
+        _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
+
+        Assert.Equal(CoverType.None, state.GetCover(new Position(3, 3)).Type);
+    }
+
+    [Fact]
+    public void NotifyBatchElimination_FrostAllFourDirections_AllDestroyed()
+    {
+        var frostPos = new Position(3, 3);
+
+        var directions = new[]
+        {
+            new Position(2, 3), // left
+            new Position(4, 3), // right
+            new Position(3, 2), // up
+            new Position(3, 4), // down
+        };
+
+        foreach (var dir in directions)
+        {
+            var state = CreateState();
+            state.SetCover(frostPos, new Cover(CoverType.Frost, health: 1));
+            var events = new BufferedEventCollector();
+
+            var eliminated = new EliminatedTileInfo[]
+            {
+                new(dir, new Tile(1, ElementType.Item1, dir.X, dir.Y), ElimSource.Match)
+            };
+
+            _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
+
+            Assert.Equal(CoverType.None, state.GetCover(frostPos).Type);
+        }
+    }
+
+    [Fact]
+    public void NotifyBatchElimination_FrostDiagonal_NotDamaged()
+    {
+        var state = CreateState();
+        state.SetCover(new Position(3, 3), new Cover(CoverType.Frost, health: 1));
+        var events = new BufferedEventCollector();
+
+        var eliminated = new EliminatedTileInfo[]
+        {
+            new(new Position(4, 4), new Tile(1, ElementType.Item1, 4, 4), ElimSource.Match)
+        };
+
+        _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
+
+        Assert.Equal(CoverType.Frost, state.GetCover(new Position(3, 3)).Type);
+    }
+
+    [Fact]
+    public void NotifyBatchElimination_BombSource_DoesNotTriggerFrostAdjacency()
+    {
+        var state = CreateState();
+        state.SetCover(new Position(3, 3), new Cover(CoverType.Frost, health: 1));
+        var events = new BufferedEventCollector();
+
+        var eliminated = new EliminatedTileInfo[]
+        {
+            new(new Position(3, 2), new Tile(1, ElementType.Item1, 3, 2), ElimSource.Bomb)
+        };
+
+        _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
+
+        Assert.Equal(CoverType.Frost, state.GetCover(new Position(3, 3)).Type);
     }
 
     #endregion

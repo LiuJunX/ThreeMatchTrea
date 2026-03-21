@@ -22,11 +22,22 @@ internal sealed class SurfaceChoreographer
         float startTime = _ctx.GetStartTime(evt);
         var position = new Vector2(evt.GridPosition.X, evt.GridPosition.Y);
 
+        float destroyDuration = 0.25f;
+
         _ctx.Commands.Add(new DestroyCoverCommand
         {
             GridPos = evt.GridPosition, CoverType = evt.Type,
-            StartTime = startTime, Duration = 0.25f
+            StartTime = startTime, Duration = destroyDuration
         });
+
+        // Remove from visual state after death animation
+        _ctx.Commands.Add(new RemoveCoverCommand
+        {
+            GridPos = evt.GridPosition,
+            StartTime = startTime + destroyDuration,
+            Duration = 0
+        });
+
         if (!evt.IsGoal)
         {
             _ctx.Commands.Add(new ShowEffectCommand

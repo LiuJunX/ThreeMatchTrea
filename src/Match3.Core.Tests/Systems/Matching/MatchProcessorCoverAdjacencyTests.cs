@@ -388,4 +388,185 @@ public class MatchProcessorCoverAdjacencyTests
     }
 
     #endregion
+
+    #region Adjacent Frost — same adjacency behavior as Honey
+
+    [Fact]
+    public void Match_AdjacentToFrost_DestroysFrost()
+    {
+        // Board:  [R][R][R]
+        //            [F]       ← Frost at (1,1), adjacent to (1,0)
+        var state = CreateState();
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
+        state.SetTile(1, 1, new Tile(4, ElementType.Item2, 1, 1));
+        state.SetCover(new Position(1, 1), new Cover(CoverType.Frost, health: 1));
+
+        var processor = CreateProcessor();
+        var events = new BufferedEventCollector();
+        var groups = new List<MatchGroup>
+        {
+            new MatchGroup
+            {
+                Type = ElementType.Item1,
+                Positions = new HashSet<Position> { new(0, 0), new(1, 0), new(2, 0) }
+            }
+        };
+
+        processor.ProcessMatches(ref state, groups, 5, 1.0f, events);
+
+        Assert.Equal(CoverType.None, state.GetCover(new Position(1, 1)).Type);
+        Assert.Equal(ElementType.Item2, state.GetTile(1, 1).Type);
+        Assert.Contains(events.GetEvents(), e =>
+            e is CoverDestroyedEvent cd && cd.Type == CoverType.Frost && cd.GridPosition == new Position(1, 1));
+    }
+
+    [Fact]
+    public void Match_MultipleFrostsAdjacentToSameElimination_AllDestroyed()
+    {
+        // Match at row 2: (0,2)(1,2)(2,2)
+        // Frost at (1,1) adjacent to (1,2) — up
+        // Frost at (1,3) adjacent to (1,2) — down
+        // Frost at (0,1) adjacent to (0,2) — up
+        var state = CreateState(5, 5);
+        state.SetTile(0, 2, new Tile(1, ElementType.Item1, 0, 2));
+        state.SetTile(1, 2, new Tile(2, ElementType.Item1, 1, 2));
+        state.SetTile(2, 2, new Tile(3, ElementType.Item1, 2, 2));
+        state.SetTile(1, 1, new Tile(10, ElementType.Item2, 1, 1));
+        state.SetCover(new Position(1, 1), new Cover(CoverType.Frost, health: 1));
+        state.SetTile(1, 3, new Tile(11, ElementType.Item2, 1, 3));
+        state.SetCover(new Position(1, 3), new Cover(CoverType.Frost, health: 1));
+        state.SetTile(0, 1, new Tile(12, ElementType.Item2, 0, 1));
+        state.SetCover(new Position(0, 1), new Cover(CoverType.Frost, health: 1));
+
+        var processor = CreateProcessor();
+        processor.ProcessMatches(ref state, new List<MatchGroup>
+        {
+            new MatchGroup
+            {
+                Type = ElementType.Item1,
+                Positions = new HashSet<Position> { new(0, 2), new(1, 2), new(2, 2) }
+            }
+        });
+
+        Assert.Equal(CoverType.None, state.GetCover(new Position(1, 1)).Type);
+        Assert.Equal(CoverType.None, state.GetCover(new Position(1, 3)).Type);
+        Assert.Equal(CoverType.None, state.GetCover(new Position(0, 1)).Type);
+    }
+
+    [Fact]
+    public void Match_FrostOnMatchPosition_DirectHit_TileSurvives()
+    {
+        // Board: [R][R+F][R]  ← Frost covers (1,0)
+        // Match includes (1,0), cover absorbs direct hit
+        var state = CreateState();
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
+        state.SetCover(new Position(1, 0), new Cover(CoverType.Frost, health: 1));
+
+        var processor = CreateProcessor();
+        processor.ProcessMatches(ref state, new List<MatchGroup>
+        {
+            new MatchGroup
+            {
+                Type = ElementType.Item1,
+                Positions = new HashSet<Position> { new(0, 0), new(1, 0), new(2, 0) }
+            }
+        });
+
+        Assert.Equal(CoverType.None, state.GetCover(new Position(1, 0)).Type);
+        Assert.Equal(ElementType.Item1, state.GetTile(1, 0).Type);
+        Assert.Equal(ElementType.None, state.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.None, state.GetTile(2, 0).Type);
+    }
+
+    [Fact]
+    public void Match_FrostAbsorbedTile_DoesNotTriggerAdjacentFrost()
+    {
+        // Board: [R][R+F][R]
+        //            [F]       ← Second Frost at (1,1)
+        // (1,0) Frost absorbed → not Eliminated → no adjacency for (1,1)
+        var state = CreateState();
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
+        state.SetTile(1, 1, new Tile(4, ElementType.Item2, 1, 1));
+        state.SetCover(new Position(1, 0), new Cover(CoverType.Frost, health: 1));
+        state.SetCover(new Position(1, 1), new Cover(CoverType.Frost, health: 1));
+
+        var processor = CreateProcessor();
+        processor.ProcessMatches(ref state, new List<MatchGroup>
+        {
+            new MatchGroup
+            {
+                Type = ElementType.Item1,
+                Positions = new HashSet<Position> { new(0, 0), new(1, 0), new(2, 0) }
+            }
+        });
+
+        // (1,0) Frost destroyed by direct hit
+        Assert.Equal(CoverType.None, state.GetCover(new Position(1, 0)).Type);
+        // (1,1) Frost unchanged — absorbed tiles don't trigger adjacency
+        Assert.Equal(CoverType.Frost, state.GetCover(new Position(1, 1)).Type);
+    }
+
+    [Fact]
+    public void Match_FrostAtCorner_NoCrash()
+    {
+        // Frost at (0,0), match at (1,0)(2,0)(3,0)
+        var state = CreateState();
+        state.SetTile(0, 0, new Tile(10, ElementType.Item2, 0, 0));
+        state.SetCover(new Position(0, 0), new Cover(CoverType.Frost, health: 1));
+        state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(2, ElementType.Item1, 2, 0));
+        state.SetTile(3, 0, new Tile(3, ElementType.Item1, 3, 0));
+
+        var processor = CreateProcessor();
+        processor.ProcessMatches(ref state, new List<MatchGroup>
+        {
+            new MatchGroup
+            {
+                Type = ElementType.Item1,
+                Positions = new HashSet<Position> { new(1, 0), new(2, 0), new(3, 0) }
+            }
+        });
+
+        Assert.Equal(CoverType.None, state.GetCover(new Position(0, 0)).Type);
+    }
+
+    #endregion
+
+    #region Frost + Honey mixed adjacency
+
+    [Fact]
+    public void Match_FrostAndHoneyBothAdjacent_BothDestroyed()
+    {
+        // Board: [R][R][R]
+        //         [F]  [H]    ← Frost at (0,1), Honey at (2,1)
+        var state = CreateState();
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
+        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
+        state.SetTile(0, 1, new Tile(4, ElementType.Item2, 0, 1));
+        state.SetCover(new Position(0, 1), new Cover(CoverType.Frost, health: 1));
+        state.SetTile(2, 1, new Tile(5, ElementType.Item3, 2, 1));
+        state.SetCover(new Position(2, 1), new Cover(CoverType.Honey, health: 1));
+
+        var processor = CreateProcessor();
+        processor.ProcessMatches(ref state, new List<MatchGroup>
+        {
+            new MatchGroup
+            {
+                Type = ElementType.Item1,
+                Positions = new HashSet<Position> { new(0, 0), new(1, 0), new(2, 0) }
+            }
+        });
+
+        Assert.Equal(CoverType.None, state.GetCover(new Position(0, 1)).Type);
+        Assert.Equal(CoverType.None, state.GetCover(new Position(2, 1)).Type);
+    }
+
+    #endregion
 }

@@ -16,6 +16,7 @@ public sealed class VisualState : IVisualState
     private readonly Dictionary<int, ProjectileVisual> _projectiles = new();
     private readonly Dictionary<Position, ObstacleVisual> _obstacles = new();
     private readonly Dictionary<Position, GroundVisual> _grounds = new();
+    private readonly Dictionary<Position, CoverVisual> _covers = new();
     private readonly List<VisualEffect> _effects = new();
     private readonly HashSet<int> _aliveTileIds = new();
     private readonly List<int> _tilesToRemove = new();
@@ -39,6 +40,11 @@ public sealed class VisualState : IVisualState
     /// All ground visuals indexed by grid position.
     /// </summary>
     public IReadOnlyDictionary<Position, GroundVisual> Grounds => _grounds;
+
+    /// <summary>
+    /// All cover visuals indexed by grid position.
+    /// </summary>
+    public IReadOnlyDictionary<Position, CoverVisual> Covers => _covers;
 
     /// <summary>
     /// All active visual effects.
@@ -67,6 +73,7 @@ public sealed class VisualState : IVisualState
         _tiles.Clear();
         _obstacles.Clear();
         _grounds.Clear();
+        _covers.Clear();
 
         for (int y = 0; y < state.Height; y++)
         {
@@ -108,6 +115,18 @@ public sealed class VisualState : IVisualState
                         GridPosition = pos,
                         Type = ground.Type,
                         CurrentHealth = ground.Health,
+                    };
+                }
+
+                var cover = state.GetCover(x, y);
+                if (cover.Type != CoverType.None)
+                {
+                    var pos = new Position(x, y);
+                    _covers[pos] = new CoverVisual
+                    {
+                        GridPosition = pos,
+                        Type = cover.Type,
+                        CurrentHealth = cover.Health,
                     };
                 }
             }
@@ -282,6 +301,35 @@ public sealed class VisualState : IVisualState
     public GroundVisual? GetGround(Position pos)
     {
         return _grounds.TryGetValue(pos, out var gnd) ? gnd : null;
+    }
+
+    /// <summary>
+    /// Add a new cover visual.
+    /// </summary>
+    public void AddCover(Position pos, CoverType type, byte health)
+    {
+        _covers[pos] = new CoverVisual
+        {
+            GridPosition = pos,
+            Type = type,
+            CurrentHealth = health,
+        };
+    }
+
+    /// <summary>
+    /// Remove a cover visual.
+    /// </summary>
+    public void RemoveCover(Position pos)
+    {
+        _covers.Remove(pos);
+    }
+
+    /// <summary>
+    /// Get cover visual by position. Returns null if not found.
+    /// </summary>
+    public CoverVisual? GetCover(Position pos)
+    {
+        return _covers.TryGetValue(pos, out var cv) ? cv : null;
     }
 
     /// <inheritdoc />
@@ -558,6 +606,32 @@ public sealed class GroundVisual
     public bool IsDestroying { get; set; }
 
     /// <summary>Whether the ground is visible.</summary>
+    public bool IsVisible { get; set; } = true;
+}
+
+/// <summary>
+/// Visual representation of a cover element (Cage, Chain, Bubble, Honey, Frost).
+/// </summary>
+public sealed class CoverVisual
+{
+    /// <summary>Grid position (immutable — static covers don't move).</summary>
+    public Position GridPosition { get; init; }
+
+    /// <summary>Type of cover.</summary>
+    public CoverType Type { get; init; }
+
+    /// <summary>Current health. Updated by Player on damage.</summary>
+    public byte CurrentHealth { get; set; }
+
+    /// <summary>
+    /// Destroy animation progress (0→1). Driven by Player during DestroyCoverCommand.
+    /// </summary>
+    public float DestroyProgress { get; set; }
+
+    /// <summary>Whether the destroy animation is playing.</summary>
+    public bool IsDestroying { get; set; }
+
+    /// <summary>Whether the cover is visible.</summary>
     public bool IsVisible { get; set; } = true;
 }
 
