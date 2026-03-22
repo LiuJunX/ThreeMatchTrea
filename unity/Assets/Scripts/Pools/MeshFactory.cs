@@ -201,6 +201,7 @@ namespace Match3.Unity.Pools
                 ObstacleType.Stone => "Stone",
                 ObstacleType.ColorBox => "ColorBox",
                 ObstacleType.MagicHat => "MagicHat",
+                ObstacleType.Curtain => "Curtain",
                 _ => type.ToString()
             };
             var model = ResourceService.Loader.Load<GameObject>($"Art/Gems/Models/{typeName}");

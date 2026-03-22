@@ -109,6 +109,15 @@ namespace Match3.Unity.Views.Obstacles
             transform.localScale = new Vector3(s, s, s);
         }
 
+        /// <summary>
+        /// Set non-uniform local scale multipliers (for pull/stretch animations).
+        /// </summary>
+        public void SetLocalScale(float scaleX, float scaleY, float scaleZ)
+        {
+            transform.localScale = new Vector3(
+                _baseScale * scaleX, _baseScale * scaleY, _baseScale * scaleZ);
+        }
+
         /// <summary>Set the base color via MaterialPropertyBlock.</summary>
         public void SetBaseColor(Color color)
         {

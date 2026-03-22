@@ -68,6 +68,7 @@ internal sealed class ObstacleChoreographer
             ObstacleType.Owl => 0.25f,
             ObstacleType.Stone => 0.35f,
             ObstacleType.ColorBox => 0.30f,
+            ObstacleType.Curtain => 0.50f,
             _ => 0.3f
         };
 
