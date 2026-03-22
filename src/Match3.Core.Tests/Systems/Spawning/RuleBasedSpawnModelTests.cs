@@ -134,10 +134,10 @@ public class RuleBasedSpawnModelTests
 
     #endregion
 
-    #region Strategy Tests - Challenge Mode
+    #region Strategy Tests - No Challenge (Only Help, Never Harm)
 
     [Fact]
-    public void Predict_HighDifficulty_AvoidsMatches()
+    public void Predict_HighDifficulty_UsesBalance_NeverChallenge()
     {
         var model = new RuleBasedSpawnModel(new SequentialRandom());
         var state = CreateState(5, 5);
@@ -148,7 +148,7 @@ public class RuleBasedSpawnModelTests
 
         var context = new SpawnContext
         {
-            TargetDifficulty = 0.9f, // Very hard
+            TargetDifficulty = 0.9f, // Very hard — but no Challenge
             RemainingMoves = 20,
             GoalProgress = 0.5f,
             FailedAttempts = 0,
@@ -157,33 +157,29 @@ public class RuleBasedSpawnModelTests
 
         var type = model.Predict(ref state, 2, in context);
 
-        // Should NOT spawn Red (avoid creating match)
-        Assert.NotEqual(ElementType.Item1, type);
+        // High difficulty now uses Balance, not Challenge
+        // Should return a valid color (no match avoidance)
+        Assert.NotEqual(ElementType.None, type);
     }
 
     [Fact]
-    public void Predict_PlayerDoingWell_AddsChallenges()
+    public void Predict_PlayerDoingWell_NoChallengeMode()
     {
         var model = new RuleBasedSpawnModel(new SequentialRandom());
         var state = CreateState(5, 5);
-
-        // Setup a board where Yellow would create a match
-        state.SetTile(0, 0, new Tile(1, ElementType.Item4, 0, 0));
-        state.SetTile(1, 0, new Tile(2, ElementType.Item4, 1, 0));
-
         var context = new SpawnContext
         {
             TargetDifficulty = 0.5f,
-            RemainingMoves = 15, // Plenty of moves
-            GoalProgress = 0.8f, // Almost done
+            RemainingMoves = 15,
+            GoalProgress = 0.8f, // Almost done — no longer triggers Challenge
             FailedAttempts = 0,
             InFlowState = true
         };
 
-        var type = model.Predict(ref state, 2, in context);
+        var type = model.Predict(ref state, 0, in context);
 
-        // Should NOT spawn Yellow (challenge the player)
-        Assert.NotEqual(ElementType.Item4, type);
+        // "Only help, never harm" — should return valid color without match avoidance
+        Assert.NotEqual(ElementType.None, type);
     }
 
     #endregion
@@ -277,21 +273,15 @@ public class RuleBasedSpawnModelTests
 
     #endregion
 
-    #region Challenge Feedback Fix Tests
+    #region Only-Help Principle Tests
 
     [Fact]
-    public void Predict_ChallengeMode_DoesNotSpawnMostCommon()
+    public void Predict_HighDifficulty_UsesBalance_NotChallenge()
     {
         var model = new RuleBasedSpawnModel(StubRandom.WithFixedValue(0));
         var state = CreateState(5, 5);
 
-        // Red is most common (4 tiles), others have 1 each = 9 total
-        // Red at 44% > threshold, but let's keep it under threshold
-        // so diversity guard doesn't fire and we test Challenge logic directly
-        // Use 3 Red + 2 each of Green/Blue = 7 total, Red=42% > 33% — guard fires
-        // Need: just above colorCount threshold but Red not dominant
-        // 2 Red + 1 Green + 1 Blue + 1 Yellow + 1 Purple + 1 Orange = 7 total
-        // Red = 2/7 = 28% < 33% — guard won't fire
+        // Board with varied colors — not dominant
         int id = 1;
         state.SetTile(0, 4, new Tile(id++, ElementType.Item1, 0, 4));
         state.SetTile(1, 4, new Tile(id++, ElementType.Item1, 1, 4));
@@ -303,7 +293,7 @@ public class RuleBasedSpawnModelTests
 
         var context = new SpawnContext
         {
-            TargetDifficulty = 0.9f,
+            TargetDifficulty = 0.9f, // High difficulty — Balance, not Challenge
             RemainingMoves = 20,
             GoalProgress = 0.5f,
             FailedAttempts = 0,
@@ -312,9 +302,9 @@ public class RuleBasedSpawnModelTests
 
         var type = model.Predict(ref state, 2, in context);
 
-        // Challenge should NOT prefer the most common color (Red)
-        // It should prefer the rarest non-matching color
-        Assert.NotEqual(ElementType.Item1, type);
+        // Should return valid color — no match avoidance behavior
+        Assert.NotEqual(ElementType.None, type);
+        Assert.True(type.IsColor());
     }
 
     #endregion

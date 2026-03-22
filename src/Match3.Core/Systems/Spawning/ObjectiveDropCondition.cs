@@ -1,0 +1,173 @@
+using System;
+using Match3.Core.Models.Enums;
+using Match3.Core.Models.Gameplay;
+using Match3.Core.Models.Grid;
+using Match3.Random;
+
+namespace Match3.Core.Systems.Spawning;
+
+/// <summary>
+/// Spawns collectible elements (e.g., Bird) based on objective requirements.
+/// Uses PRD probability with three-dimensional counters and dependency checks.
+/// Priority 400. Auto-derived from level objectives.
+/// </summary>
+public class ObjectiveDropCondition : ISpawnCondition
+{
+    private readonly ElementType _elementType;
+    private readonly IRandom _rng;
+    private readonly float _reductionRate;
+    private readonly CellKind? _relyOn;
+    private readonly int _objectiveIndex;
+
+    private PrdCalculator _prd;
+    private SpawnCounter _counter;
+
+    private const int PrdScale = 10000;
+
+    /// <summary>Column selected for this move's drop (-1 = no drop). Prevents left-right bias.</summary>
+    private int _selectedColumn = -1;
+
+    /// <summary>MoveCount when the last PRD roll was performed.</summary>
+    private int _lastRolledMoveCount = -1;
+
+    /// <inheritdoc />
+    public int Priority => 400;
+
+    /// <summary>
+    /// Creates an objective drop condition.
+    /// </summary>
+    /// <param name="elementType">The collectible element to spawn.</param>
+    /// <param name="baseProbability">Base probability per spawn position (0-1).</param>
+    /// <param name="rng">Random number generator.</param>
+    /// <param name="objectiveIndex">Index into GameState.ObjectiveProgress array.</param>
+    /// <param name="counter">Three-dimensional spawn limits.</param>
+    /// <param name="relyOn">Required cell type on board (null = no dependency).</param>
+    /// <param name="reductionRate">Probability multiplier after objective is met (e.g., 0.1 = 90% reduction).</param>
+    public ObjectiveDropCondition(
+        ElementType elementType,
+        float baseProbability,
+        IRandom rng,
+        int objectiveIndex,
+        SpawnCounter counter,
+        CellKind? relyOn = null,
+        float reductionRate = 0.1f)
+    {
+        _elementType = elementType;
+        _rng = rng;
+        _objectiveIndex = objectiveIndex;
+        _counter = counter;
+        _relyOn = relyOn;
+        _reductionRate = reductionRate;
+        _prd = PrdCalculator.FromProbability(baseProbability);
+    }
+
+    /// <inheritdoc />
+    public bool IsConditionMet(ref GameState state, int spawnX, in SpawnContext context)
+    {
+        // Sync round state, then check counter limits
+        _counter.UpdateRound(state.MoveCount);
+        int onBoard = BoardAnalyzer.CountElementOnBoard(ref state, _elementType);
+        if (!_counter.CanSpawn(onBoard))
+            return false;
+
+        // Check RelyOn dependency (e.g., Bird requires Sink on board)
+        if (_relyOn.HasValue && !HasCellType(ref state, _relyOn.Value))
+            return false;
+
+        // Roll PRD once per move (not per column) to avoid column position bias.
+        // If hit, randomly pick a column; all subsequent columns this move compare against it.
+        if (state.MoveCount != _lastRolledMoveCount)
+        {
+            _lastRolledMoveCount = state.MoveCount;
+            float multiplier = IsObjectiveMet(ref state) ? _reductionRate : 1f;
+            int roll = _rng.Next(0, PrdScale);
+            _selectedColumn = _prd.Roll(roll, PrdScale, multiplier)
+                ? _rng.Next(0, state.Width)
+                : -1;
+        }
+
+        return spawnX == _selectedColumn;
+    }
+
+    /// <inheritdoc />
+    public ElementType Generate(ref GameState state, int spawnX, in SpawnContext context)
+    {
+        _counter.OnSpawned();
+        return _elementType;
+    }
+
+    /// <summary>
+    /// Creates an ObjectiveDropCondition from a level objective.
+    /// Returns null if the objective doesn't require top-spawning.
+    /// </summary>
+    public static ObjectiveDropCondition? FromObjective(
+        LevelObjective objective,
+        int objectiveIndex,
+        int moveLimit,
+        IRandom rng)
+    {
+        if (objective.TargetLayer != ObjectiveTargetLayer.Tile)
+            return null;
+
+        var elementType = (ElementType)objective.ElementType;
+        if (!NeedsTopSpawning(elementType))
+            return null;
+
+        // Derive base probability: need count items in moveLimit moves
+        // Add 30% buffer for variance
+        float baseProbability = Math.Min(0.5f, (objective.TargetCount * 1.3f) / Math.Max(1, moveLimit));
+
+        var relyOn = GetDependency(elementType);
+
+        var counter = new SpawnCounter
+        {
+            MaxPerRound = 1,
+            MaxTotal = objective.TargetCount + 2,
+            MaxOnBoard = 3
+        };
+
+        return new ObjectiveDropCondition(
+            elementType, baseProbability, rng, objectiveIndex, counter,
+            relyOn, reductionRate: 0.1f);
+    }
+
+    /// <summary>
+    /// Determines whether this collectible type needs to be spawned from the top.
+    /// Elements like Pearl/Plate/Envelope are generated by obstacle death effects, not spawning.
+    /// </summary>
+    private static bool NeedsTopSpawning(ElementType type)
+    {
+        return type == ElementType.Bird;
+    }
+
+    /// <summary>
+    /// Returns the CellKind dependency for a collectible type.
+    /// Null means no dependency.
+    /// </summary>
+    private static CellKind? GetDependency(ElementType type)
+    {
+        return type switch
+        {
+            ElementType.Bird => CellKind.Sink,
+            _ => null
+        };
+    }
+
+    private bool IsObjectiveMet(ref GameState state)
+    {
+        if (_objectiveIndex < 0 || _objectiveIndex >= state.ObjectiveProgress.Length)
+            return false;
+        ref var progress = ref state.ObjectiveProgress[_objectiveIndex];
+        return progress.IsActive && progress.IsCompleted;
+    }
+
+    private static bool HasCellType(ref GameState state, CellKind cellKind)
+    {
+        for (int i = 0; i < state.Cells.Length; i++)
+        {
+            if (state.Cells[i] == cellKind)
+                return true;
+        }
+        return false;
+    }
+}

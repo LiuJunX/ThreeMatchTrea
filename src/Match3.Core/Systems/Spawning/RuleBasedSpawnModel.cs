@@ -48,14 +48,11 @@ public class RuleBasedSpawnModel : ISpawnModel
         var result = strategy switch
         {
             SpawnStrategy.Help => SpawnHelpful(ref state, spawnX, colorCount),
-            SpawnStrategy.Neutral => SpawnNeutral(ref state, spawnX, colorCount),
-            SpawnStrategy.Challenge => SpawnChallenging(ref state, spawnX, colorCount),
-            SpawnStrategy.Balance => SpawnBalanced(ref state, spawnX, colorCount),
-            _ => SpawnNeutral(ref state, spawnX, colorCount)
+            _ => SpawnBalanced(ref state, spawnX, colorCount)
         };
 
         // Anti-streak: avoid repeating the column's top color
-        if (colorCount > 1 && result == GetColumnTopColor(ref state, spawnX))
+        if (colorCount > 1 && result == BoardAnalyzer.GetColumnTopColor(ref state, spawnX))
         {
             var rng = _rng ?? state.Random;
             int idx = BoardAnalyzer.GetColorIndex(result);
@@ -76,15 +73,10 @@ public class RuleBasedSpawnModel : ISpawnModel
         if (context.RemainingMoves <= 3 && context.GoalProgress < 0.9f)
             return SpawnStrategy.Help;
 
-        // Player doing well, add challenge
-        if (context.GoalProgress > 0.7f && context.RemainingMoves > 5)
-            return SpawnStrategy.Challenge;
-
-        // Use target difficulty to determine strategy
+        // "Only help, never harm" — no Challenge strategy
+        // Use target difficulty only for positive intervention
         if (context.TargetDifficulty < 0.3f)
             return SpawnStrategy.Help;
-        if (context.TargetDifficulty > 0.7f)
-            return SpawnStrategy.Challenge;
 
         // Keep board balanced for neutral difficulty
         return SpawnStrategy.Balance;
@@ -135,48 +127,6 @@ public class RuleBasedSpawnModel : ISpawnModel
     }
 
     /// <summary>
-    /// Spawn a tile that avoids immediate matches.
-    /// </summary>
-    private ElementType SpawnChallenging(ref GameState state, int spawnX, int colorCount)
-    {
-        Span<bool> wouldNotMatch = stackalloc bool[6];
-        BoardAnalyzer.FindNonMatchingColors(ref state, spawnX, wouldNotMatch);
-
-        // Prefer spawning rarer colors that don't match (adds challenge without feedback loop)
-        var rareColor = BoardAnalyzer.FindRarestColor(ref state, colorCount);
-        int rareIndex = BoardAnalyzer.GetColorIndex(rareColor);
-
-        if (rareIndex >= 0 && rareIndex < colorCount && wouldNotMatch[rareIndex])
-            return rareColor;
-
-        // Collect all non-matching colors
-        Span<int> nonMatchingIndices = stackalloc int[6];
-        int nonMatchCount = 0;
-        for (int i = 0; i < colorCount; i++)
-        {
-            if (wouldNotMatch[i])
-                nonMatchingIndices[nonMatchCount++] = i;
-        }
-
-        if (nonMatchCount > 0)
-        {
-            var rng = _rng ?? state.Random;
-            int selected = nonMatchingIndices[rng.Next(0, nonMatchCount)];
-            return Colors[selected];
-        }
-
-        return SpawnRandom(ref state, colorCount);
-    }
-
-    /// <summary>
-    /// Spawn a tile with balanced probability (no match avoidance).
-    /// </summary>
-    private ElementType SpawnNeutral(ref GameState state, int spawnX, int colorCount)
-    {
-        return SpawnRandom(ref state, colorCount);
-    }
-
-    /// <summary>
     /// Spawn a tile that balances color distribution.
     /// </summary>
     private ElementType SpawnBalanced(ref GameState state, int spawnX, int colorCount)
@@ -210,20 +160,6 @@ public class RuleBasedSpawnModel : ISpawnModel
         return Colors[0];
     }
 
-    /// <summary>
-    /// Returns the color of the first non-empty tile in the column (top to bottom).
-    /// </summary>
-    private static ElementType GetColumnTopColor(ref GameState state, int x)
-    {
-        for (int y = 0; y < state.Height; y++)
-        {
-            var type = state.GetType(x, y);
-            if (type != ElementType.None)
-                return type;
-        }
-        return ElementType.None;
-    }
-
     private static bool IsDominant(ref GameState state, int colorCount)
     {
         Span<int> counts = stackalloc int[6];
@@ -255,8 +191,6 @@ public class RuleBasedSpawnModel : ISpawnModel
     private enum SpawnStrategy
     {
         Help,       // Create matches to help player
-        Neutral,    // Random, no preference
-        Challenge,  // Avoid matches, increase difficulty
         Balance     // Balance color distribution
     }
 }

@@ -25,8 +25,8 @@ public class RealtimeRefillSystem : IRefillSystem
         {
             TargetDifficulty = state.TargetDifficulty,
             RemainingMoves = Math.Max(0, state.MoveLimit - state.MoveCount),
-            GoalProgress = 0f,      // TODO: Integrate with goal system
-            FailedAttempts = 0,     // TODO: Track from session
+            GoalProgress = CalculateGoalProgress(ref state),
+            FailedAttempts = 0,     // Phase 2 TODO: track from session. Mercy is inactive until this is wired.
             InFlowState = false     // Reserved for Phase 2
         };
 
@@ -57,5 +57,21 @@ public class RealtimeRefillSystem : IRefillSystem
                 state.SetTile(x, spawnY, tile);
             }
         }
+    }
+
+    /// <summary>
+    /// Calculates overall goal progress (0-1) from objective progress.
+    /// </summary>
+    private static float CalculateGoalProgress(ref GameState state)
+    {
+        int totalTarget = 0;
+        int totalCurrent = 0;
+        for (int i = 0; i < state.ObjectiveProgress.Length; i++)
+        {
+            if (!state.ObjectiveProgress[i].IsActive) continue;
+            totalTarget += state.ObjectiveProgress[i].TargetCount;
+            totalCurrent += state.ObjectiveProgress[i].CurrentCount;
+        }
+        return totalTarget > 0 ? (float)totalCurrent / totalTarget : 0f;
     }
 }

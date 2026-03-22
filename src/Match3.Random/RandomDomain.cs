@@ -7,5 +7,6 @@ public enum RandomDomain
     BombCreate = 2,
     BombExplode = 3,
     PowerUp = 4,
-    Physics = 5
+    Physics = 5,
+    Drop = 6
 }

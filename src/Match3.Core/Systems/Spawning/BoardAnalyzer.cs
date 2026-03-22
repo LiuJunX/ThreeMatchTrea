@@ -262,4 +262,32 @@ public static class BoardAnalyzer
 
         return GetColorType(maxIndex);
     }
+
+    /// <summary>
+    /// Counts how many tiles of the given type are currently on the board.
+    /// </summary>
+    public static int CountElementOnBoard(ref GameState state, ElementType type)
+    {
+        int count = 0;
+        for (int i = 0; i < state.Grid.Length; i++)
+        {
+            if (state.Grid[i].Type == type)
+                count++;
+        }
+        return count;
+    }
+
+    /// <summary>
+    /// Returns the color of the topmost non-empty tile in the column.
+    /// </summary>
+    public static ElementType GetColumnTopColor(ref GameState state, int x)
+    {
+        for (int y = 0; y < state.Height; y++)
+        {
+            var type = state.GetType(x, y);
+            if (type != ElementType.None)
+                return type;
+        }
+        return ElementType.None;
+    }
 }

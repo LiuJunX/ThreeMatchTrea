@@ -8,6 +8,10 @@
     <RootNamespace>Match3.Random</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Match3.Random.Tests" />
+  </ItemGroup>
+
   <!-- 自动同步 DLL 到 Unity -->
   <Target Name="CopyToUnity" AfterTargets="Build" Condition="'$(Configuration)'=='Release'">
     <PropertyGroup>
