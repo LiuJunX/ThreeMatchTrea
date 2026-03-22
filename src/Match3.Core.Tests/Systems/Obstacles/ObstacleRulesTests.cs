@@ -3,6 +3,7 @@ using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Obstacles;
+using Match3.Core.Systems.Projectiles.Targeting;
 using Xunit;
 
 namespace Match3.Core.Tests.Systems.Obstacles;
@@ -53,15 +54,24 @@ public class ObstacleRulesTests
         Assert.True(ObstacleRules.CanHit(in obs, new ElimContext(source)));
     }
 
+    [Fact]
+    public void CanHit_ColorBox_MatchBlocked()
+    {
+        var obs = new Obstacle(ObstacleType.ColorBox, 3, (byte)ElementType.Item1);
+        Assert.False(ObstacleRules.CanHit(in obs, new ElimContext(ElimSource.Match)));
+    }
+
     [Theory]
-    [InlineData(ElimSource.Match)]
     [InlineData(ElimSource.Bomb)]
     [InlineData(ElimSource.Projectile)]
+    [InlineData(ElimSource.ChainReaction)]
     [InlineData(ElimSource.ColorBomb)]
-    public void CanHit_ColorBox_AlwaysFalse(ElimSource source)
+    [InlineData(ElimSource.SideItem)]
+    [InlineData(ElimSource.ConsumeBomb)]
+    public void CanHit_ColorBox_PowerUpSources(ElimSource source)
     {
-        var obs = new Obstacle(ObstacleType.ColorBox, 1, (byte)ElementType.Item1);
-        Assert.False(ObstacleRules.CanHit(in obs, new ElimContext(source)));
+        var obs = new Obstacle(ObstacleType.ColorBox, 3, (byte)ElementType.Item1);
+        Assert.True(ObstacleRules.CanHit(in obs, new ElimContext(source)));
     }
 
     [Theory]
@@ -151,6 +161,26 @@ public class ObstacleRulesTests
     {
         var obs = new Obstacle(ObstacleType.Curtain, 1, (byte)ElementType.Item1);
         Assert.False(ObstacleRules.CanReactAdjacent(in obs, triggerType));
+    }
+
+    #endregion
+
+    #region GetDefaultStage
+
+    [Fact]
+    public void GetDefaultStage_ColorBox_Is3()
+    {
+        Assert.Equal(3, ObstacleRules.GetDefaultStage(ObstacleType.ColorBox));
+    }
+
+    #endregion
+
+    #region UfoTargetConfig — ColorBox
+
+    [Fact]
+    public void UfoCanTarget_ColorBox()
+    {
+        Assert.True(UfoTargetConfig.CanUfoHitObstacle(ObstacleType.ColorBox));
     }
 
     #endregion

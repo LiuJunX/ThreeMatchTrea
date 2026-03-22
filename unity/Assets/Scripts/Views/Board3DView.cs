@@ -508,7 +508,7 @@ namespace Match3.Unity.Views
                 if (!_activeObstacles.TryGetValue(pos, out var obstacleView))
                 {
                     obstacleView = _obstaclePool.Rent();
-                    obstacleView.Setup(pos, visual.Type, visual.CurrentStage);
+                    obstacleView.Setup(pos, visual.Type, visual.CurrentStage, visual.State);
                     _activeObstacles[pos] = obstacleView;
                 }
 

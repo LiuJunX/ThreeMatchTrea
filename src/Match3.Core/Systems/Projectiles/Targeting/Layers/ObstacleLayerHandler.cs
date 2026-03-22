@@ -4,8 +4,8 @@ using Match3.Core.Models.Grid;
 namespace Match3.Core.Systems.Projectiles.Targeting.Layers;
 
 /// <summary>
-/// Evaluates the Obstacle layer (Box, Bush, Safe, Cupboard, etc.).
-/// Obstacles that can't be hit by UFO (ColorBox, MagicHat, Curtain, Mailbox)
+/// Evaluates the Obstacle layer (Box, Bush, Safe, Cupboard, ColorBox, etc.).
+/// Obstacles that can't be hit by UFO (MagicHat, Curtain, Mailbox)
 /// return a sentinel value to mark the cell as untargetable.
 /// </summary>
 public sealed class ObstacleLayerHandler : ILayerHandler
@@ -29,9 +29,11 @@ public sealed class ObstacleLayerHandler : ILayerHandler
 
         ushort value = config.ObstacleBaseValue;
 
-        // Safe gets extra value — UFO is one of few ways to damage it
+        // Power-up-only obstacles get extra value — UFO is one of few ways to damage them
         if (obstacle.Type == ObstacleType.Safe)
             value += config.SafeExtraValue;
+        else if (obstacle.Type == ObstacleType.ColorBox)
+            value += config.ColorBoxExtraValue;
 
         return new HitLayer
         {

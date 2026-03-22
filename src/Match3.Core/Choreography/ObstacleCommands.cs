@@ -17,6 +17,9 @@ public sealed record SpawnObstacleCommand : RenderCommand
 
     /// <summary>Initial stage (HP).</summary>
     public byte Stage { get; init; }
+
+    /// <summary>Obstacle-specific state (e.g., ColorBox: color variant as ElementType).</summary>
+    public byte State { get; init; }
 }
 
 /// <summary>

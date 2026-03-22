@@ -89,17 +89,49 @@ public class ObstacleSystemTests
     }
 
     [Fact]
-    public void TryHit_ColorBox_DirectHit_Blocked()
+    public void TryHit_ColorBox_Match_Blocked()
     {
         var state = CreateState();
-        state.SetObstacle(2, 2, new Obstacle(ObstacleType.ColorBox, 1, (byte)ElementType.Item1));
+        state.SetObstacle(2, 2, new Obstacle(ObstacleType.ColorBox, 3, (byte)ElementType.Item1));
+        var system = new ObstacleSystem();
+
+        var result = system.TryHit(ref state, new Position(2, 2),
+            new ElimContext(ElimSource.Match), 0, 0f, NullEventCollector.Instance);
+
+        Assert.Equal(ObstacleHitResult.Blocked, result);
+        Assert.Equal(3, state.GetObstacle(2, 2).Stage);
+    }
+
+    [Fact]
+    public void TryHit_ColorBox_Bomb_Damaged()
+    {
+        var state = CreateState();
+        state.SetObstacle(2, 2, new Obstacle(ObstacleType.ColorBox, 3, (byte)ElementType.Item1));
         var system = new ObstacleSystem();
 
         var result = system.TryHit(ref state, new Position(2, 2),
             new ElimContext(ElimSource.Bomb), 0, 0f, NullEventCollector.Instance);
 
-        Assert.Equal(ObstacleHitResult.Blocked, result);
-        Assert.Equal(1, state.GetObstacle(2, 2).Stage); // undamaged
+        Assert.Equal(ObstacleHitResult.Damaged, result);
+        Assert.Equal(2, state.GetObstacle(2, 2).Stage);
+    }
+
+    [Fact]
+    public void TryHit_ColorBox_ThreeHits_Destroyed()
+    {
+        var state = CreateState();
+        state.SetObstacle(2, 2, new Obstacle(ObstacleType.ColorBox, 3, (byte)ElementType.Item1));
+        var system = new ObstacleSystem();
+
+        system.TryHit(ref state, new Position(2, 2),
+            new ElimContext(ElimSource.Bomb), 0, 0f, NullEventCollector.Instance);
+        system.TryHit(ref state, new Position(2, 2),
+            new ElimContext(ElimSource.Projectile), 0, 0f, NullEventCollector.Instance);
+        var result = system.TryHit(ref state, new Position(2, 2),
+            new ElimContext(ElimSource.Bomb), 0, 0f, NullEventCollector.Instance);
+
+        Assert.Equal(ObstacleHitResult.Destroyed, result);
+        Assert.False(state.HasObstacle(2, 2));
     }
 
     [Fact]
@@ -168,7 +200,7 @@ public class ObstacleSystemTests
     public void NotifyBatch_ColorBox_MatchingColor_Damaged()
     {
         var state = CreateState();
-        state.SetObstacle(2, 2, new Obstacle(ObstacleType.ColorBox, 1, (byte)ElementType.Item1));
+        state.SetObstacle(2, 2, new Obstacle(ObstacleType.ColorBox, 3, (byte)ElementType.Item1));
         var system = new ObstacleSystem();
 
         Span<EliminatedTileInfo> eliminated = stackalloc EliminatedTileInfo[]
@@ -178,14 +210,14 @@ public class ObstacleSystemTests
 
         system.NotifyBatchElimination(ref state, eliminated, 0, 0f, NullEventCollector.Instance);
 
-        Assert.False(state.HasObstacle(2, 2)); // 1 HP, destroyed
+        Assert.Equal(2, state.GetObstacle(2, 2).Stage); // 3→2
     }
 
     [Fact]
     public void NotifyBatch_ColorBox_WrongColor_Unaffected()
     {
         var state = CreateState();
-        state.SetObstacle(2, 2, new Obstacle(ObstacleType.ColorBox, 1, (byte)ElementType.Item1));
+        state.SetObstacle(2, 2, new Obstacle(ObstacleType.ColorBox, 3, (byte)ElementType.Item1));
         var system = new ObstacleSystem();
 
         Span<EliminatedTileInfo> eliminated = stackalloc EliminatedTileInfo[]
@@ -195,14 +227,14 @@ public class ObstacleSystemTests
 
         system.NotifyBatchElimination(ref state, eliminated, 0, 0f, NullEventCollector.Instance);
 
-        Assert.Equal(1, state.GetObstacle(2, 2).Stage); // undamaged
+        Assert.Equal(3, state.GetObstacle(2, 2).Stage); // undamaged
     }
 
     [Fact]
     public void NotifyBatch_ColorBox_ColorBombWildcard_Damaged()
     {
         var state = CreateState();
-        state.SetObstacle(2, 2, new Obstacle(ObstacleType.ColorBox, 1, (byte)ElementType.Item3));
+        state.SetObstacle(2, 2, new Obstacle(ObstacleType.ColorBox, 3, (byte)ElementType.Item3));
         var system = new ObstacleSystem();
 
         // ColorBomb tile at (1,2) — acts as wildcard
@@ -213,7 +245,45 @@ public class ObstacleSystemTests
 
         system.NotifyBatchElimination(ref state, eliminated, 0, 0f, NullEventCollector.Instance);
 
-        Assert.False(state.HasObstacle(2, 2)); // destroyed
+        Assert.Equal(2, state.GetObstacle(2, 2).Stage); // 3→2
+    }
+
+    [Fact]
+    public void NotifyBatch_ColorBox_ThreeColorMatches_Destroyed()
+    {
+        var state = CreateState();
+        state.SetObstacle(2, 2, new Obstacle(ObstacleType.ColorBox, 3, (byte)ElementType.Item1));
+        var system = new ObstacleSystem();
+
+        // Three separate batches of matching-color adjacent eliminations
+        for (int i = 0; i < 3; i++)
+        {
+            Span<EliminatedTileInfo> eliminated = stackalloc EliminatedTileInfo[]
+            {
+                new(new Position(1, 2), new Tile(1, ElementType.Item1, 1, 2), ElimSource.Match),
+            };
+            system.NotifyBatchElimination(ref state, eliminated, 0, 0f, NullEventCollector.Instance);
+        }
+
+        Assert.False(state.HasObstacle(2, 2)); // destroyed after 3 hits
+    }
+
+    [Fact]
+    public void NotifyBatch_ColorBox_BombSource_NoAdjacentDamage()
+    {
+        var state = CreateState();
+        // Same-color tile eliminated by Bomb next to ColorBox — Bomb doesn't trigger adjacency
+        state.SetObstacle(2, 2, new Obstacle(ObstacleType.ColorBox, 3, (byte)ElementType.Item1));
+        var system = new ObstacleSystem();
+
+        Span<EliminatedTileInfo> eliminated = stackalloc EliminatedTileInfo[]
+        {
+            new(new Position(1, 2), new Tile(1, ElementType.Item1, 1, 2), ElimSource.Bomb),
+        };
+
+        system.NotifyBatchElimination(ref state, eliminated, 0, 0f, NullEventCollector.Instance);
+
+        Assert.Equal(3, state.GetObstacle(2, 2).Stage); // undamaged — Bomb doesn't trigger adjacency
     }
 
     [Fact]

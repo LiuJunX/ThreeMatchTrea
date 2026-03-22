@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Match3.Core.Events;
 using Match3.Core.Events.Enums;
@@ -5,6 +6,7 @@ using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Layers;
+using Match3.Core.Systems.Obstacles;
 using Match3.Core.Utility.Pools;
 
 namespace Match3.Core.Systems.PowerUps.ColorBomb;
@@ -17,18 +19,26 @@ internal sealed class ColorBombBatchProcessor
 {
     private readonly ICellEliminator _cellEliminator;
     private readonly LockScheduler _lockScheduler;
+    private readonly IObstacleSystem? _obstacleSystem;
+    private readonly ICoverSystem? _coverSystem;
 
     /// <summary>
     /// Creates a new <see cref="ColorBombBatchProcessor"/>.
     /// </summary>
     /// <param name="cellEliminator">Unified cell elimination pipeline.</param>
     /// <param name="lockScheduler">Lock scheduler for cell lock lifecycle management.</param>
+    /// <param name="obstacleSystem">Obstacle system for adjacent reaction notifications.</param>
+    /// <param name="coverSystem">Cover system for adjacent reaction notifications.</param>
     public ColorBombBatchProcessor(
         ICellEliminator cellEliminator,
-        LockScheduler lockScheduler)
+        LockScheduler lockScheduler,
+        IObstacleSystem? obstacleSystem = null,
+        ICoverSystem? coverSystem = null)
     {
         _cellEliminator = cellEliminator;
         _lockScheduler = lockScheduler;
+        _obstacleSystem = obstacleSystem;
+        _coverSystem = coverSystem;
     }
 
     /// <summary>
@@ -90,9 +100,34 @@ internal sealed class ColorBombBatchProcessor
             }
 
             // Second pass: destroy tiles via CellEliminator (event, objective, clear, ground)
-            foreach (var pos in destroyedPositions)
+            var eliminatedList = Pools.ObtainList<EliminatedTileInfo>(destroyedPositions.Count);
+            try
             {
-                _cellEliminator.Eliminate(ref state, pos, ElimSource.ColorBomb, tick, simTime, events);
+                foreach (var pos in destroyedPositions)
+                {
+                    var result = _cellEliminator.Eliminate(ref state, pos, ElimSource.ColorBomb, tick, simTime, events);
+                    if (result.Outcome == EliminateOutcome.Eliminated)
+                    {
+                        eliminatedList.Add(new EliminatedTileInfo(pos, result.Tile, ElimSource.ColorBomb));
+                    }
+                }
+
+                // Notify adjacent obstacles and covers (same pattern as StandardMatchProcessor)
+                if (eliminatedList.Count > 0)
+                {
+                    var eliminatedSpan = new ReadOnlySpan<EliminatedTileInfo>(eliminatedList.ToArray());
+
+                    _obstacleSystem?.NotifyBatchElimination(
+                        ref state, eliminatedSpan, tick, simTime, events);
+                    _obstacleSystem?.NotifyGlobalColorElimination(
+                        ref state, session.TargetColor, tick, simTime, events);
+                    _coverSystem?.NotifyBatchElimination(
+                        ref state, eliminatedSpan, tick, simTime, events);
+                }
+            }
+            finally
+            {
+                Pools.Release(eliminatedList);
             }
 
             // Release all remaining session locks

@@ -341,7 +341,7 @@ public sealed class Player
                 break;
 
             case SpawnObstacleCommand spawnObs:
-                _visualState.AddObstacle(spawnObs.GridPos, spawnObs.ObstacleType, spawnObs.Stage);
+                _visualState.AddObstacle(spawnObs.GridPos, spawnObs.ObstacleType, spawnObs.Stage, spawnObs.State);
                 break;
 
             case DamageObstacleCommand damageObs:

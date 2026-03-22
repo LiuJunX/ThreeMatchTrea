@@ -1209,6 +1209,41 @@ public class ColorBombSessionManagerTests
 
     #endregion
 
+    #region ColorBomb + Obstacle adjacency
+
+    [Fact]
+    public void BatchDestroy_NotifiesAdjacentColorBox()
+    {
+        // Setup: Item1 tiles with a Red ColorBox(Item1) adjacent
+        var obstacleSystem = new Match3.Core.Systems.Obstacles.ObstacleSystem();
+        var lockScheduler = new LockScheduler();
+        var coverSystem = new CoverSystem();
+        var groundSystem = new GroundSystem();
+        var cellEliminator = new CellEliminator(coverSystem, groundSystem, obstacleSystem: obstacleSystem);
+        var manager = new ColorBombSessionManager(_config, cellEliminator, lockScheduler,
+            obstacleSystem, coverSystem);
+
+        var state = CreateState(5, 5);
+        // Fill row 2 with Item1 (ColorBomb targets)
+        int id = 1;
+        for (int x = 0; x < 5; x++)
+            state.SetTile(x, 2, new Tile(id++, ElementType.Item1, x, 2));
+        // Place Red ColorBox at (2,1) — adjacent to (2,2) which has Item1
+        state.SetObstacle(2, 1, new Obstacle(ObstacleType.ColorBox, 3, (byte)ElementType.Item1));
+
+        // Activate ColorBomb targeting Item1
+        manager.CreateSession(ref state, new Position(0, 0), 99,
+            ElementType.Item1, 0, 0f, _events);
+
+        RunUntilDone(ref state, manager);
+
+        // ColorBox should be damaged via adjacent notification (Item1 eliminated next to it)
+        Assert.True(state.HasObstacle(2, 1));
+        Assert.Equal(2, state.GetObstacle(2, 1).Stage); // 3 → 2
+    }
+
+    #endregion
+
     #region Helpers
 
     private ColorBombSessionManager CreateManager()

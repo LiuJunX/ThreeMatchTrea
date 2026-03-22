@@ -214,4 +214,160 @@ public class PlayerObstacleTests
         _player.Tick(0.3f);
         Assert.False(_player.HasActiveAnimations);
     }
+
+    [Fact]
+    public void Bush_FiveStageProgression_AllStagesVisible()
+    {
+        // Build command sequence: spawn at stage 5, damage 4 times (5→4→3→2→1), then destroy
+        float t = 0f;
+        _player.Load(new RenderCommand[]
+        {
+            new SpawnObstacleCommand
+            {
+                GridPos = Pos11, ObstacleType = ObstacleType.Bush, Stage = 5,
+                StartTime = t, Duration = 0f
+            },
+            new DamageObstacleCommand
+            {
+                GridPos = Pos11, ObstacleType = ObstacleType.Bush, NewStage = 4,
+                StartTime = t + 0.1f, Duration = 0.35f
+            },
+            new DamageObstacleCommand
+            {
+                GridPos = Pos11, ObstacleType = ObstacleType.Bush, NewStage = 3,
+                StartTime = t + 0.5f, Duration = 0.35f
+            },
+            new DamageObstacleCommand
+            {
+                GridPos = Pos11, ObstacleType = ObstacleType.Bush, NewStage = 2,
+                StartTime = t + 0.9f, Duration = 0.35f
+            },
+            new DamageObstacleCommand
+            {
+                GridPos = Pos11, ObstacleType = ObstacleType.Bush, NewStage = 1,
+                StartTime = t + 1.3f, Duration = 0.35f
+            },
+            new DestroyObstacleCommand
+            {
+                GridPos = Pos11, ObstacleType = ObstacleType.Bush,
+                StartTime = t + 1.7f, Duration = 0.4f
+            },
+            new RemoveObstacleCommand
+            {
+                GridPos = Pos11,
+                StartTime = t + 2.1f, Duration = 0f
+            }
+        });
+
+        // Stage 5 after spawn
+        _player.Tick(0.05f);
+        var obs = _visualState.GetObstacle(Pos11)!;
+        Assert.Equal(5, obs.CurrentStage);
+
+        // Stage 4 during first damage (before second starts at 0.5)
+        _player.Tick(0.2f); // total 0.25
+        obs = _visualState.GetObstacle(Pos11)!;
+        Assert.Equal(4, obs.CurrentStage);
+        Assert.True(obs.DamageProgress > 0f && obs.DamageProgress < 1f);
+
+        // Stage 3 during second damage (before third starts at 0.9)
+        _player.Tick(0.4f); // total 0.65
+        obs = _visualState.GetObstacle(Pos11)!;
+        Assert.Equal(3, obs.CurrentStage);
+
+        // Stage 2 during third damage (before fourth starts at 1.3)
+        _player.Tick(0.4f); // total 1.05
+        obs = _visualState.GetObstacle(Pos11)!;
+        Assert.Equal(2, obs.CurrentStage);
+
+        // Stage 1 during fourth damage (before destroy starts at 1.7)
+        _player.Tick(0.4f); // total 1.45
+        obs = _visualState.GetObstacle(Pos11)!;
+        Assert.Equal(1, obs.CurrentStage);
+
+        // Destroying
+        _player.Tick(0.4f); // total 1.85
+        obs = _visualState.GetObstacle(Pos11)!;
+        Assert.True(obs.IsDestroying);
+        Assert.True(obs.DeathProgress > 0f);
+
+        // Removed
+        _player.Tick(0.4f); // total 2.25
+        Assert.Null(_visualState.GetObstacle(Pos11));
+    }
+
+    [Fact]
+    public void Bush_DestroyThenGrassSpawn_GrassAppearsInVisualState()
+    {
+        var grassPos = new Position(1, 2);
+
+        _player.Load(new RenderCommand[]
+        {
+            new SpawnObstacleCommand
+            {
+                GridPos = Pos11, ObstacleType = ObstacleType.Bush, Stage = 1,
+                StartTime = 0f, Duration = 0f
+            },
+            new DestroyObstacleCommand
+            {
+                GridPos = Pos11, ObstacleType = ObstacleType.Bush,
+                StartTime = 0.1f, Duration = 0.4f
+            },
+            new SpawnGroundCommand
+            {
+                GridPos = grassPos, GroundType = GroundType.Grass, Health = 1,
+                StartTime = 0.1f, Duration = 0.3f
+            },
+            new RemoveObstacleCommand
+            {
+                GridPos = Pos11,
+                StartTime = 0.5f, Duration = 0f
+            }
+        });
+
+        // Before commands fire
+        _player.Tick(0.05f);
+        Assert.Null(_visualState.GetGround(grassPos));
+
+        // After destroy + grass spawn starts
+        _player.Tick(0.1f); // total 0.15
+        var grass = _visualState.GetGround(grassPos);
+        Assert.NotNull(grass);
+        Assert.Equal(GroundType.Grass, grass!.Type);
+
+        // Bush still destroying (0.4s duration)
+        var obs = _visualState.GetObstacle(Pos11);
+        Assert.NotNull(obs);
+        Assert.True(obs!.IsDestroying);
+
+        // After Bush removed, Grass remains
+        _player.Tick(0.4f); // total 0.55
+        Assert.Null(_visualState.GetObstacle(Pos11));
+        Assert.NotNull(_visualState.GetGround(grassPos));
+    }
+
+    [Fact]
+    public void SpawnObstacle_ColorBox_StatePreserved()
+    {
+        _player.Load(new RenderCommand[]
+        {
+            new SpawnObstacleCommand
+            {
+                GridPos = Pos00,
+                ObstacleType = ObstacleType.ColorBox,
+                Stage = 3,
+                State = (byte)ElementType.Item3,
+                StartTime = 0f,
+                Duration = 0f
+            }
+        });
+
+        _player.Tick(0.01f);
+
+        var visual = _visualState.GetObstacle(Pos00);
+        Assert.NotNull(visual);
+        Assert.Equal(ObstacleType.ColorBox, visual!.Type);
+        Assert.Equal(3, visual.CurrentStage);
+        Assert.Equal((byte)ElementType.Item3, visual.State);
+    }
 }

@@ -16,6 +16,9 @@ public sealed class UfoTargetConfig
     /// <summary>Extra value for Safe (UFO is one of few ways to hit it).</summary>
     public ushort SafeExtraValue { get; init; } = 30;
 
+    /// <summary>Extra value for ColorBox (power-up only direct hit, like Safe).</summary>
+    public ushort ColorBoxExtraValue { get; init; } = 20;
+
     /// <summary>Base value for normal color tiles (Item1-Item6).</summary>
     public ushort TileColorBaseValue { get; init; } = 10;
 
@@ -49,7 +52,8 @@ public sealed class UfoTargetConfig
         ObstacleType.Bush     => true,
         ObstacleType.Safe     => true,
         ObstacleType.Cupboard => true,
-        _                     => false  // ColorBox, MagicHat, Curtain, Mailbox
+        ObstacleType.ColorBox => true,
+        _                     => false  // MagicHat, Curtain, Mailbox
     };
 
     /// <summary>

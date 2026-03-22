@@ -52,9 +52,15 @@ public class LevelConfig
     public ObstacleType[] Obstacles { get; set; }
 
     /// <summary>
-    /// Obstacle initial stage/HP values (optional, defaults to 1).
+    /// Obstacle initial stage/HP values (optional, defaults to type's default stage).
     /// </summary>
     public int[] ObstacleStages { get; set; }
+
+    /// <summary>
+    /// Obstacle state values (optional, defaults to 0).
+    /// Usage depends on type: ColorBox/Curtain = color variant (ElementType byte).
+    /// </summary>
+    public int[] ObstacleStates { get; set; }
 
     public int MoveLimit { get; set; } = 20;
 
@@ -111,6 +117,7 @@ public class LevelConfig
         CoverHealths = new int[size];
         Obstacles = new ObstacleType[size];
         ObstacleStages = new int[size];
+        ObstacleStates = new int[size];
 
         // Default cells to Slot
         Array.Fill(Cells, CellKind.Slot);
@@ -129,6 +136,7 @@ public class LevelConfig
         CoverHealths = new int[size];
         Obstacles = new ObstacleType[size];
         ObstacleStages = new int[size];
+        ObstacleStates = new int[size];
 
         Array.Fill(Cells, CellKind.Slot);
     }
@@ -149,6 +157,7 @@ public class LevelConfig
         if (CoverHealths != null) Array.Copy(CoverHealths, copy.CoverHealths, Math.Min(CoverHealths.Length, copy.CoverHealths.Length));
         if (Obstacles != null) Array.Copy(Obstacles, copy.Obstacles, Math.Min(Obstacles.Length, copy.Obstacles.Length));
         if (ObstacleStages != null) Array.Copy(ObstacleStages, copy.ObstacleStages, Math.Min(ObstacleStages.Length, copy.ObstacleStages.Length));
+        if (ObstacleStates != null) Array.Copy(ObstacleStates, copy.ObstacleStates, Math.Min(ObstacleStates.Length, copy.ObstacleStates.Length));
         for (int i = 0; i < Objectives.Length; i++)
             copy.Objectives[i] = Objectives[i];
         return copy;

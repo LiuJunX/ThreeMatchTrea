@@ -7,10 +7,11 @@ namespace Match3.Unity.Views.Obstacles
     public interface IObstaclePresenter
     {
         /// <summary>
-        /// Initialize visual appearance (mesh, materials) for the given stage.
+        /// Initialize visual appearance (mesh, materials) for the given stage and state.
         /// Called once when obstacle view is first set up.
+        /// <paramref name="state"/> carries obstacle-specific data (e.g., ColorBox color variant).
         /// </summary>
-        void Setup(ObstacleView view, byte stage);
+        void Setup(ObstacleView view, byte stage, byte state);
 
         /// <summary>
         /// Apply damage animation at the given progress (0→1).

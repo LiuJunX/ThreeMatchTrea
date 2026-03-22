@@ -26,14 +26,15 @@ public static class ObstacleRules
             ObstacleType.Box      => true,
             ObstacleType.Bush     => true,
             ObstacleType.Cupboard => true,
-            ObstacleType.Safe or ObstacleType.Owl or ObstacleType.Stone
+            // Power-up only: Match blocked, Power-up sources allowed.
+            // ColorBox additionally has CanReactAdjacent (color-matching path).
+            ObstacleType.Safe or ObstacleType.Owl or ObstacleType.Stone or ObstacleType.ColorBox
                               => ctx.Source is ElimSource.Bomb
                                            or ElimSource.Projectile
                                            or ElimSource.ChainReaction
                                            or ElimSource.ColorBomb
                                            or ElimSource.SideItem
                                            or ElimSource.ConsumeBomb,
-            ObstacleType.ColorBox => false,   // immune to direct hits; only adjacent color match
             ObstacleType.MagicHat => false,   // passive — reacts to adjacent hits
             ObstacleType.Curtain  => false,   // passive — reacts to global color elimination
             ObstacleType.Mailbox  => false,   // indestructible generator — reacts to adjacent/power-up
@@ -53,7 +54,7 @@ public static class ObstacleRules
         ObstacleType.Safe     => 5,
         ObstacleType.Owl      => 1,
         ObstacleType.Stone    => 3,
-        ObstacleType.ColorBox => 1,
+        ObstacleType.ColorBox => 3,
         ObstacleType.MagicHat => 1,
         ObstacleType.Curtain  => 1,
         ObstacleType.Mailbox  => 1,

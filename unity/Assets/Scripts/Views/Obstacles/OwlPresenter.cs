@@ -12,7 +12,7 @@ namespace Match3.Unity.Views.Obstacles
     {
         private static readonly Color OwlColor = new Color(0.65f, 0.65f, 0.60f);
 
-        public void Setup(ObstacleView view, byte stage)
+        public void Setup(ObstacleView view, byte stage, byte state)
         {
             var mesh = MeshFactory.GetObstacleMesh(ObstacleType.Owl);
             view.SetMesh(mesh);

@@ -21,7 +21,7 @@ namespace Match3.Unity.Views.Obstacles
             new Color(0.65f, 0.60f, 0.55f),          // stage 3 — intact light gray
         };
 
-        public void Setup(ObstacleView view, byte stage)
+        public void Setup(ObstacleView view, byte stage, byte state)
         {
             _currentStage = stage;
 

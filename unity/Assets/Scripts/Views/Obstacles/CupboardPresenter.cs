@@ -20,7 +20,7 @@ namespace Match3.Unity.Views.Obstacles
             new Color(0.65f, 0.40f, 0.25f),          // stage 2 — closed, lighter wood
         };
 
-        public void Setup(ObstacleView view, byte stage)
+        public void Setup(ObstacleView view, byte stage, byte state)
         {
             _currentStage = stage;
 
@@ -40,7 +40,8 @@ namespace Match3.Unity.Views.Obstacles
             float wobble = Mathf.Sin(progress * Mathf.PI * 3f) * 0.10f * (1f - progress);
             view.SetLocalScaleMultiplier(1f + wobble);
 
-            if (_currentStage != newStage && progress >= 1f)
+            // Switch color on first frame of new stage
+            if (_currentStage != newStage)
             {
                 _currentStage = newStage;
                 ApplyStageColor(view, newStage);

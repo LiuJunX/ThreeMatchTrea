@@ -5,6 +5,7 @@ using Match3.Core.Models.Grid;
 using Match3.Core.Simulation;
 using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Layers;
+using Match3.Core.Systems.Obstacles;
 
 namespace Match3.Core.Systems.PowerUps.ColorBomb;
 
@@ -40,18 +41,23 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
     /// </param>
     public ColorBombSessionManager(ColorBombConfig? config = null,
         ICellEliminator? cellEliminator = null,
-        LockScheduler? lockScheduler = null)
+        LockScheduler? lockScheduler = null,
+        IObstacleSystem? obstacleSystem = null,
+        ICoverSystem? coverSystem = null)
     {
         var cfg = config ?? new ColorBombConfig();
         _lockScheduler = lockScheduler ?? NullLockScheduler.Instance;
         _beamController = new ColorBombBeamController(cfg, _lockScheduler);
         _batchProcessor = new ColorBombBatchProcessor(
             cellEliminator ?? new CellEliminator(new CoverSystem(), new GroundSystem()),
-            _lockScheduler);
+            _lockScheduler,
+            obstacleSystem,
+            coverSystem);
     }
 
     public ColorBombSessionManager(SimulationContext context, ColorBombConfig? config = null)
-        : this(config, context.CellEliminator, context.LockScheduler)
+        : this(config, context.CellEliminator, context.LockScheduler,
+            context.ObstacleSystem, context.CoverSystem)
     {
     }
 
@@ -62,8 +68,12 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
     public bool IsColorReserved(ElementType color) => _reservedColors.Contains(color);
 
     /// <inheritdoc />
-    public ColorBombSessionSnapshot SaveState()
+    public ColorBombSessionSnapshot? SaveState()
     {
+        // Fast path: no allocation when idle (the common case)
+        if (_sessions.Count == 0 && _reservedColors.Count == 0)
+            return null;
+
         var snapshot = new ColorBombSessionSnapshot { NextSessionId = _nextSessionId };
         foreach (var session in _sessions)
             snapshot.Sessions.Add(session.Clone());
@@ -73,10 +83,17 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
     }
 
     /// <inheritdoc />
-    public void RestoreState(ColorBombSessionSnapshot snapshot)
+    public void RestoreState(ColorBombSessionSnapshot? snapshot)
     {
         _sessions.Clear();
         _reservedColors.Clear();
+
+        if (snapshot == null)
+        {
+            _nextSessionId = 0;
+            return;
+        }
+
         _nextSessionId = snapshot.NextSessionId;
         foreach (var session in snapshot.Sessions)
             _sessions.Add(session.Clone());
@@ -205,6 +222,14 @@ public sealed class ColorBombSessionManager : IColorBombSessionManager
             // Remove finished sessions
             if (session.IsFinished)
             {
+                // Safety net: release any remaining locks (should already be empty
+                // after BatchDestroy/BatchActivate, but guards against lock leaks)
+                if (session.LockTokens.Count > 0)
+                {
+                    foreach (var token in session.LockTokens)
+                        _lockScheduler.Release(ref state, token);
+                    session.LockTokens.Clear();
+                }
                 _sessions.RemoveAt(i);
             }
         }

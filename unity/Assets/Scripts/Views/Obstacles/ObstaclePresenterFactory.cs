@@ -18,6 +18,7 @@ namespace Match3.Unity.Views.Obstacles
                 ObstacleType.Cupboard => new CupboardPresenter(),
                 ObstacleType.Owl => new OwlPresenter(),
                 ObstacleType.Stone => new StonePresenter(),
+                ObstacleType.ColorBox => new ColorBoxPresenter(),
                 _ => new BoxPresenter(), // fallback: all types look like boxes until art is ready
             };
         }

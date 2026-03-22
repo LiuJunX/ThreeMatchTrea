@@ -108,6 +108,20 @@ public class CellEvaluatorTests
     }
 
     [Fact]
+    public void Evaluate_ColorBoxObstacle_IncludesExtraValue()
+    {
+        var state = new GameStateBuilder().WithSize(3, 3).WithEmptyTiles()
+            .WithCustomization(s => s.SetObstacle(1, 1, new Obstacle(ObstacleType.ColorBox, 3, (byte)ElementType.Item1)))
+            .Build();
+
+        var result = CellEvaluator.Evaluate(in state, 1, 1, Config, CapRule);
+
+        Assert.True(result.CanAttack);
+        Assert.Equal((ushort)(Config.ObstacleBaseValue + Config.ColorBoxExtraValue), result.Score.BaseValue);
+        Assert.Equal(3, result.MeaningfulHits);
+    }
+
+    [Fact]
     public void Evaluate_CurtainObstacle_ReturnsCannotAttack()
     {
         var state = new GameStateBuilder().WithSize(3, 3).WithEmptyTiles()

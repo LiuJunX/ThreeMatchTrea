@@ -288,6 +288,46 @@ public class BoardInitializerTests
 
     #endregion
 
+    #region Obstacle State Tests
+
+    [Fact]
+    public void Initialize_ColorBox_ReadsObstacleStates()
+    {
+        var initializer = CreateInitializer();
+        var state = new GameState(3, 3, 6, new SequentialRandom());
+        var levelConfig = new LevelConfig(3, 3);
+
+        // Place ColorBox at (1,1) with color = Item3 (Blue)
+        levelConfig.Obstacles[4] = ObstacleType.ColorBox; // index 4 = (1,1)
+        levelConfig.ObstacleStates[4] = (int)ElementType.Item3;
+
+        initializer.Initialize(ref state, levelConfig);
+
+        var obs = state.GetObstacle(1, 1);
+        Assert.Equal(ObstacleType.ColorBox, obs.Type);
+        Assert.Equal(3, obs.Stage); // default stage for ColorBox
+        Assert.Equal((byte)ElementType.Item3, obs.State);
+    }
+
+    [Fact]
+    public void Initialize_ColorBox_DefaultState_IsZero()
+    {
+        var initializer = CreateInitializer();
+        var state = new GameState(3, 3, 6, new SequentialRandom());
+        var levelConfig = new LevelConfig(3, 3);
+
+        // Place ColorBox without setting ObstacleStates
+        levelConfig.Obstacles[4] = ObstacleType.ColorBox;
+
+        initializer.Initialize(ref state, levelConfig);
+
+        var obs = state.GetObstacle(1, 1);
+        Assert.Equal(ObstacleType.ColorBox, obs.Type);
+        Assert.Equal(0, obs.State); // no state specified → default 0
+    }
+
+    #endregion
+
     #region Edge Cases
 
     [Fact]

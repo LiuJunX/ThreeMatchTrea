@@ -103,6 +103,7 @@ public sealed class VisualState : IVisualState
                         GridPosition = pos,
                         Type = obstacle.Type,
                         CurrentStage = obstacle.Stage,
+                        State = obstacle.State,
                     };
                 }
 
@@ -248,13 +249,14 @@ public sealed class VisualState : IVisualState
     /// <summary>
     /// Add a new obstacle visual.
     /// </summary>
-    public void AddObstacle(Position pos, ObstacleType type, byte stage)
+    public void AddObstacle(Position pos, ObstacleType type, byte stage, byte state = 0)
     {
         _obstacles[pos] = new ObstacleVisual
         {
             GridPosition = pos,
             Type = type,
             CurrentStage = stage,
+            State = state,
         };
     }
 
@@ -558,6 +560,9 @@ public sealed class ObstacleVisual
 
     /// <summary>Current stage (HP). Updated by Player on DamageObstacleCommand start.</summary>
     public byte CurrentStage { get; set; }
+
+    /// <summary>Obstacle-specific state (e.g., ColorBox: color variant as ElementType).</summary>
+    public byte State { get; init; }
 
     /// <summary>
     /// Damage animation progress (0→1). Driven by Player during DamageObstacleCommand.

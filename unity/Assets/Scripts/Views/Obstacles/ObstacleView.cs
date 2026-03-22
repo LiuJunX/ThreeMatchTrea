@@ -40,7 +40,7 @@ namespace Match3.Unity.Views.Obstacles
         /// <summary>
         /// Initialize this view for a specific obstacle.
         /// </summary>
-        public void Setup(Position gridPos, ObstacleType type, byte stage)
+        public void Setup(Position gridPos, ObstacleType type, byte stage, byte state = 0)
         {
             GridPosition = gridPos;
             _baseScale = 1f;
@@ -50,7 +50,7 @@ namespace Match3.Unity.Views.Obstacles
                 _meshRenderer.sharedMaterial = MeshFactory.GetFallbackMaterial();
 
             _presenter = ObstaclePresenterFactory.Create(type);
-            _presenter.Setup(this, stage);
+            _presenter.Setup(this, stage, state);
         }
 
         /// <summary>

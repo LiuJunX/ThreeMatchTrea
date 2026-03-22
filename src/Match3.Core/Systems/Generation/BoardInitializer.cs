@@ -64,7 +64,12 @@ public class BoardInitializer : IBoardInitializer
                             {
                                 stage = (byte)levelConfig.ObstacleStages[i];
                             }
-                            state.SetObstacle(x, y, new Obstacle { Type = obstacleType, Stage = stage });
+                            byte obstacleState = 0;
+                            if (levelConfig.ObstacleStates != null && i < levelConfig.ObstacleStates.Length)
+                            {
+                                obstacleState = (byte)levelConfig.ObstacleStates[i];
+                            }
+                            state.SetObstacle(x, y, new Obstacle(obstacleType, stage, obstacleState));
                             continue; // Obstacle occupies the cell — no tile here
                         }
                     }
