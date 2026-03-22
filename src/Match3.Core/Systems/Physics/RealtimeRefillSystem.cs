@@ -13,6 +13,13 @@ public class RealtimeRefillSystem : IRefillSystem
 {
     private readonly ISpawnModel _spawnModel;
 
+    /// <summary>
+    /// Consecutive failed attempts on this level (session-level, not per-game).
+    /// Set by the caller before each game. Drives Mercy spawn logic.
+    /// TODO: Replace with ISessionContext when session system is ready.
+    /// </summary>
+    public int FailedAttempts { get; set; }
+
     public RealtimeRefillSystem(ISpawnModel spawnModel)
     {
         _spawnModel = spawnModel;
@@ -26,8 +33,8 @@ public class RealtimeRefillSystem : IRefillSystem
             TargetDifficulty = state.TargetDifficulty,
             RemainingMoves = Math.Max(0, state.MoveLimit - state.MoveCount),
             GoalProgress = CalculateGoalProgress(ref state),
-            FailedAttempts = 0,     // Phase 2 TODO: track from session. Mercy is inactive until this is wired.
-            InFlowState = false     // Reserved for Phase 2
+            FailedAttempts = FailedAttempts,
+            InFlowState = false     // TODO: detect flow state from session
         };
 
         for (int x = 0; x < state.Width; x++)

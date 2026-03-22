@@ -175,6 +175,19 @@ public sealed class GameServiceFactory : IGameServiceFactory
         var seedManager = new SeedManager(configuration.RngSeed);
         var mainRng = seedManager.GetRandom(RandomDomain.Main);
 
+        // Seed selection: if level has approved seeds, pick one and override Refill/Drop domains.
+        // NOTE: board initialization (tileGenerator) also consumes the Refill stream, so the approved
+        // seed covers both initial layout and runtime spawns — the offline analysis pipeline must
+        // simulate both together (not refills alone).
+        if (levelConfig?.ApprovedSeeds is { Length: > 0 } seeds)
+        {
+            int selected = seeds[mainRng.Next(0, seeds.Length)];
+            seedManager.SetOverride(RandomDomain.Refill, selected);
+            // Derive Drop seed from the same approved seed to keep determinism,
+            // but XOR-shift so the two domains don't produce correlated sequences.
+            seedManager.SetOverride(RandomDomain.Drop, selected ^ unchecked((int)0x9E3779B9));
+        }
+
         // Determine dimensions
         int width = levelConfig?.Width ?? configuration.Width;
         int height = levelConfig?.Height ?? configuration.Height;

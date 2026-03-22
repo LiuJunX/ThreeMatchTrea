@@ -1,0 +1,25 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_012",
+  "name": "Bush Garden",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 30,
+  "targetDifficulty": 0.4,
+  "objectives": [
+    { "targetLayer": "Obstacle", "elementType": 2, "targetCount": 6 }
+  ],
+  "grid": null,
+  "obstacles": [
+    "None","None","None","None","None","None","None","None",
+    "None","Bush","None","None","None","None","Bush","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","Bush","Bush","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","Bush","None","None","None","None","Bush","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": "AAAAAAAAAAAABQAAAAADAAAAAAAAAAAAAAAABQUAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAABQAAAAAAAAAAAA==",
+  "notes": "Bush verification level: 6 bushes — 4 at stage 5, 2 at stage 3. Bushes surrounded by open space for Grass spread verification. Objective: destroy all 6 bushes."
+}

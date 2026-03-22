@@ -102,6 +102,14 @@ public class LevelConfig
     }
 
     /// <summary>
+    /// Pre-approved seeds from offline analysis (optional).
+    /// When present, runtime picks one at random for deterministic Refill/Drop RNG.
+    /// Empty or null = use default seed from GameServiceConfiguration.
+    /// TODO: Populate via offline analysis pipeline (spawner-architecture §4).
+    /// </summary>
+    public int[]? ApprovedSeeds { get; set; }
+
+    /// <summary>
     /// 缓存的分析结果（可选，不影响游戏逻辑）
     /// </summary>
     public LevelAnalysisCacheData? AnalysisCache { get; set; }
@@ -147,6 +155,7 @@ public class LevelConfig
         {
             MoveLimit = MoveLimit,
             TargetDifficulty = TargetDifficulty,
+            ApprovedSeeds = ApprovedSeeds != null ? (int[])ApprovedSeeds.Clone() : null,
             AnalysisCache = AnalysisCache
         };
         if (Grid != null) Array.Copy(Grid, copy.Grid, Math.Min(Grid.Length, copy.Grid.Length));
