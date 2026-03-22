@@ -90,7 +90,8 @@ public static class ObstacleRules
     /// </summary>
     public static bool IsGenerator(ObstacleType type) => type switch
     {
-        ObstacleType.Mailbox => true,
+        ObstacleType.Mailbox  => true,
+        ObstacleType.MagicHat => true,
         _ => false
     };
 }

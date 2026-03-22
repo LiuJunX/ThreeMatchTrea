@@ -76,6 +76,11 @@ public enum ElementType : byte
     /// </summary>
     Envelope = 103,
 
+    /// <summary>
+    /// Diamond spawned by MagicHat generator. Collectible, counts toward objectives.
+    /// </summary>
+    Diamond = 104,
+
     // --- Blockers ---
 
     /// <summary>
@@ -125,5 +130,5 @@ public static class ElementTypeExtensions
 
     /// <summary>Whether this is a collectible element (Bird, etc.).</summary>
     public static bool IsCollectible(this ElementType type)
-        => type == ElementType.Bird || type == ElementType.Pearl || type == ElementType.Plate || type == ElementType.Envelope;
+        => type == ElementType.Bird || type == ElementType.Pearl || type == ElementType.Plate || type == ElementType.Envelope || type == ElementType.Diamond;
 }

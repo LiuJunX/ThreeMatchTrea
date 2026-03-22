@@ -30,6 +30,7 @@ internal sealed class ObstacleChoreographer
             ObstacleType.Cupboard => 0.25f,
             ObstacleType.Stone => 0.30f,
             ObstacleType.ColorBox => 0.25f,
+            ObstacleType.MagicHat => 0.20f,
             _ => 0.25f
         };
 

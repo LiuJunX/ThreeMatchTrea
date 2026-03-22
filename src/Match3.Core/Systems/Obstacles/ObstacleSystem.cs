@@ -236,6 +236,12 @@ public sealed class ObstacleSystem : IObstacleSystem
         ref GameState state, Position pos, ref Obstacle obstacle,
         int tick, float simTime, IEventCollector events)
     {
+        if (obstacle.Type == ObstacleType.MagicHat)
+        {
+            ActivateMagicHat(ref state, pos, ref obstacle, tick, simTime, events);
+            return;
+        }
+
         var productType = obstacle.Type switch
         {
             ObstacleType.Mailbox => ElementType.Envelope,
@@ -245,9 +251,60 @@ public sealed class ObstacleSystem : IObstacleSystem
         if (productType == ElementType.None)
             return;
 
+        SpawnProduct(ref state, pos, ref obstacle, productType, tick, simTime, events);
+    }
+
+    /// <summary>
+    /// MagicHat accumulation logic: State increments each activation,
+    /// spawns Diamond when State reaches 3, then resets.
+    /// </summary>
+    private void ActivateMagicHat(
+        ref GameState state, Position pos, ref Obstacle obstacle,
+        int tick, float simTime, IEventCollector events)
+    {
+        const int threshold = 3;
+
+        // Accumulate only if below threshold
+        if (obstacle.State < threshold)
+        {
+            obstacle.State++;
+
+            // Progress feedback event (reuse ObstacleDamagedEvent — Presenter reads as progress)
+            if (events.IsEnabled)
+            {
+                events.Emit(new ObstacleDamagedEvent
+                {
+                    Tick = tick,
+                    SimulationTime = simTime,
+                    GridPosition = pos,
+                    Type = ObstacleType.MagicHat,
+                    RemainingStage = obstacle.State, // carries accumulation count (1/2/3)
+                    IsGoal = false
+                });
+            }
+        }
+
+        // Try to spawn when threshold reached
+        if (obstacle.State >= threshold)
+        {
+            if (!SpawnProduct(ref state, pos, ref obstacle, ElementType.Diamond, tick, simTime, events))
+                return; // no room — State stays ≥3, retry next activation
+
+            obstacle.State = 0;
+        }
+    }
+
+    /// <summary>
+    /// Shared product spawning logic for all generator types.
+    /// Returns false if no empty adjacent slot is available.
+    /// </summary>
+    private bool SpawnProduct(
+        ref GameState state, Position pos, ref Obstacle obstacle,
+        ElementType productType, int tick, float simTime, IEventCollector events)
+    {
         var slot = FindEmptyAdjacentSlot(in state, pos);
         if (slot == null)
-            return; // no room — skip silently
+            return false; // no room — skip silently
 
         var target = slot.Value;
         float protectUntil = simTime + TileProtectDuration;
@@ -279,6 +336,8 @@ public sealed class ObstacleSystem : IObstacleSystem
                 SpawnPosition = new Vector2(pos.X, pos.Y), // fly out from generator
             });
         }
+
+        return true;
     }
 
     /// <summary>

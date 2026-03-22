@@ -200,6 +200,7 @@ namespace Match3.Unity.Pools
                 ObstacleType.Owl => "Owl",
                 ObstacleType.Stone => "Stone",
                 ObstacleType.ColorBox => "ColorBox",
+                ObstacleType.MagicHat => "MagicHat",
                 _ => type.ToString()
             };
             var model = ResourceService.Loader.Load<GameObject>($"Art/Gems/Models/{typeName}");
@@ -674,7 +675,8 @@ namespace Match3.Unity.Pools
         {
             ElementType.Plate => "Plate",
             ElementType.Pearl => "Pearl",
-            ElementType.Bird  => "Bird",
+            ElementType.Bird    => "Bird",
+            ElementType.Diamond => "Diamond",
             _ => null
         };
     }
