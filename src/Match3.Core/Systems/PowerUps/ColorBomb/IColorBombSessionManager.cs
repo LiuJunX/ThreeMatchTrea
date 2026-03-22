@@ -50,12 +50,12 @@ public interface IColorBombSessionManager
     void Reset();
 
     /// <summary>
-    /// Capture current state for ring buffer snapshot.
+    /// Capture current state for ring buffer snapshot. Returns null when idle (zero allocation).
     /// </summary>
-    ColorBombSessionSnapshot SaveState();
+    ColorBombSessionSnapshot? SaveState();
 
     /// <summary>
-    /// Restore state from a previously captured snapshot.
+    /// Restore state from a previously captured snapshot. Pass null to clear all state.
     /// </summary>
-    void RestoreState(ColorBombSessionSnapshot snapshot);
+    void RestoreState(ColorBombSessionSnapshot? snapshot);
 }
