@@ -39,9 +39,9 @@ public class RuleBasedSpawnModel : ISpawnModel
         int colorCount = Math.Min(state.TileTypesCount, Colors.Length);
         if (colorCount <= 0) return ElementType.None;
 
-        // Diversity guard: when any color dominates, fall back to balanced weighted random
+        // Diversity guard: when any color dominates, enforce safe spawn to avoid cascade loops
         if (colorCount > 1 && IsDominant(ref state, colorCount))
-            return SpawnBalanced(ref state, spawnX, colorCount);
+            return SpawnSafe(ref state, spawnX, colorCount);
 
         var strategy = DetermineStrategy(context);
 
@@ -60,7 +60,42 @@ public class RuleBasedSpawnModel : ISpawnModel
             result = Colors[(idx + offset) % colorCount];
         }
 
+        // Safety gate: prevent cascade loops from same-tick cross-column spawns.
+        // Only block if the 3-in-a-row is formed entirely by just-spawned (IsFalling) tiles;
+        // legitimate matches with established board tiles are allowed through.
+        if (colorCount > 1)
+        {
+            int spawnY = BoardAnalyzer.SimulateDropTarget(ref state, spawnX);
+            if (BoardAnalyzer.WouldCreateMatch(ref state, spawnX, spawnY, result) &&
+                IsMatchWithOnlyFallingNeighbors(ref state, spawnX, spawnY, result))
+                result = SpawnSafe(ref state, spawnX, colorCount);
+        }
+
         return result;
+    }
+
+    /// <summary>
+    /// Returns true if a horizontal 3-in-a-row at (x, y) would involve only IsFalling tiles.
+    /// This identifies cascade-risk matches from same-tick refill spawns (IsFalling=true)
+    /// vs legitimate matches with established board tiles (IsFalling=false).
+    /// </summary>
+    private static bool IsMatchWithOnlyFallingNeighbors(ref GameState state, int x, int y, ElementType color)
+    {
+        int hCount = 1;
+        bool allFalling = true;
+
+        for (int dx = 1; x - dx >= 0 && state.GetType(x - dx, y) == color; dx++)
+        {
+            hCount++;
+            if (!state.GetTile(x - dx, y).IsFalling) allFalling = false;
+        }
+        for (int dx = 1; x + dx < state.Width && state.GetType(x + dx, y) == color; dx++)
+        {
+            hCount++;
+            if (!state.GetTile(x + dx, y).IsFalling) allFalling = false;
+        }
+
+        return hCount >= 3 && allFalling;
     }
 
     private SpawnStrategy DetermineStrategy(in SpawnContext context)
@@ -123,6 +158,29 @@ public class RuleBasedSpawnModel : ISpawnModel
             return Colors[selected];
         }
 
+        return SpawnSafe(ref state, spawnX, colorCount);
+    }
+
+    /// <summary>
+    /// Spawn a tile that avoids creating immediate matches or near-matches.
+    /// Used as fallback when no helpful color exists, to prevent cascade loops.
+    /// </summary>
+    private ElementType SpawnSafe(ref GameState state, int spawnX, int colorCount)
+    {
+        int spawnY = BoardAnalyzer.SimulateDropTarget(ref state, spawnX);
+        Span<int> safeIndices = stackalloc int[6];
+        int safeCount = 0;
+        for (int i = 0; i < colorCount; i++)
+        {
+            if (!BoardAnalyzer.WouldCreateMatch(ref state, spawnX, spawnY, Colors[i]) &&
+                !BoardAnalyzer.WouldCreateNearMatch(ref state, spawnX, spawnY, Colors[i]))
+                safeIndices[safeCount++] = i;
+        }
+        if (safeCount > 0)
+        {
+            var rng = _rng ?? state.Random;
+            return Colors[safeIndices[rng.Next(0, safeCount)]];
+        }
         return SpawnRandom(ref state, colorCount);
     }
 
