@@ -4,10 +4,10 @@ description: |
   测试覆盖深度分析（专项）。
 
   触发词：测试覆盖率、测试够不够、缺什么测试、测试质量、测试完整性
-  不触发：运行测试、跑测试、检查代码（这些用 check skill）
+  不触发：运行测试、跑测试、检查代码（这些用 review skill）
 
-  与 check skill 的区别：
-  - check skill：综合检查，包含基础测试运行
+  与 review skill 的区别：
+  - review skill：综合审查，包含基础测试运行
   - test-check skill：专项分析，详细的测试覆盖报告
 allowed-tools: Read, Grep, Glob, Bash(dotnet test:*)
 ---
@@ -16,8 +16,8 @@ allowed-tools: Read, Grep, Glob, Bash(dotnet test:*)
 
 **定位**：测试专项分析，提供详细的覆盖报告和改进建议
 
-与 check skill 的区别：
-- `check`：综合检查，测试只看通过/失败
+与 review skill 的区别：
+- `review`：综合审查，测试只看通过/失败
 - `test-check`：专项分析，详细的覆盖率、缺失测试、质量评估
 
 ## 检查标准（真源）
