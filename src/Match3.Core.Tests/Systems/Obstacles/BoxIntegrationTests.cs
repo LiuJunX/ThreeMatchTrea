@@ -155,18 +155,18 @@ public class BoxIntegrationTests
     }
 
     [Fact]
-    public void BoardInitializer_ObstacleDefaultStage_Is1()
+    public void BoardInitializer_ObstacleDefaultStage_Is4()
     {
         var config = new LevelConfig(3, 3);
         config.Obstacles[4] = ObstacleType.Box;
-        // ObstacleStages[4] left as 0 → should default to 1
+        // ObstacleStages[4] left as 0 → should default to 4 (Box standard HP)
 
         var state = new GameState(3, 3, 5, new StubRandom());
         var initializer = new BoardInitializer(new StubTileGenerator());
         initializer.Initialize(ref state, config);
 
         Assert.True(state.HasObstacle(1, 1));
-        Assert.Equal(1, state.GetObstacle(1, 1).Stage);
+        Assert.Equal(4, state.GetObstacle(1, 1).Stage);
     }
 
     #endregion
