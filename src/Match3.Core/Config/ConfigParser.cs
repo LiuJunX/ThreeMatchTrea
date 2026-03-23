@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -15,7 +17,7 @@ public static class ConfigParser
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
         IncludeFields = true,
-        Converters = { new JsonStringEnumConverter() }
+        Converters = { new JsonStringEnumConverter(), new ByteArrayFlexConverter() }
     };
 
     /// <summary>
@@ -64,7 +66,45 @@ public static class ConfigParser
             WriteIndented = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             IncludeFields = true,
-            Converters = { new JsonStringEnumConverter() }
+            Converters = { new JsonStringEnumConverter(), new ByteArrayFlexConverter() }
         });
+    }
+}
+
+/// <summary>
+/// Reads byte[] from either a JSON int array [0,1,2,...] or a base64 string.
+/// Writes as int array for human readability.
+/// </summary>
+internal sealed class ByteArrayFlexConverter : JsonConverter<byte[]>
+{
+    public override byte[]? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.Null)
+            return null;
+
+        if (reader.TokenType == JsonTokenType.String)
+            return reader.GetBytesFromBase64();
+
+        if (reader.TokenType == JsonTokenType.StartArray)
+        {
+            var list = new List<byte>();
+            while (reader.Read())
+            {
+                if (reader.TokenType == JsonTokenType.EndArray)
+                    return list.ToArray();
+                if (reader.TokenType == JsonTokenType.Number)
+                    list.Add((byte)reader.GetInt32());
+            }
+        }
+
+        throw new JsonException($"Cannot convert token {reader.TokenType} to byte[]");
+    }
+
+    public override void Write(Utf8JsonWriter writer, byte[] value, JsonSerializerOptions options)
+    {
+        writer.WriteStartArray();
+        foreach (var b in value)
+            writer.WriteNumberValue(b);
+        writer.WriteEndArray();
     }
 }

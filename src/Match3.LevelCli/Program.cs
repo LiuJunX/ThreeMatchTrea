@@ -15,6 +15,7 @@ class Program
 
         return command switch
         {
+            "print" => PrintCommand.Run(commandArgs),
             "validate" => ValidateCommand.Run(commandArgs),
             "analyze" => await AnalyzeCommand.RunAsync(commandArgs),
             "create" => CreateCommand.Run(commandArgs),
@@ -27,6 +28,7 @@ class Program
         Console.WriteLine("Match3 Level CLI - 关卡协作工具");
         Console.WriteLine();
         Console.WriteLine("Usage:");
+        Console.WriteLine("  levelcli print <path>                 渲染关卡为可读网格");
         Console.WriteLine("  levelcli validate <path>              验证关卡合法性");
         Console.WriteLine("  levelcli analyze <path> [--count N] [--mode random|greedy|population]");
         Console.WriteLine("  levelcli create <w> <h> -o <path>     创建空白关卡模板");
