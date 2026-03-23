@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Match3.Core.Models.Grid;
 
@@ -6,7 +5,7 @@ namespace Match3.Core.Systems.Projectiles.Targeting.Modifiers;
 
 /// <summary>
 /// Modifies cell scores after layer evaluation (e.g., objective bonus, group coordination).
-/// Implementations must be stateless â€” all precomputed data goes into caller-owned storage.
+/// Implementations must be stateless â€?all precomputed data goes into caller-owned storage.
 /// </summary>
 public interface IScoreModifier
 {
@@ -15,12 +14,11 @@ public interface IScoreModifier
 
     /// <summary>
     /// Pre-compute global data before per-cell evaluation.
-    /// Called once per selection round (re-called when pendingAttacks changes).
-    /// Write results to <paramref name="precomputeCache"/> â€” caller owns the storage.
+    /// Called once per selection round.
+    /// Write results to <paramref name="precomputeCache"/> â€?caller owns the storage.
     /// </summary>
     void Precompute(
         in GameState state,
-        ReadOnlySpan<PendingAttack> pendingAttacks,
         UfoTargetConfig config,
         Dictionary<int, int> precomputeCache) { }
 
@@ -31,7 +29,6 @@ public interface IScoreModifier
         ref EvalResult result,
         in GameState state,
         int x, int y,
-        ReadOnlySpan<PendingAttack> pendingAttacks,
         UfoTargetConfig config,
         Dictionary<int, int> precomputeCache);
 }

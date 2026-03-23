@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
@@ -19,7 +18,6 @@ public sealed class TargetBonusModifier : IScoreModifier
         ref EvalResult result,
         in GameState state,
         int x, int y,
-        ReadOnlySpan<PendingAttack> pendingAttacks,
         UfoTargetConfig config,
         Dictionary<int, int> precomputeCache)
     {

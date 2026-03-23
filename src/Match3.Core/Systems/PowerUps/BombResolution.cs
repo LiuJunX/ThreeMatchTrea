@@ -279,7 +279,8 @@ public class BombResolution : IPowerUpHandler
         // UFO: launch projectile for remote target (deferred destruction with dynamic tracking)
         if (isUfo && _projectileSystem != null)
         {
-            var remoteTarget = UfoEffect.PickRemoteTarget(in state, p);
+            var remoteTarget = UfoEffect.PickRemoteTarget(in state, p,
+                projectileSystem: _projectileSystem);
             if (remoteTarget.HasValue)
             {
                 var projectile = new UfoProjectile(

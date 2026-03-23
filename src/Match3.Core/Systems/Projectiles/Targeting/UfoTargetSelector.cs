@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
@@ -11,7 +10,7 @@ namespace Match3.Core.Systems.Projectiles.Targeting;
 
 /// <summary>
 /// Pure-function entry point for UFO smart target selection.
-/// Stateless and parallel-safe â€” all data via parameters.
+/// Stateless and parallel-safe â€?all data via parameters.
 /// </summary>
 public static class UfoTargetSelector
 {
@@ -30,17 +29,15 @@ public static class UfoTargetSelector
     /// </summary>
     /// <param name="state">Board state (read-only).</param>
     /// <param name="origin">UFO launch position.</param>
-    /// <param name="inFlightAttacks">Pending attacks from other in-flight UFOs.</param>
     /// <param name="config">Immutable targeting configuration.</param>
-    /// <param name="excludeArea">Positions to exclude (e.g., small cross area).</param>
+    /// <param name="projectileSystem">Active projectile system for in-flight target deduplication.</param>
     /// <param name="payload">Bomb payload type. Default=single cell, others use range aggregation.</param>
     /// <returns>Best target position, or null if no valid target exists.</returns>
     public static Position? SelectTarget(
         in GameState state,
         Position origin,
-        ReadOnlySpan<PendingAttack> inFlightAttacks,
         UfoTargetConfig config,
-        HashSet<Position>? excludeArea = null,
+        IProjectileSystem? projectileSystem = null,
         UfoPayload payload = UfoPayload.Default)
     {
         // Precompute cache (stack-owned, passed to modifiers)
@@ -53,7 +50,7 @@ public static class UfoTargetSelector
         {
             // Modifier precompute
             foreach (var mod in Modifiers)
-                mod.Precompute(in state, inFlightAttacks, config, precomputeCache);
+                mod.Precompute(in state, config, precomputeCache);
 
             // Evaluate all cells
             for (int y = 0; y < state.Height; y++)
@@ -66,10 +63,6 @@ public static class UfoTargetSelector
                     // Skip origin position
                     if (x == origin.X && y == origin.Y) continue;
 
-                    // Skip excluded area
-                    var pos = new Position(x, y);
-                    if (excludeArea != null && excludeArea.Contains(pos)) continue;
-
                     // Skip targeting-locked cells
                     if (state.IsLocked(x, y, CellLockType.Targeting)) continue;
 
@@ -77,17 +70,20 @@ public static class UfoTargetSelector
                     var eval = CellEvaluator.Evaluate(in state, x, y, config, CapacityRule);
                     if (!eval.CanAttack) continue;
 
-                    // Deduct pending attacks on this cell
-                    int pendingOnCell = CountPendingOnCell(inFlightAttacks, x, y, state.Width);
-                    if (eval.MeaningfulHits <= pendingOnCell) continue;
+                    // Deduct in-flight UFOs already targeting this cell
+                    if (projectileSystem != null)
+                    {
+                        int inFlightOnCell = projectileSystem.CountInFlightTargetsAt(new Position(x, y));
+                        if (eval.MeaningfulHits <= inFlightOnCell) continue;
+                    }
 
                     // Apply modifiers
                     foreach (var mod in Modifiers)
-                        mod.Modify(ref eval, in state, x, y, inFlightAttacks, config, precomputeCache);
+                        mod.Modify(ref eval, in state, x, y, config, precomputeCache);
 
                     if (!eval.CanAttack) continue;
 
-                    candidates.Add((pos, eval.Score));
+                    candidates.Add((new Position(x, y), eval.Score));
                 }
             }
 
@@ -116,20 +112,6 @@ public static class UfoTargetSelector
             precomputeCache.Clear();
             Pools.Release(precomputeCache);
         }
-    }
-
-    private static int CountPendingOnCell(
-        ReadOnlySpan<PendingAttack> pending,
-        int x, int y, int width)
-    {
-        ushort gridIndex = (ushort)(y * width + x);
-        int count = 0;
-        foreach (ref readonly var pa in pending)
-        {
-            if (pa.GridIndex == gridIndex)
-                count++;
-        }
-        return count;
     }
 
     private static void Shuffle<T>(List<T> list, Match3.Random.IRandom random)

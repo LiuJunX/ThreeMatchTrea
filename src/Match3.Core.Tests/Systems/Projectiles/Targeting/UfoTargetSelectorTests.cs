@@ -1,4 +1,3 @@
-using System;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
@@ -38,7 +37,6 @@ public class UfoTargetSelectorTests
         var result = UfoTargetSelector.SelectTarget(
             in state,
             new Position(2, 2), // origin far from targets
-            ReadOnlySpan<PendingAttack>.Empty,
             Config);
 
         Assert.NotNull(result);
@@ -79,37 +77,11 @@ public class UfoTargetSelectorTests
         var result = UfoTargetSelector.SelectTarget(
             in state,
             new Position(2, 2),
-            ReadOnlySpan<PendingAttack>.Empty,
             Config);
 
         Assert.NotNull(result);
         // Box obstacle has higher baseValue than Item1 tile, both are tier=3
         Assert.Equal(new Position(1, 0), result.Value);
-    }
-
-    [Fact]
-    public void SelectTarget_ExcludesSmallCrossArea()
-    {
-        var state = new GameStateBuilder()
-            .WithSize(3, 3)
-            .WithRandom(new StubRandom())
-            .WithAllTiles(ElementType.Item1)
-            .Build();
-
-        var excludeArea = new System.Collections.Generic.HashSet<Position>
-        {
-            new(1, 1), new(0, 1), new(2, 1), new(1, 0), new(1, 2)
-        };
-
-        var result = UfoTargetSelector.SelectTarget(
-            in state,
-            new Position(1, 1),
-            ReadOnlySpan<PendingAttack>.Empty,
-            Config,
-            excludeArea);
-
-        Assert.NotNull(result);
-        Assert.DoesNotContain(result.Value, excludeArea);
     }
 
     [Fact]
@@ -130,7 +102,6 @@ public class UfoTargetSelectorTests
         var result = UfoTargetSelector.SelectTarget(
             in state,
             new Position(2, 2),
-            ReadOnlySpan<PendingAttack>.Empty,
             Config);
 
         Assert.Null(result); // No valid targets
@@ -152,7 +123,6 @@ public class UfoTargetSelectorTests
         var result = UfoTargetSelector.SelectTarget(
             in state,
             new Position(2, 2),
-            ReadOnlySpan<PendingAttack>.Empty,
             Config);
 
         Assert.NotNull(result);
@@ -164,8 +134,8 @@ public class UfoTargetSelectorTests
     {
         // Cell (0,0): Cage cover + Item1 tile (objective)
         // Cell (1,0): Item1 tile (objective, no cover)
-        // Both are objectives, but (0,0) has Cage blocking → evaluates as cover (tier=2)
-        // (1,0) is direct tile objective → tier=3
+        // Both are objectives, but (0,0) has Cage blocking -> evaluates as cover (tier=2)
+        // (1,0) is direct tile objective -> tier=3
         var state = new GameStateBuilder()
             .WithSize(3, 3)
             .WithRandom(new StubRandom())
@@ -188,11 +158,10 @@ public class UfoTargetSelectorTests
         var result = UfoTargetSelector.SelectTarget(
             in state,
             new Position(2, 2),
-            ReadOnlySpan<PendingAttack>.Empty,
             Config);
 
         Assert.NotNull(result);
-        // (1,0) has tile objective → tier=3 > (0,0) cage cover → tier=2
+        // (1,0) has tile objective -> tier=3 > (0,0) cage cover -> tier=2
         Assert.Equal(new Position(1, 0), result.Value);
     }
 
@@ -208,7 +177,6 @@ public class UfoTargetSelectorTests
         var result = UfoTargetSelector.SelectTarget(
             in state,
             new Position(1, 1),
-            ReadOnlySpan<PendingAttack>.Empty,
             Config);
 
         Assert.Null(result);
@@ -219,7 +187,7 @@ public class UfoTargetSelectorTests
     {
         // Objective A (Item1, remaining=1) and Objective B (Box, remaining=10)
         // Cell has Box (objective B target) but NOT Item1
-        // Should NOT get tier=4 — the "last target" is Item1, not Box
+        // Should NOT get tier=4 -- the "last target" is Item1, not Box
         var state = new GameStateBuilder()
             .WithSize(3, 3)
             .WithRandom(new StubRandom())
@@ -233,7 +201,7 @@ public class UfoTargetSelectorTests
                     TargetLayer = ObjectiveTargetLayer.Tile,
                     ElementType = (int)ElementType.Item1,
                     TargetCount = 5,
-                    CurrentCount = 4 // remaining=1 → urgent
+                    CurrentCount = 4 // remaining=1 -> urgent
                 };
                 s.ObjectiveProgress[1] = new ObjectiveProgress
                 {
@@ -248,11 +216,10 @@ public class UfoTargetSelectorTests
         var result = UfoTargetSelector.SelectTarget(
             in state,
             new Position(2, 2),
-            ReadOnlySpan<PendingAttack>.Empty,
             Config);
 
         Assert.NotNull(result);
-        // Item1 at (0,0) should be selected — it's the ACTUAL last target
+        // Item1 at (0,0) should be selected -- it's the ACTUAL last target
         Assert.Equal(new Position(0, 0), result.Value);
     }
 
@@ -268,7 +235,7 @@ public class UfoTargetSelectorTests
             {
                 s.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
                 s.SetTile(1, 0, new Tile(2, ElementType.Item2, 1, 0));
-                // Objective 1: Item1, only 1 remaining → last target → tier=4
+                // Objective 1: Item1, only 1 remaining -> last target -> tier=4
                 s.ObjectiveProgress[0] = new ObjectiveProgress
                 {
                     TargetLayer = ObjectiveTargetLayer.Tile,
@@ -276,7 +243,7 @@ public class UfoTargetSelectorTests
                     TargetCount = 5,
                     CurrentCount = 4  // remaining = 1
                 };
-                // Objective 2: Item2, many remaining → tier=3
+                // Objective 2: Item2, many remaining -> tier=3
                 s.ObjectiveProgress[1] = new ObjectiveProgress
                 {
                     TargetLayer = ObjectiveTargetLayer.Tile,
@@ -290,7 +257,6 @@ public class UfoTargetSelectorTests
         var result = UfoTargetSelector.SelectTarget(
             in state,
             new Position(2, 2),
-            ReadOnlySpan<PendingAttack>.Empty,
             Config);
 
         Assert.NotNull(result);

@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
+using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Projectiles;
 using Match3.Core.Systems.Projectiles.Targeting;
 using Match3.Core.Tests.TestFixtures;
 using Xunit;
@@ -14,15 +17,14 @@ public class UfoTargetSelectorEdgeCaseTests
     [Fact]
     public void SelectTarget_SkipsOriginPosition()
     {
-        // Only tile on board is at origin → no valid target
+        // Only tile on board is at origin -> no valid target
         var state = new GameStateBuilder().WithSize(3, 3).WithRandom(new StubRandom())
             .WithEmptyTiles()
             .WithCustomization(s => s.SetTile(1, 1, new Tile(1, ElementType.Item1, 1, 1)))
             .Build();
 
         var result = UfoTargetSelector.SelectTarget(
-            in state, new Position(1, 1),
-            ReadOnlySpan<PendingAttack>.Empty, Config);
+            in state, new Position(1, 1), Config);
 
         Assert.Null(result);
     }
@@ -43,8 +45,7 @@ public class UfoTargetSelectorEdgeCaseTests
             .Build();
 
         var result = UfoTargetSelector.SelectTarget(
-            in state, new Position(1, 1),
-            ReadOnlySpan<PendingAttack>.Empty, Config);
+            in state, new Position(1, 1), Config);
 
         Assert.NotNull(result);
         Assert.Equal(new Position(2, 2), result.Value);
@@ -65,64 +66,58 @@ public class UfoTargetSelectorEdgeCaseTests
             .Build();
 
         var result = UfoTargetSelector.SelectTarget(
-            in state, new Position(1, 1),
-            ReadOnlySpan<PendingAttack>.Empty, Config);
+            in state, new Position(1, 1), Config);
 
         Assert.NotNull(result);
         Assert.Equal(new Position(2, 2), result.Value); // (0,0) is locked, so (2,2)
     }
 
     [Fact]
-    public void SelectTarget_PendingAttacks_ReducesMeaningfulHits()
+    public void SelectTarget_InFlightProjectiles_ReducesMeaningfulHits()
     {
-        // Only one tile (HP=1 / meaningfulHits=1), with 1 pending attack on it → skip
+        // Only one tile (HP=1 / meaningfulHits=1), with 1 in-flight projectile targeting it -> skip
         var state = new GameStateBuilder().WithSize(3, 3).WithRandom(new StubRandom())
             .WithEmptyTiles()
             .WithCustomization(s =>
                 s.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0)))
             .Build();
 
-        var pending = new PendingAttack[]
-        {
-            new() { GridIndex = 0, HitLayer = 2 } // (0,0) = gridIndex 0
-        };
+        var mock = new MockProjectileSystem();
+        mock.SetInFlightCount(new Position(0, 0), 1);
 
         var result = UfoTargetSelector.SelectTarget(
-            in state, new Position(2, 2),
-            pending.AsSpan(), Config);
+            in state, new Position(2, 2), Config,
+            projectileSystem: mock);
 
-        Assert.Null(result); // Only target has pending attack → exhausted → no target
+        Assert.Null(result); // Only target has in-flight projectile -> exhausted -> no target
     }
 
     [Fact]
-    public void SelectTarget_MultiplePendingAttacks_SameCell()
+    public void SelectTarget_MultipleInFlight_SameCell()
     {
-        // Obstacle with stage=3 (meaningfulHits=3), 2 pending attacks → 1 remaining → still valid
+        // Obstacle with stage=3 (meaningfulHits=3), 2 in-flight -> 1 remaining -> still valid
         var state = new GameStateBuilder().WithSize(3, 3).WithRandom(new StubRandom())
             .WithEmptyTiles()
             .WithCustomization(s =>
                 s.SetObstacle(0, 0, new Obstacle { Type = ObstacleType.Box, Stage = 3 }))
             .Build();
 
-        var pending = new PendingAttack[]
-        {
-            new() { GridIndex = 0, HitLayer = 1 },
-            new() { GridIndex = 0, HitLayer = 1 }
-        };
+        var mock = new MockProjectileSystem();
+        mock.SetInFlightCount(new Position(0, 0), 2);
 
         var result = UfoTargetSelector.SelectTarget(
-            in state, new Position(2, 2),
-            pending.AsSpan(), Config);
+            in state, new Position(2, 2), Config,
+            projectileSystem: mock);
 
         Assert.NotNull(result);
         Assert.Equal(new Position(0, 0), result.Value); // Still 1 remaining hit
     }
 
     [Fact]
-    public void SelectTarget_WithPendingAttack_SkipsExhaustedCell()
+    public void SelectTarget_WithInFlight_SkipsExhaustedCell()
     {
         // Two tiles: (0,0) has HP=1, (2,0) has HP=1
-        // PendingAttack on (0,0) → exhausted → should pick (2,0)
+        // In-flight projectile targeting (0,0) -> exhausted -> should pick (2,0)
         var state = new GameStateBuilder().WithSize(3, 3).WithRandom(new StubRandom())
             .WithEmptyTiles()
             .WithCustomization(s =>
@@ -132,60 +127,52 @@ public class UfoTargetSelectorEdgeCaseTests
             })
             .Build();
 
-        var pending = new PendingAttack[]
-        {
-            new() { GridIndex = 0, HitLayer = 2 } // (0,0) grid index = 0
-        };
+        var mock = new MockProjectileSystem();
+        mock.SetInFlightCount(new Position(0, 0), 1);
 
         var result = UfoTargetSelector.SelectTarget(
-            in state, new Position(1, 1),
-            pending.AsSpan(), Config);
+            in state, new Position(1, 1), Config,
+            projectileSystem: mock);
 
         Assert.NotNull(result);
         Assert.Equal(new Position(2, 0), result.Value); // (0,0) exhausted, picks (2,0)
     }
 
     [Fact]
-    public void SelectTarget_WithPendingAttack_HighHPCellStillValid()
+    public void SelectTarget_WithInFlight_HighHPCellStillValid()
     {
-        // Box obstacle with Stage=3 and 1 pending attack → still 2 remaining → valid
+        // Box obstacle with Stage=3 and 1 in-flight projectile -> still 2 remaining -> valid
         var state = new GameStateBuilder().WithSize(3, 3).WithRandom(new StubRandom())
             .WithEmptyTiles()
             .WithCustomization(s =>
                 s.SetObstacle(0, 0, new Obstacle { Type = ObstacleType.Box, Stage = 3 }))
             .Build();
 
-        var pending = new PendingAttack[]
-        {
-            new() { GridIndex = 0, HitLayer = 1 }
-        };
+        var mock = new MockProjectileSystem();
+        mock.SetInFlightCount(new Position(0, 0), 1);
 
         var result = UfoTargetSelector.SelectTarget(
-            in state, new Position(2, 2),
-            pending.AsSpan(), Config);
+            in state, new Position(2, 2), Config,
+            projectileSystem: mock);
 
         Assert.NotNull(result);
         Assert.Equal(new Position(0, 0), result.Value); // Still valid
     }
 
-    [Fact]
-    public void SelectTarget_AllCellsExcluded_ReturnsNull()
+    private class MockProjectileSystem : IProjectileSystem
     {
-        var state = new GameStateBuilder().WithSize(2, 2).WithRandom(new StubRandom())
-            .WithAllTiles(ElementType.Item1)
-            .Build();
+        private readonly Dictionary<Position, int> _inFlightCounts = new();
 
-        // Exclude all non-origin cells
-        var excludeArea = new System.Collections.Generic.HashSet<Position>
-        {
-            new(0, 0), new(1, 0), new(0, 1)
-        };
+        public void SetInFlightCount(Position pos, int count) => _inFlightCounts[pos] = count;
 
-        // Origin is (1,1) which is auto-excluded
-        var result = UfoTargetSelector.SelectTarget(
-            in state, new Position(1, 1),
-            ReadOnlySpan<PendingAttack>.Empty, Config, excludeArea);
+        public int CountInFlightTargetsAt(Position pos) =>
+            _inFlightCounts.TryGetValue(pos, out var c) ? c : 0;
 
-        Assert.Null(result);
+        public IReadOnlyList<Projectile> ActiveProjectiles => Array.Empty<Projectile>();
+        public bool HasActiveProjectiles => false;
+        public void Launch(Projectile p, int tick, float simTime, IEventCollector events) { }
+        public HashSet<Position> Update(ref GameState state, float dt, int tick, float simTime, IEventCollector events) => new();
+        public void Clear() { }
+        public int GenerateProjectileId() => 0;
     }
 }

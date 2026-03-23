@@ -24,6 +24,9 @@ public sealed class ProjectileSystem : IProjectileSystem
     /// <inheritdoc />
     public void Launch(Projectile projectile, int tick, float simTime, IEventCollector events)
     {
+        if (projectile is UfoProjectile ufoProj)
+            ufoProj.ProjectileSystem = this;
+
         _activeProjectiles.Add(projectile);
 
         if (events.IsEnabled)
@@ -150,5 +153,22 @@ public sealed class ProjectileSystem : IProjectileSystem
     public int GenerateProjectileId()
     {
         return _nextProjectileId++;
+    }
+
+    /// <inheritdoc />
+    public int CountInFlightTargetsAt(Position pos)
+    {
+        int count = 0;
+        foreach (var p in _activeProjectiles)
+        {
+            if (p is UfoProjectile ufo && ufo.IsActive
+                && ufo.TargetGridPosition.HasValue
+                && ufo.TargetGridPosition.Value.X == pos.X
+                && ufo.TargetGridPosition.Value.Y == pos.Y)
+            {
+                count++;
+            }
+        }
+        return count;
     }
 }

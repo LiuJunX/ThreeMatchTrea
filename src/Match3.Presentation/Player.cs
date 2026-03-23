@@ -813,21 +813,52 @@ public sealed class Player
     /// </summary>
     private void HandleUfoRetarget(UfoRetargetCommand retarget)
     {
-        // Find and remove the active UfoLaunchCommand for this tile
         for (int i = _activeCommands.Count - 1; i >= 0; i--)
         {
             if (_activeCommands[i].Command is UfoLaunchCommand activeUfo && activeUfo.TileId == retarget.TileId)
             {
-                // Compute current visual position for seamless handoff.
-                // Use Max(_currentTime, retarget.StartTime) so that:
-                //  - Normal case: matches the last rendered position (no 1-frame jump)
-                //  - Same-tick case (launch+retarget in one tick): avoids t<0 → Origin
                 var cmd = activeUfo;
                 float retargetTime = Math.Max(_currentTime, retarget.StartTime);
                 float t = cmd.Duration > 0
                     ? Math.Clamp((retargetTime - cmd.StartTime) / cmd.Duration, 0f, 1f)
                     : 1f;
 
+                // During takeoff (StayFraction), position is fixed at origin and independent
+                // of target. Silently update target so takeoff animation plays through
+                // uninterrupted — same "first-come-first-served" as rocket wave race.
+                if (t <= cmd.StayFraction && cmd.StayFraction > 0)
+                {
+                    // Keep diverge direction (takeoff angle), update approach for new target
+                    Vector2? newApproach = null;
+                    if (cmd.DivergeControl.HasValue)
+                    {
+                        var toTarget = retarget.NewTarget - cmd.Origin;
+                        float len = toTarget.Length();
+                        var norm = len > 1e-4f ? toTarget / len : Vector2.UnitX;
+                        newApproach = retarget.NewTarget - norm * UfoConstants.ApproachStrength;
+                    }
+
+                    // Recompute duration for new target distance
+                    float distance = Vector2.Distance(cmd.Origin, retarget.NewTarget);
+                    float flightTime = distance > 0 ? distance / UfoConstants.FlightSpeed : 0.01f;
+                    float newDuration = UfoConstants.LaunchOverhead + flightTime;
+
+                    var updatedCmd = cmd with
+                    {
+                        Target = retarget.NewTarget,
+                        ApproachControl = newApproach ?? cmd.ApproachControl,
+                        Duration = newDuration
+                    };
+                    _activeCommands[i] = new ActiveCommand(updatedCmd, _activeCommands[i].StartedAt);
+
+                    var tile = _visualState.GetTile(retarget.TileId);
+                    if (tile != null)
+                        tile.UfoFlightDuration = newDuration;
+
+                    break;
+                }
+
+                // Cruise phase: replace with new flight segment
                 float stayFrac = cmd.StayFraction;
                 const float arriveFrac = 0.97f;
                 float moveT;
@@ -838,10 +869,9 @@ public sealed class Player
                 else
                     moveT = (t - stayFrac) / (arriveFrac - stayFrac);
 
-                // Match easing to UpdateCommand: smoothstep for initial/diverge, ease-out for retarget
                 float eased = cmd.MomentumControl.HasValue
-                    ? 1f - (1f - moveT) * (1f - moveT)   // ease-out quadratic (retarget)
-                    : moveT * moveT * (3f - 2f * moveT);  // smoothstep (initial/diverge)
+                    ? 1f - (1f - moveT) * (1f - moveT)
+                    : moveT * moveT * (3f - 2f * moveT);
                 Vector2 currentPos;
                 if (cmd.DivergeControl.HasValue && cmd.ApproachControl.HasValue)
                 {
@@ -861,18 +891,14 @@ public sealed class Player
                     currentPos = Vector2.Lerp(cmd.Origin, cmd.Target, eased);
                 }
 
-                // Release animation ref for old command
                 MarkTilesAnimating(activeUfo, false);
                 _activeCommands.RemoveAt(i);
 
-                // Compute duration from actual visual distance
                 float visualDistance = Vector2.Distance(currentPos, retarget.NewTarget);
-                float newDuration = visualDistance > 0
+                float cruiseDuration = visualDistance > 0
                     ? visualDistance / UfoConstants.FlightSpeed
                     : 0.01f;
 
-                // Momentum control point: extend old flight direction to create a curved path.
-                // Use cubic Bezier tangent when available for accurate direction.
                 Vector2 oldDirVec;
                 if (cmd.DivergeControl.HasValue && cmd.ApproachControl.HasValue)
                 {
@@ -893,27 +919,23 @@ public sealed class Player
                     momentum = currentPos + oldNorm * strength;
                 }
 
-                // Create new UfoLaunchCommand for the retarget segment
                 var newCmd = new UfoLaunchCommand
                 {
                     TileId = retarget.TileId,
                     Origin = currentPos,
                     Target = retarget.NewTarget,
                     MomentumControl = momentum,
-                    StayFraction = 0f, // No spin-up for retarget
+                    StayFraction = 0f,
                     StartTime = retargetTime,
-                    Duration = newDuration
+                    Duration = cruiseDuration
                 };
 
-                // Start the new command — keep progress in cruise range (0.35+)
-                // so the View doesn't replay the takeoff animation.
-                // Set retarget flag so View can blend the arc transition smoothly.
                 var ufoTile = _visualState.GetTile(retarget.TileId);
                 if (ufoTile != null)
                 {
                     ufoTile.UfoRetargetFlag = true;
                     ufoTile.UfoFlightProgress = 0.35f;
-                    ufoTile.UfoFlightDuration = newDuration;
+                    ufoTile.UfoFlightDuration = cruiseDuration;
                 }
 
                 MarkTilesAnimating(newCmd, true);

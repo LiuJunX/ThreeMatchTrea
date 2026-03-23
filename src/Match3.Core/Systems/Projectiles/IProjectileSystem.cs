@@ -53,4 +53,11 @@ public interface IProjectileSystem
     /// Generate a unique projectile ID.
     /// </summary>
     int GenerateProjectileId();
+
+    /// <summary>
+    /// Count how many in-flight UFO projectiles are currently targeting the given position.
+    /// Used by <see cref="Targeting.UfoTargetSelector"/> to prevent multiple UFOs
+    /// from piling onto the same cell beyond its <c>MeaningfulHits</c> capacity.
+    /// </summary>
+    int CountInFlightTargetsAt(Position pos);
 }

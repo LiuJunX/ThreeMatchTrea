@@ -1,4 +1,3 @@
-using System;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
@@ -45,7 +44,6 @@ public class BombAreaAggregatorTests
         var result = UfoTargetSelector.SelectTarget(
             in state,
             new Position(4, 2), // origin far away
-            ReadOnlySpan<PendingAttack>.Empty,
             Config,
             payload: UfoPayload.Row);
 
@@ -81,7 +79,6 @@ public class BombAreaAggregatorTests
         var result = UfoTargetSelector.SelectTarget(
             in state,
             new Position(2, 4),
-            ReadOnlySpan<PendingAttack>.Empty,
             Config,
             payload: UfoPayload.Column);
 
@@ -121,7 +118,6 @@ public class BombAreaAggregatorTests
         var result = UfoTargetSelector.SelectTarget(
             in state,
             new Position(4, 4), // origin in center
-            ReadOnlySpan<PendingAttack>.Empty,
             Config,
             payload: UfoPayload.Area5x5);
 
@@ -158,7 +154,6 @@ public class BombAreaAggregatorTests
         var result = UfoTargetSelector.SelectTarget(
             in state,
             new Position(2, 2),
-            ReadOnlySpan<PendingAttack>.Empty,
             Config,
             payload: UfoPayload.Default);
 

@@ -272,68 +272,8 @@ public class BombComboTests
 
     #endregion
 
-    #region 火箭 + 彩球 = 最多颜色变火箭并爆炸
-
-    [Fact]
-    public void RocketPlusColorBomb_TransformsAndExplodes()
-    {
-        // Arrange: 红色最多
-        var state = CreateEmptyState();
-        var combo = new BombComboHandler();
-        var p1 = new Position(3, 4);
-        var p2 = new Position(4, 4);
-
-        // 设置火箭和彩球
-        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.HorizontalRocket, p1.X, p1.Y));
-        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.ColorBomb, p2.X, p2.Y));
-
-        // 放置红色方块（最多）
-        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
-        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
-        state.SetTile(2, 0, new Tile(3, ElementType.Item1, 2, 0));
-        // 放置蓝色（较少）
-        state.SetTile(0, 1, new Tile(4, ElementType.Item3, 0, 1));
-        state.SetTile(1, 1, new Tile(5, ElementType.Item3, 1, 1));
-
-        // Act
-        var affected = new HashSet<Position>();
-        combo.ApplyCombo(ref state, p1, p2, affected);
-
-        // Assert: 红色位置应该被火箭爆炸影响
-        // 3个红色各触发横向火箭，消除3行
-        Assert.Contains(new Position(0, 0), affected);
-        Assert.Contains(new Position(1, 0), affected);
-        Assert.Contains(new Position(2, 0), affected);
-    }
-
-    [Fact]
-    public void ColorBombPlusRocket_SameEffect()
-    {
-        // Arrange: 顺序反过来
-        var state = CreateEmptyState();
-        var combo = new BombComboHandler();
-        var p1 = new Position(3, 4);
-        var p2 = new Position(4, 4);
-
-        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.ColorBomb, p1.X, p1.Y));
-        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.VerticalRocket, p2.X, p2.Y));
-
-        // 放置绿色方块（最多）
-        state.SetTile(0, 0, new Tile(1, ElementType.Item2, 0, 0));
-        state.SetTile(1, 0, new Tile(2, ElementType.Item2, 1, 0));
-        state.SetTile(2, 0, new Tile(3, ElementType.Item2, 2, 0));
-
-        // Act
-        var affected = new HashSet<Position>();
-        combo.ApplyCombo(ref state, p1, p2, affected);
-
-        // Assert: 绿色位置应该被影响
-        Assert.Contains(new Position(0, 0), affected);
-        Assert.Contains(new Position(1, 0), affected);
-        Assert.Contains(new Position(2, 0), affected);
-    }
-
-    #endregion
+    // ColorBomb + 非ColorBomb 炸弹组合由 ColorBombSessionManager 处理，
+    // 不再在 BombComboHandler 中测试。
 
     #region 方块炸弹 + 方块炸弹 = 9x9
 
@@ -434,39 +374,7 @@ public class BombComboTests
 
     #endregion
 
-    #region 方块炸弹 + 彩球 = 最多颜色变3x3炸弹并爆炸
-
-    [Fact]
-    public void SquarePlusColorBomb_TransformsTo3x3AndExplodes()
-    {
-        // Arrange: 红色最多
-        var state = CreateEmptyState();
-        var combo = new BombComboHandler();
-        var p1 = new Position(3, 4);
-        var p2 = new Position(4, 4);
-
-        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Square5x5, p1.X, p1.Y));
-        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.ColorBomb, p2.X, p2.Y));
-
-        // 放置红色（最多）- 分散在棋盘上
-        state.SetTile(1, 1, new Tile(1, ElementType.Item1, 1, 1));
-        state.SetTile(5, 5, new Tile(2, ElementType.Item1, 5, 5));
-        // 放置蓝色（较少）
-        state.SetTile(0, 0, new Tile(3, ElementType.Item3, 0, 0));
-
-        // Act
-        var affected = new HashSet<Position>();
-        combo.ApplyCombo(ref state, p1, p2, affected);
-
-        // Assert: 红色位置触发3x3爆炸
-        Assert.Contains(new Position(1, 1), affected);
-        Assert.Contains(new Position(5, 5), affected);
-        // 3x3范围也应该被影响
-        Assert.Contains(new Position(0, 0), affected); // (1,1)的3x3范围包含(0,0)
-        Assert.Contains(new Position(4, 4), affected); // (5,5)的3x3范围包含(4,4)
-    }
-
-    #endregion
+    // ColorBomb + Square 组合由 ColorBombSessionManager 处理。
 
     #region UFO + UFO = 两个小十字 + 3个UFO飞弹（远程目标由ProjectileSystem处理）
 
@@ -505,68 +413,7 @@ public class BombComboTests
 
     #endregion
 
-    #region UFO + 彩球 = 最多颜色变UFO并起飞
-
-    [Fact]
-    public void UfoPlusColorBomb_TransformsAndLaunches()
-    {
-        // Arrange
-        var rng = StubRandom.WithFixedValue(0);
-        rng.EnqueueValues(0, 1, 2); // 多个UFO的随机目标
-        var state = CreateEmptyState(rng: rng);
-        var combo = new BombComboHandler();
-        var p1 = new Position(3, 4);
-        var p2 = new Position(4, 4);
-
-        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.Ufo, p1.X, p1.Y));
-        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.ColorBomb, p2.X, p2.Y));
-
-        // 放置红色（最多）
-        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
-        state.SetTile(2, 2, new Tile(2, ElementType.Item1, 2, 2));
-        state.SetTile(6, 6, new Tile(3, ElementType.Item1, 6, 6));
-        // 放置蓝色（较少）
-        state.SetTile(7, 7, new Tile(4, ElementType.Item3, 7, 7));
-
-        // Act
-        var affected = new HashSet<Position>();
-        combo.ApplyCombo(ref state, p1, p2, affected);
-
-        // Assert: 红色位置变成UFO并起飞
-        // 每个UFO: 小十字 + 1随机目标
-        Assert.Contains(new Position(0, 0), affected);
-        Assert.Contains(new Position(2, 2), affected);
-        Assert.Contains(new Position(6, 6), affected);
-    }
-
-    [Fact]
-    public void ColorBombPlusUfo_SameEffect()
-    {
-        // Arrange: 顺序反过来
-        var rng = StubRandom.WithFixedValue(0);
-        rng.EnqueueValues(0, 1, 2);
-        var state = CreateEmptyState(rng: rng);
-        var combo = new BombComboHandler();
-        var p1 = new Position(3, 4);
-        var p2 = new Position(4, 4);
-
-        state.SetTile(p1.X, p1.Y, new Tile(100, ElementType.ColorBomb, p1.X, p1.Y));
-        state.SetTile(p2.X, p2.Y, new Tile(101, ElementType.Ufo, p2.X, p2.Y));
-
-        // 放置绿色（最多）
-        state.SetTile(0, 0, new Tile(1, ElementType.Item2, 0, 0));
-        state.SetTile(2, 2, new Tile(2, ElementType.Item2, 2, 2));
-
-        // Act
-        var affected = new HashSet<Position>();
-        combo.ApplyCombo(ref state, p1, p2, affected);
-
-        // Assert
-        Assert.Contains(new Position(0, 0), affected);
-        Assert.Contains(new Position(2, 2), affected);
-    }
-
-    #endregion
+    // ColorBomb + UFO 组合由 ColorBombSessionManager 处理。
 
     #region 彩球 + 彩球 = 全屏消除
 

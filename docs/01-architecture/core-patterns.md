@@ -142,9 +142,10 @@ public class MyProjectile : Projectile
 
 ### UfoProjectile — Dynamic Retargeting
 Timer-based projectile (`Duration = Overhead + Distance / Speed`). Each tick checks
-if the target cell is still occupied; if empty, `TryRetarget()` selects a new random
-target. Lock-in window (`UfoConstants.LockInTime = 0.3s`) prevents retargeting near
-impact. `_phaseStartTime` resets on retarget to ensure position continuity.
+if the target cell is still occupied; if empty, `TryRetarget()` selects a new target
+via `UfoTargetSelector`. No lock-in window (`LockInTime = 0`): retargeting is allowed
+at any point during flight. `_phaseStartTime` resets on retarget to ensure position
+continuity. In-flight deduplication is provided by `IProjectileSystem.CountInFlightTargetsAt`.
 
 `SourceTileId` links the projectile to its visual tile for Choreographer → Player flow.
 

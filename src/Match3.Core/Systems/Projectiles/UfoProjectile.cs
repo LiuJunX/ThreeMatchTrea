@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Numerics;
 using Match3.Core.Events;
 using Match3.Core.Events.Enums;
-using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Projectiles.Targeting;
@@ -58,6 +57,12 @@ public sealed class UfoProjectile : Projectile
     /// Grid position of the passenger bomb (for correct visual starting position).
     /// </summary>
     public Position? PassengerOrigin { get; set; }
+
+    /// <summary>
+    /// Reference to the projectile system for in-flight target coordination during retarget.
+    /// Set by <see cref="ProjectileSystem.Launch"/> at launch time.
+    /// </summary>
+    internal IProjectileSystem? ProjectileSystem { get; set; }
 
     /// <summary>
     /// Absolute diverge angle (degrees) for combo-launched UFOs.
@@ -237,7 +242,7 @@ public sealed class UfoProjectile : Projectile
         return UfoTargetSelector.SelectTarget(
             in state,
             OriginPosition,
-            ReadOnlySpan<PendingAttack>.Empty,
-            UfoTargetConfig.Default);
+            UfoTargetConfig.Default,
+            ProjectileSystem);
     }
 }
