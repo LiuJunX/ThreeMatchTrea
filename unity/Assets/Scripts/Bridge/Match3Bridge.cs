@@ -269,7 +269,7 @@ namespace Match3.Unity.Bridge
             }
             catch (System.Exception ex)
             {
-                Debug.LogWarning($"[Match3Bridge] Failed to load level config '{levelId}': {ex.Message}");
+                Debug.LogError($"[Match3Bridge] Failed to load level config '{levelId}': {ex.Message}\n{ex.StackTrace}");
             }
 
             var config = new GameServiceConfiguration

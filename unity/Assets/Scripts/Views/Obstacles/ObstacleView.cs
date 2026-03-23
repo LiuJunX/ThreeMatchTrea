@@ -30,6 +30,12 @@ namespace Match3.Unity.Views.Obstacles
         /// <summary>Grid position this view is bound to.</summary>
         public Position GridPosition { get; private set; }
 
+        /// <summary>
+        /// Current obstacle state (synced from ObstacleVisual each frame).
+        /// PotionBottle: remaining sub-bottle bitmask. Other types: color variant or 0.
+        /// </summary>
+        public byte CurrentState { get; private set; }
+
         private void Awake()
         {
             _meshFilter = GetComponent<MeshFilter>();
@@ -67,6 +73,9 @@ namespace Match3.Unity.Views.Obstacles
             // Base scale to fill cell (match tile scale)
             _baseScale = cellSize * 1.05f;
             transform.localScale = new Vector3(_baseScale, _baseScale, _baseScale);
+
+            // Sync state before presenter calls (PotionBottle reads this in ApplyDamage)
+            CurrentState = visual.State;
 
             // Delegate to presenter based on state
             if (visual.IsDestroying)
