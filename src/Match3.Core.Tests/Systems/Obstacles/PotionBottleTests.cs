@@ -356,13 +356,13 @@ public class PotionBottleTests
     public void BoardInitializer_SyncsStageFromState()
     {
         // Custom 2-sub-bottle config: only Red + Blue (bits 0,2)
-        var config = new Config.LevelConfig(5, 5);
+        var config = new LevelConfig(5, 5);
         int idx = 2 * 5 + 2; // (2, 2)
         config.Obstacles[idx] = ObstacleType.PotionBottle;
         config.ObstacleStates[idx] = 0b00000101; // Red + Blue only
 
         var state = CreateState();
-        var initializer = new Core.Systems.Generation.BoardInitializer(
+        var initializer = new BoardInitializer(
             new StubTileGenerator(ElementType.Item1, ElementType.Item3, ElementType.Item2));
         initializer.Initialize(ref state, config);
 
