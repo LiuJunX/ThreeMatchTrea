@@ -28,7 +28,8 @@ public static class ObstacleRules
             ObstacleType.Cupboard => true,
             // Power-up only: Match blocked, Power-up sources allowed.
             // ColorBox additionally has CanReactAdjacent (color-matching path).
-            ObstacleType.Safe or ObstacleType.Owl or ObstacleType.Stone or ObstacleType.ColorBox
+            ObstacleType.Safe or ObstacleType.Owl or ObstacleType.Stone
+                or ObstacleType.ColorBox or ObstacleType.PotionBottle
                               => ctx.Source is ElimSource.Bomb
                                            or ElimSource.Projectile
                                            or ElimSource.ChainReaction
@@ -48,16 +49,17 @@ public static class ObstacleRules
     /// </summary>
     public static byte GetDefaultStage(ObstacleType type) => type switch
     {
-        ObstacleType.Box      => 4,
-        ObstacleType.Bush     => 5,
-        ObstacleType.Cupboard => 2,
-        ObstacleType.Safe     => 5,
-        ObstacleType.Owl      => 1,
-        ObstacleType.Stone    => 3,
-        ObstacleType.ColorBox => 3,
-        ObstacleType.MagicHat => 1,
-        ObstacleType.Curtain  => 1,
-        ObstacleType.Mailbox  => 1,
+        ObstacleType.Box         => 4,
+        ObstacleType.Bush        => 5,
+        ObstacleType.Cupboard    => 2,
+        ObstacleType.Safe        => 5,
+        ObstacleType.Owl         => 1,
+        ObstacleType.Stone       => 3,
+        ObstacleType.ColorBox    => 3,
+        ObstacleType.MagicHat    => 1,
+        ObstacleType.Curtain     => 1,
+        ObstacleType.Mailbox     => 1,
+        ObstacleType.PotionBottle => 4,
         _ => 1
     };
 
@@ -77,12 +79,26 @@ public static class ObstacleRules
                               => false,   // only power-up direct hits
             ObstacleType.ColorBox => triggerType == ElementType.ColorBomb
                                   || triggerType == (ElementType)obstacle.State,
+            ObstacleType.PotionBottle => triggerType == ElementType.ColorBomb
+                                      || (triggerType.IsColor()
+                                          && (obstacle.State & (1 << ((int)triggerType - 1))) != 0),
             ObstacleType.MagicHat => true,    // accumulates (processing logic separate)
             ObstacleType.Curtain  => false,   // global, not adjacent
             ObstacleType.Mailbox  => true,    // any adjacent elimination triggers generation
             _ => false
         };
     }
+
+    /// <summary>
+    /// Returns the default State value for an obstacle type when not explicitly
+    /// specified in the level config. Only PotionBottle needs a non-zero default
+    /// (bitmask with all sub-bottles present).
+    /// </summary>
+    public static byte GetDefaultState(ObstacleType type) => type switch
+    {
+        ObstacleType.PotionBottle => 0b00001111, // Red + Green + Blue + Yellow
+        _ => 0
+    };
 
     /// <summary>
     /// Is this obstacle a generator? Generators are permanent (never damaged)

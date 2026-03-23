@@ -561,8 +561,11 @@ public sealed class ObstacleVisual
     /// <summary>Current stage (HP). Updated by Player on DamageObstacleCommand start.</summary>
     public byte CurrentStage { get; set; }
 
-    /// <summary>Obstacle-specific state (e.g., ColorBox: color variant as ElementType).</summary>
-    public byte State { get; init; }
+    /// <summary>
+    /// Obstacle-specific state (e.g., ColorBox: color variant as ElementType,
+    /// PotionBottle: remaining sub-bottle bitmask). Mutable for PotionBottle updates.
+    /// </summary>
+    public byte State { get; set; }
 
     /// <summary>
     /// Damage animation progress (0→1). Driven by Player during DamageObstacleCommand.

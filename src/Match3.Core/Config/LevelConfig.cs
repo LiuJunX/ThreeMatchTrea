@@ -34,8 +34,9 @@ public class LevelConfig
 
     /// <summary>
     /// Ground health values (optional, defaults to type's default health).
+    /// JSON: base64 string (1 byte per cell).
     /// </summary>
-    public int[] GroundHealths { get; set; }
+    public byte[] GroundHealths { get; set; }
 
     /// <summary>
     /// Cover layer configuration.
@@ -44,8 +45,9 @@ public class LevelConfig
 
     /// <summary>
     /// Cover health values (optional, defaults to type's default health).
+    /// JSON: base64 string (1 byte per cell).
     /// </summary>
-    public int[] CoverHealths { get; set; }
+    public byte[] CoverHealths { get; set; }
 
     /// <summary>
     /// Obstacle layer configuration (Box, Bush, Safe, etc.).
@@ -54,14 +56,16 @@ public class LevelConfig
 
     /// <summary>
     /// Obstacle initial stage/HP values (optional, defaults to type's default stage).
+    /// JSON: base64 string (1 byte per cell).
     /// </summary>
-    public int[] ObstacleStages { get; set; }
+    public byte[] ObstacleStages { get; set; }
 
     /// <summary>
     /// Obstacle state values (optional, defaults to 0).
     /// Usage depends on type: ColorBox/Curtain = color variant (ElementType byte).
+    /// JSON: base64 string (1 byte per cell).
     /// </summary>
-    public int[] ObstacleStates { get; set; }
+    public byte[] ObstacleStates { get; set; }
 
     public int MoveLimit { get; set; } = 20;
 
@@ -129,12 +133,12 @@ public class LevelConfig
         Grid = new ElementType[size];
         Cells = new CellKind[size];
         Grounds = new GroundType[size];
-        GroundHealths = new int[size];
+        GroundHealths = new byte[size];
         Covers = new CoverType[size];
-        CoverHealths = new int[size];
+        CoverHealths = new byte[size];
         Obstacles = new ObstacleType[size];
-        ObstacleStages = new int[size];
-        ObstacleStates = new int[size];
+        ObstacleStages = new byte[size];
+        ObstacleStates = new byte[size];
 
         // Default cells to Slot
         Array.Fill(Cells, CellKind.Slot);
@@ -148,12 +152,12 @@ public class LevelConfig
         Grid = new ElementType[size];
         Cells = new CellKind[size];
         Grounds = new GroundType[size];
-        GroundHealths = new int[size];
+        GroundHealths = new byte[size];
         Covers = new CoverType[size];
-        CoverHealths = new int[size];
+        CoverHealths = new byte[size];
         Obstacles = new ObstacleType[size];
-        ObstacleStages = new int[size];
-        ObstacleStates = new int[size];
+        ObstacleStages = new byte[size];
+        ObstacleStates = new byte[size];
 
         Array.Fill(Cells, CellKind.Slot);
     }

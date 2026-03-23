@@ -193,7 +193,7 @@ public static class SimulationTestHelper
     {
         var config = new LevelConfig(8, 8) { MoveLimit = 25 };
         config.Covers = new CoverType[64];
-        config.CoverHealths = new int[64];
+        config.CoverHealths = new byte[64];
 
         // Scatter Cage covers on a diagonal
         for (int i = 0; i < 8; i++)
@@ -216,7 +216,7 @@ public static class SimulationTestHelper
     {
         var config = new LevelConfig(8, 8) { MoveLimit = 25 };
         config.Grounds = new GroundType[64];
-        config.GroundHealths = new int[64];
+        config.GroundHealths = new byte[64];
 
         // Bottom 2 rows covered with Ice (health 2)
         for (int y = 0; y < 2; y++)

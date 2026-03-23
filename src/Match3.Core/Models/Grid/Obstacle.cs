@@ -28,6 +28,7 @@ public struct Obstacle
     ///   <item>MagicHat: accumulated adjacent hit count</item>
     ///   <item>Curtain: color variant (cast of ElementType)</item>
     ///   <item>Mailbox: unused (0) — permanent generator, never decremented</item>
+    ///   <item>PotionBottle: bitmask of remaining sub-bottles (bit N = Item(N+1) present)</item>
     ///   <item>Others: unused (0)</item>
     /// </list>
     /// </summary>

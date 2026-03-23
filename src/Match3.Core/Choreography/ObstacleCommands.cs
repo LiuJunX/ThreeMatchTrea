@@ -36,6 +36,12 @@ public sealed record DamageObstacleCommand : RenderCommand
 
     /// <summary>Stage AFTER this damage.</summary>
     public byte NewStage { get; init; }
+
+    /// <summary>
+    /// Updated obstacle state after damage (PotionBottle: remaining sub-bottle bitmask).
+    /// Zero for all other obstacle types.
+    /// </summary>
+    public byte NewState { get; init; }
 }
 
 /// <summary>

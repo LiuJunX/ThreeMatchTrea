@@ -51,15 +51,6 @@ public class RuleBasedSpawnModel : ISpawnModel
             _ => SpawnBalanced(ref state, spawnX, colorCount)
         };
 
-        // Anti-streak: avoid repeating the column's top color
-        if (colorCount > 1 && result == BoardAnalyzer.GetColumnTopColor(ref state, spawnX))
-        {
-            var rng = _rng ?? state.Random;
-            int idx = BoardAnalyzer.GetColorIndex(result);
-            int offset = rng.Next(1, colorCount);
-            result = Colors[(idx + offset) % colorCount];
-        }
-
         // Safety gate: prevent cascade loops from same-tick cross-column spawns.
         // Only block if the 3-in-a-row is formed entirely by just-spawned (IsFalling) tiles;
         // legitimate matches with established board tiles are allowed through.
@@ -197,7 +188,7 @@ public class RuleBasedSpawnModel : ISpawnModel
 
         for (int i = 0; i < colorCount; i++)
         {
-            weights[i] = 100 / (counts[i] + 1);
+            weights[i] = 1000 / (counts[i] + 1);
             totalWeight += weights[i];
         }
 

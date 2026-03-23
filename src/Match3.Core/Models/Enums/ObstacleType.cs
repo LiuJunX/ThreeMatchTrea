@@ -69,4 +69,11 @@ public enum ObstacleType : byte
     /// Stone block (3 stages). Immune to Match; only damaged by power-up sources.
     /// </summary>
     Stone = 10,
+
+    /// <summary>
+    /// Potion bottle containing colored sub-bottles (4 by default).
+    /// State = bitmask of remaining sub-bottles (bit N = Item(N+1) present).
+    /// Stage = popcount(State). All sub-bottles must be broken to destroy.
+    /// </summary>
+    PotionBottle = 11,
 }

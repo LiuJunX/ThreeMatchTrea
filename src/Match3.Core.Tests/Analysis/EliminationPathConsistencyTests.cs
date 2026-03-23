@@ -71,7 +71,7 @@ public class EliminationPathConsistencyTests
 
         // Grounds: 6 ice tiles in a 3x2 block at rows 3-4, cols 3-5
         var grounds = new GroundType[len];
-        var groundHealths = new int[len];
+        var groundHealths = new byte[len];
         for (int y = 3; y <= 4; y++)
         {
             for (int x = 3; x <= 5; x++)

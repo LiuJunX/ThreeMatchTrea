@@ -351,6 +351,8 @@ public sealed class Player
                 {
                     obsVisual.CurrentStage = damageObs.NewStage;
                     obsVisual.DamageProgress = 0f;
+                    if (damageObs.ObstacleType == ObstacleType.PotionBottle)
+                        obsVisual.State = damageObs.NewState;
                 }
                 break;
             }

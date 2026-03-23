@@ -17,6 +17,12 @@ public sealed record ObstacleDamagedEvent : GameEvent
     /// <summary>Remaining stage/HP after damage.</summary>
     public byte RemainingStage { get; init; }
 
+    /// <summary>
+    /// Updated obstacle state after damage.
+    /// PotionBottle: remaining sub-bottle bitmask. Other types: 0 (unused).
+    /// </summary>
+    public byte NewState { get; init; }
+
     /// <summary>Whether this obstacle is a level objective.</summary>
     public bool IsGoal { get; init; }
 

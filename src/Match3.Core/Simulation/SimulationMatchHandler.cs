@@ -145,11 +145,10 @@ internal sealed class SimulationMatchHandler
             if (!state.IsValid(pos)) continue;
 
             var tile = state.GetTile(pos.X, pos.Y);
-            if (tile.Type == ElementType.None) continue;
 
             // Chain-activatable bombs are triggered, not destroyed — let ActivateBomb handle them.
             // ColorBomb is excluded: only player swap can activate it.
-            if (tile.Type.IsChainActivatable())
+            if (tile.Type != ElementType.None && tile.Type.IsChainActivatable())
             {
                 triggeredBombs.Add(pos);
                 continue;
@@ -157,13 +156,14 @@ internal sealed class SimulationMatchHandler
 
             if (_cellEliminator != null)
             {
-                // Unified elimination (adds Cover + Ground handling that was previously missing)
+                // Unified elimination: handles obstacles (no tile), covers, grounds, and tiles.
+                // Must NOT skip when tile is None — obstacles occupy cells without tiles.
                 var result = _cellEliminator.Eliminate(ref state, pos, ElimSource.Projectile, currentTick, elapsedTime, eventCollector);
 
                 if (result.Outcome == EliminateOutcome.Eliminated)
                     _lockScheduler?.Acquire(ref state, pos, CellLockType.Receive, ReceiveLockTimings.ProjectileImpactClear);
             }
-            else
+            else if (tile.Type != ElementType.None)
             {
                 // Legacy inline path (backward compatibility for old constructor)
                 if (!state.CanDestroy(pos)) continue;

@@ -31,6 +31,7 @@ internal sealed class ObstacleChoreographer
             ObstacleType.Stone => 0.30f,
             ObstacleType.ColorBox => 0.25f,
             ObstacleType.MagicHat => 0.20f,
+            ObstacleType.PotionBottle => 0.30f,
             _ => 0.25f
         };
 
@@ -39,6 +40,7 @@ internal sealed class ObstacleChoreographer
             GridPos = evt.GridPosition,
             ObstacleType = evt.Type,
             NewStage = evt.RemainingStage,
+            NewState = evt.NewState,
             StartTime = startTime,
             Duration = duration
         });
@@ -69,6 +71,7 @@ internal sealed class ObstacleChoreographer
             ObstacleType.Stone => 0.35f,
             ObstacleType.ColorBox => 0.30f,
             ObstacleType.Curtain => 0.50f,
+            ObstacleType.PotionBottle => 0.40f,
             _ => 0.3f
         };
 

@@ -69,6 +69,18 @@ public class BoardInitializer : IBoardInitializer
                             {
                                 obstacleState = (byte)levelConfig.ObstacleStates[i];
                             }
+                            // Fallback to default state when not configured (e.g., PotionBottle needs 0x0F)
+                            if (obstacleState == 0)
+                            {
+                                obstacleState = ObstacleRules.GetDefaultState(obstacleType);
+                            }
+                            // PotionBottle: ensure Stage matches popcount(State) for bitmask consistency
+                            if (obstacleType == ObstacleType.PotionBottle)
+                            {
+                                stage = 0;
+                                for (uint bits = obstacleState; bits != 0; bits &= bits - 1)
+                                    stage++;
+                            }
                             state.SetObstacle(x, y, new Obstacle(obstacleType, stage, obstacleState));
                             continue; // Obstacle occupies the cell — no tile here
                         }

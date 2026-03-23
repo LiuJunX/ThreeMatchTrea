@@ -507,4 +507,47 @@ public class ConfigParserLevelTests
     }
 
     #endregion
+
+    #region Obstacle Level Parsing (base64 obstacleStages)
+
+    [Fact]
+    public void ParseLevelConfig_Level007_ObstaclesParsedCorrectly()
+    {
+        // Exact JSON from level_007.json — obstacles as string enum array, obstacleStages as base64
+        const string json = """
+        {
+            "id": "level_007",
+            "width": 9,
+            "height": 9,
+            "moveLimit": 25,
+            "objectives": [
+                { "targetLayer": "Obstacle", "elementType": 1, "targetCount": 4 }
+            ],
+            "obstacles": [
+                "None","None","None","None","None","None","None","None","None",
+                "None","None","None","None","None","None","None","None","None",
+                "None","None","None","None","None","None","None","None","None",
+                "None","None","None","Box", "None","Box", "None","None","None",
+                "None","None","None","None","None","None","None","None","None",
+                "None","None","None","Box", "None","Box", "None","None","None",
+                "None","None","None","None","None","None","None","None","None",
+                "None","None","None","None","None","None","None","None","None",
+                "None","None","None","None","None","None","None","None","None"
+            ],
+            "obstacleStages": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        }
+        """;
+
+        var config = ConfigParser.ParseLevelConfig(json);
+
+        Assert.Equal(9, config.Width);
+        Assert.Equal(9, config.Height);
+        // Should have 4 Box obstacles
+        int boxCount = 0;
+        foreach (var o in config.Obstacles)
+            if (o == ObstacleType.Box) boxCount++;
+        Assert.Equal(4, boxCount);
+    }
+
+    #endregion
 }

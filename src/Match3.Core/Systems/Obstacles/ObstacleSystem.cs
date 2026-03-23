@@ -43,6 +43,9 @@ public sealed class ObstacleSystem : IObstacleSystem
         if (!ObstacleRules.CanHit(in obstacle, in ctx))
             return ObstacleHitResult.Blocked;
 
+        if (obstacle.Type == ObstacleType.PotionBottle)
+            return DamagePotionBottle(ref state, pos, ref obstacle, ElementType.None, tick, simTime, events);
+
         return ApplyDamage(ref state, pos, ref obstacle, tick, simTime, events);
     }
 
@@ -143,7 +146,9 @@ public sealed class ObstacleSystem : IObstacleSystem
         if (!ObstacleRules.CanReactAdjacent(in obstacle, triggerType))
             return;
 
-        if (ObstacleRules.IsGenerator(obstacle.Type))
+        if (obstacle.Type == ObstacleType.PotionBottle)
+            DamagePotionBottle(ref state, neighbor, ref obstacle, triggerType, tick, simTime, events);
+        else if (ObstacleRules.IsGenerator(obstacle.Type))
             ActivateGenerator(ref state, neighbor, ref obstacle, tick, simTime, events);
         else
             ApplyDamage(ref state, neighbor, ref obstacle, tick, simTime, events);
@@ -229,6 +234,85 @@ public sealed class ObstacleSystem : IObstacleSystem
 
         return ObstacleHitResult.Damaged;
     }
+
+    #region PotionBottle
+
+    /// <summary>
+    /// PotionBottle-specific damage: clear one sub-bottle bit, recalc Stage via popcount.
+    /// If all sub-bottles cleared, destroy the obstacle.
+    /// </summary>
+    private ObstacleHitResult DamagePotionBottle(
+        ref GameState state, Position pos, ref Obstacle obstacle,
+        ElementType triggerType, int tick, float simTime, IEventCollector events)
+    {
+        // Safety: should not be called with empty state, but guard anyway
+        if (obstacle.State == 0)
+            return ObstacleHitResult.Blocked;
+
+        // Determine which sub-bottle to break
+        int bitToClear;
+        if (triggerType.IsColor())
+        {
+            bitToClear = (int)triggerType - 1; // exact color match
+        }
+        else
+        {
+            // ColorBomb wildcard or power-up direct hit → break lowest remaining sub-bottle
+            bitToClear = TrailingZeroCount(obstacle.State);
+        }
+
+        // Clear the bit and recalculate Stage
+        obstacle.State = (byte)(obstacle.State & ~(1 << bitToClear));
+        obstacle.Stage = (byte)PopCount(obstacle.State);
+
+        bool destroyed = obstacle.Stage == 0;
+        bool isGoal = _objectiveSystem != null
+            && _objectiveSystem.IsTarget(in state, ObjectiveTargetLayer.Obstacle, (int)ObstacleType.PotionBottle);
+
+        if (destroyed)
+        {
+            if (events.IsEnabled)
+            {
+                events.Emit(new ObstacleDestroyedEvent
+                {
+                    Tick = tick,
+                    SimulationTime = simTime,
+                    GridPosition = pos,
+                    Type = ObstacleType.PotionBottle,
+                    IsGoal = isGoal
+                });
+            }
+
+            _objectiveSystem?.OnObstacleDestroyed(ref state, ObstacleType.PotionBottle, tick, simTime, events);
+            state.SetObstacle(pos, Obstacle.Empty);
+
+            // Receive lock: prevent tiles from filling this cell during death animation
+            _lockScheduler?.Acquire(ref state, pos, CellLockType.Receive, DestroyReceiveLockDuration);
+
+            // No death effect for PotionBottle
+
+            return ObstacleHitResult.Destroyed;
+        }
+
+        // Damaged but survived
+        if (events.IsEnabled)
+        {
+            events.Emit(new ObstacleDamagedEvent
+            {
+                Tick = tick,
+                SimulationTime = simTime,
+                GridPosition = pos,
+                Type = ObstacleType.PotionBottle,
+                RemainingStage = obstacle.Stage,
+                NewState = obstacle.State,
+                IsGoal = isGoal
+            });
+        }
+
+        return ObstacleHitResult.Damaged;
+    }
+
+    #endregion
 
     #region Generator Activation
 
@@ -451,6 +535,25 @@ public sealed class ObstacleSystem : IObstacleSystem
                 SpawnPosition = new Vector2(pos.X, pos.Y),
             });
         }
+    }
+
+    #endregion
+
+    #region Bit Helpers (netstandard2.1 compat)
+
+    private static int PopCount(uint value)
+    {
+        int count = 0;
+        while (value != 0) { count++; value &= value - 1; }
+        return count;
+    }
+
+    private static int TrailingZeroCount(uint value)
+    {
+        if (value == 0) return 32;
+        int count = 0;
+        while ((value & 1) == 0) { count++; value >>= 1; }
+        return count;
     }
 
     #endregion
