@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
@@ -102,6 +103,14 @@ public class LevelConfig
     }
 
     /// <summary>
+    /// Per-spawner configurations (optional).
+    /// Each spawner controls element generation for specific columns.
+    /// Columns not assigned to any spawner use global default behavior.
+    /// null or empty = all columns share default behavior.
+    /// </summary>
+    public SpawnerConfig[]? Spawners { get; set; }
+
+    /// <summary>
     /// Pre-approved seeds from offline analysis (optional).
     /// When present, runtime picks one at random for deterministic Refill/Drop RNG.
     /// Empty or null = use default seed from GameServiceConfiguration.
@@ -155,6 +164,7 @@ public class LevelConfig
         {
             MoveLimit = MoveLimit,
             TargetDifficulty = TargetDifficulty,
+            Spawners = DeepCopySpawners(),
             ApprovedSeeds = ApprovedSeeds != null ? (int[])ApprovedSeeds.Clone() : null,
             AnalysisCache = AnalysisCache
         };
@@ -169,6 +179,28 @@ public class LevelConfig
         if (ObstacleStates != null) Array.Copy(ObstacleStates, copy.ObstacleStates, Math.Min(ObstacleStates.Length, copy.ObstacleStates.Length));
         for (int i = 0; i < Objectives.Length; i++)
             copy.Objectives[i] = Objectives[i];
+        return copy;
+    }
+
+    private SpawnerConfig[]? DeepCopySpawners()
+    {
+        if (Spawners == null) return null;
+        var copy = new SpawnerConfig[Spawners.Length];
+        for (int i = 0; i < Spawners.Length; i++)
+        {
+            var src = Spawners[i];
+            copy[i] = new SpawnerConfig
+            {
+                Id = src.Id,
+                Columns = src.Columns != null ? (int[])src.Columns.Clone() : Array.Empty<int>(),
+                Weights = src.Weights != null ? new Dictionary<ElementType, int>(src.Weights) : null,
+                Preset = src.Preset != null ? new PresetQueueConfig
+                {
+                    Sequence = src.Preset.Sequence != null ? (ElementType[])src.Preset.Sequence.Clone() : Array.Empty<ElementType>(),
+                    Cycles = src.Preset.Cycles
+                } : null
+            };
+        }
         return copy;
     }
 }

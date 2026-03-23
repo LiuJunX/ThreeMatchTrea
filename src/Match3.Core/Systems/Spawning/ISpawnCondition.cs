@@ -11,7 +11,7 @@ public interface ISpawnCondition
 {
     /// <summary>
     /// Priority of this condition. Higher values are evaluated first.
-    /// Standard priorities: Default=100, EventDrop=300, ObjectiveDrop=400, PresetQueue=500.
+    /// Standard priorities: Default=100, EventDrop=300, ObjectiveDrop=400, PresetQueue=600.
     /// </summary>
     int Priority { get; }
 

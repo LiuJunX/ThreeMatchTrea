@@ -1,4 +1,5 @@
-﻿using Match3.Core.Config;
+﻿using System.Collections.Generic;
+using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Xunit;
 
@@ -355,6 +356,154 @@ public class ConfigParserLevelTests
         Assert.Equal(original.Objectives[1].TargetLayer, parsed.Objectives[1].TargetLayer);
         Assert.Equal(original.Objectives[1].ElementType, parsed.Objectives[1].ElementType);
         Assert.Equal(original.Objectives[1].TargetCount, parsed.Objectives[1].TargetCount);
+    }
+
+    #endregion
+
+    #region Spawner DeepCopy
+
+    [Fact]
+    public void DeepCopy_Spawners_MutatingCopyDoesNotAffectOriginal()
+    {
+        var original = new LevelConfig(4, 4)
+        {
+            Spawners = new[]
+            {
+                new SpawnerConfig
+                {
+                    Id = 0,
+                    Columns = new[] { 0, 1 },
+                    Weights = new Dictionary<ElementType, int>
+                    {
+                        { ElementType.Item1, 80 },
+                        { ElementType.Item3, 20 }
+                    },
+                    Preset = new PresetQueueConfig
+                    {
+                        Sequence = new[] { ElementType.ColorBomb, ElementType.Item2 },
+                        Cycles = 2
+                    }
+                }
+            }
+        };
+
+        var copy = original.DeepCopy();
+
+        // Basic values preserved
+        Assert.NotNull(copy.Spawners);
+        Assert.Single(copy.Spawners);
+        Assert.Equal(0, copy.Spawners[0].Id);
+        Assert.Equal(new[] { 0, 1 }, copy.Spawners[0].Columns);
+        Assert.Equal(80, copy.Spawners[0].Weights![ElementType.Item1]);
+        Assert.Equal(ElementType.ColorBomb, copy.Spawners[0].Preset!.Sequence[0]);
+        Assert.Equal(2, copy.Spawners[0].Preset.Cycles);
+
+        // Mutate copy — original must not change
+        copy.Spawners[0].Columns[0] = 99;
+        Assert.Equal(0, original.Spawners[0].Columns[0]);
+
+        copy.Spawners[0].Weights[ElementType.Item1] = 999;
+        Assert.Equal(80, original.Spawners[0].Weights![ElementType.Item1]);
+
+        copy.Spawners[0].Preset.Sequence[0] = ElementType.Bird;
+        Assert.Equal(ElementType.ColorBomb, original.Spawners[0].Preset!.Sequence[0]);
+    }
+
+    [Fact]
+    public void DeepCopy_NullSpawners_RemainsNull()
+    {
+        var original = new LevelConfig(4, 4);
+        Assert.Null(original.Spawners);
+
+        var copy = original.DeepCopy();
+        Assert.Null(copy.Spawners);
+    }
+
+    #endregion
+
+    #region Spawner JSON Round-Trip
+
+    [Fact]
+    public void ParseLevelConfig_WithSpawners_DeserializesCorrectly()
+    {
+        const string json = """
+        {
+            "width": 8,
+            "height": 8,
+            "spawners": [
+                {
+                    "id": 0,
+                    "columns": [0, 1, 2],
+                    "weights": { "Item1": 80, "Item3": 20 },
+                    "preset": {
+                        "sequence": ["ColorBomb", "Item2"],
+                        "cycles": 2
+                    }
+                },
+                {
+                    "id": 1,
+                    "columns": [6, 7]
+                }
+            ]
+        }
+        """;
+
+        var config = ConfigParser.ParseLevelConfig(json);
+
+        Assert.NotNull(config.Spawners);
+        Assert.Equal(2, config.Spawners.Length);
+
+        // Spawner 0
+        Assert.Equal(0, config.Spawners[0].Id);
+        Assert.Equal(new[] { 0, 1, 2 }, config.Spawners[0].Columns);
+        Assert.Equal(80, config.Spawners[0].Weights![ElementType.Item1]);
+        Assert.Equal(20, config.Spawners[0].Weights[ElementType.Item3]);
+        Assert.Equal(new[] { ElementType.ColorBomb, ElementType.Item2 }, config.Spawners[0].Preset!.Sequence);
+        Assert.Equal(2, config.Spawners[0].Preset.Cycles);
+
+        // Spawner 1 — no weights or preset
+        Assert.Equal(1, config.Spawners[1].Id);
+        Assert.Equal(new[] { 6, 7 }, config.Spawners[1].Columns);
+        Assert.Null(config.Spawners[1].Weights);
+        Assert.Null(config.Spawners[1].Preset);
+    }
+
+    [Fact]
+    public void Serialize_ThenParse_PreservesSpawners()
+    {
+        var original = new LevelConfig(6, 6)
+        {
+            Spawners = new[]
+            {
+                new SpawnerConfig
+                {
+                    Id = 0,
+                    Columns = new[] { 0, 1 },
+                    Weights = new Dictionary<ElementType, int>
+                    {
+                        { ElementType.Item4, 60 },
+                        { ElementType.Bird, 10 }
+                    },
+                    Preset = new PresetQueueConfig
+                    {
+                        Sequence = new[] { ElementType.Item1 },
+                        Cycles = 3
+                    }
+                }
+            }
+        };
+
+        var json = ConfigParser.Serialize(original);
+        var parsed = ConfigParser.ParseLevelConfig(json);
+
+        Assert.NotNull(parsed.Spawners);
+        Assert.Single(parsed.Spawners);
+        Assert.Equal(0, parsed.Spawners[0].Id);
+        Assert.Equal(new[] { 0, 1 }, parsed.Spawners[0].Columns);
+        Assert.Equal(60, parsed.Spawners[0].Weights![ElementType.Item4]);
+        Assert.Equal(10, parsed.Spawners[0].Weights[ElementType.Bird]);
+        Assert.Equal(new[] { ElementType.Item1 }, parsed.Spawners[0].Preset!.Sequence);
+        Assert.Equal(3, parsed.Spawners[0].Preset.Cycles);
     }
 
     #endregion
