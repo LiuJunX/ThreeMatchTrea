@@ -51,18 +51,37 @@ public class RuleBasedSpawnModel : ISpawnModel
             _ => SpawnBalanced(ref state, spawnX, colorCount)
         };
 
-        // Safety gate: prevent cascade loops from same-tick cross-column spawns.
-        // Only block if the 3-in-a-row is formed entirely by just-spawned (IsFalling) tiles;
-        // legitimate matches with established board tiles are allowed through.
+        // Safety gate: prevent cascade loops from match-creating spawns.
+        // During active cascading (falling tiles in the column), block any spawn
+        // that would create an immediate 3-in-a-row at its drop target.
+        // Without this, the color-balancing feedback loop can create infinite
+        // cascades — cleared tiles make the color underrepresented, spawner
+        // favors it, tiles accumulate and match again.
+        // When the board is stable (no falling tiles), allow matches (e.g. Help mode).
         if (colorCount > 1)
         {
             int spawnY = BoardAnalyzer.SimulateDropTarget(ref state, spawnX);
             if (BoardAnalyzer.WouldCreateMatch(ref state, spawnX, spawnY, result) &&
-                IsMatchWithOnlyFallingNeighbors(ref state, spawnX, spawnY, result))
+                HasFallingTilesInColumn(ref state, spawnX))
                 result = SpawnSafe(ref state, spawnX, colorCount);
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Returns true if any tile in the column is currently falling.
+    /// Used by the Safety gate to detect active cascading.
+    /// </summary>
+    private static bool HasFallingTilesInColumn(ref GameState state, int x)
+    {
+        for (int y = 0; y < state.Height; y++)
+        {
+            var tile = state.GetTile(x, y);
+            if (tile.Type != ElementType.None && tile.IsFalling)
+                return true;
+        }
+        return false;
     }
 
     /// <summary>

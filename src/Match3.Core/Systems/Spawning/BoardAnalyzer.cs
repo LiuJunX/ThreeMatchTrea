@@ -65,44 +65,16 @@ public static class BoardAnalyzer
     /// </summary>
     public static int SimulateDropTarget(ref GameState state, int spawnX)
     {
-        for (int y = 0; y < state.Height; y++)
+        // Scan bottom-to-top: find the lowest empty, non-void, non-obstacle cell.
+        // This approximates where a tile dropped from the top would land after gravity.
+        for (int y = state.Height - 1; y >= 0; y--)
         {
-            // Now checks for Void or Wall in Cell layer, or existing tile in Grid layer
-            // Wait, simulation logic needs to know where it lands.
-            // If Cell is Void/Wall, it can't land there? 
-            // Simplified: Finds first non-empty tile from top? No, finds first empty slot from bottom?
-            
-            // Original logic: returns first Y where Type == None (Empty) from top?
-            // "Simulates where a tile dropped from spawnX would land."
-            // If (spawnX, 0) is empty, it falls... until it hits something.
-            // Actually the original code loop `for (int y = 0; y < state.Height; y++)` implies checking from top.
-            // If `state.GetTile(spawnX, y).Type == ElementType.None`, it returns y?
-            // That sounds like it returns the TOPMOST empty slot? That's not where it settles.
-            // Ah, looking at original code:
-            /*
-            for (int y = 0; y < state.Height; y++)
-            {
-                if (state.GetTile(spawnX, y).Type == ElementType.None)
-                {
-                    return y;
-                }
-            }
-            return state.Height - 1;
-            */
-            // This original logic seems to find the *highest* empty spot?
-            // If column is full of tiles, it returns Height-1?
-            // If column is empty, it returns 0?
-            // This seems backwards for "Drop Target" (where it lands).
-            // Usually you want the lowest empty spot.
-            // UNLESS, this function assumes the column is full and we are checking where a NEW spawn would sit if we shifted down?
-            // Let's keep the logic identical but use ElementType.None.
-            
+            if (state.IsHole(spawnX, y)) continue;
+            if (state.HasObstacle(spawnX, y)) continue;
             if (state.GetTile(spawnX, y).Type == ElementType.None)
-            {
                 return y;
-            }
         }
-        return state.Height - 1;
+        return 0;
     }
 
     /// <summary>

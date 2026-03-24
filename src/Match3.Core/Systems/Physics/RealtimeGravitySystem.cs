@@ -228,7 +228,9 @@ public class RealtimeGravitySystem : IPhysicsSimulation
         switch (peek)
         {
             case NextMoveType.Vertical:
-                // Continue vertically — snap X, preserve Y overshoot + vy
+                // Continue vertically — snap both to prevent multi-cell overshoot
+                // (large deltaTime can skip past occupied cells if Y overshoot is preserved)
+                tile.Position.Y = target.Y;
                 tile.Position.X = target.X;
                 tile.IsFalling = true;
                 break;
@@ -293,6 +295,11 @@ public class RealtimeGravitySystem : IPhysicsSimulation
                 _newlyOccupied[state.Index(visualX, visualY)] = true;
                 return;
             }
+
+            // Visual position moved to an occupied/blocked cell — snap position back
+            // to grid position to prevent physics state divergence (infinite overshoot).
+            tile.Position.X = currentX;
+            tile.Position.Y = currentY;
         }
 
         state.SetTile(currentX, currentY, tile);

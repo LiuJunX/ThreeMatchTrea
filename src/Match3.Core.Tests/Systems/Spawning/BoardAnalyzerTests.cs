@@ -62,13 +62,13 @@ public class BoardAnalyzerTests
     #region SimulateDropTarget Tests
 
     [Fact]
-    public void SimulateDropTarget_EmptyColumn_ReturnsZero()
+    public void SimulateDropTarget_EmptyColumn_ReturnsBottomRow()
     {
         var state = CreateState(3, 3);
 
         int target = BoardAnalyzer.SimulateDropTarget(ref state, 0);
 
-        Assert.Equal(0, target);
+        Assert.Equal(2, target); // Bottommost empty cell
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public class BoardAnalyzerTests
     }
 
     [Fact]
-    public void SimulateDropTarget_FullColumn_ReturnsLastRow()
+    public void SimulateDropTarget_FullColumn_ReturnsZero()
     {
         var state = CreateState(3, 3);
         for (int y = 0; y < 3; y++)
@@ -92,7 +92,7 @@ public class BoardAnalyzerTests
 
         int target = BoardAnalyzer.SimulateDropTarget(ref state, 0);
 
-        Assert.Equal(2, target); // Height - 1
+        Assert.Equal(0, target); // No empty cell, fallback
     }
 
     #endregion
@@ -154,13 +154,14 @@ public class BoardAnalyzerTests
     public void FindMatchingColors_WithPotentialMatch_SetsTrue()
     {
         var state = CreateState(5, 5);
-        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));
-        state.SetTile(1, 0, new Tile(2, ElementType.Item1, 1, 0));
+        // Place tiles at bottom row — SimulateDropTarget returns bottommost empty cell
+        state.SetTile(0, 4, new Tile(1, ElementType.Item1, 0, 4));
+        state.SetTile(1, 4, new Tile(2, ElementType.Item1, 1, 4));
 
         Span<bool> wouldMatch = stackalloc bool[6];
         BoardAnalyzer.FindMatchingColors(ref state, 2, wouldMatch);
 
-        Assert.True(wouldMatch[0]); // Red would match
+        Assert.True(wouldMatch[0]); // Red would match at drop target (bottom row)
     }
 
     [Fact]

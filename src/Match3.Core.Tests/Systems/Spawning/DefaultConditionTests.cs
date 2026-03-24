@@ -216,9 +216,9 @@ public class DefaultConditionTests
         var condition = new DefaultCondition(rng, 6);
         var state = CreateState(5, 5);
 
-        // Setup: Item3 pair waiting for match at (0,0) and (1,0)
-        state.SetTile(0, 0, new Tile(1, ElementType.Item3, 0, 0));
-        state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0));
+        // Setup: Item3 pair waiting for match at bottom row (drop target)
+        state.SetTile(0, 4, new Tile(1, ElementType.Item3, 0, 4));
+        state.SetTile(1, 4, new Tile(2, ElementType.Item3, 1, 4));
 
         // Mercy conditions: struggling player in last moves
         var context = new SpawnContext

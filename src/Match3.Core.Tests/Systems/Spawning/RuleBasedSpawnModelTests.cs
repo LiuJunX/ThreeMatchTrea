@@ -88,9 +88,9 @@ public class RuleBasedSpawnModelTests
         var model = new RuleBasedSpawnModel(new SequentialRandom());
         var state = CreateState(5, 5);
 
-        // Setup a board where Blue would create a match
-        state.SetTile(0, 0, new Tile(1, ElementType.Item3, 0, 0));
-        state.SetTile(1, 0, new Tile(2, ElementType.Item3, 1, 0));
+        // Setup a board where Blue would create a match at drop target (bottom row)
+        state.SetTile(0, 4, new Tile(1, ElementType.Item3, 0, 4));
+        state.SetTile(1, 4, new Tile(2, ElementType.Item3, 1, 4));
 
         var context = new SpawnContext
         {
@@ -113,9 +113,9 @@ public class RuleBasedSpawnModelTests
         var model = new RuleBasedSpawnModel(new SequentialRandom());
         var state = CreateState(5, 5);
 
-        // Setup a board where Green would create a match
-        state.SetTile(0, 0, new Tile(1, ElementType.Item2, 0, 0));
-        state.SetTile(1, 0, new Tile(2, ElementType.Item2, 1, 0));
+        // Setup a board where Green would create a match at drop target (bottom row)
+        state.SetTile(0, 4, new Tile(1, ElementType.Item2, 0, 4));
+        state.SetTile(1, 4, new Tile(2, ElementType.Item2, 1, 4));
 
         var context = new SpawnContext
         {
@@ -215,10 +215,10 @@ public class RuleBasedSpawnModelTests
             if (type == ElementType.Item1) redCount++;
         }
 
-        // Red is 61% of board but guard triggers Balance weighting:
-        // Red weight=11/261≈4%, so expect ≤15 out of 100
-        Assert.True(redCount < 20,
-            $"Red spawned {redCount}/{samples} times; expected <20 with diversity guard active");
+        // Red is 61% of board but guard triggers SpawnSafe:
+        // With ~5 safe colors at the drop target, expected ≈20 out of 100
+        Assert.True(redCount < 30,
+            $"Red spawned {redCount}/{samples} times; expected <30 with diversity guard active");
     }
 
     [Fact]
@@ -329,9 +329,9 @@ public class RuleBasedSpawnModelTests
         var model = new RuleBasedSpawnModel(new SequentialRandom());
         var state = CreateState(5, 5);
 
-        // Setup for match
-        state.SetTile(0, 0, new Tile(1, ElementType.Item5, 0, 0));
-        state.SetTile(1, 0, new Tile(2, ElementType.Item5, 1, 0));
+        // Setup for match at drop target (bottom row)
+        state.SetTile(0, 4, new Tile(1, ElementType.Item5, 0, 4));
+        state.SetTile(1, 4, new Tile(2, ElementType.Item5, 1, 4));
 
         // Context that triggers help mode
         var helpContext = new SpawnContext

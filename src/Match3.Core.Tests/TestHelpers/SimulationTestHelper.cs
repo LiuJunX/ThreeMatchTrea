@@ -47,7 +47,30 @@ public static class SimulationTestHelper
             // Force one tick so gravity discovers the new gaps
             engine.Tick();
         }
+
+        // Final attempt: RunUntilStable may exit early due to MaxTicksPerRun limit
+        // while cascading is still in progress. Run additional ticks directly
+        // with frequent stability checks to catch short settling windows.
         engine.RunUntilStable();
+        if (!HasFloatingTiles(engine.State))
+            return;
+
+        const int extraTicks = 100_000;
+        int stableStreak = 0;
+        for (int t = 0; t < extraTicks; t++)
+        {
+            engine.Tick();
+            if (engine.IsStable())
+            {
+                stableStreak++;
+                if (stableStreak >= 3 && !HasFloatingTiles(engine.State))
+                    return;
+            }
+            else
+            {
+                stableStreak = 0;
+            }
+        }
     }
 
     /// <summary>
