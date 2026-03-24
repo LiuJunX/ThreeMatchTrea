@@ -66,14 +66,21 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Peek is a read-only query for presentation-layer decisions (e.g. whether to
+    /// preserve velocity through a cell). Callers must NOT use the result to modify
+    /// data that affects simulation logic — Grid positions, CellLocks, or tile lifecycle.
+    /// Only Position/Velocity (visual state) should be influenced by peek results.
+    /// </remarks>
     public NextMoveType PeekNextMove(ref GameState state, int x, int y)
     {
+        EnsureReservedCapacity(state);
         int checkY = SkipHolesBelow(in state, x, y);
         if (checkY >= state.Height)
             return NextMoveType.Stop;
 
-        // Can move down? (no reservation check — this is a peek)
-        if (IsCellAvailable(ref state, x, checkY))
+        // Can move down?
+        if (IsCellAvailable(ref state, x, checkY) && !IsReserved(x, checkY))
             return NextMoveType.Vertical;
 
         // Blocked — would diagonal to dead zone be possible?
@@ -81,10 +88,12 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
             state.GetTile(x, checkY).Type != ElementType.None)
         {
             if (x > 0 && IsCellAvailable(ref state, x - 1, checkY)
+                      && !IsReserved(x - 1, checkY)
                       && !HasTileAt(ref state, x - 1, y)
                       && IsDeadZone(ref state, x - 1, checkY))
                 return NextMoveType.Diagonal;
             if (x < state.Width - 1 && IsCellAvailable(ref state, x + 1, checkY)
+                                    && !IsReserved(x + 1, checkY)
                                     && !HasTileAt(ref state, x + 1, y)
                                     && IsDeadZone(ref state, x + 1, checkY))
                 return NextMoveType.Diagonal;
