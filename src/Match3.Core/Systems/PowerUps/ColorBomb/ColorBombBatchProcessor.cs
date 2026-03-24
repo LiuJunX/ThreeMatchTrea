@@ -123,6 +123,9 @@ internal sealed class ColorBombBatchProcessor
                         ref state, session.TargetColor, tick, simTime, events);
                     _coverSystem?.NotifyBatchElimination(
                         ref state, eliminatedSpan, tick, simTime, events);
+
+                    // Damage adjacent moving obstacle tiles (same pattern as StandardMatchProcessor)
+                    DamageAdjacentMultiStageTiles(ref state, eliminatedList, tick, simTime, events);
                 }
             }
             finally
@@ -221,5 +224,41 @@ internal sealed class ColorBombBatchProcessor
         foreach (var token in session.LockTokens)
             _lockScheduler.Release(ref state, token);
         session.LockTokens.Clear();
+    }
+
+    /// <summary>
+    /// Damage adjacent moving obstacle tiles after ColorBomb batch elimination.
+    /// </summary>
+    private void DamageAdjacentMultiStageTiles(
+        ref GameState state, List<EliminatedTileInfo> eliminated,
+        int tick, float simTime, IEventCollector events)
+    {
+        var hit = Pools.ObtainHashSet<Position>();
+        try
+        {
+            foreach (var info in eliminated)
+            {
+                TryDamageMovingObstacleAt(ref state, new Position(info.Pos.X - 1, info.Pos.Y), hit, tick, simTime, events);
+                TryDamageMovingObstacleAt(ref state, new Position(info.Pos.X + 1, info.Pos.Y), hit, tick, simTime, events);
+                TryDamageMovingObstacleAt(ref state, new Position(info.Pos.X, info.Pos.Y - 1), hit, tick, simTime, events);
+                TryDamageMovingObstacleAt(ref state, new Position(info.Pos.X, info.Pos.Y + 1), hit, tick, simTime, events);
+            }
+        }
+        finally
+        {
+            Pools.Release(hit);
+        }
+    }
+
+    private void TryDamageMovingObstacleAt(
+        ref GameState state, Position pos, HashSet<Position> hit,
+        int tick, float simTime, IEventCollector events)
+    {
+        if (!state.IsValid(pos.X, pos.Y)) return;
+        var tile = state.GetTile(pos.X, pos.Y);
+        if (tile.Type == ElementType.None) return;
+        if (!tile.Type.IsMovingObstacle()) return;
+        if (!hit.Add(pos)) return; // dedup: one damage per position per batch
+        _cellEliminator.Eliminate(ref state, pos, ElimSource.ColorBomb, tick, simTime, events);
     }
 }

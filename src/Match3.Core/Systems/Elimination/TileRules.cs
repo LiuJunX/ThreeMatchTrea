@@ -13,27 +13,28 @@ public static class TileRules
 {
     /// <summary>
     /// Can this tile type be eliminated by the given source?
-    /// Default: true for all types. Override for power-up-only moving obstacles.
+    /// Default: true for all types. PorcelainPiggy requires power-up.
     /// </summary>
     public static bool CanEliminate(ElementType type, ElimSource source)
     {
-        // Currently all tile types can be eliminated by any source.
-        // When moving obstacles are added (RoyalEgg, Vase, PorcelainPiggy, etc.),
-        // add cases here to restrict elimination sources.
-        _ = type;
-        _ = source;
-        return true;
+        return type switch
+        {
+            // Porcelain Piggy: power-up only, match blocked
+            ElementType.PorcelainPiggy
+                => source is ElimSource.Bomb or ElimSource.Projectile
+                          or ElimSource.ChainReaction or ElimSource.ColorBomb
+                          or ElimSource.SideItem or ElimSource.ConsumeBomb,
+            _ => true
+        };
     }
 
     /// <summary>
     /// Returns the default Stage (HP) for a tile type.
-    /// Normal tiles: 1 (one-hit). Moving obstacles: 2-3.
+    /// Normal tiles: 1 (one-hit). Vase: 2 (two-hit).
     /// </summary>
-    public static byte GetDefaultStage(ElementType type)
+    public static byte GetDefaultStage(ElementType type) => type switch
     {
-        // Currently all tiles have Stage=1.
-        // When moving obstacles are added, return their default HP here.
-        _ = type;
-        return 1;
-    }
+        ElementType.Vase => 2,
+        _ => 1
+    };
 }

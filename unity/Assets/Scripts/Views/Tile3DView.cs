@@ -290,6 +290,13 @@ namespace Match3.Unity.Views
                 effectPos.z = -0.5f;
             }
 
+            // Multi-stage tile damage shake (moving obstacles: Vase etc.)
+            if (visual.DamageProgress > 0f && visual.DamageProgress < 1f)
+            {
+                float shake = Mathf.Sin(visual.DamageProgress * Mathf.PI * 4f) * 0.08f * (1f - visual.DamageProgress);
+                fxScale *= (1f + shake);
+            }
+
             // --- Write channels + compose ---
             _pose[Ch.Effect].position = effectPos;
             _pose[Ch.Dynamic].rotation = dynamicRot;

@@ -87,7 +87,18 @@ public enum ElementType : byte
     /// An unmatchable blocker item (e.g., Stone, Wood Box).
     /// Occupies space, can fall, but doesn't match by color.
     /// </summary>
-    Unmatchable = 200
+    Unmatchable = 200,
+
+    // --- Moving Obstacles (210-219) ---
+
+    /// <summary>Moving obstacle: egg, 1 stage. Falls with gravity. Any source eliminates.</summary>
+    RoyalEgg = 210,
+
+    /// <summary>Moving obstacle: vase, 2 stages. Falls with gravity. Any source eliminates.</summary>
+    Vase = 211,
+
+    /// <summary>Moving obstacle: porcelain piggy, 1 stage. Power-up only. Falls with gravity.</summary>
+    PorcelainPiggy = 212,
 }
 
 /// <summary>
@@ -131,4 +142,8 @@ public static class ElementTypeExtensions
     /// <summary>Whether this is a collectible element (Bird, etc.).</summary>
     public static bool IsCollectible(this ElementType type)
         => type == ElementType.Bird || type == ElementType.Pearl || type == ElementType.Plate || type == ElementType.Envelope || type == ElementType.Diamond;
+
+    /// <summary>Whether this is a moving obstacle tile (non-matchable, falls, has Stage HP).</summary>
+    public static bool IsMovingObstacle(this ElementType type)
+        => type is ElementType.RoyalEgg or ElementType.Vase or ElementType.PorcelainPiggy;
 }

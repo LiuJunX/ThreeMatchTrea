@@ -48,8 +48,10 @@ public sealed record SwapCommand : IGameCommand
         if (fromTile.Type == ElementType.None || toTile.Type == ElementType.None)
             return false;
 
-        // Multi-stage tiles (moving obstacles) cannot be swapped
+        // Multi-stage tiles or moving obstacles cannot be swapped
         if (fromTile.Stage > 1 || toTile.Stage > 1)
+            return false;
+        if (fromTile.Type.IsMovingObstacle() || toTile.Type.IsMovingObstacle())
             return false;
 
         return true;

@@ -153,6 +153,10 @@ public class StandardMatchProcessor : IMatchProcessor
                 // Collectible adjacency: adjacent match eliminates neighboring collectible tiles
                 EliminateAdjacentCollectibles(
                     ref state, groupEliminated, globalCleared, tick, simTime, events);
+
+                // Moving obstacle adjacency: adjacent match damages neighboring multi-stage tiles
+                DamageAdjacentMultiStageTiles(
+                    ref state, groupEliminated, globalCleared, tick, simTime, events);
             }
         }
         finally
@@ -202,5 +206,46 @@ public class StandardMatchProcessor : IMatchProcessor
         var result = _cellEliminator.Eliminate(ref state, pos, ElimSource.Match, tick, simTime, events);
         if (result.Outcome == EliminateOutcome.Eliminated)
             globalCleared.Add(pos);
+    }
+
+    /// <summary>
+    /// After a batch elimination, damage any neighboring multi-stage moving obstacle tiles
+    /// via CellEliminator (which handles Stage guard and TileRules.CanEliminate).
+    /// Same adjacency pattern as collectibles and obstacles.
+    /// </summary>
+    private void DamageAdjacentMultiStageTiles(
+        ref GameState state, List<EliminatedTileInfo> eliminated,
+        HashSet<Position> globalCleared,
+        int tick, float simTime, IEventCollector events)
+    {
+        foreach (var info in eliminated)
+        {
+            if (info.Source != ElimSource.Match && info.Source != ElimSource.ColorBomb)
+                continue;
+
+            TryDamageMovingObstacleAt(ref state, new Position(info.Pos.X - 1, info.Pos.Y), info.Source, globalCleared, tick, simTime, events);
+            TryDamageMovingObstacleAt(ref state, new Position(info.Pos.X + 1, info.Pos.Y), info.Source, globalCleared, tick, simTime, events);
+            TryDamageMovingObstacleAt(ref state, new Position(info.Pos.X, info.Pos.Y - 1), info.Source, globalCleared, tick, simTime, events);
+            TryDamageMovingObstacleAt(ref state, new Position(info.Pos.X, info.Pos.Y + 1), info.Source, globalCleared, tick, simTime, events);
+        }
+    }
+
+    private void TryDamageMovingObstacleAt(
+        ref GameState state, Position pos, ElimSource source,
+        HashSet<Position> globalCleared,
+        int tick, float simTime, IEventCollector events)
+    {
+        if (!state.IsValid(pos.X, pos.Y)) return;
+        if (globalCleared.Contains(pos)) return;
+
+        var tile = state.GetTile(pos.X, pos.Y);
+        if (tile.Type == ElementType.None) return;
+        if (!tile.Type.IsMovingObstacle()) return;
+
+        // Dedup: prevent double damage from multiple adjacent eliminated tiles
+        globalCleared.Add(pos);
+
+        // CellEliminator handles Stage guard + TileRules.CanEliminate
+        _cellEliminator.Eliminate(ref state, pos, source, tick, simTime, events);
     }
 }

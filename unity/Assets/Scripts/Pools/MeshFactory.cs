@@ -316,6 +316,9 @@ namespace Match3.Unity.Pools
             if (type == ElementType.Item4) return new Color(0.950f, 0.724f, 0.048f); // Yellow
             if (type == ElementType.Item5) return new Color(0.482f, 0.140f, 0.780f); // Purple
             if (type == ElementType.Item6) return new Color(0.950f, 0.464f, 0.038f); // Orange
+            if (type == ElementType.RoyalEgg) return new Color(1.0f, 0.85f, 0.55f); // Gold egg
+            if (type == ElementType.Vase) return new Color(0.75f, 0.55f, 0.35f); // Ceramic brown
+            if (type == ElementType.PorcelainPiggy) return new Color(0.95f, 0.75f, 0.80f); // Pink porcelain
             return Color.gray;
         }
 
@@ -679,6 +682,9 @@ namespace Match3.Unity.Pools
             ElementType.Pearl => "Pearl",
             ElementType.Bird    => "Bird",
             ElementType.Diamond => "Diamond",
+            ElementType.RoyalEgg => "RoyalEgg",
+            ElementType.Vase => "Vase",
+            ElementType.PorcelainPiggy => "PorcelainPiggy",
             _ => null
         };
     }

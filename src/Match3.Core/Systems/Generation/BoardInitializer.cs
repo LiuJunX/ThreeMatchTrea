@@ -1,6 +1,7 @@
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Obstacles;
 using Match3.Core.Systems.Objectives;
 
@@ -98,10 +99,14 @@ public class BoardInitializer : IBoardInitializer
 
                     var tile = new Tile(state.NextTileId++, type, x, y);
 
-                    // Apply custom tile stage from level config
+                    // Apply tile stage: explicit config > type default > 1
                     if (levelConfig.TileStages != null && i < levelConfig.TileStages.Length && levelConfig.TileStages[i] > 0)
                     {
                         tile.Stage = levelConfig.TileStages[i];
+                    }
+                    else
+                    {
+                        tile.Stage = TileRules.GetDefaultStage(type);
                     }
 
                     state.SetTile(x, y, tile);
