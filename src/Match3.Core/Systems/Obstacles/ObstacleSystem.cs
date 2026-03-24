@@ -471,7 +471,7 @@ public sealed class ObstacleSystem : IObstacleSystem
             case ObstacleType.Cupboard:
                 ReleaseToSelf(ref state, pos, ElementType.Plate, simTime, tick, events);
                 break;
-            // Flowerpot, Oyster reserved for future ObstacleType additions
+            // Flowerpot/Oyster are tile-layer moving obstacles — see CellEliminator.ExecuteTileDeathEffect
         }
     }
 
@@ -486,7 +486,7 @@ public sealed class ObstacleSystem : IObstacleSystem
         SpreadGroundAt(ref state, new Position(center.X, center.Y + 1), groundType, protectUntil, center, tick, simTime, events);
     }
 
-    private void SpreadGroundAt(
+    internal static void SpreadGroundAt(
         ref GameState state, Position target, GroundType groundType, float protectUntil,
         Position source, int tick, float simTime, IEventCollector events)
     {

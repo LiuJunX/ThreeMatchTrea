@@ -99,6 +99,12 @@ public enum ElementType : byte
 
     /// <summary>Moving obstacle: porcelain piggy, 1 stage. Power-up only. Falls with gravity.</summary>
     PorcelainPiggy = 212,
+
+    /// <summary>Moving obstacle: oyster, 3 stages. Releases Pearl on death. Falls with gravity.</summary>
+    Oyster = 213,
+
+    /// <summary>Moving obstacle: flowerpot, 2 stages. Spreads 3×3 Grass on death. Falls with gravity.</summary>
+    Flowerpot = 214,
 }
 
 /// <summary>
@@ -145,5 +151,6 @@ public static class ElementTypeExtensions
 
     /// <summary>Whether this is a moving obstacle tile (non-matchable, falls, has Stage HP).</summary>
     public static bool IsMovingObstacle(this ElementType type)
-        => type is ElementType.RoyalEgg or ElementType.Vase or ElementType.PorcelainPiggy;
+        => type is ElementType.RoyalEgg or ElementType.Vase or ElementType.PorcelainPiggy
+                or ElementType.Oyster or ElementType.Flowerpot;
 }

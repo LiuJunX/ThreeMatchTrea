@@ -140,11 +140,59 @@ public sealed class CellEliminator : ICellEliminator
         _objectiveSystem?.OnTileDestroyed(ref state, tile.Type, tick, simTime, events);
 
         // Mutate: clear tile
+        var destroyedType = tile.Type;
         state.SetTile(pos.X, pos.Y, new Tile(0, ElementType.None, pos.X, pos.Y));
+
+        // Tile death effect (Oyster → Pearl, Flowerpot → 3×3 Grass)
+        ExecuteTileDeathEffect(ref state, pos, destroyedType, tick, simTime, events);
 
         // Ground notification
         _groundSystem.OnTileDestroyed(ref state, pos, tick, simTime, events);
 
         return EliminateResult.Eliminated(tile);
+    }
+
+    /// <summary>
+    /// Execute type-specific death effects after a tile is destroyed.
+    /// Mirrors <see cref="ObstacleSystem"/>.ExecuteDeathEffect for the tile layer.
+    /// </summary>
+    private static void ExecuteTileDeathEffect(
+        ref GameState state, Position pos, ElementType type,
+        int tick, float simTime, IEventCollector events)
+    {
+        switch (type)
+        {
+            case ElementType.Oyster:
+                // Release Pearl at self position (same pattern as Cupboard → Plate)
+                ObstacleSystem.ReleaseToSelf(ref state, pos, ElementType.Pearl,
+                    simTime, tick, events);
+                break;
+
+            case ElementType.Flowerpot:
+                // Spread 3×3 Grass around self position
+                SpreadGround3x3(ref state, pos, GroundType.Grass, simTime, tick, events);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Spread ground in a 3×3 area centered on the given position.
+    /// Skips invalid cells, existing ground, and obstacle-occupied cells.
+    /// </summary>
+    private static void SpreadGround3x3(
+        ref GameState state, Position center, GroundType groundType,
+        float simTime, int tick, IEventCollector events)
+    {
+        float protectUntil = simTime + ObstacleSystem.GroundProtectDuration;
+
+        for (int dy = -1; dy <= 1; dy++)
+        {
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                var target = new Position(center.X + dx, center.Y + dy);
+                ObstacleSystem.SpreadGroundAt(ref state, target, groundType, protectUntil,
+                    center, tick, simTime, events);
+            }
+        }
     }
 }

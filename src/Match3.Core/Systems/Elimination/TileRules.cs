@@ -34,7 +34,9 @@ public static class TileRules
     /// </summary>
     public static byte GetDefaultStage(ElementType type) => type switch
     {
-        ElementType.Vase => 2,
+        ElementType.Vase      => 2,
+        ElementType.Oyster    => 3,
+        ElementType.Flowerpot => 2,
         _ => 1
     };
 }

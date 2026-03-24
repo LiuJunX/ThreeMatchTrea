@@ -42,8 +42,8 @@ namespace Match3.Unity.Pools
             if (_tileMeshCache.TryGetValue(type, out var cached))
                 return cached;
 
-            // Collectibles use their own model name (no Gem_ prefix)
-            var collectibleName = GetCollectibleModelName(type);
+            // Custom model name for collectibles/moving obstacles (no Gem_ prefix)
+            var collectibleName = GetCustomModelName(type);
             if (collectibleName != null)
                 return LoadTileModel(type, collectibleName);
 
@@ -319,6 +319,8 @@ namespace Match3.Unity.Pools
             if (type == ElementType.RoyalEgg) return new Color(1.0f, 0.85f, 0.55f); // Gold egg
             if (type == ElementType.Vase) return new Color(0.75f, 0.55f, 0.35f); // Ceramic brown
             if (type == ElementType.PorcelainPiggy) return new Color(0.95f, 0.75f, 0.80f); // Pink porcelain
+            if (type == ElementType.Oyster) return new Color(0.70f, 0.65f, 0.60f); // Shell gray
+            if (type == ElementType.Flowerpot) return new Color(0.75f, 0.40f, 0.25f); // Terracotta
             return Color.gray;
         }
 
@@ -674,9 +676,9 @@ namespace Match3.Unity.Pools
         }
 
         /// <summary>
-        /// Returns the model name for collectible tile types, or null for non-collectibles.
+        /// Returns the custom model name for special tile types (collectibles, moving obstacles), or null for standard color gems.
         /// </summary>
-        private static string GetCollectibleModelName(ElementType type) => type switch
+        private static string GetCustomModelName(ElementType type) => type switch
         {
             ElementType.Plate => "Plate",
             ElementType.Pearl => "Pearl",
@@ -685,6 +687,8 @@ namespace Match3.Unity.Pools
             ElementType.RoyalEgg => "RoyalEgg",
             ElementType.Vase => "Vase",
             ElementType.PorcelainPiggy => "PorcelainPiggy",
+            ElementType.Oyster => "Oyster",
+            ElementType.Flowerpot => "Flowerpot",
             _ => null
         };
     }
