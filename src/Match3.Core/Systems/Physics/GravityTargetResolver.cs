@@ -71,16 +71,19 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
     /// preserve velocity through a cell). Callers must NOT use the result to modify
     /// data that affects simulation logic — Grid positions, CellLocks, or tile lifecycle.
     /// Only Position/Velocity (visual state) should be influenced by peek results.
+    ///
+    /// Does NOT check reservations: reservations are frame-scoped and do not predict
+    /// next-frame availability. A reserved cell will likely be free next frame after
+    /// ClearReservations. Checking would cause false Stop results and one-frame stutter.
     /// </remarks>
     public NextMoveType PeekNextMove(ref GameState state, int x, int y)
     {
-        EnsureReservedCapacity(state);
         int checkY = SkipHolesBelow(in state, x, y);
         if (checkY >= state.Height)
             return NextMoveType.Stop;
 
-        // Can move down?
-        if (IsCellAvailable(ref state, x, checkY) && !IsReserved(x, checkY))
+        // Can move down? (no reservation check — see remarks)
+        if (IsCellAvailable(ref state, x, checkY))
             return NextMoveType.Vertical;
 
         // Blocked — would diagonal to dead zone be possible?
@@ -88,12 +91,10 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
             state.GetTile(x, checkY).Type != ElementType.None)
         {
             if (x > 0 && IsCellAvailable(ref state, x - 1, checkY)
-                      && !IsReserved(x - 1, checkY)
                       && !HasTileAt(ref state, x - 1, y)
                       && IsDeadZone(ref state, x - 1, checkY))
                 return NextMoveType.Diagonal;
             if (x < state.Width - 1 && IsCellAvailable(ref state, x + 1, checkY)
-                                    && !IsReserved(x + 1, checkY)
                                     && !HasTileAt(ref state, x + 1, y)
                                     && IsDeadZone(ref state, x + 1, checkY))
                 return NextMoveType.Diagonal;

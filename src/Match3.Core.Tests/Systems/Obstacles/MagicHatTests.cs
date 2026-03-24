@@ -203,12 +203,12 @@ public class MagicHatTests
         var system = new ObstacleSystem();
 
         // Accumulate to threshold with all slots blocked
+        Span<EliminatedTileInfo> eliminated = stackalloc EliminatedTileInfo[]
+        {
+            new(new Position(1, 2), new Tile(1, ElementType.Item1, 1, 2), ElimSource.Match),
+        };
         for (int i = 0; i < 3; i++)
         {
-            Span<EliminatedTileInfo> eliminated = stackalloc EliminatedTileInfo[]
-            {
-                new(new Position(1, 2), new Tile(1, ElementType.Item1, 1, 2), ElimSource.Match),
-            };
             system.NotifyBatchElimination(ref state, eliminated, i, i * 0.1f, NullEventCollector.Instance);
         }
 

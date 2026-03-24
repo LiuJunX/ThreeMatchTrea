@@ -203,7 +203,7 @@ internal sealed class SimulationMatchHandler
 
             foreach (var pos in group.Positions)
             {
-                if (hasBomb && group.BombOrigin.Value == pos)
+                if (hasBomb && group.BombOrigin!.Value == pos)
                 {
                     // Bomb origin: Drop lock prevents newly created bomb from falling during merge+pop animation
                     _lockScheduler.Acquire(ref state, pos, CellLockType.Drop, _bombOriginDropLock);
