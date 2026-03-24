@@ -90,6 +90,7 @@ public sealed class VisualState : IVisualState
                         Alpha = 1f,
                         IsVisible = true,
                         TileType = tile.Type,
+                        CurrentStage = tile.Stage,
                         GridPosition = new Position(x, y)
                     };
                 }
@@ -176,6 +177,7 @@ public sealed class VisualState : IVisualState
                         Alpha = 1f,
                         IsVisible = true,
                         TileType = tile.Type,
+                        CurrentStage = tile.Stage,
                         GridPosition = new Position(x, y)
                     };
                 }
@@ -474,6 +476,15 @@ public sealed class TileVisual
 
     /// <summary>Type of tile (color or bomb).</summary>
     public ElementType TileType { get; set; }
+
+    /// <summary>Current stage/HP. Updated by Player on DamageTileCommand start.</summary>
+    public byte CurrentStage { get; set; } = 1;
+
+    /// <summary>
+    /// Damage animation progress (0→1). Driven by Player during DamageTileCommand.
+    /// Reset to 0 at damage start, reaches 1 at end. View uses this for hit reaction.
+    /// </summary>
+    public float DamageProgress { get; set; }
 
     /// <summary>Grid position.</summary>
     public Position GridPosition { get; set; }

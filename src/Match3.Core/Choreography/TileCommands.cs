@@ -133,6 +133,26 @@ public sealed record ShakeTileCommand : RenderCommand
 }
 
 /// <summary>
+/// Damage a multi-stage tile (stage decreased but not zero).
+/// Player drives DamageProgress 0→1 on the TileVisual.
+/// Analogous to <see cref="DamageObstacleCommand"/> for obstacles.
+/// </summary>
+public sealed record DamageTileCommand : RenderCommand
+{
+    /// <summary>Unique identifier of the tile.</summary>
+    public int TileId { get; init; }
+
+    /// <summary>Grid position of the tile.</summary>
+    public Position GridPos { get; init; }
+
+    /// <summary>Type of the tile.</summary>
+    public ElementType TileType { get; init; }
+
+    /// <summary>Stage AFTER this damage.</summary>
+    public byte NewStage { get; init; }
+}
+
+/// <summary>
 /// Remove a tile from visual state (after destruction animation completes).
 /// </summary>
 public sealed record RemoveTileCommand : RenderCommand

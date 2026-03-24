@@ -344,6 +344,17 @@ public sealed class Player
                 _visualState.AddObstacle(spawnObs.GridPos, spawnObs.ObstacleType, spawnObs.Stage, spawnObs.State);
                 break;
 
+            case DamageTileCommand damageTile:
+            {
+                var tileVisual = _visualState.GetTile(damageTile.TileId);
+                if (tileVisual != null)
+                {
+                    tileVisual.CurrentStage = damageTile.NewStage;
+                    tileVisual.DamageProgress = 0f;
+                }
+                break;
+            }
+
             case DamageObstacleCommand damageObs:
             {
                 var obsVisual = _visualState.GetObstacle(damageObs.GridPos);
@@ -520,6 +531,14 @@ public sealed class Player
                 _visualState.SetProjectileVisible(impact.ProjectileId, t < 0.5f);
                 break;
 
+            case DamageTileCommand damageTile2:
+            {
+                var tileVis = _visualState.GetTile(damageTile2.TileId);
+                if (tileVis != null)
+                    tileVis.DamageProgress = t;
+                break;
+            }
+
             case DamageObstacleCommand damageObs:
             {
                 var obsVisual = _visualState.GetObstacle(damageObs.GridPos);
@@ -664,6 +683,14 @@ public sealed class Player
                     _visualState.SetTilePosition(ufo.TileId, ufo.Target);
                 }
                 break;
+
+            case DamageTileCommand damageTile3:
+            {
+                var tileVis = _visualState.GetTile(damageTile3.TileId);
+                if (tileVis != null)
+                    tileVis.DamageProgress = 1f;
+                break;
+            }
 
             case DamageObstacleCommand damageObs:
             {

@@ -254,6 +254,11 @@ internal sealed class SimulationMatchHandler
         });
     }
 
+    // TODO: When moving obstacles (Stage>1) are added to the tile layer,
+    // this method must skip tiles with Stage>1 — they should NOT get TileDestroyedEvent
+    // until CellEliminator reduces Stage to 0. Currently safe because no Stage>1 tiles
+    // participate in matches (SwapCommand blocks swap, and they aren't spawned by refill).
+    // Also review BombOrigin selection — SetTile at bomb origin bypasses CellEliminator.
     private void EmitTileDestroyedEvents(
         ref GameState state,
         List<MatchGroup> stableGroups,

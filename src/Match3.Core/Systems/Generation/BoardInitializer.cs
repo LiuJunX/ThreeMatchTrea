@@ -96,7 +96,15 @@ public class BoardInitializer : IBoardInitializer
                         type = _tileGenerator.GenerateNonMatchingTile(ref state, x, y);
                     }
 
-                    state.SetTile(x, y, new Tile(state.NextTileId++, type, x, y));
+                    var tile = new Tile(state.NextTileId++, type, x, y);
+
+                    // Apply custom tile stage from level config
+                    if (levelConfig.TileStages != null && i < levelConfig.TileStages.Length && levelConfig.TileStages[i] > 0)
+                    {
+                        tile.Stage = levelConfig.TileStages[i];
+                    }
+
+                    state.SetTile(x, y, tile);
 
                     // Initialize Ground layer
                     if (levelConfig.Grounds != null && i < levelConfig.Grounds.Length)

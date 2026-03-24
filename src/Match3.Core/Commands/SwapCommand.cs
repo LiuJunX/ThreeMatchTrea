@@ -45,6 +45,13 @@ public sealed record SwapCommand : IGameCommand
         // Check tiles exist
         var fromTile = state.GetTile(From.X, From.Y);
         var toTile = state.GetTile(To.X, To.Y);
-        return fromTile.Type != ElementType.None && toTile.Type != ElementType.None;
+        if (fromTile.Type == ElementType.None || toTile.Type == ElementType.None)
+            return false;
+
+        // Multi-stage tiles (moving obstacles) cannot be swapped
+        if (fromTile.Stage > 1 || toTile.Stage > 1)
+            return false;
+
+        return true;
     }
 }

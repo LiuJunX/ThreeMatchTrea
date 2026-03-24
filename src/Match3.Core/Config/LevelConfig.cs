@@ -67,6 +67,13 @@ public class LevelConfig
     /// </summary>
     public byte[] ObstacleStates { get; set; }
 
+    /// <summary>
+    /// Tile initial stage/HP values (optional, defaults to 1 for normal tiles).
+    /// Moving obstacles on tile layer use Stage > 1 for multi-hit damage.
+    /// JSON: base64 string (1 byte per cell).
+    /// </summary>
+    public byte[] TileStages { get; set; }
+
     public int MoveLimit { get; set; } = 20;
 
     /// <summary>
@@ -139,6 +146,7 @@ public class LevelConfig
         Obstacles = new ObstacleType[size];
         ObstacleStages = new byte[size];
         ObstacleStates = new byte[size];
+        TileStages = new byte[size];
 
         // Default cells to Slot
         Array.Fill(Cells, CellKind.Slot);
@@ -158,6 +166,7 @@ public class LevelConfig
         Obstacles = new ObstacleType[size];
         ObstacleStages = new byte[size];
         ObstacleStates = new byte[size];
+        TileStages = new byte[size];
 
         Array.Fill(Cells, CellKind.Slot);
     }
@@ -181,6 +190,7 @@ public class LevelConfig
         if (Obstacles != null) Array.Copy(Obstacles, copy.Obstacles, Math.Min(Obstacles.Length, copy.Obstacles.Length));
         if (ObstacleStages != null) Array.Copy(ObstacleStages, copy.ObstacleStages, Math.Min(ObstacleStages.Length, copy.ObstacleStages.Length));
         if (ObstacleStates != null) Array.Copy(ObstacleStates, copy.ObstacleStates, Math.Min(ObstacleStates.Length, copy.ObstacleStates.Length));
+        if (TileStages != null) Array.Copy(TileStages, copy.TileStages, Math.Min(TileStages.Length, copy.TileStages.Length));
         for (int i = 0; i < Objectives.Length; i++)
             copy.Objectives[i] = Objectives[i];
         return copy;
