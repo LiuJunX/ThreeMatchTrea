@@ -12,6 +12,13 @@ public struct Tile
     public int Id;
 
     /// <summary>
+    /// Remaining hit-points. Normal tiles: 1 (one-hit kill, default).
+    /// Moving obstacles (Royal Egg, Vase, etc.): 2-3 (multi-stage damage).
+    /// Stage 0 = destroyed. Decremented by CellEliminator on each hit.
+    /// </summary>
+    public byte Stage;
+
+    /// <summary>
     /// Simulation time until which this tile is immune to matching and destruction.
     /// Used by death-effect released tiles (Pearl, Plate) to survive their spawn animation.
     /// 0 = no protection (default).
@@ -43,6 +50,7 @@ public struct Tile
         Position = new Vector2(x, y);
         Velocity = Vector2.Zero;
         State = TileState.None;
+        Stage = 1;
         ProtectUntil = 0f;
     }
 
@@ -53,6 +61,7 @@ public struct Tile
         Position = position;
         Velocity = Vector2.Zero;
         State = TileState.None;
+        Stage = 1;
         ProtectUntil = 0f;
     }
 }

@@ -82,9 +82,11 @@ internal sealed class ByteArrayFlexConverter : JsonConverter<byte[]>
         if (reader.TokenType == JsonTokenType.Null)
             return null;
 
+        // base64 string
         if (reader.TokenType == JsonTokenType.String)
             return reader.GetBytesFromBase64();
 
+        // int array
         if (reader.TokenType == JsonTokenType.StartArray)
         {
             var list = new List<byte>();
@@ -102,6 +104,7 @@ internal sealed class ByteArrayFlexConverter : JsonConverter<byte[]>
 
     public override void Write(Utf8JsonWriter writer, byte[] value, JsonSerializerOptions options)
     {
+        // Write as int array for readability
         writer.WriteStartArray();
         foreach (var b in value)
             writer.WriteNumberValue(b);

@@ -9,6 +9,9 @@ public interface IEventVisitor
     /// <summary>Visit a tile moved event.</summary>
     void Visit(TileMovedEvent evt);
 
+    /// <summary>Visit a tile damaged event (multi-stage tile hit but survived).</summary>
+    void Visit(TileDamagedEvent evt);
+
     /// <summary>Visit a tile destroyed event.</summary>
     void Visit(TileDestroyedEvent evt);
 

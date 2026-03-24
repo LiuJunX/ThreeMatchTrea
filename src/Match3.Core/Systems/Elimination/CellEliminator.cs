@@ -90,6 +90,36 @@ public sealed class CellEliminator : ICellEliminator
         if (tile.ProtectUntil > simTime)
             return EliminateResult.Blocked;
 
+        // Tile elimination source restriction (e.g., power-up-only moving obstacles)
+        if (!TileRules.CanEliminate(tile.Type, ctx.Source))
+            return EliminateResult.Blocked;
+
+        // Multi-stage tile: decrement Stage, emit damage event if still alive
+        if (tile.Stage > 1)
+        {
+            tile.Stage--;
+            state.SetTile(pos.X, pos.Y, tile);
+
+            if (events.IsEnabled)
+            {
+                events.Emit(new TileDamagedEvent
+                {
+                    Tick = tick,
+                    SimulationTime = simTime,
+                    TileId = tile.Id,
+                    GridPosition = pos,
+                    Type = tile.Type,
+                    RemainingStage = tile.Stage,
+                    Reason = ctx.Source
+                });
+            }
+
+            // Ground still takes damage on each hit
+            _groundSystem.OnTileDestroyed(ref state, pos, tick, simTime, events);
+
+            return EliminateResult.Absorbed(tile);
+        }
+
         // Event (with IsGoal)
         if (events.IsEnabled)
         {

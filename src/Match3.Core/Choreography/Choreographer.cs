@@ -10,7 +10,7 @@ namespace Match3.Core.Choreography;
 /// Routing table — each Visit method delegates to the responsible sub-processor:
 ///
 ///   TileChoreographer:
-///     TileMovedEvent, TileDestroyedEvent, TileSpawnedEvent, TilesSwappedEvent
+///     TileMovedEvent, TileDamagedEvent, TileDestroyedEvent, TileSpawnedEvent, TilesSwappedEvent
 ///
 ///   BombChoreographer (delegates color bomb effects to ColorBombEffectsChoreographer):
 ///     BombCreatedEvent, BombActivatedEvent, BombComboEvent
@@ -116,6 +116,9 @@ public sealed class Choreographer : IEventVisitor
 
     /// <inheritdoc />
     public void Visit(TileMovedEvent evt) => _tile.Visit(evt);
+
+    /// <inheritdoc />
+    public void Visit(TileDamagedEvent evt) => _tile.Visit(evt);
 
     /// <inheritdoc />
     public void Visit(TileDestroyedEvent evt) => _tile.Visit(evt);

@@ -44,6 +44,32 @@ internal sealed class TileChoreographer
     }
 
     /// <summary>
+    /// Emit a damage command for a multi-stage tile that took a hit but survived.
+    /// </summary>
+    internal void Visit(TileDamagedEvent evt)
+    {
+        float startTime = _ctx.GetStartTime(evt);
+
+        _ctx.Commands.Add(new DamageTileCommand
+        {
+            TileId = evt.TileId,
+            GridPos = evt.GridPosition,
+            TileType = evt.Type,
+            NewStage = evt.RemainingStage,
+            StartTime = startTime,
+            Duration = 0.25f
+        });
+
+        _ctx.Commands.Add(new ShowEffectCommand
+        {
+            EffectType = "tile_hit",
+            Position = new Vector2(evt.GridPosition.X, evt.GridPosition.Y),
+            StartTime = startTime,
+            Duration = 0.2f
+        });
+    }
+
+    /// <summary>
     /// Emit destruction animation for a tile, handling merge, beam-delay, and standard paths.
     /// </summary>
     internal void Visit(TileDestroyedEvent evt)

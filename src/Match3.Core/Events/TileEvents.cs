@@ -27,6 +27,31 @@ public sealed record TileMovedEvent : GameEvent
 }
 
 /// <summary>
+/// Event emitted when a multi-stage tile takes damage but survives (Stage > 0 after hit).
+/// Analogous to <see cref="ObstacleDamagedEvent"/> for the obstacle layer.
+/// </summary>
+public sealed record TileDamagedEvent : GameEvent
+{
+    /// <summary>Unique identifier of the damaged tile.</summary>
+    public int TileId { get; init; }
+
+    /// <summary>Grid position of the damaged tile.</summary>
+    public Position GridPosition { get; init; }
+
+    /// <summary>Type of the damaged tile.</summary>
+    public ElementType Type { get; init; }
+
+    /// <summary>Remaining stage/HP after damage.</summary>
+    public byte RemainingStage { get; init; }
+
+    /// <summary>Source of the hit.</summary>
+    public ElimSource Reason { get; init; }
+
+    /// <inheritdoc />
+    public override void Accept(IEventVisitor visitor) => visitor.Visit(this);
+}
+
+/// <summary>
 /// Event emitted when a tile is destroyed (cleared from the grid).
 /// </summary>
 public sealed record TileDestroyedEvent : GameEvent
