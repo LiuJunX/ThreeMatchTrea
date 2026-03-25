@@ -22,6 +22,7 @@ namespace Match3.Unity.Views.Obstacles
                 ObstacleType.MagicHat => new MagicHatPresenter(),
                 ObstacleType.Curtain => new CurtainPresenter(),
                 ObstacleType.PotionBottle => new PotionBottlePresenter(),
+                ObstacleType.Mailbox => new MailboxPresenter(),
                 _ => new BoxPresenter(), // fallback: all types look like boxes until art is ready
             };
         }

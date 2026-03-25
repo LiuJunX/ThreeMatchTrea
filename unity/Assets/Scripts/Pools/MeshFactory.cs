@@ -16,7 +16,7 @@ namespace Match3.Unity.Pools
         private static Mesh _fallbackMesh;
         private static readonly Dictionary<ElementType, Material> _materialCache = new();
         private static readonly Dictionary<ElementType, Material[]> _singleMaterialArrayCache = new();
-        private static readonly Dictionary<ElementType, Material[]> _collectibleMaterialCache = new();
+        private static readonly Dictionary<ElementType, Material[]> _customModelMaterialCache = new();
         private static readonly Dictionary<ElementType, Mesh> _bombMeshCache = new();
         private static readonly Dictionary<ElementType, Material[]> _bombMaterialCache = new();
         private static readonly Dictionary<ObstacleType, Mesh> _obstacleMeshCache = new();
@@ -61,12 +61,12 @@ namespace Match3.Unity.Pools
                 {
                     _tileMeshCache[type] = meshFilter.sharedMesh;
 
-                    // Cache FBX-embedded materials for collectibles (clone with TileLit for clip support)
-                    if (type.IsCollectible())
+                    // Cache FBX-embedded materials for collectibles and moving obstacles (clone with TileLit for clip support)
+                    if (type.IsCollectible() || type.IsMovingObstacle())
                     {
                         var renderer = model.GetComponentInChildren<MeshRenderer>();
                         if (renderer != null && renderer.sharedMaterials.Length > 0)
-                            _collectibleMaterialCache[type] = CloneMaterialsWithTileLit(renderer.sharedMaterials);
+                            _customModelMaterialCache[type] = CloneMaterialsWithTileLit(renderer.sharedMaterials);
                     }
 
                     Debug.Log($"[MeshFactory] Loaded {modelName} mesh from Resources");
@@ -203,6 +203,7 @@ namespace Match3.Unity.Pools
                 ObstacleType.MagicHat => "MagicHat",
                 ObstacleType.Curtain => "Curtain",
                 ObstacleType.PotionBottle => "PotionBottle",
+                ObstacleType.Mailbox => "Mailbox",
                 _ => type.ToString()
             };
             var model = ResourceService.Loader.Load<GameObject>($"Art/Gems/Models/{typeName}");
@@ -261,7 +262,9 @@ namespace Match3.Unity.Pools
 
             var typeName = type switch
             {
+                GroundType.Ice => "Ice",
                 GroundType.Grass => "Grass",
+                GroundType.Leaves => "Leaves",
                 _ => type.ToString()
             };
             var model = ResourceService.Loader.Load<GameObject>($"Art/Gems/Models/{typeName}");
@@ -338,12 +341,12 @@ namespace Match3.Unity.Pools
                     return bombMats;
             }
 
-            // Collectibles use FBX-embedded materials (cached during LoadTileModel)
-            if (type.IsCollectible())
+            // Collectibles and moving obstacles use FBX-embedded materials (cached during LoadTileModel)
+            if (type.IsCollectible() || type.IsMovingObstacle())
             {
-                if (!_collectibleMaterialCache.ContainsKey(type))
+                if (!_customModelMaterialCache.ContainsKey(type))
                     GetTileMesh(type); // trigger load + material cache
-                if (_collectibleMaterialCache.TryGetValue(type, out var colMats) && colMats.Length > 0)
+                if (_customModelMaterialCache.TryGetValue(type, out var colMats) && colMats.Length > 0)
                     return colMats;
             }
 
@@ -515,7 +518,7 @@ namespace Match3.Unity.Pools
             _bombMeshCache.Clear();
 
             // Destroy cloned collectible materials
-            foreach (var mats in _collectibleMaterialCache.Values)
+            foreach (var mats in _customModelMaterialCache.Values)
             {
                 if (mats == null) continue;
                 foreach (var mat in mats)
@@ -524,7 +527,7 @@ namespace Match3.Unity.Pools
                         Object.Destroy(mat);
                 }
             }
-            _collectibleMaterialCache.Clear();
+            _customModelMaterialCache.Clear();
 
             // Destroy cloned bomb materials (created by CloneMaterialsWithTileLit)
             foreach (var mats in _bombMaterialCache.Values)
@@ -684,6 +687,7 @@ namespace Match3.Unity.Pools
             ElementType.Pearl => "Pearl",
             ElementType.Bird    => "Bird",
             ElementType.Diamond => "Diamond",
+            ElementType.Envelope => "Envelope",
             ElementType.RoyalEgg => "RoyalEgg",
             ElementType.Vase => "Vase",
             ElementType.PorcelainPiggy => "PorcelainPiggy",

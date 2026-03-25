@@ -12,9 +12,9 @@ namespace Match3.Unity.Views.Grounds
         {
             return type switch
             {
-                GroundType.Ice => new GrassPresenter(),    // fallback until IcePresenter exists
+                GroundType.Ice => new IcePresenter(),
                 GroundType.Grass => new GrassPresenter(),
-                GroundType.Leaves => new GrassPresenter(), // fallback until LeavesPresenter exists
+                GroundType.Leaves => new LeavesPresenter(),
                 _ => new GrassPresenter(),
             };
         }
