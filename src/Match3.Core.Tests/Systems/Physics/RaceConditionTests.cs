@@ -104,6 +104,55 @@ public class RaceConditionTests
     }
 
     [Fact]
+    public void SlidingTiles_ShouldNotClaimSameDeadZone()
+    {
+        // Two tiles at opposite sides of a dead-zone column both try to slide
+        // into the same dead-zone cell. Only one should succeed.
+        //
+        //     Col 0    Col 1    Col 2
+        //  0    X        O        Y      O(1,0) → (1,1) is dead zone
+        //  1    O      (空)       O      O(0,1) blocks X, O(2,1) blocks Y
+        //  2                              both want to slide to (1,1)
+
+        var rng = StubRandom.WithFixedValue(0);
+        var config = new Match3Config { GravitySpeed = 35f, InitialFallSpeed = 12f };
+        var state = new GameState(3, 3, 5, rng);
+        var gravity = new RealtimeGravitySystem(config, rng);
+
+        ClearBoard(ref state);
+        state.SetTile(0, 0, new Tile(1, ElementType.Item1, 0, 0));   // X
+        state.SetTile(2, 0, new Tile(2, ElementType.Item3, 2, 0));   // Y
+        state.SetObstacle(1, 0, new Obstacle(ObstacleType.Box, 1));  // dead zone source
+        state.SetObstacle(0, 1, new Obstacle(ObstacleType.Box, 1));  // block X vertical
+        state.SetObstacle(2, 1, new Obstacle(ObstacleType.Box, 1));  // block Y vertical
+
+        // Run enough frames for slides to complete
+        for (int i = 0; i < 30; i++)
+            gravity.Update(ref state, 0.016f);
+
+        // Invariant: (1,1) should have at most one tile
+        var tileAt11 = state.GetTile(1, 1);
+        // Find where each tile ended up
+        int tile1Count = 0, tile2Count = 0;
+        for (int y = 0; y < state.Height; y++)
+            for (int x = 0; x < state.Width; x++)
+            {
+                var t = state.GetTile(x, y);
+                if (t.Id == 1) tile1Count++;
+                if (t.Id == 2) tile2Count++;
+            }
+
+        // Each tile should exist exactly once (no duplication, no loss)
+        Assert.Equal(1, tile1Count);
+        Assert.Equal(1, tile2Count);
+
+        // At most one tile at (1,1) — no double-occupy
+        Assert.True(tileAt11.Type == ElementType.None ||
+                    tileAt11.Id == 1 || tileAt11.Id == 2,
+                    "Only tile 1 or 2 (or empty) should be at (1,1)");
+    }
+
+    [Fact]
     public void DoubleUpdate_ShouldBePrevented()
     {
         // A tile that transfers to a new cell during column processing
@@ -141,6 +190,11 @@ public class RaceConditionTests
         }
         Assert.True(foundInCol2, "Tile should have slid to column 2");
     }
+
+    private static void ClearBoard(ref GameState state)
+    {
+        for (int y = 0; y < state.Height; y++)
+            for (int x = 0; x < state.Width; x++)
+                state.SetTile(x, y, new Tile(0, ElementType.None, x, y));
+    }
 }
-
-

@@ -65,6 +65,7 @@ public class RealtimeGravitySystem : IPhysicsSimulation
     private void ResetFrameBuffers(GameState state)
     {
         _targetResolver.ClearReservations();
+        _targetResolver.EnsureCapacity(state.Width, state.Height);
         Array.Clear(_newlyOccupied, 0, state.Width * state.Height);
     }
 
@@ -113,7 +114,8 @@ public class RealtimeGravitySystem : IPhysicsSimulation
 
     /// <summary>
     /// If tile.IsSliding, continue committed direction without re-evaluating.
-    /// Otherwise call DetermineTarget normally.
+    /// TryReserve prevents same-frame reservation conflicts with DetermineTarget.
+    /// Falls through to DetermineTarget when commitment can't be maintained.
     /// </summary>
     private IGravityTargetResolver.TargetInfo ResolveTarget(
         ref GameState state, in Tile tile, int gx, int gy)
@@ -132,10 +134,14 @@ public class RealtimeGravitySystem : IPhysicsSimulation
                     !state.HasObstacle(targetX, checkY) &&
                     state.GetTile(targetX, checkY).Type == ElementType.None)
                 {
+                    // Best-effort reservation: protects against later DetermineTarget
+                    // calls this frame. If it fails (another tile reserved first),
+                    // the committed slide continues — UpdateGridPosition resolves collisions.
+                    _targetResolver.TryReserve(targetX, checkY);
                     return new IGravityTargetResolver.TargetInfo(targetX, checkY);
                 }
             }
-            // Target invalid or no velocity — clear sliding, re-evaluate
+            // Target invalid or occupied — clear sliding, re-evaluate
         }
 
         return _targetResolver.DetermineTarget(ref state, gx, gy);

@@ -706,6 +706,7 @@ public class MailboxTests
     #region Full pipeline — determinism & invariant
 
     [Fact]
+    [Trait("Category", "Slow")]
     public void FullPipeline_MailboxNeverDestroyed_EnvelopesSpawned()
     {
         var config = CreateMailboxLevelConfig();
@@ -741,6 +742,7 @@ public class MailboxTests
     }
 
     [Fact]
+    [Trait("Category", "Slow")]
     public void FullPipeline_Determinism_SameSeed_SameResult()
     {
         var config = CreateMailboxLevelConfig();

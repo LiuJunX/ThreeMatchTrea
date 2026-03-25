@@ -298,6 +298,44 @@ public class GravityTargetResolverTests
         Assert.Equal(r1.Y, r2.Y);
     }
 
+    [Fact]
+    public void TryReserve_BlocksDetermineTarget()
+    {
+        // TryReserve on a cell should prevent DetermineTarget from targeting it
+        var random = StubRandom.WithFixedValue(0);
+        var resolver = new GravityTargetResolver(random);
+        var state = new GameState(3, 5, 5, random);
+        ClearBoard(ref state);
+        state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
+
+        resolver.ClearReservations();
+        resolver.EnsureCapacity(state.Width, state.Height);
+
+        // Externally reserve (1,1) — simulates a sliding tile's fast path
+        bool reserved = resolver.TryReserve(1, 1);
+        Assert.True(reserved);
+
+        // DetermineTarget should see (1,1) as reserved and stay put
+        var result = resolver.DetermineTarget(ref state, 1, 0);
+        Assert.Equal(1, result.X);
+        Assert.Equal(0, result.Y);
+    }
+
+    [Fact]
+    public void TryReserve_DoubleReserve_ReturnsFalse()
+    {
+        var random = StubRandom.WithFixedValue(0);
+        var resolver = new GravityTargetResolver(random);
+        var state = new GameState(3, 3, 5, random);
+        ClearBoard(ref state);
+
+        resolver.ClearReservations();
+        resolver.EnsureCapacity(state.Width, state.Height);
+
+        Assert.True(resolver.TryReserve(1, 1));
+        Assert.False(resolver.TryReserve(1, 1)); // already reserved
+    }
+
     #endregion
 
     #region PeekNextMove Tests

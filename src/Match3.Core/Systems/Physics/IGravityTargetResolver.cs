@@ -53,4 +53,18 @@ public interface IGravityTargetResolver
     /// Clear any reserved slots at the start of a new frame.
     /// </summary>
     void ClearReservations();
+
+    /// <summary>
+    /// Ensure internal reservation buffer is large enough for the given grid dimensions.
+    /// Call once per frame before any TryReserve calls.
+    /// </summary>
+    void EnsureCapacity(int width, int height);
+
+    /// <summary>
+    /// Atomically check and reserve a cell. Returns true if the cell was not reserved
+    /// and is now reserved; false if it was already reserved by another tile this frame.
+    /// Used by committed fast paths (sliding, committed vertical fall) to participate
+    /// in the frame-scoped reservation system without going through DetermineTarget.
+    /// </summary>
+    bool TryReserve(int x, int y);
 }

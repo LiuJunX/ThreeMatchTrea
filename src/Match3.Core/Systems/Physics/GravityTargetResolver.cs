@@ -201,14 +201,31 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
 
     #region Reservation (bool[] for hot-path performance)
 
-    private void EnsureReservedCapacity(GameState state)
+    /// <inheritdoc />
+    public void EnsureCapacity(int width, int height)
     {
-        int size = state.Width * state.Height;
+        int size = width * height;
         if (_reserved.Length < size)
         {
             _reserved = new bool[size];
-            _reservedWidth = state.Width;
+            _reservedWidth = width;
         }
+    }
+
+    /// <inheritdoc />
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool TryReserve(int x, int y)
+    {
+        int idx = y * _reservedWidth + x;
+        if ((uint)idx >= (uint)_reserved.Length) return false;
+        if (_reserved[idx]) return false;
+        _reserved[idx] = true;
+        return true;
+    }
+
+    private void EnsureReservedCapacity(GameState state)
+    {
+        EnsureCapacity(state.Width, state.Height);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

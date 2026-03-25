@@ -318,6 +318,7 @@ public class CupboardIntegrationTests
     #region Full pipeline
 
     [Fact]
+    [Trait("Category", "Slow")]
     public void FullPipeline_CupboardDestroyed_PlateSpawned()
     {
         var config = CreateCupboardLevelConfig();

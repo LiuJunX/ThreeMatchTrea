@@ -156,6 +156,7 @@ public class AIServiceTests
     }
 
     [Fact]
+    [Trait("Category", "Slow")]
     public void GetBestMove_ReturnsValidMove()
     {
         var service = CreateAIService();
@@ -175,6 +176,7 @@ public class AIServiceTests
     #region AnalyzeDifficulty Tests
 
     [Fact]
+    [Trait("Category", "Slow")]
     public void AnalyzeDifficulty_ReturnsAnalysis()
     {
         var service = CreateAIService();
@@ -186,6 +188,7 @@ public class AIServiceTests
     }
 
     [Fact]
+    [Trait("Category", "Slow")]
     public void AnalyzeDifficulty_CountsValidMoves()
     {
         var service = CreateAIService();
@@ -197,6 +200,7 @@ public class AIServiceTests
     }
 
     [Fact]
+    [Trait("Category", "Slow")]
     public void AnalyzeDifficulty_CategorizesCorrectly()
     {
         var service = CreateAIService();
@@ -219,6 +223,7 @@ public class AIServiceTests
     }
 
     [Fact]
+    [Trait("Category", "Slow")]
     public void AnalyzeDifficulty_IncludesBoardHealth()
     {
         var service = CreateAIService();
@@ -275,6 +280,7 @@ public class AIServiceTests
     }
 
     [Fact]
+    [Trait("Category", "Slow")]
     public void SetStrategy_NullDefaultsToGreedy()
     {
         var service = CreateAIService();
@@ -291,6 +297,7 @@ public class AIServiceTests
     #region GetAllMovePreviews Tests
 
     [Fact]
+    [Trait("Category", "Slow")]
     public void GetAllMovePreviews_ReturnsAllPreviews()
     {
         var service = CreateAIService();

@@ -283,6 +283,7 @@ public class BoxIntegrationTests
     }
 
     [Fact]
+    [Trait("Category", "Slow")]
     public void FullPipeline_BoxDestroyed_ObjectiveProgress()
     {
         // Use full session to test box destruction updates objective
@@ -342,6 +343,7 @@ public class BoxIntegrationTests
     #region Physics — obstacle blocks gravity and refill
 
     [Fact]
+    [Trait("Category", "Slow")]
     public void Gravity_TileAboveObstacle_DoesNotFallThrough()
     {
         // Column: tile at y=0, box at y=1, empty at y=2
@@ -366,6 +368,7 @@ public class BoxIntegrationTests
     }
 
     [Fact]
+    [Trait("Category", "Slow")]
     public void Gravity_TileDoesNotEnterObstacleCell_AfterElimination()
     {
         // Setup: column with tile above box, and gap below box

@@ -469,6 +469,7 @@ public class MagicHatTests
     #region Full pipeline
 
     [Fact]
+    [Trait("Category", "Slow")]
     public void FullPipeline_MagicHatNeverDestroyed()
     {
         var config = CreateMagicHatLevelConfig();
@@ -497,6 +498,7 @@ public class MagicHatTests
     }
 
     [Fact]
+    [Trait("Category", "Slow")]
     public void FullPipeline_Determinism_SameSeed_SameResult()
     {
         var config = CreateMagicHatLevelConfig();
