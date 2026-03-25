@@ -19,6 +19,7 @@ class Program
             "validate" => ValidateCommand.Run(commandArgs),
             "analyze" => await AnalyzeCommand.RunAsync(commandArgs),
             "create" => CreateCommand.Run(commandArgs),
+            "generate" => await GenerateCommand.RunAsync(commandArgs),
             _ => PrintUsage()
         };
     }
@@ -32,6 +33,8 @@ class Program
         Console.WriteLine("  levelcli validate <path>              验证关卡合法性");
         Console.WriteLine("  levelcli analyze <path> [--count N] [--mode random|greedy|population]");
         Console.WriteLine("  levelcli create <w> <h> -o <path>     创建空白关卡模板");
+        Console.WriteLine("  levelcli generate <blueprint> [--start N] [--end N] [--seed N] [-o dir] [--sims N]");
+        Console.WriteLine("                                        批量生成关卡 (生成+分析+调参)");
         Console.WriteLine();
         return 1;
     }
