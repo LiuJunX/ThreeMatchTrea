@@ -75,7 +75,7 @@ public sealed class ReplayController : IDisposable
 
 ```csharp
 // 1. 创建游戏会话
-var factory = new GameServiceBuilder().Build();
+var factory = new GameServiceFactoryBuilder().Build();
 var session = factory.CreateGameSession(config);
 
 // 2. 记录初始状态
@@ -110,7 +110,7 @@ var recording = GameRecording.Create(
 var recording = LoadRecording();
 
 // 2. 创建回放控制器
-var factory = new GameServiceBuilder().Build();
+var factory = new GameServiceFactoryBuilder().Build();
 var controller = new ReplayController(recording, factory);
 
 // 3. 控制回放

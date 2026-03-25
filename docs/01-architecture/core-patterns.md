@@ -156,7 +156,7 @@ Abstracts away the manual assembly of 13+ game systems.
 
 ```csharp
 // Builder pattern for configuration
-var factory = new GameServiceBuilder()
+var factory = new GameServiceFactoryBuilder()
     .WithPhysics((cfg, rng) => new CustomPhysics(cfg, rng))
     .WithMatchFinder(bombGen => new CustomMatchFinder(bombGen))
     .Build();

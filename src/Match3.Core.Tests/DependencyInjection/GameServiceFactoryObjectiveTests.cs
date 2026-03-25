@@ -15,7 +15,7 @@ public class GameServiceFactoryObjectiveTests
 {
     private static IGameServiceFactory CreateFactory()
     {
-        return new GameServiceBuilder().UseDefaultServices().Build();
+        return new GameServiceFactoryBuilder().UseDefaultServices().Build();
     }
 
     [Fact]

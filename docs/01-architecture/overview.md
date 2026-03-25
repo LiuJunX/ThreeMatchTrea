@@ -263,14 +263,14 @@ The DI system abstracts away the manual assembly of 13+ game systems, providing 
 DependencyInjection/
 ├── IGameServiceFactory.cs       # Factory interface
 ├── GameServiceFactory.cs        # Factory implementation
-├── GameServiceBuilder.cs        # Fluent configuration builder
+├── GameServiceFactoryBuilder.cs        # Fluent configuration builder
 ├── GameServiceConfiguration.cs  # Immutable configuration record
 └── GameSession.cs               # Session encapsulation
 ```
 
-### GameServiceBuilder (Fluent API)
+### GameServiceFactoryBuilder (Fluent API)
 ```csharp
-var factory = new GameServiceBuilder()
+var factory = new GameServiceFactoryBuilder()
     .WithPhysics((cfg, rng) => new CustomPhysics(cfg, rng))
     .WithMatchFinder(bombGen => new CustomMatchFinder(bombGen))
     .Build();
@@ -292,7 +292,7 @@ public sealed class GameSession : IDisposable
 ### Usage
 ```csharp
 // Simple usage with defaults
-var factory = new GameServiceBuilder().Build();
+var factory = new GameServiceFactoryBuilder().Build();
 var session = factory.CreateGameSession(levelConfig);
 
 // Custom configuration

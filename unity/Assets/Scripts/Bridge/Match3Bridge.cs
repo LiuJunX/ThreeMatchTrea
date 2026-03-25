@@ -253,7 +253,7 @@ namespace Match3.Unity.Bridge
 
             _seed = seed;
 
-            _factory = new GameServiceBuilder()
+            _factory = new GameServiceFactoryBuilder()
                 .UseDefaultServices()
                 .Build();
 
@@ -330,7 +330,7 @@ namespace Match3.Unity.Bridge
             _seed = seed;
 
             // Create factory with default services
-            _factory = new GameServiceBuilder()
+            _factory = new GameServiceFactoryBuilder()
                 .UseDefaultServices()
                 .Build();
 
@@ -972,7 +972,7 @@ namespace Match3.Unity.Bridge
             _session?.Dispose();
             _session = null;
 
-            _factory ??= new GameServiceBuilder().UseDefaultServices().Build();
+            _factory ??= new GameServiceFactoryBuilder().UseDefaultServices().Build();
             _replayController = new ReplayController(recording, _factory);
 
             // Reset presentation

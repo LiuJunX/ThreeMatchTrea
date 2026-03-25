@@ -191,7 +191,7 @@ public class CupboardIntegrationTests
             default
         ];
 
-        var factory = new GameServiceBuilder().UseDefaultServices().Build();
+        var factory = new GameServiceFactoryBuilder().UseDefaultServices().Build();
         var sessionConfig = new GameServiceConfiguration
         {
             RngSeed = 42,
@@ -322,7 +322,7 @@ public class CupboardIntegrationTests
     {
         var config = CreateCupboardLevelConfig();
 
-        var factory = new GameServiceBuilder().UseDefaultServices().Build();
+        var factory = new GameServiceFactoryBuilder().UseDefaultServices().Build();
         var sessionConfig = new GameServiceConfiguration
         {
             RngSeed = 42,

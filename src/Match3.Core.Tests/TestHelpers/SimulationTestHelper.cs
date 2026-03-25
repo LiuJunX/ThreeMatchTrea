@@ -16,11 +16,11 @@ namespace Match3.Core.Tests.TestHelpers;
 public static class SimulationTestHelper
 {
     /// <summary>
-    /// Creates a fully-wired GameSession via GameServiceBuilder.
+    /// Creates a fully-wired GameSession via GameServiceFactoryBuilder.
     /// </summary>
     public static GameSession CreateSession(int seed, LevelConfig? levelConfig = null, int tileTypesCount = 6)
     {
-        var factory = new GameServiceBuilder().UseDefaultServices().Build();
+        var factory = new GameServiceFactoryBuilder().UseDefaultServices().Build();
         var config = new GameServiceConfiguration
         {
             RngSeed = seed,

@@ -22,7 +22,7 @@ namespace Match3.Core.DependencyInjection;
 /// Fluent builder for configuring game services.
 /// Enables testing with specific component substitutions.
 /// </summary>
-public sealed class GameServiceBuilder
+public sealed class GameServiceFactoryBuilder
 {
     private Func<Match3Config, IRandom, IPhysicsSimulation>? _physicsFactory;
     private Func<ISpawnModel, IRefillSystem>? _refillFactory;
@@ -43,7 +43,7 @@ public sealed class GameServiceBuilder
     /// <summary>
     /// Configure custom physics system factory.
     /// </summary>
-    public GameServiceBuilder WithPhysics(Func<Match3Config, IRandom, IPhysicsSimulation> factory)
+    public GameServiceFactoryBuilder WithPhysics(Func<Match3Config, IRandom, IPhysicsSimulation> factory)
     {
         _physicsFactory = factory;
         return this;
@@ -52,7 +52,7 @@ public sealed class GameServiceBuilder
     /// <summary>
     /// Configure custom refill system factory.
     /// </summary>
-    public GameServiceBuilder WithRefill(Func<ISpawnModel, IRefillSystem> factory)
+    public GameServiceFactoryBuilder WithRefill(Func<ISpawnModel, IRefillSystem> factory)
     {
         _refillFactory = factory;
         return this;
@@ -61,7 +61,7 @@ public sealed class GameServiceBuilder
     /// <summary>
     /// Configure custom match finder factory.
     /// </summary>
-    public GameServiceBuilder WithMatchFinder(Func<IBombGenerator, IMatchFinder> factory)
+    public GameServiceFactoryBuilder WithMatchFinder(Func<IBombGenerator, IMatchFinder> factory)
     {
         _matchFinderFactory = factory;
         return this;
@@ -70,7 +70,7 @@ public sealed class GameServiceBuilder
     /// <summary>
     /// Configure custom match processor factory.
     /// </summary>
-    public GameServiceBuilder WithMatchProcessor(Func<IScoreSystem, ICellEliminator, BombEffectRegistry, IObstacleSystem?, ICoverSystem?, IMatchProcessor> factory)
+    public GameServiceFactoryBuilder WithMatchProcessor(Func<IScoreSystem, ICellEliminator, BombEffectRegistry, IObstacleSystem?, ICoverSystem?, IMatchProcessor> factory)
     {
         _matchProcessorFactory = factory;
         return this;
@@ -79,7 +79,7 @@ public sealed class GameServiceBuilder
     /// <summary>
     /// Configure custom power-up handler factory.
     /// </summary>
-    public GameServiceBuilder WithPowerUpHandler(Func<IScoreSystem, IPowerUpHandler> factory)
+    public GameServiceFactoryBuilder WithPowerUpHandler(Func<IScoreSystem, IPowerUpHandler> factory)
     {
         _powerUpFactory = factory;
         return this;
@@ -88,7 +88,7 @@ public sealed class GameServiceBuilder
     /// <summary>
     /// Configure custom projectile system factory.
     /// </summary>
-    public GameServiceBuilder WithProjectileSystem(Func<IProjectileSystem> factory)
+    public GameServiceFactoryBuilder WithProjectileSystem(Func<IProjectileSystem> factory)
     {
         _projectileFactory = factory;
         return this;
@@ -97,7 +97,7 @@ public sealed class GameServiceBuilder
     /// <summary>
     /// Configure custom explosion system factory.
     /// </summary>
-    public GameServiceBuilder WithExplosionSystem(Func<IExplosionSystem> factory)
+    public GameServiceFactoryBuilder WithExplosionSystem(Func<IExplosionSystem> factory)
     {
         _explosionFactory = factory;
         return this;
@@ -106,7 +106,7 @@ public sealed class GameServiceBuilder
     /// <summary>
     /// Configure custom event collector factory.
     /// </summary>
-    public GameServiceBuilder WithEventCollector(Func<bool, IEventCollector> factory)
+    public GameServiceFactoryBuilder WithEventCollector(Func<bool, IEventCollector> factory)
     {
         _eventCollectorFactory = factory;
         return this;
@@ -115,7 +115,7 @@ public sealed class GameServiceBuilder
     /// <summary>
     /// Configure custom bomb generator factory.
     /// </summary>
-    public GameServiceBuilder WithBombGenerator(Func<IBombGenerator> factory)
+    public GameServiceFactoryBuilder WithBombGenerator(Func<IBombGenerator> factory)
     {
         _bombGeneratorFactory = factory;
         return this;
@@ -124,7 +124,7 @@ public sealed class GameServiceBuilder
     /// <summary>
     /// Configure custom score system factory.
     /// </summary>
-    public GameServiceBuilder WithScoreSystem(Func<IScoreSystem> factory)
+    public GameServiceFactoryBuilder WithScoreSystem(Func<IScoreSystem> factory)
     {
         _scoreSystemFactory = factory;
         return this;
@@ -133,7 +133,7 @@ public sealed class GameServiceBuilder
     /// <summary>
     /// Configure custom bomb effect registry factory.
     /// </summary>
-    public GameServiceBuilder WithBombEffectRegistry(Func<BombEffectRegistry> factory)
+    public GameServiceFactoryBuilder WithBombEffectRegistry(Func<BombEffectRegistry> factory)
     {
         _bombRegistryFactory = factory;
         return this;
@@ -142,7 +142,7 @@ public sealed class GameServiceBuilder
     /// <summary>
     /// Configure custom spawn model factory.
     /// </summary>
-    public GameServiceBuilder WithSpawnModel(Func<IRandom, ISpawnModel> factory)
+    public GameServiceFactoryBuilder WithSpawnModel(Func<IRandom, ISpawnModel> factory)
     {
         _spawnModelFactory = factory;
         return this;
@@ -151,7 +151,7 @@ public sealed class GameServiceBuilder
     /// <summary>
     /// Configure custom tile generator factory.
     /// </summary>
-    public GameServiceBuilder WithTileGenerator(Func<IRandom, ITileGenerator> factory)
+    public GameServiceFactoryBuilder WithTileGenerator(Func<IRandom, ITileGenerator> factory)
     {
         _tileGeneratorFactory = factory;
         return this;
@@ -160,7 +160,7 @@ public sealed class GameServiceBuilder
     /// <summary>
     /// Configure custom deadlock detection system factory.
     /// </summary>
-    public GameServiceBuilder WithDeadlockDetection(Func<IMatchFinder, IDeadlockDetectionSystem> factory)
+    public GameServiceFactoryBuilder WithDeadlockDetection(Func<IMatchFinder, IDeadlockDetectionSystem> factory)
     {
         _deadlockDetectorFactory = factory;
         return this;
@@ -169,7 +169,7 @@ public sealed class GameServiceBuilder
     /// <summary>
     /// Configure custom shuffle system factory.
     /// </summary>
-    public GameServiceBuilder WithShuffleSystem(Func<IDeadlockDetectionSystem, IBoardShuffleSystem> factory)
+    public GameServiceFactoryBuilder WithShuffleSystem(Func<IDeadlockDetectionSystem, IBoardShuffleSystem> factory)
     {
         _shuffleSystemFactory = factory;
         return this;
@@ -178,7 +178,7 @@ public sealed class GameServiceBuilder
     /// <summary>
     /// Use all default service implementations.
     /// </summary>
-    public GameServiceBuilder UseDefaultServices()
+    public GameServiceFactoryBuilder UseDefaultServices()
     {
         _physicsFactory = (config, rng) => new RealtimeGravitySystem(config, rng);
         _refillFactory = spawnModel => new RealtimeRefillSystem(spawnModel);

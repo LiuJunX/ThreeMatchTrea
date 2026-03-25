@@ -685,7 +685,7 @@ public class MailboxTests
     {
         var config = CreateMailboxLevelConfig();
 
-        var factory = new GameServiceBuilder().UseDefaultServices().Build();
+        var factory = new GameServiceFactoryBuilder().UseDefaultServices().Build();
         var sessionConfig = new GameServiceConfiguration
         {
             RngSeed = 42,
@@ -710,7 +710,7 @@ public class MailboxTests
     {
         var config = CreateMailboxLevelConfig();
 
-        var factory = new GameServiceBuilder().UseDefaultServices().Build();
+        var factory = new GameServiceFactoryBuilder().UseDefaultServices().Build();
         var sessionConfig = new GameServiceConfiguration
         {
             RngSeed = 42,

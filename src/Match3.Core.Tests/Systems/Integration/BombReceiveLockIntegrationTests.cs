@@ -207,7 +207,7 @@ public class BombReceiveLockIntegrationTests
     [Fact]
     public void GameServiceFactory_BombActivation_HasReceiveLock()
     {
-        var factory = new Match3.Core.DependencyInjection.GameServiceBuilder()
+        var factory = new Match3.Core.DependencyInjection.GameServiceFactoryBuilder()
             .UseDefaultServices()
             .Build();
 

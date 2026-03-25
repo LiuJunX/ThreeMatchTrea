@@ -15,7 +15,7 @@ public class UndoSystemTests
     private readonly UndoSystem _undo = new();
 
     /// <summary>
-    /// Creates an engine with real RNG via GameServiceBuilder for full integration.
+    /// Creates an engine with real RNG via GameServiceFactoryBuilder for full integration.
     /// </summary>
     private static (SimulationEngine Engine, GameState InitialState) CreateSettledEngine(int seed = 42)
     {

@@ -52,7 +52,7 @@ public class ReplayDivergenceTests
     public void ReplayController_SeekToEnd_MatchesOriginalGame(string presetName, int seed)
     {
         var (levelConfig, tileTypesCount) = SimulationTestHelper.GetLevelPreset(presetName);
-        var factory = new GameServiceBuilder().UseDefaultServices().Build();
+        var factory = new GameServiceFactoryBuilder().UseDefaultServices().Build();
 
         var gameConfig = new GameServiceConfiguration
         {
@@ -91,7 +91,7 @@ public class ReplayDivergenceTests
     public void DirectReplay_WithComplexLevel_MatchesOriginalGame(string presetName, int seed)
     {
         var (levelConfig, tileTypesCount) = SimulationTestHelper.GetLevelPreset(presetName);
-        var factory = new GameServiceBuilder().UseDefaultServices().Build();
+        var factory = new GameServiceFactoryBuilder().UseDefaultServices().Build();
 
         var gameConfig = new GameServiceConfiguration
         {
@@ -137,7 +137,7 @@ public class ReplayDivergenceTests
     public void SameInitPath_ProducesIdenticalFirstMove(string presetName, int seed)
     {
         var (levelConfig, tileTypesCount) = SimulationTestHelper.GetLevelPreset(presetName);
-        var factory = new GameServiceBuilder().UseDefaultServices().Build();
+        var factory = new GameServiceFactoryBuilder().UseDefaultServices().Build();
 
         var gameConfig = new GameServiceConfiguration
         {
@@ -184,7 +184,7 @@ public class ReplayDivergenceTests
     public void Serialization_DoesNotAddDivergence(string presetName, int seed)
     {
         var (levelConfig, tileTypesCount) = SimulationTestHelper.GetLevelPreset(presetName);
-        var factory = new GameServiceBuilder().UseDefaultServices().Build();
+        var factory = new GameServiceFactoryBuilder().UseDefaultServices().Build();
 
         var gameConfig = new GameServiceConfiguration
         {
@@ -235,7 +235,7 @@ public class ReplayDivergenceTests
         string presetName, int seed, int moveCount)
     {
         var (levelConfig, tileTypesCount) = SimulationTestHelper.GetLevelPreset(presetName);
-        var factory = new GameServiceBuilder().UseDefaultServices().Build();
+        var factory = new GameServiceFactoryBuilder().UseDefaultServices().Build();
 
         var gameConfig = new GameServiceConfiguration
         {

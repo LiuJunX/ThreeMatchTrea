@@ -1281,7 +1281,7 @@
       <div class="pattern-name">Builder + Factory</div>
       <div class="pattern-desc">Fluent API 组装 13+ Systems，隐藏复杂装配逻辑。</div>
       <div class="pattern-used">
-        Builder: <span>GameServiceBuilder</span><br>
+        Builder: <span>GameServiceFactoryBuilder</span><br>
         Factory: <span>GameServiceFactory</span><br>
         产出: <span>GameSession (完整会话)</span>
       </div>
@@ -1336,7 +1336,7 @@
       <div class="pattern-name">Dependency Injection</div>
       <div class="pattern-desc">所有 System 通过构造函数注入，零框架依赖，可测试性极高。</div>
       <div class="pattern-used">
-        容器: <span>GameServiceBuilder (手工DI)</span><br>
+        容器: <span>GameServiceFactoryBuilder (手工DI)</span><br>
         注入点: <span>SimulationEngine 构造函数</span><br>
         测试: <span>任意 System 可独立 mock</span>
       </div>

@@ -473,7 +473,7 @@ public class MagicHatTests
     {
         var config = CreateMagicHatLevelConfig();
 
-        var factory = new GameServiceBuilder().UseDefaultServices().Build();
+        var factory = new GameServiceFactoryBuilder().UseDefaultServices().Build();
         var sessionConfig = new GameServiceConfiguration
         {
             RngSeed = 42,
