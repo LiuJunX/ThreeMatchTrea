@@ -57,6 +57,15 @@ public static class ConfigParser
     }
 
     /// <summary>
+    /// Parse progression blueprint from JSON string.
+    /// </summary>
+    public static ProgressionBlueprint ParseProgressionBlueprint(string json)
+    {
+        return JsonSerializer.Deserialize<ProgressionBlueprint>(json, Options)
+               ?? new ProgressionBlueprint();
+    }
+
+    /// <summary>
     /// Serialize configuration to JSON string.
     /// </summary>
     public static string Serialize<T>(T config)

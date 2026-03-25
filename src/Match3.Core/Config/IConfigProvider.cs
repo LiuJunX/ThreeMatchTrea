@@ -31,6 +31,11 @@ public interface IConfigProvider
     /// List all available level IDs.
     /// </summary>
     string[] GetLevelIds();
+
+    /// <summary>
+    /// Get the level progression blueprint.
+    /// </summary>
+    ProgressionBlueprint GetProgressionBlueprint();
 }
 
 /// <summary>

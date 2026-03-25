@@ -18,6 +18,7 @@ public class FileConfigProvider : IConfigProvider
     private VisualConfig? _visualConfig;
     private AnimationConfig? _animationConfig;
     private GameConfigExtended? _gameConfig;
+    private ProgressionBlueprint? _progressionBlueprint;
     private readonly Dictionary<string, LevelConfig> _levelConfigs = new();
 
     /// <summary>
@@ -81,6 +82,17 @@ public class FileConfigProvider : IConfigProvider
         return config;
     }
 
+    public ProgressionBlueprint GetProgressionBlueprint()
+    {
+        if (_progressionBlueprint == null)
+        {
+            var path = CombinePath(_configRoot, "progression_blueprint.json");
+            var json = _readFile(path);
+            _progressionBlueprint = ConfigParser.ParseProgressionBlueprint(json);
+        }
+        return _progressionBlueprint;
+    }
+
     public string[] GetLevelIds()
     {
         var levelsPath = CombinePath(_configRoot, "levels");
@@ -100,6 +112,7 @@ public class FileConfigProvider : IConfigProvider
         _visualConfig = null;
         _animationConfig = null;
         _gameConfig = null;
+        _progressionBlueprint = null;
         _levelConfigs.Clear();
     }
 
