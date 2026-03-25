@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Match3.Core.Progress;
 using Match3.Unity.Bridge;
 using Match3.Unity.Services;
@@ -28,7 +29,8 @@ namespace Match3.Unity.Controllers
 
         private PlayerProgressService _progressService;
         private PlayerProgress _progress;
-        private string[] _allLevelIds;
+        private string[] _officialLevelIds;
+        private string[] _testLevelIds;
         private string _currentLevelId;
         private int _lastStars;
         private bool _lastVictory;
@@ -41,14 +43,25 @@ namespace Match3.Unity.Controllers
             _progress = _progressService.Load();
             Debug.Log($"[GameFlow] Loaded progress: {_progress.UnlockedLevels.Count} levels unlocked, {_progress.BestStars.Count} with stars");
 
-            // Load level IDs
-            _allLevelIds = UnityConfigProvider.Instance.GetLevelIds();
-            if (_allLevelIds == null) _allLevelIds = Array.Empty<string>();
-            Array.Sort(_allLevelIds, StringComparer.Ordinal);
+            // Load and split level IDs into official vs test
+            var allIds = UnityConfigProvider.Instance.GetLevelIds() ?? Array.Empty<string>();
+            Array.Sort(allIds, StringComparer.Ordinal);
 
-            // Ensure first level is always unlocked
-            if (_allLevelIds.Length > 0)
-                _progress.UnlockedLevels.Add(_allLevelIds[0]);
+            var officialList = new List<string>();
+            var testList = new List<string>();
+            foreach (var id in allIds)
+            {
+                if (id.StartsWith("test_", StringComparison.Ordinal))
+                    testList.Add(id);
+                else
+                    officialList.Add(id);
+            }
+            _officialLevelIds = officialList.ToArray();
+            _testLevelIds = testList.ToArray();
+
+            // Ensure first official level is always unlocked
+            if (_officialLevelIds.Length > 0)
+                _progress.UnlockedLevels.Add(_officialLevelIds[0]);
 
             SetupCamera();
             CreateGameController();
@@ -165,7 +178,7 @@ namespace Match3.Unity.Controllers
 
                 case FlowState.LevelSelect:
                     _gameController.gameObject.SetActive(false);
-                    _levelSelectPanel.Populate(_allLevelIds, _progress);
+                    _levelSelectPanel.Populate(_officialLevelIds, _testLevelIds, _progress);
                     _levelSelectPanel.Show();
                     break;
 
@@ -228,10 +241,10 @@ namespace Match3.Unity.Controllers
                 _progress.SetBestStars(_currentLevelId, _lastStars);
 
                 // Unlock next level
-                int idx = Array.IndexOf(_allLevelIds, _currentLevelId);
-                if (idx >= 0 && idx + 1 < _allLevelIds.Length)
+                int idx = Array.IndexOf(_officialLevelIds, _currentLevelId);
+                if (idx >= 0 && idx + 1 < _officialLevelIds.Length)
                 {
-                    var nextId = _allLevelIds[idx + 1];
+                    var nextId = _officialLevelIds[idx + 1];
                     _progress.UnlockedLevels.Add(nextId);
                     Debug.Log($"[GameFlow] Unlocked '{nextId}'");
                 }
@@ -248,8 +261,8 @@ namespace Match3.Unity.Controllers
 
         private bool HasNextLevel()
         {
-            int idx = Array.IndexOf(_allLevelIds, _currentLevelId);
-            return idx >= 0 && idx + 1 < _allLevelIds.Length;
+            int idx = Array.IndexOf(_officialLevelIds, _currentLevelId);
+            return idx >= 0 && idx + 1 < _officialLevelIds.Length;
         }
 
         private void WireResultButtons()
@@ -284,9 +297,9 @@ namespace Match3.Unity.Controllers
 
         private void OnResultNextLevel()
         {
-            int idx = Array.IndexOf(_allLevelIds, _currentLevelId);
-            if (idx >= 0 && idx + 1 < _allLevelIds.Length)
-                _currentLevelId = _allLevelIds[idx + 1];
+            int idx = Array.IndexOf(_officialLevelIds, _currentLevelId);
+            if (idx >= 0 && idx + 1 < _officialLevelIds.Length)
+                _currentLevelId = _officialLevelIds[idx + 1];
             TransitionTo(FlowState.Playing);
         }
 
