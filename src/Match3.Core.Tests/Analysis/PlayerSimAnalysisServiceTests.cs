@@ -8,12 +8,12 @@ using Xunit;
 namespace Match3.Core.Tests.Analysis;
 
 /// <summary>
-/// StrategyDrivenAnalysisService 单元测试
+/// PlayerSimAnalysisService 单元测试
 /// </summary>
 [Trait("Category", "Slow")]
-public class StrategyDrivenAnalysisServiceTests
+public class PlayerSimAnalysisServiceTests
 {
-    private readonly StrategyDrivenAnalysisService _service = new();
+    private readonly PlayerSimAnalysisService _service = new();
 
     [Fact]
     public async Task AnalyzeAsync_WithPlayerPopulation_ReturnsValidResult()

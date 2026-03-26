@@ -58,8 +58,8 @@ static class AnalyzeCommand
         });
 
         ILevelAnalysisService service = mode == SimulationMode.Random
-            ? new LevelAnalysisService()
-            : new StrategyDrivenAnalysisService();
+            ? new RandomAnalysisService()
+            : new PlayerSimAnalysisService();
 
         var result = await service.AnalyzeAsync(config, analysisConfig, progress);
 

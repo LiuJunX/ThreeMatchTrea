@@ -22,7 +22,7 @@ namespace Match3.Core.Analysis;
 /// <summary>
 /// 关卡分析服务实现
 /// </summary>
-public sealed class LevelAnalysisService : ILevelAnalysisService
+public sealed class RandomAnalysisService : ILevelAnalysisService
 {
     /// <summary>
     /// ThreadLocal 缓存模拟组件，避免重复创建

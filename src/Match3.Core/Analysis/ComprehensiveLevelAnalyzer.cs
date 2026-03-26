@@ -14,7 +14,7 @@ namespace Match3.Core.Analysis;
 /// </summary>
 public sealed class ComprehensiveLevelAnalyzer
 {
-    private readonly StrategyDrivenAnalysisService _populationService = new();
+    private readonly PlayerSimAnalysisService _populationService = new();
     private readonly MCTSConfig _mctsConfig;
 
     public ComprehensiveLevelAnalyzer(MCTSConfig? mctsConfig = null)

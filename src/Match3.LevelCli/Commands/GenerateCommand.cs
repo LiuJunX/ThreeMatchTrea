@@ -67,7 +67,7 @@ static class GenerateCommand
 
         // Setup pipeline
         var generator = new LevelGenerator();
-        var analysisService = new LevelAnalysisService();
+        var analysisService = new RandomAnalysisService();
         var pipeline = new QualityPipeline(generator, analysisService);
         var pipelineConfig = new QualityPipelineConfig
         {

@@ -17,7 +17,7 @@ namespace Match3.Core.Analysis;
 /// 策略驱动的关卡分析服务
 /// 支持玩家群体模拟和分层统计
 /// </summary>
-public sealed class StrategyDrivenAnalysisService : ILevelAnalysisService
+public sealed class PlayerSimAnalysisService : ILevelAnalysisService
 {
     private static readonly ThreadLocal<SharedSimulationContext> _contextCache =
         new(() => new SharedSimulationContext(), trackAllValues: false);

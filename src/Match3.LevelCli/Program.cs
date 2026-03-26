@@ -20,6 +20,7 @@ class Program
             "analyze" => await AnalyzeCommand.RunAsync(commandArgs),
             "create" => CreateCommand.Run(commandArgs),
             "generate" => await GenerateCommand.RunAsync(commandArgs),
+            "smart-generate" => await SmartGenerateCommand.RunAsync(commandArgs),
             _ => PrintUsage()
         };
     }
@@ -34,7 +35,9 @@ class Program
         Console.WriteLine("  levelcli analyze <path> [--count N] [--mode random|greedy|population]");
         Console.WriteLine("  levelcli create <w> <h> -o <path>     创建空白关卡模板");
         Console.WriteLine("  levelcli generate <blueprint> [--start N] [--end N] [--seed N] [-o dir] [--sims N]");
-        Console.WriteLine("                                        批量生成关卡 (生成+分析+调参)");
+        Console.WriteLine("                                        批量生成关卡 (规则生成+分析+调参)");
+        Console.WriteLine("  levelcli smart-generate <blueprint> [--start N] [--end N] [--api-key K] [-o dir]");
+        Console.WriteLine("                                        LLM 智能生成关卡 (设计+分析+修订)");
         Console.WriteLine();
         return 1;
     }

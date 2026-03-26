@@ -9,7 +9,7 @@ using Xunit.Abstractions;
 namespace Match3.Core.Tests.Analysis;
 
 /// <summary>
-/// Verifies that LevelAnalysisService and StrategyDrivenAnalysisService
+/// Verifies that RandomAnalysisService and PlayerSimAnalysisService
 /// produce consistent win rates on the same level when both use random moves.
 /// Regression test for SpawnModel divergence (counter-based vs random).
 /// </summary>
@@ -33,15 +33,15 @@ public class EliminationPathConsistencyTests
         };
 
         // Act
-        var legacyService = new LevelAnalysisService();
-        var strategyService = new StrategyDrivenAnalysisService();
+        var legacyService = new RandomAnalysisService();
+        var strategyService = new PlayerSimAnalysisService();
 
         var legacyResult = await legacyService.AnalyzeAsync(levelConfig, config);
         var strategyResult = await strategyService.AnalyzeAsync(levelConfig, config);
 
         // Log
-        _output.WriteLine($"LevelAnalysisService:          WinRate={legacyResult.WinRate:P1} ({legacyResult.WinCount}/{legacyResult.TotalSimulations})");
-        _output.WriteLine($"StrategyDrivenAnalysisService:  WinRate={strategyResult.WinRate:P1} ({strategyResult.WinCount}/{strategyResult.TotalSimulations})");
+        _output.WriteLine($"RandomAnalysisService:          WinRate={legacyResult.WinRate:P1} ({legacyResult.WinCount}/{legacyResult.TotalSimulations})");
+        _output.WriteLine($"PlayerSimAnalysisService:  WinRate={strategyResult.WinRate:P1} ({strategyResult.WinCount}/{strategyResult.TotalSimulations})");
         _output.WriteLine($"Delta: {System.Math.Abs(legacyResult.WinRate - strategyResult.WinRate):P1}");
 
         // Assert — both use random moves + random spawn now, so win rates should be close.

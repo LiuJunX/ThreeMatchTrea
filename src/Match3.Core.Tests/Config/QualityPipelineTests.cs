@@ -141,7 +141,7 @@ public class QualityPipelineTests
     public async Task ProcessLevel_RealAnalysis_ProducesReasonableResult()
     {
         var generator = new LevelGenerator();
-        var analysisService = new LevelAnalysisService();
+        var analysisService = new RandomAnalysisService();
         var pipeline = new QualityPipeline(generator, analysisService);
         var blueprint = LoadRealBlueprint();
         var config = new QualityPipelineConfig { SimulationCount = 100, MaxAttempts = 3 };
@@ -158,7 +158,7 @@ public class QualityPipelineTests
     public async Task ProcessRange_RealAnalysis_5Levels()
     {
         var generator = new LevelGenerator();
-        var analysisService = new LevelAnalysisService();
+        var analysisService = new RandomAnalysisService();
         var pipeline = new QualityPipeline(generator, analysisService);
         var blueprint = LoadRealBlueprint();
         var config = new QualityPipelineConfig { SimulationCount = 100, MaxAttempts = 3 };

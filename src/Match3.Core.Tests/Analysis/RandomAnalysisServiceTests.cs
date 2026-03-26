@@ -8,7 +8,7 @@ using Xunit;
 namespace Match3.Core.Tests.Analysis;
 
 /// <summary>
-/// LevelAnalysisService tests.
+/// RandomAnalysisService tests.
 ///
 /// Responsibilities:
 /// - Verifying win rate calculation with objectives
@@ -16,9 +16,9 @@ namespace Match3.Core.Tests.Analysis;
 /// - Testing analysis configuration options
 /// </summary>
 [Trait("Category", "Slow")]
-public class LevelAnalysisServiceTests
+public class RandomAnalysisServiceTests
 {
-    private readonly LevelAnalysisService _service = new();
+    private readonly RandomAnalysisService _service = new();
 
     #region Objective Initialization Tests
 

@@ -99,7 +99,7 @@ public class LevelAnalysisManager : INotifyPropertyChanged, IDisposable
         _fileSystem = fileSystem;
         _getActiveConfig = getActiveConfig;
         _getCurrentLevelPath = getCurrentLevelPath;
-        _analysisService = new LevelAnalysisService();
+        _analysisService = new RandomAnalysisService();
     }
 
     public void Dispose()
