@@ -18,6 +18,9 @@ public sealed class SmartQualityPipelineConfig
     /// <summary>Simulations for validation stage (PlayerSim, accurate).</summary>
     public int ValidationSimCount { get; set; } = 500;
 
+    /// <summary>Simulations per tier for deep analysis.</summary>
+    public int DeepAnalysisSimsPerTier { get; set; } = 250;
+
     /// <summary>Max design+analysis iterations per level.</summary>
     public int MaxAttempts { get; set; } = 3;
 
@@ -41,6 +44,9 @@ public sealed class SmartQualityResult
 
     /// <summary>Validation analysis result (PlayerSim, accurate). Null if screening never passed.</summary>
     public LevelAnalysisResult? ValidationResult { get; set; }
+
+    /// <summary>Deep analysis result (7 advanced metrics). Null if validation never passed.</summary>
+    public DeepAnalysisResult? DeepResult { get; set; }
 
     /// <summary>The best available analysis — validation if done, otherwise screening.</summary>
     public LevelAnalysisResult BestAnalysis => ValidationResult ?? ScreeningResult;
@@ -66,18 +72,33 @@ public sealed class SmartQualityResult
 public sealed class SmartQualityPipeline
 {
     private readonly ILevelDesigner _designer;
-    private readonly ILevelAnalysisService _analysisService;
+    private readonly ILevelAnalysisService _screeningService;
+    private readonly ILevelAnalysisService? _validationService;
+    private readonly DeepAnalysisService? _deepAnalysisService;
     private readonly IInsightExtractor? _insightExtractor;
     private readonly IInsightStore? _insightStore;
 
+    /// <summary>
+    /// Create a pipeline with three analysis stages.
+    /// </summary>
+    /// <param name="designer">Level designer (LLM or manual).</param>
+    /// <param name="screeningService">Stage 1: fast screening (RandomAnalysisService).</param>
+    /// <param name="validationService">Stage 2: player-sim validation (PlayerSimAnalysisService). Optional.</param>
+    /// <param name="deepAnalysisService">Stage 3: deep analysis (7 metrics). Optional.</param>
+    /// <param name="insightExtractor">Insight extraction (LLM). Optional.</param>
+    /// <param name="insightStore">Insight storage. Optional.</param>
     public SmartQualityPipeline(
         ILevelDesigner designer,
-        ILevelAnalysisService analysisService,
+        ILevelAnalysisService screeningService,
+        ILevelAnalysisService? validationService = null,
+        DeepAnalysisService? deepAnalysisService = null,
         IInsightExtractor? insightExtractor = null,
         IInsightStore? insightStore = null)
     {
         _designer = designer;
-        _analysisService = analysisService;
+        _screeningService = screeningService;
+        _validationService = validationService;
+        _deepAnalysisService = deepAnalysisService;
         _insightExtractor = insightExtractor;
         _insightStore = insightStore;
     }
@@ -152,7 +173,7 @@ public sealed class SmartQualityPipeline
             LevelAnalysisResult analysisResult;
             try
             {
-                analysisResult = await _analysisService.AnalyzeAsync(
+                analysisResult = await _screeningService.AnalyzeAsync(
                     genResult.Config, analysisConfig, null, ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -223,7 +244,71 @@ public sealed class SmartQualityPipeline
 
             if (winRateOk && deadlockOk)
             {
-                log.AppendLine($"  Passed on attempt {attempt + 1}");
+                log.AppendLine($"  Screening passed on attempt {attempt + 1}");
+
+                // Stage 2: Validation (PlayerSim)
+                if (_validationService != null)
+                {
+                    progress?.Report(new QualityProgress
+                    {
+                        CurrentLevel = context.LevelNumber,
+                        TotalLevels = 1,
+                        CurrentAttempt = attempt + 1,
+                        Status = "Validating"
+                    });
+
+                    var validationConfig = new AnalysisConfig
+                    {
+                        SimulationCount = config.ValidationSimCount,
+                        UseParallel = true
+                    };
+                    var validationResult = await _validationService.AnalyzeAsync(
+                        genResult.Config, validationConfig, null, ct);
+                    candidate.ValidationResult = validationResult;
+
+                    bool valWinRateOk = validationResult.WinRate >= context.Phase.MinWinRate &&
+                                       validationResult.WinRate <= context.Phase.MaxWinRate;
+                    bool valDeadlockOk = validationResult.DeadlockRate <= config.MaxDeadlockRate;
+
+                    log.AppendLine($"  Validation: winRate={validationResult.WinRate:P1}, " +
+                        $"deadlock={validationResult.DeadlockRate:P1}");
+
+                    if (!valWinRateOk || !valDeadlockOk)
+                    {
+                        log.AppendLine($"  Validation failed — revising with PlayerSim feedback");
+                        // Use validation result for revision (more accurate feedback)
+                        if (attempt < config.MaxAttempts - 1)
+                        {
+                            design = await _designer.ReviseAsync(design, validationResult, context, ct);
+                            log.AppendLine($"  Revised design: moves={design.MoveLimit}");
+                        }
+                        continue;
+                    }
+                }
+
+                // Stage 3: Deep Analysis (final report)
+                if (_deepAnalysisService != null)
+                {
+                    progress?.Report(new QualityProgress
+                    {
+                        CurrentLevel = context.LevelNumber,
+                        TotalLevels = 1,
+                        CurrentAttempt = attempt + 1,
+                        Status = "DeepAnalysis"
+                    });
+
+                    var deepResult = await _deepAnalysisService.AnalyzeAsync(
+                        genResult.Config, config.DeepAnalysisSimsPerTier, null, ct);
+                    candidate.DeepResult = deepResult;
+
+                    log.AppendLine($"  Deep Analysis: skillSensitivity={deepResult.SkillSensitivity:F2}, " +
+                        $"frustration={deepResult.FrustrationRisk:P1}, " +
+                        $"luck={deepResult.LuckDependency:P1}, " +
+                        $"P95={deepResult.P95ClearAttempts}");
+                    foreach (var (tier, wr) in deepResult.TierWinRates)
+                        log.AppendLine($"    {tier}: {wr:P1}");
+                }
+
                 candidate.Passed = true;
                 candidate.Log = log.ToString();
 
