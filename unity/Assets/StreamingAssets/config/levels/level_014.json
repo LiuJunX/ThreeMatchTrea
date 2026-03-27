@@ -29,7 +29,7 @@
     "Void","Void","Void","Slot","Slot","Slot","Void","Void","Void"
   ],
   "objectives": [
-    { "targetLayer": "Tile", "elementType": 1, "targetCount": 14 }
+    { "targetLayer": "Tile", "elementType": 1, "targetCount": 15 }
   ],
   "covers": [
     "None","None","None","None","None","None","None","None","None",
