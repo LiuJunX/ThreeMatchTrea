@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
 using Match3.Core.Systems.Physics;
 using Match3.Presentation;
@@ -62,6 +63,11 @@ namespace Match3.Unity.Views
             public float MidGridY;      // midpoint in grid Y for side detection
         }
         private readonly Dictionary<int, HoleZone> _columnHoleZones = new();
+
+        // Per-column top clip boundary: world Y of the top edge of the topmost Slot cell.
+        // Tiles above this boundary are clipped by the shader, creating a smooth
+        // "emerging from behind the board" effect for pieces spawning from Spawner cells.
+        private readonly Dictionary<int, float> _columnTopClipY = new();
 
         public int ActiveTileCount => _activeTiles.Count;
 
@@ -163,6 +169,7 @@ namespace Match3.Unity.Views
             RebuildBoardFloor();
             RebuildBoardVignette();
             BuildHoleZones();
+            BuildSpawnClipZones();
         }
 
         private void RebuildBoardFloor()
@@ -819,13 +826,41 @@ namespace Match3.Unity.Views
         }
 
         /// <summary>
+        /// Precompute the world-Y top edge of the topmost Slot cell in each column.
+        /// Used to clip spawning tiles above the visible board boundary.
+        /// </summary>
+        private void BuildSpawnClipZones()
+        {
+            _columnTopClipY.Clear();
+
+            var state = _bridge.CurrentState;
+            var cellSize = _bridge.CellSize;
+            var origin = _bridge.BoardOrigin;
+            var height = _bridge.Height;
+
+            for (int x = 0; x < state.Width; x++)
+            {
+                for (int y = 0; y < state.Height; y++)
+                {
+                    if (state.GetCell(x, y) == CellKind.Slot)
+                    {
+                        // Top edge of this cell in world Y
+                        float topWorldY = origin.y + (height - 1 - y) * cellSize + cellSize;
+                        _columnTopClipY[x] = topWorldY;
+                        break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// Apply portal visual effects to tiles falling through hole zones.
         /// Uses shader Y-axis clipping — tile shape is preserved (no scale distortion).
         /// The shader discards pixels outside [ClipYMin, ClipYMax] in world space.
         /// </summary>
         private void UpdatePortalEffects(float cellSize, Vector2 origin, int height)
         {
-            if (_columnHoleZones.Count == 0) return;
+            if (_columnHoleZones.Count == 0 && _columnTopClipY.Count == 0) return;
 
             foreach (var kvp in _activeTiles)
             {
@@ -844,6 +879,14 @@ namespace Match3.Unity.Views
 
                 var gridPos = CoordinateConverter.WorldToGridFloat(worldPos, cellSize, origin, height);
                 int col = Mathf.RoundToInt(gridPos.X);
+
+                // Spawn clip: hide tiles above the board top edge for their column.
+                // Creates a smooth "emerging from behind the board" effect.
+                if (_columnTopClipY.TryGetValue(col, out var topClipY) && worldPos.y > topClipY - cellSize)
+                {
+                    tileView.SetClipBounds(-9999f, topClipY);
+                    continue;
+                }
 
                 if (!_columnHoleZones.TryGetValue(col, out var zone))
                 {

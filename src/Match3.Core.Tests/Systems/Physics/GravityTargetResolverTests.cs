@@ -242,6 +242,49 @@ public class GravityTargetResolverTests
         Assert.Equal(0, result.Y);
     }
 
+    [Fact]
+    public void DetermineTarget_CagedTile_DoesNotBlockDiagonalFromNeighbor()
+    {
+        //   . T [C] .    row 0: T at (1,0), caged tile at (2,0)
+        //   . X  .  .    row 1: X = blocker at (1,1), (2,1) = dead zone target
+        //   . .  .  .    row 2
+        //
+        // T blocked vertically by X. Should diag-slide to (2,1) — dead zone
+        // below cage. Caged tile at (2,0) must NOT block this diagonal.
+        var random = StubRandom.WithFixedValue(1);
+        var resolver = new GravityTargetResolver(random);
+        var state = new GameState(4, 3, 5, random);
+        ClearBoard(ref state);
+
+        state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
+        state.SetTile(1, 1, new Tile(2, ElementType.Item3, 1, 1));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item2, 2, 0));
+        state.SetCover(2, 0, new Cover { Type = CoverType.Cage, Health = 1 });
+
+        resolver.ClearReservations();
+        var result = resolver.DetermineTarget(ref state, 1, 0);
+
+        Assert.Equal(2, result.X);
+        Assert.Equal(1, result.Y);
+    }
+
+    [Fact]
+    public void PeekNextMove_CagedTile_AllowsDiagonal()
+    {
+        // Same layout — PeekNextMove should also recognize the diagonal option.
+        var random = StubRandom.WithFixedValue(0);
+        var resolver = new GravityTargetResolver(random);
+        var state = new GameState(4, 3, 5, random);
+        ClearBoard(ref state);
+
+        state.SetTile(1, 0, new Tile(1, ElementType.Item1, 1, 0));
+        state.SetTile(1, 1, new Tile(2, ElementType.Item3, 1, 1));
+        state.SetTile(2, 0, new Tile(3, ElementType.Item2, 2, 0));
+        state.SetCover(2, 0, new Cover { Type = CoverType.Cage, Health = 1 });
+
+        Assert.Equal(NextMoveType.Diagonal, resolver.PeekNextMove(ref state, 1, 0));
+    }
+
     #endregion
 
     #region Reservation Tests

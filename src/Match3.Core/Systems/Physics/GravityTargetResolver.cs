@@ -91,11 +91,11 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
             state.GetTile(x, checkY).Type != ElementType.None)
         {
             if (x > 0 && IsCellAvailable(ref state, x - 1, checkY)
-                      && !HasTileAt(ref state, x - 1, y)
+                      && !HasCompetingTileAt(ref state, x - 1, y)
                       && IsDeadZone(ref state, x - 1, checkY))
                 return NextMoveType.Diagonal;
             if (x < state.Width - 1 && IsCellAvailable(ref state, x + 1, checkY)
-                                    && !HasTileAt(ref state, x + 1, y)
+                                    && !HasCompetingTileAt(ref state, x + 1, y)
                                     && IsDeadZone(ref state, x + 1, checkY))
                 return NextMoveType.Diagonal;
         }
@@ -109,13 +109,13 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
         bool canLeft = x > 0 &&
                        IsCellAvailable(ref state, x - 1, checkY) &&
                        !IsReserved(x - 1, checkY) &&
-                       !HasTileAt(ref state, x - 1, originalY) &&
+                       !HasCompetingTileAt(ref state, x - 1, originalY) &&
                        IsDeadZone(ref state, x - 1, checkY);
 
         bool canRight = x < state.Width - 1 &&
                         IsCellAvailable(ref state, x + 1, checkY) &&
                         !IsReserved(x + 1, checkY) &&
-                        !HasTileAt(ref state, x + 1, originalY) &&
+                        !HasCompetingTileAt(ref state, x + 1, originalY) &&
                         IsDeadZone(ref state, x + 1, checkY);
 
         int targetX = -1;
@@ -156,12 +156,15 @@ public sealed class GravityTargetResolver : IGravityTargetResolver
     }
 
     /// <summary>
-    /// Whether there is any tile at (x, y) that could compete for a diagonal slot.
+    /// Whether there is a movable tile at (x, y) that could compete for a diagonal slot.
+    /// Immovable tiles (e.g., under static cover like Cage) cannot compete.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool HasTileAt(ref GameState state, int x, int y)
+    private static bool HasCompetingTileAt(ref GameState state, int x, int y)
     {
-        return state.GetTile(x, y).Type != ElementType.None;
+        var tile = state.GetTile(x, y);
+        if (tile.Type == ElementType.None) return false;
+        return state.CanMoveIgnoringLocks(x, y);
     }
 
     /// <summary>
