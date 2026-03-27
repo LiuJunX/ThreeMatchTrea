@@ -126,7 +126,8 @@ public sealed class LlmLevelDesigner : ILevelDesigner, IDisposable
                 {
                     ["width"] = new { type = "integer", description = "Board width" },
                     ["height"] = new { type = "integer", description = "Board height" },
-                    ["shape"] = new { type = "string", description = "Board shape: rectangle, cross, diamond, l-shape, hourglass, compartment" },
+                    ["shape"] = new { type = "string", description = "Preset board shape: rectangle, cross, diamond, l-shape, hourglass, compartment. Ignored if cellLayout is provided." },
+                    ["cellLayout"] = new { type = "array", items = new { type = "string" }, description = "Custom board layout as string rows. '_'=Void, '.'=Slot. Spawners auto-placed. Overrides shape. Example: ['___..___', '........', '___..___']" },
                     ["colorCount"] = new { type = "integer", description = "Number of tile colors (4-7)" },
                     ["rhythm"] = new { type = "string", @enum = new[] { "Easy", "Normal", "Hard", "Boss" } },
                     ["difficulty"] = new { type = "number", description = "Difficulty value (0.0-1.0)" },

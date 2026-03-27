@@ -32,9 +32,20 @@ public static class DesignTranslator
         int height = Math.Clamp(design.Height, pool.MinBoardHeight, pool.MaxBoardHeight);
         int colorCount = Math.Clamp(design.ColorCount, pool.MinColors, pool.MaxColors);
 
-        // 1. Cell layout from shape
-        var cells = ShapeTemplates.Generate(design.Shape, width, height, rng);
-        notes.AppendLine($"Board: {width}x{height} {design.Shape}");
+        // 1. Cell layout: custom CellLayout or preset Shape
+        CellKind[] cells;
+        string shapeLabel;
+        if (design.CellLayout != null && design.CellLayout.Length > 0)
+        {
+            cells = ParseCellLayout(design.CellLayout, width, height);
+            shapeLabel = "custom";
+        }
+        else
+        {
+            cells = ShapeTemplates.Generate(design.Shape, width, height, rng);
+            shapeLabel = design.Shape;
+        }
+        notes.AppendLine($"Board: {width}x{height} {shapeLabel}");
         notes.AppendLine($"Colors: {colorCount}, Difficulty: {design.Difficulty:F2}, Rhythm: {design.Rhythm}");
 
         // 2. Create config
@@ -190,7 +201,7 @@ public static class DesignTranslator
             UsedObstacles = usedObstacles,
             UsedCovers = usedCovers,
             UsedGrounds = usedGrounds,
-            Shape = design.Shape
+            Shape = shapeLabel
         };
     }
 
@@ -364,5 +375,49 @@ public static class DesignTranslator
     private static bool TryParseObjectiveLayer(string name, out ObjectiveTargetLayer result)
     {
         return Enum.TryParse(name, ignoreCase: true, out result) && result != ObjectiveTargetLayer.None;
+    }
+
+    // ── CellLayout Parsing ──
+
+    /// <summary>
+    /// Parse a string[] cell layout into CellKind[] with auto-spawner placement.
+    /// Characters: '_' = Void, '.' or any other = Slot.
+    /// Spawners are placed at the topmost non-Void cell in each column.
+    /// </summary>
+    internal static CellKind[] ParseCellLayout(string[] layout, int width, int height)
+    {
+        var cells = new CellKind[width * height];
+        Array.Fill(cells, CellKind.Slot);
+
+        // Parse characters
+        for (int y = 0; y < height && y < layout.Length; y++)
+        {
+            var row = layout[y];
+            for (int x = 0; x < width && x < row.Length; x++)
+            {
+                char ch = row[x];
+                cells[y * width + x] = ch switch
+                {
+                    '_' or ' ' => CellKind.Void,
+                    _ => CellKind.Slot
+                };
+            }
+        }
+
+        // Auto-place spawners: topmost non-Void cell per column
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                int idx = y * width + x;
+                if (cells[idx] != CellKind.Void)
+                {
+                    cells[idx] = CellKind.Spawner;
+                    break;
+                }
+            }
+        }
+
+        return cells;
     }
 }

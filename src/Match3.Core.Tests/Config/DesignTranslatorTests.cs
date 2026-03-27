@@ -314,4 +314,120 @@ public class DesignTranslatorTests
     }
 
     #endregion
+
+    #region Custom CellLayout
+
+    [Fact]
+    public void Translate_CustomCellLayout_ParsesCorrectly()
+    {
+        var ctx = MakeContext();
+        var design = MakeSimpleDesign();
+        design.Width = 7;
+        design.Height = 7;
+        design.CellLayout = new[]
+        {
+            "__...__",
+            "_....._",
+            ".......",
+            ".......",
+            ".......",
+            "_....._",
+            "__...__"
+        };
+
+        var result = DesignTranslator.Translate(design, ctx, 42);
+
+        // Width/Height clamped to pool range (min 7)
+        Assert.Equal(7, result.Config.Width);
+        Assert.Equal(7, result.Config.Height);
+        // Corners should be Void
+        Assert.Equal(CellKind.Void, result.Config.Cells[0]); // (0,0)
+        Assert.Equal(CellKind.Void, result.Config.Cells[1]); // (1,0)
+        Assert.Equal(CellKind.Void, result.Config.Cells[6]); // (6,0)
+        // Center should be playable
+        Assert.NotEqual(CellKind.Void, result.Config.Cells[3 * 7 + 3]); // (3,3)
+        // Shape label should be "custom"
+        Assert.Equal("custom", result.Shape);
+    }
+
+    [Fact]
+    public void Translate_CustomCellLayout_AutoPlacesSpawners()
+    {
+        var ctx = MakeContext();
+        var design = MakeSimpleDesign();
+        design.Width = 7;
+        design.Height = 7;
+        design.CellLayout = new[]
+        {
+            "__...__",
+            "_....._",
+            ".......",
+            ".......",
+            ".......",
+            "_....._",
+            "__...__"
+        };
+
+        var result = DesignTranslator.Translate(design, ctx, 42);
+
+        // Column 0: first non-Void is row 2 → should be Spawner
+        Assert.Equal(CellKind.Spawner, result.Config.Cells[2 * 7 + 0]);
+        // Column 3: first non-Void is row 0 → should be Spawner
+        Assert.Equal(CellKind.Spawner, result.Config.Cells[0 * 7 + 3]);
+    }
+
+    [Fact]
+    public void ParseCellLayout_HexagonShape()
+    {
+        var layout = new[]
+        {
+            "___..___",
+            "__....__",
+            "_......_",
+            "........",
+            "........",
+            "_......_",
+            "__....__",
+            "___..___"
+        };
+
+        var cells = DesignTranslator.ParseCellLayout(layout, 8, 8);
+
+        // Corners are Void
+        Assert.Equal(CellKind.Void, cells[0]);
+        Assert.Equal(CellKind.Void, cells[7]);
+        // Center is playable (Slot or Spawner)
+        Assert.NotEqual(CellKind.Void, cells[4 * 8 + 4]);
+        // Has spawners
+        Assert.Contains(cells, c => c == CellKind.Spawner);
+    }
+
+    [Fact]
+    public void Translate_CustomCellLayout_OverridesShape()
+    {
+        var ctx = MakeContext();
+        var design = MakeSimpleDesign();
+        design.Shape = "cross"; // Should be ignored
+        design.Width = 8;
+        design.Height = 8;
+        design.CellLayout = new[]
+        {
+            "........",
+            "........",
+            "........",
+            "........",
+            "........",
+            "........",
+            "........",
+            "........"
+        };
+
+        var result = DesignTranslator.Translate(design, ctx, 42);
+
+        // No Void cells — full rectangle, not cross
+        Assert.DoesNotContain(CellKind.Void, result.Config.Cells);
+        Assert.Equal("custom", result.Shape);
+    }
+
+    #endregion
 }

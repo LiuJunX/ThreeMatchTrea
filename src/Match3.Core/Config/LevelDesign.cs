@@ -18,8 +18,15 @@ public sealed class LevelDesign
     /// <summary>Board height.</summary>
     public int Height { get; set; } = 8;
 
-    /// <summary>Board shape name (rectangle, cross, diamond, etc.).</summary>
+    /// <summary>Board shape name (rectangle, cross, diamond, etc.). Used when CellLayout is null.</summary>
     public string Shape { get; set; } = "rectangle";
+
+    /// <summary>
+    /// Custom cell layout as string rows. Overrides Shape when provided.
+    /// Characters: '_' = Void, '.' = Slot. Spawners are auto-placed (topmost non-Void per column).
+    /// Each string is one row, array length = Height, string length = Width.
+    /// </summary>
+    public string[]? CellLayout { get; set; }
 
     /// <summary>Number of tile colors (4-7).</summary>
     public int ColorCount { get; set; } = 5;
