@@ -6,7 +6,6 @@
   "height": 8,
   "moveLimit": 23,
   "targetDifficulty": 0.15,
-  "grid": null,
   "objectives": [
     { "targetLayer": "Ground", "elementType": 1, "targetCount": 10 }
   ],

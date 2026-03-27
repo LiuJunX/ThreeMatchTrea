@@ -1,0 +1,54 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_015",
+  "name": "Frozen Prison",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 23,
+  "targetDifficulty": 0.25,
+  "objectives": [
+    { "targetLayer": "Ground", "elementType": 1, "targetCount": 10 },
+    { "targetLayer": "Tile", "elementType": 2, "targetCount": 15 }
+  ],
+  "grounds": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","Ice","None","None","None",
+    "None","None","None","Ice","Ice","Ice","None","None",
+    "None","None","Ice","Ice","Ice","Ice","Ice","None",
+    "None","None","None","Ice","Ice","Ice","None","None",
+    "None","None","None","None","Ice","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "groundHealths": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,1,0,0,0,
+    0,0,0,1,1,1,0,0,
+    0,0,1,1,1,1,1,0,
+    0,0,0,1,1,1,0,0,
+    0,0,0,0,1,0,0,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "covers": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","Cage","None","None","None","None","Cage","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "coverHealths": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,1,0,0,0,0,1,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "notes": "Ice+Cage combo: 13 ice diamond (same as L13) + 2 Cages on row 6 edges. Dual objective: clear 8 ice + collect 10 green. Cages at bottom minimize gravity disruption."
+}
