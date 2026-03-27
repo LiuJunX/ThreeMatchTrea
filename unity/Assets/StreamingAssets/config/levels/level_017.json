@@ -4,7 +4,7 @@
   "name": "Heart",
   "width": 9,
   "height": 7,
-  "moveLimit": 20,
+  "moveLimit": 18,
   "targetDifficulty": 0.3,
   "grid": [
     "None","None","None","None","None","None","None","None","None",
