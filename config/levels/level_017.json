@@ -1,0 +1,67 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_017",
+  "name": "Heart",
+  "width": 9,
+  "height": 7,
+  "moveLimit": 20,
+  "targetDifficulty": 0.3,
+  "grid": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "cells": [
+    "Void","Spawner","Spawner","Spawner","Void","Spawner","Spawner","Spawner","Void",
+    "Spawner","Slot","Slot","Slot","Spawner","Slot","Slot","Slot","Spawner",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Void","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Void",
+    "Void","Void","Slot","Slot","Slot","Slot","Slot","Void","Void",
+    "Void","Void","Void","Slot","Slot","Slot","Void","Void","Void"
+  ],
+  "objectives": [
+    { "targetLayer": "Ground", "elementType": 1, "targetCount": 10 }
+  ],
+  "grounds": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","Ice","None","None","None","Ice","None","None",
+    "None","Ice","Ice","Ice","Ice","Ice","Ice","Ice","None",
+    "None","None","Ice","Ice","Ice","Ice","Ice","None","None",
+    "None","None","None","None","Ice","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "groundHealths": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,1,0,0,0,1,0,0,
+    0,1,1,1,1,1,1,1,0,
+    0,0,1,1,1,1,1,0,0,
+    0,0,0,0,1,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "covers": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","Cage","None","None","None","None","None","Cage","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "coverHealths": [
+    0,0,0,0,0,0,0,0,0,
+    0,1,0,0,0,0,0,1,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "notes": "Heart-shaped board (9x7). 15 ice blocks form a smaller heart inside. 2 Cages on heart shoulders. Objective: melt 10 of 15 ice. The shape narrows toward the bottom creating interesting gravity funneling."
+}
