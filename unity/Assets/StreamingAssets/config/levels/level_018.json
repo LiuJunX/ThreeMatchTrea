@@ -1,0 +1,53 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_018",
+  "name": "Descent",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 21,
+  "targetDifficulty": 0.35,
+  "objectives": [
+    { "targetLayer": "Ground", "elementType": 1, "targetCount": 10 }
+  ],
+  "grounds": [
+    "None","None","None","None","None","None","None","None",
+    "Ice","None","Ice","Ice","Ice","Ice","None","Ice",
+    "None","Ice","None","Ice","Ice","None","Ice","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","Ice","None","None","None","None","Ice","None",
+    "Ice","None","None","None","None","None","None","Ice"
+  ],
+  "groundHealths": [
+    0,0,0,0,0,0,0,0,
+    1,0,1,1,1,1,0,1,
+    0,1,0,1,1,0,1,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,1,0,0,0,0,1,0,
+    1,0,0,0,0,0,0,1
+  ],
+  "covers": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","Cage","None","None","Cage","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "coverHealths": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,1,0,0,1,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "notes": "Three-act level on 8x8. Act 1 (rows 1-2): 12 ice in dense upper band, quick cascade clearing. Act 2 (row 4): 2 Cages as mid-board gatekeepers. Act 3 (rows 6-7): 4 ice in corners, hardest to reach with few remaining moves. Objective: clear 11 of 16."
+}
