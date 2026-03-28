@@ -170,7 +170,7 @@ var session = factory.CreateGameSession(config, levelConfig);
 | :--- | :--- |
 | Physics | `Func<Match3Config, IRandom, IPhysicsSimulation>` |
 | MatchFinder | `Func<IBombGenerator, IMatchFinder>` |
-| MatchProcessor | `Func<IScoreSystem, BombEffectRegistry, IMatchProcessor>` |
+| MatchProcessor | `Func<IScoreSystem, ICellEliminator, BombEffectRegistry, IObstacleSystem?, ICoverSystem?, IMatchProcessor>` |
 | Refill | `Func<ISpawnModel, IRefillSystem>` |
 | EventCollector | `Func<bool, IEventCollector>` |
 
@@ -203,7 +203,7 @@ public interface IEventVisitor
 {
     void Visit(TileMovedEvent evt);
     void Visit(TileDestroyedEvent evt);
-    // ... 17 total Visit methods
+    // ... 32 total Visit methods
 }
 
 // 4. Consumers implement the interface

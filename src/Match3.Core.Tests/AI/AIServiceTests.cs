@@ -76,14 +76,16 @@ public class AIServiceTests
     }
 
     [Fact]
-    public void GetValidMoves_ExcludesEmptyTileSwaps()
+    public void GetValidMoves_ExcludesObstacleEmptyCellSwaps()
     {
         var service = CreateAIService();
         var state = CreateStateWithEmptyTile();
+        // Add obstacle so (0,0) is NOT a bare empty cell
+        state.SetObstacle(0, 0, new Obstacle(ObstacleType.Box, 1));
 
         var moves = service.GetValidMoves(in state);
 
-        // No move should involve position (0,0) which is empty
+        // No move should involve position (0,0) which has an obstacle
         Assert.DoesNotContain(moves, m =>
             (m.From.X == 0 && m.From.Y == 0) ||
             (m.To.X == 0 && m.To.Y == 0));

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
@@ -40,6 +41,27 @@ public static class SpawnConditionFactory
                 {
                     conditions.Add(new PresetQueueCondition(
                         spawner.Columns, spawner.Preset.Sequence, spawner.Preset.Cycles));
+                }
+            }
+        }
+
+        // 1.5. PhasePreset conditions (priority 550) — triggered by game state
+        if (spawners != null)
+        {
+            foreach (var spawner in spawners)
+            {
+                if (spawner.Phases == null) continue;
+                foreach (var phase in spawner.Phases)
+                {
+                    if (phase.Preset?.Sequence is not { Length: > 0 }) continue;
+                    if (phase.Trigger?.Type != "obstacleCleared") continue;
+
+                    if (!Enum.TryParse<ObstacleType>(phase.Trigger.ObstacleType, true, out var obstacleType))
+                        continue;
+
+                    conditions.Add(new PhasePresetCondition(
+                        spawner.Columns, obstacleType,
+                        phase.Preset.Sequence, phase.Preset.Cycles));
                 }
             }
         }

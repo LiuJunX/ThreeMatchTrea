@@ -51,8 +51,10 @@ internal sealed class SimulationInputHandler
         if (!state.IsValid(from) || !state.IsValid(to))
             return false;
 
-        // Covers (ice, chains) block interaction
-        if (!state.CanInteract(from) || !state.CanInteract(to))
+        // FROM must have an interactable tile; TO can be a bare empty cell.
+        if (!state.CanInteract(from))
+            return false;
+        if (!state.CanInteract(to) && !state.IsEmptySwapTarget(to))
             return false;
 
         // Clear selection when a move is applied (swipe bypasses HandleTap)
@@ -71,17 +73,22 @@ internal sealed class SimulationInputHandler
         bool tileBIsColorBomb = tileB.Type.IsColorBomb();
         bool hasSpecialMove = tileAIsBomb || tileBIsBomb;
 
-        // Swap tiles in grid using shared operations
-        _swapOperations.SwapTiles(ref state, from, to);
-
-        // Check if swap creates a match (check both positions)
-        var hadMatch = _swapOperations.HasMatch(in state, from) || _swapOperations.HasMatch(in state, to);
-
-        // If there's a bomb involved, treat as valid move (no revert)
-        // Bomb effects will be processed AFTER swap animation completes
+        // Virtual check: swap, detect match, swap back.
+        // Only commit the swap to grid data if match confirmed or bomb involved.
+        // This prevents gravity/fill from interfering during the revert animation.
+        bool hadMatch;
         if (hasSpecialMove)
         {
+            // Bomb swaps always valid — commit immediately
             hadMatch = true;
+            _swapOperations.SwapTiles(ref state, from, to);
+        }
+        else
+        {
+            _swapOperations.SwapTiles(ref state, from, to);
+            hadMatch = _swapOperations.HasMatch(in state, from) || _swapOperations.HasMatch(in state, to);
+            if (!hadMatch)
+                _swapOperations.SwapTiles(ref state, from, to); // swap back — no data change
         }
 
         // Track pending move for potential revert (or bomb processing)
@@ -102,14 +109,12 @@ internal sealed class SimulationInputHandler
             TileBIsColorBomb = tileBIsColorBomb
         };
 
-        // Save swap positions for bomb generation priority
-        // Note: 'from' is where player started drag, 'to' is destination
-        // After swap, tiles have swapped places, so:
-        // - Original tile at 'from' is now at 'to'
-        // - Original tile at 'to' is now at 'from'
-        // Per bomb-generation.md: bomb should spawn at player's "touched" positions
-        lastSwapFrom = from;
-        lastSwapTo = to;
+        // Save swap positions for bomb generation priority (only for valid moves)
+        if (hadMatch)
+        {
+            lastSwapFrom = from;
+            lastSwapTo = to;
+        }
 
         // Emit swap event
         if (eventCollector.IsEnabled)

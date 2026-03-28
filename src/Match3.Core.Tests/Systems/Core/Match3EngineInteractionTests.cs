@@ -298,20 +298,16 @@ public class Match3EngineInteractionTests
         // Act - 直接调用 OnSwipe
         engine.OnSwipe(new Position(0, 0), Direction.Right);
 
-        // 交换后立即检查 - tiles 应该已经交换（但还没验证回退）
-        Assert.Equal(ElementType.Item3, engine.State.GetTile(0, 0).Type);
-        Assert.Equal(ElementType.Item1, engine.State.GetTile(1, 0).Type);
+        // 无匹配时数据不交换 — 立即检查数据应未变化
+        Assert.Equal(ElementType.Item1, engine.State.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.Item3, engine.State.GetTile(1, 0).Type);
 
-        // 运行 Update 来触发验证（StubAnimationSystem.IsVisualAtTarget 返回 true，所以立即验证）
+        // 运行 Update 来触发验证
         engine.Update(0.016f);
 
-        // Assert - 无 match，交换回退
-        var tileAt00 = engine.State.GetTile(0, 0);
-        var tileAt10 = engine.State.GetTile(1, 0);
-
-        // Tiles should be swapped back to original positions
-        Assert.Equal(ElementType.Item1, tileAt00.Type);
-        Assert.Equal(ElementType.Item3, tileAt10.Type);
+        // Assert - 数据始终未变化
+        Assert.Equal(ElementType.Item1, engine.State.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.Item3, engine.State.GetTile(1, 0).Type);
     }
 
     [Fact]
@@ -562,20 +558,16 @@ public class Match3EngineInteractionTests
         // Act - 向下交换
         engine.OnSwipe(new Position(0, 0), Direction.Down);
 
-        // 交换后立即检查 - tiles 应该已经交换（但还没验证回退）
-        Assert.Equal(ElementType.Item3, engine.State.GetTile(0, 0).Type);
-        Assert.Equal(ElementType.Item1, engine.State.GetTile(0, 1).Type);
+        // 无匹配时数据不交换 — 立即检查数据应未变化
+        Assert.Equal(ElementType.Item1, engine.State.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.Item3, engine.State.GetTile(0, 1).Type);
 
         // 运行 Update 来触发验证
         engine.Update(0.016f);
 
-        // Assert - 无 match，交换回退
-        var tileAt00 = engine.State.GetTile(0, 0);
-        var tileAt01 = engine.State.GetTile(0, 1);
-
-        // Tiles should be swapped back to original positions
-        Assert.Equal(ElementType.Item1, tileAt00.Type);
-        Assert.Equal(ElementType.Item3, tileAt01.Type);
+        // Assert - 数据始终未变化
+        Assert.Equal(ElementType.Item1, engine.State.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.Item3, engine.State.GetTile(0, 1).Type);
     }
 
     [Fact]

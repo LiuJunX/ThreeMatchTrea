@@ -1,6 +1,5 @@
 using System;
 using Match3.Core.Models.Enums;
-using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
 
 namespace Match3.Core.Utility;
@@ -27,7 +26,7 @@ public static class GridUtility
 
     /// <summary>
     /// 检查两个位置之间的交换是否基本有效（不检查匹配）。
-    /// 验证：非空、非下落、可交互。
+    /// 验证：至少一侧有 tile 且可交互，另一侧可为裸空格；非下落。
     /// </summary>
     /// <param name="state">游戏状态</param>
     /// <param name="from">起始位置</param>
@@ -43,20 +42,32 @@ public static class GridUtility
 
         var tileFrom = state.GetTile(from.X, from.Y);
         var tileTo = state.GetTile(to.X, to.Y);
+        bool fromEmpty = tileFrom.Type == ElementType.None;
+        bool toEmpty = tileTo.Type == ElementType.None;
 
-        // 不能交换空格
-        if (tileFrom.Type == ElementType.None || tileTo.Type == ElementType.None)
+        // 不能两边都是空的
+        if (fromEmpty && toEmpty)
             return false;
 
-        // 不能交换正在下落的方块
-        if (tileFrom.IsFalling || tileTo.IsFalling)
+        // 不能交换正在下落的方块（只检查非空侧）
+        if (!fromEmpty && tileFrom.IsFalling)
+            return false;
+        if (!toEmpty && tileTo.IsFalling)
             return false;
 
-        // 不能交换被覆盖层阻挡的方块
-        if (!state.CanInteract(from) || !state.CanInteract(to))
-            return false;
+        // 允许一侧为裸空格
+        bool fromOk = !fromEmpty && state.CanInteract(from);
+        bool toOk = !toEmpty && state.CanInteract(to);
+        if (fromOk && toOk)
+            return true;
 
-        return true;
+        // 一侧可交互 + 另一侧为裸空格
+        if (fromOk && toEmpty && state.IsEmptySwapTarget(to))
+            return true;
+        if (toOk && fromEmpty && state.IsEmptySwapTarget(from))
+            return true;
+
+        return false;
     }
 
     /// <summary>

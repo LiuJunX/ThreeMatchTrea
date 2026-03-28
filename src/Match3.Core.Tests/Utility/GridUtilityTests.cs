@@ -104,30 +104,64 @@ public class GridUtilityTests
     #region IsSwapValid - None Tiles
 
     [Fact]
-    public void IsSwapValid_FromTileIsNone_ReturnsFalse()
+    public void IsSwapValid_FromTileIsNone_BareSlot_ReturnsTrue()
     {
-        // Arrange
+        // Bare empty slot (Slot cell, no obstacle, no cover) is a valid swap target
         var state = CreateFilledState();
-        state.SetTile(0, 0, new Tile(0, ElementType.None, 0, 0));
+        state.SetTile(0, 0, default); // Empty tile
 
-        // Act
         bool result = GridUtility.IsSwapValid(in state, new Position(0, 0), new Position(1, 0));
 
-        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsSwapValid_ToTileIsNone_BareSlot_ReturnsTrue()
+    {
+        var state = CreateFilledState();
+        state.SetTile(1, 0, default);
+
+        bool result = GridUtility.IsSwapValid(in state, new Position(0, 0), new Position(1, 0));
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsSwapValid_EmptyWithObstacle_ReturnsFalse()
+    {
+        // Empty cell with obstacle is NOT a valid swap target
+        var state = CreateFilledState();
+        state.SetTile(1, 0, default);
+        state.SetObstacle(1, 0, new Obstacle { Type = ObstacleType.Box, Stage = 1 });
+
+        bool result = GridUtility.IsSwapValid(in state, new Position(0, 0), new Position(1, 0));
+
         Assert.False(result);
     }
 
     [Fact]
-    public void IsSwapValid_ToTileIsNone_ReturnsFalse()
+    public void IsSwapValid_EmptyWithCover_ReturnsFalse()
     {
-        // Arrange
+        // Empty cell with cover is NOT a valid swap target
         var state = CreateFilledState();
-        state.SetTile(1, 0, new Tile(1, ElementType.None, 1, 0));
+        state.SetTile(1, 0, default);
+        state.SetCover(1, 0, new Cover(CoverType.Cage));
 
-        // Act
         bool result = GridUtility.IsSwapValid(in state, new Position(0, 0), new Position(1, 0));
 
-        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void IsSwapValid_EmptyVoidCell_ReturnsFalse()
+    {
+        // Empty cell on Void is NOT a valid swap target
+        var state = CreateFilledState();
+        state.SetTile(1, 0, default);
+        state.SetCell(1, 0, CellKind.Void);
+
+        bool result = GridUtility.IsSwapValid(in state, new Position(0, 0), new Position(1, 0));
+
         Assert.False(result);
     }
 

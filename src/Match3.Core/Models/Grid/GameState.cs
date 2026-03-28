@@ -261,6 +261,32 @@ public struct GameState
     public readonly bool CanInteract(Position p) => CanInteract(p.X, p.Y);
 
     /// <summary>
+    /// Returns true if this cell is a bare empty slot that can accept a tile via swap.
+    /// Requires: playable cell (Slot/Spawner), no tile, no obstacle, no cover, not swap-locked.
+    /// </summary>
+    public readonly bool IsEmptySwapTarget(int x, int y)
+    {
+        var idx = y * Width + x;
+        var cell = Cells[idx];
+        if (cell != CellKind.Slot && cell != CellKind.Spawner)
+            return false;
+        if (Grid[idx].Type != ElementType.None)
+            return false;
+        if (ObstacleLayer[idx].Type != ObstacleType.None)
+            return false;
+        if (CoverLayer[idx].Type != CoverType.None)
+            return false;
+        if (CellLockOps.IsLocked(CellLocks[idx], CellLockType.Swap))
+            return false;
+        return true;
+    }
+
+    /// <summary>
+    /// Returns true if this cell is a bare empty slot that can accept a tile via swap.
+    /// </summary>
+    public readonly bool IsEmptySwapTarget(Position p) => IsEmptySwapTarget(p.X, p.Y);
+
+    /// <summary>
     /// Returns true if the tile at this position can participate in matching.
     /// </summary>
     public readonly bool CanMatch(int x, int y)

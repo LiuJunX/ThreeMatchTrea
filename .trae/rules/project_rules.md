@@ -115,7 +115,6 @@ alwaysApply: true
 - `Application.runInBackground = true` 必须保留在 GameBootstrap.Awake，否则 MCP 自动化时 Unity 失焦导致 Update 停止
 - `dotnet build` 后 DLL 可能因确定性构建未变化导致 git add 无效
 - 慢速测试（Analysis、SimulationInvariant、Determinism）标记为 `[Trait("Category", "Slow")]`，日常开发用 filter 排除
-- `_outlineMaterial` 和 blob shadow 材质不可在 `ClearCache()` 中销毁（池对象持有引用）
 - DebugTools (`[InitializeOnLoad]`) 提供 auto-unpause 防止 Error Pause 冻结
 - GameBootstrap 动态 AddComponent 会立即触发 Awake
 

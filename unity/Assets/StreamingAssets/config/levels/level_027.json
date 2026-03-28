@@ -1,0 +1,23 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_027",
+  "name": "MagicHat",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 40,
+  "targetDifficulty": 0.5,
+  "objectives": [
+    { "targetLayer": "Tile", "elementType": 104, "targetCount": 3 }
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","MagicHat","None","None","MagicHat","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","MagicHat","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "notes": "MagicHat test: 3 MagicHat generators. Accumulates adjacent hits, spawns Diamond. Collect 3 Diamonds to win."
+}

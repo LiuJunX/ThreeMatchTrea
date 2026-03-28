@@ -1,23 +1,34 @@
 {
   "$schema": "../schemas/level.schema.json",
   "id": "level_002",
-  "name": "Donut",
+  "name": "Boom & Collect",
   "width": 7,
   "height": 7,
-  "moveLimit": 25,
-  "targetDifficulty": 0.35,
-  "objectives": [
-    { "targetLayer": "Tile", "elementType": 2, "targetCount": 15 },
-    { "targetLayer": "Tile", "elementType": 5, "targetCount": 15 }
-  ],
-  "grid": null,
+  "moveLimit": 8,
+  "tileTypesCount": 3,
+  "targetDifficulty": 0.1,
   "cells": [
-    1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 0, 1, 1, 1,
-    1, 1, 0, 0, 0, 1, 1,
-    1, 1, 1, 0, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1
-  ]
+    "Void","Slot","Slot","Slot","Slot","Slot","Void",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Void","Slot","Slot","Slot","Slot","Slot","Void"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","None","None","Square5x5","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None"
+  ],
+  "objectives": [
+    { "targetLayer": "Tile", "elementType": 1, "targetCount": 6 },
+    { "targetLayer": "Tile", "elementType": 2, "targetCount": 6 },
+    { "targetLayer": "Tile", "elementType": 3, "targetCount": 6 }
+  ],
+  "notes": "Boom & Collect L002: 7x7, 3 colors, Square5x5 at center (3,3). Tap bomb → 5x5 explosion clears ~25 of 45 tiles → cascade likely completes objectives. 8 moves but designed to finish in 1-3."
 }

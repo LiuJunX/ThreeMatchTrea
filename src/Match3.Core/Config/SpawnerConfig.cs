@@ -29,6 +29,13 @@ public class SpawnerConfig
     /// Each column independently maintains its own queue position.
     /// </summary>
     public PresetQueueConfig? Preset { get; set; }
+
+    /// <summary>
+    /// Phase-triggered presets (optional). Each phase has a trigger condition and a preset queue.
+    /// When the trigger condition is met, the phase's preset queue activates (priority 550).
+    /// null or empty = no phase triggers.
+    /// </summary>
+    public SpawnerPhaseConfig[]? Phases { get; set; }
 }
 
 /// <summary>
@@ -47,4 +54,28 @@ public class PresetQueueConfig
     /// 1 = play once (default), 0 = infinite loop, N = play N times.
     /// </summary>
     public int Cycles { get; set; } = 1;
+}
+
+/// <summary>
+/// A spawner phase that activates its preset queue when a trigger condition is met.
+/// </summary>
+[Serializable]
+public class SpawnerPhaseConfig
+{
+    public PhaseTriggerConfig Trigger { get; set; } = new();
+    public PresetQueueConfig Preset { get; set; } = new();
+}
+
+/// <summary>
+/// Trigger condition for a spawner phase.
+/// Type = "obstacleCleared" → activates when all obstacles of ObstacleType are destroyed.
+/// </summary>
+[Serializable]
+public class PhaseTriggerConfig
+{
+    /// <summary>Trigger type. Currently supported: "obstacleCleared".</summary>
+    public string Type { get; set; } = "";
+
+    /// <summary>For "obstacleCleared": the obstacle type name (e.g., "Box").</summary>
+    public string ObstacleType { get; set; } = "";
 }

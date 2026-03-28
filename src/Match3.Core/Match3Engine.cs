@@ -191,21 +191,25 @@ public sealed class Match3Engine : IDisposable
         if (_pendingMoveState.HasPending)
             return;
 
-        // Swap tiles using shared operations
-        _swapOperations.SwapTiles(ref _state, move.From, move.To);
+        // Capture tile info BEFORE any swap
+        var tileAId = _state.GetTile(move.From.X, move.From.Y).Id;
+        var tileBId = _state.GetTile(move.To.X, move.To.Y).Id;
 
-        // Check for matches IMMEDIATELY after swap, before any game loop update
-        // This ensures we capture the match state before tiles get eliminated
+        // Virtual check: swap, detect match, swap back.
+        // Only commit the swap to grid data if match confirmed.
+        _swapOperations.SwapTiles(ref _state, move.From, move.To);
         var hadMatch = _swapOperations.HasMatch(in _state, move.From) ||
                        _swapOperations.HasMatch(in _state, move.To);
+        if (!hadMatch)
+            _swapOperations.SwapTiles(ref _state, move.From, move.To); // swap back — no data change
 
         // Track pending move for validation after animation completes
         _pendingMoveState = new PendingMoveState
         {
             From = move.From,
             To = move.To,
-            TileAId = _state.GetTile(move.From.X, move.From.Y).Id,
-            TileBId = _state.GetTile(move.To.X, move.To.Y).Id,
+            TileAId = tileAId,
+            TileBId = tileBId,
             HadMatch = hadMatch,
             NeedsValidation = true,
             AnimationTime = 0f

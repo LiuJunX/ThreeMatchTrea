@@ -1,0 +1,33 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_026",
+  "name": "Curtain",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 30,
+  "targetDifficulty": 0.3,
+  "objectives": [
+    { "targetLayer": "Obstacle", "elementType": 6, "targetCount": 6 }
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","Curtain","None","Curtain","None","Curtain","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","Curtain","None","Curtain","None","Curtain","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStates": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,1,0,2,0,3,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,1,0,2,0,3,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "notes": "Curtain test: 6 Curtain (1 HP). State=color: 1=Red,2=Green,3=Blue. Damaged by global color elimination."
+}

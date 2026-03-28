@@ -64,10 +64,10 @@ public sealed class SwapOperations : ISwapOperations
         // Animation complete - validate the move
         pending.NeedsValidation = false;
 
-        // If no match was found, revert the swap
+        // If no match was found, emit visual revert event.
+        // Grid data was never swapped for non-matching moves, so no data revert needed.
         if (!pending.HadMatch)
         {
-            SwapTiles(ref state, pending.From, pending.To);
             _context.EmitRevertEvent(in state, pending.From, pending.To, tick, simTime, events);
         }
         else

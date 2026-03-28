@@ -1,0 +1,46 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_025",
+  "name": "ColorBox",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 30,
+  "targetDifficulty": 0.4,
+  "objectives": [
+    { "targetLayer": "Obstacle", "elementType": 4, "targetCount": 6 }
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","ColorBox","None","ColorBox","None","ColorBox","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","ColorBox","None","ColorBox","None","ColorBox","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,1,0,1,0,1,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,1,0,1,0,1,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "obstacleStates": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,1,0,2,0,3,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,1,0,2,0,3,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "notes": "ColorBox test: 6 ColorBox (1 HP). State=color: 1=Red,2=Green,3=Blue. Only matching its color damages it."
+}

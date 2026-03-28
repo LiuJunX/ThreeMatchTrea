@@ -42,16 +42,18 @@ public sealed record SwapCommand : IGameCommand
         if ((dx + dy) != 1)
             return false;
 
-        // Check tiles exist
-        var fromTile = state.GetTile(From.X, From.Y);
-        var toTile = state.GetTile(To.X, To.Y);
-        if (fromTile.Type == ElementType.None || toTile.Type == ElementType.None)
+        // FROM must have an interactable tile; TO can be a bare empty cell.
+        if (!state.CanInteract(From))
+            return false;
+        if (!state.CanInteract(To) && !state.IsEmptySwapTarget(To))
             return false;
 
         // Multi-stage tiles or moving obstacles cannot be swapped
-        if (fromTile.Stage > 1 || toTile.Stage > 1)
+        var fromTile = state.GetTile(From.X, From.Y);
+        if (fromTile.Stage > 1 || fromTile.Type.IsMovingObstacle())
             return false;
-        if (fromTile.Type.IsMovingObstacle() || toTile.Type.IsMovingObstacle())
+        var toTile = state.GetTile(To.X, To.Y);
+        if (toTile.Type != ElementType.None && (toTile.Stage > 1 || toTile.Type.IsMovingObstacle()))
             return false;
 
         return true;

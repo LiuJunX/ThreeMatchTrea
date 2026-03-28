@@ -3,7 +3,9 @@ using Match3.Core.Events;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Gameplay;
 using Match3.Core.Models.Grid;
+using Match3.Core.Simulation;
 using Match3.Core.Systems.Matching;
+using Match3.Core.Systems.PowerUps;
 using Match3.Core.Systems.Swap;
 using Match3.Core.Tests.TestFixtures;
 using Match3.Random;
@@ -192,21 +194,16 @@ public class SwapOperationsTests
     }
 
     [Fact]
-    public void ValidatePendingMove_RevertsSwap_WhenNoMatch()
+    public void ValidatePendingMove_EmitsRevertEvent_WhenNoMatch_WithoutSwappingData()
     {
         var state = CreateTestState();
         var matchFinder = new StubMatchFinder { AlwaysMatch = false };
         var context = new TestSwapContext { AnimationDuration = 0.15f };
         var ops = new SwapOperations(matchFinder, context);
 
-        // Do initial swap
+        // Data is NOT pre-swapped (new design: non-matching moves don't touch grid data)
         var originalTileA = state.GetTile(0, 0).Type;
         var originalTileB = state.GetTile(1, 0).Type;
-        ops.SwapTiles(ref state, new Position(0, 0), new Position(1, 0));
-
-        // Verify swap happened
-        Assert.Equal(originalTileB, state.GetTile(0, 0).Type);
-        Assert.Equal(originalTileA, state.GetTile(1, 0).Type);
 
         var pending = new PendingMoveState
         {
@@ -217,12 +214,12 @@ public class SwapOperationsTests
             AnimationTime = 0f
         };
 
-        // Run validation with enough time to complete animation
         ops.ValidatePendingMove(ref state, ref pending, 0.2f, 0, 0f, NullEventCollector.Instance);
 
-        // Verify tiles are back to original positions
+        // Data unchanged — tiles stay at original positions
         Assert.Equal(originalTileA, state.GetTile(0, 0).Type);
         Assert.Equal(originalTileB, state.GetTile(1, 0).Type);
+        // Revert event emitted for visual layer
         Assert.Equal(1, context.RevertEventCount);
     }
 
@@ -285,6 +282,343 @@ public class SwapOperationsTests
         // Third tick - now complete
         ops.ValidatePendingMove(ref state, ref pending, 0.05f, 0, 0f, NullEventCollector.Instance);
         Assert.False(pending.NeedsValidation);
+    }
+
+    #endregion
+
+    #region Empty Cell Swap Tests
+
+    private GameState CreateStateWithEmptyCell()
+    {
+        var state = new GameState(5, 5, 4, new StubRandom());
+        for (int y = 0; y < 5; y++)
+        {
+            for (int x = 0; x < 5; x++)
+            {
+                int idx = y * 5 + x;
+                state.SetTile(x, y, new Tile(idx + 1, ElementType.Item1, x, y));
+            }
+        }
+
+        // Make (2,2) a bare empty cell
+        state.SetTile(2, 2, default);
+        return state;
+    }
+
+    [Fact]
+    public void SwapTiles_WorksWithEmptyCell_Vertical()
+    {
+        var state = CreateStateWithEmptyCell();
+        var matchFinder = new StubMatchFinder();
+        var context = new TestSwapContext();
+        var ops = new SwapOperations(matchFinder, context);
+
+        var tileBefore = state.GetTile(2, 1);
+        Assert.NotEqual(ElementType.None, tileBefore.Type);
+        Assert.Equal(ElementType.None, state.GetTile(2, 2).Type);
+
+        ops.SwapTiles(ref state, new Position(2, 1), new Position(2, 2));
+
+        Assert.Equal(tileBefore.Type, state.GetTile(2, 2).Type);
+        Assert.Equal(ElementType.None, state.GetTile(2, 1).Type);
+    }
+
+    [Fact]
+    public void SwapTiles_WorksWithEmptyCell_Horizontal()
+    {
+        var state = CreateStateWithEmptyCell();
+        var matchFinder = new StubMatchFinder();
+        var context = new TestSwapContext();
+        var ops = new SwapOperations(matchFinder, context);
+
+        var tileBefore = state.GetTile(1, 2);
+        ops.SwapTiles(ref state, new Position(1, 2), new Position(2, 2));
+
+        Assert.Equal(tileBefore.Type, state.GetTile(2, 2).Type);
+        Assert.Equal(ElementType.None, state.GetTile(1, 2).Type);
+    }
+
+    [Fact]
+    public void SwapTiles_WorksWithEmptyCell_AtBoardEdge()
+    {
+        var state = new GameState(5, 5, 4, new StubRandom());
+        for (int y = 0; y < 5; y++)
+            for (int x = 0; x < 5; x++)
+                state.SetTile(x, y, new Tile(y * 5 + x + 1, ElementType.Item1, x, y));
+
+        // Empty cell at corner (0,0)
+        state.SetTile(0, 0, default);
+
+        var matchFinder = new StubMatchFinder();
+        var context = new TestSwapContext();
+        var ops = new SwapOperations(matchFinder, context);
+
+        var tileBefore = state.GetTile(1, 0);
+        ops.SwapTiles(ref state, new Position(1, 0), new Position(0, 0));
+
+        Assert.Equal(tileBefore.Type, state.GetTile(0, 0).Type);
+        Assert.Equal(ElementType.None, state.GetTile(1, 0).Type);
+    }
+
+    [Fact]
+    public void ValidatePendingMove_EmitsRevertEvent_EmptySwapNoMatch_DataUnchanged()
+    {
+        var state = CreateStateWithEmptyCell();
+        var matchFinder = new StubMatchFinder { AlwaysMatch = false };
+        var context = new TestSwapContext { AnimationDuration = 0.15f };
+        var ops = new SwapOperations(matchFinder, context);
+
+        // Data NOT pre-swapped (non-matching moves don't touch grid data)
+        var tileType = state.GetTile(2, 1).Type;
+
+        var pending = new PendingMoveState
+        {
+            From = new Position(2, 1),
+            To = new Position(2, 2),
+            HadMatch = false,
+            NeedsValidation = true,
+            AnimationTime = 0f
+        };
+
+        ops.ValidatePendingMove(ref state, ref pending, 0.2f, 0, 0f, NullEventCollector.Instance);
+
+        // Data unchanged — tile stays at (2,1), empty at (2,2)
+        Assert.Equal(tileType, state.GetTile(2, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(2, 2).Type);
+        Assert.Equal(1, context.RevertEventCount);
+    }
+
+    [Fact]
+    public void ValidatePendingMove_KeepsEmptySwap_WhenHadMatch()
+    {
+        var state = CreateStateWithEmptyCell();
+        var matchFinder = new StubMatchFinder { AlwaysMatch = true };
+        var context = new TestSwapContext { AnimationDuration = 0.15f };
+        var ops = new SwapOperations(matchFinder, context);
+
+        var tileType = state.GetTile(2, 1).Type;
+        ops.SwapTiles(ref state, new Position(2, 1), new Position(2, 2));
+
+        var pending = new PendingMoveState
+        {
+            From = new Position(2, 1),
+            To = new Position(2, 2),
+            HadMatch = true,
+            NeedsValidation = true,
+            AnimationTime = 0f
+        };
+
+        ops.ValidatePendingMove(ref state, ref pending, 0.2f, 0, 0f, NullEventCollector.Instance);
+
+        // Tile stays at (2,2), empty at (2,1)
+        Assert.Equal(tileType, state.GetTile(2, 2).Type);
+        Assert.Equal(ElementType.None, state.GetTile(2, 1).Type);
+        Assert.Equal(0, context.RevertEventCount);
+    }
+
+    #endregion
+
+    #region ApplyMove Empty Cell Integration Tests
+
+    private class StubPowerUpHandler : IPowerUpHandler
+    {
+        public void ProcessBombSwap(ref GameState state, Position p1, Position p2, out int points) => points = 0;
+        public void ProcessBombSwap(ref GameState state, Position p1, Position p2, int tick, float simTime, IEventCollector events, out int points) => points = 0;
+        public void ActivateBomb(ref GameState state, Position p) { }
+        public void ActivateBomb(ref GameState state, Position p, int tick, float simTime, IEventCollector events, bool isChainReaction = false) { }
+        public void ActivateChainBomb(ref GameState state, Position p, Tile bombTile, int tick, float simTime, IEventCollector events) { }
+    }
+
+    [Fact]
+    public void ApplyMove_AcceptsSwapWithBareEmptyCell()
+    {
+        var state = CreateStateWithEmptyCell(); // (2,2) is empty
+        var matchFinder = new StubMatchFinder { AlwaysMatch = true };
+        var context = new TestSwapContext();
+        var swapOps = new SwapOperations(matchFinder, context);
+        var handler = new SimulationInputHandler(swapOps, new StubPowerUpHandler());
+
+        var pending = PendingMoveState.None;
+        var lastFrom = Position.Invalid;
+        var lastTo = Position.Invalid;
+
+        bool result = handler.ApplyMove(
+            new Position(2, 1), new Position(2, 2),
+            ref state, ref pending, ref lastFrom, ref lastTo,
+            0, 0f, NullEventCollector.Instance);
+
+        Assert.True(result);
+        Assert.True(pending.NeedsValidation);
+        // Tile moved to (2,2), empty at (2,1)
+        Assert.NotEqual(ElementType.None, state.GetTile(2, 2).Type);
+        Assert.Equal(ElementType.None, state.GetTile(2, 1).Type);
+    }
+
+    [Fact]
+    public void ApplyMove_RejectsSwapWithObstacleEmptyCell()
+    {
+        var state = CreateStateWithEmptyCell();
+        state.SetObstacle(2, 2, new Obstacle { Type = ObstacleType.Box, Stage = 1 });
+
+        var matchFinder = new StubMatchFinder();
+        var context = new TestSwapContext();
+        var swapOps = new SwapOperations(matchFinder, context);
+        var handler = new SimulationInputHandler(swapOps, new StubPowerUpHandler());
+
+        var pending = PendingMoveState.None;
+        var lastFrom = Position.Invalid;
+        var lastTo = Position.Invalid;
+
+        bool result = handler.ApplyMove(
+            new Position(2, 1), new Position(2, 2),
+            ref state, ref pending, ref lastFrom, ref lastTo,
+            0, 0f, NullEventCollector.Instance);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void ApplyMove_AcceptsEmptySwap_AtBoardEdge()
+    {
+        var state = new GameState(5, 5, 4, new StubRandom());
+        for (int y = 0; y < 5; y++)
+            for (int x = 0; x < 5; x++)
+                state.SetTile(x, y, new Tile(y * 5 + x + 1, ElementType.Item1, x, y));
+        state.SetTile(0, 0, default); // corner empty
+
+        var matchFinder = new StubMatchFinder { AlwaysMatch = true };
+        var context = new TestSwapContext();
+        var swapOps = new SwapOperations(matchFinder, context);
+        var handler = new SimulationInputHandler(swapOps, new StubPowerUpHandler());
+
+        var pending = PendingMoveState.None;
+        var lastFrom = Position.Invalid;
+        var lastTo = Position.Invalid;
+
+        // Horizontal: (1,0) → (0,0) empty corner
+        bool result = handler.ApplyMove(
+            new Position(1, 0), new Position(0, 0),
+            ref state, ref pending, ref lastFrom, ref lastTo,
+            0, 0f, NullEventCollector.Instance);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void ApplyMove_RejectsBothEmpty()
+    {
+        var state = new GameState(5, 5, 4, new StubRandom());
+        // All tiles default to None, cells are Slot
+
+        var matchFinder = new StubMatchFinder();
+        var context = new TestSwapContext();
+        var swapOps = new SwapOperations(matchFinder, context);
+        var handler = new SimulationInputHandler(swapOps, new StubPowerUpHandler());
+
+        var pending = PendingMoveState.None;
+        var lastFrom = Position.Invalid;
+        var lastTo = Position.Invalid;
+
+        bool result = handler.ApplyMove(
+            new Position(0, 0), new Position(1, 0),
+            ref state, ref pending, ref lastFrom, ref lastTo,
+            0, 0f, NullEventCollector.Instance);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void ApplyMove_RejectsFromEmpty_ToTile()
+    {
+        // FROM must have a tile — starting from empty cell is not allowed
+        var state = CreateStateWithEmptyCell(); // (2,2) is empty
+        var matchFinder = new StubMatchFinder { AlwaysMatch = true };
+        var context = new TestSwapContext();
+        var swapOps = new SwapOperations(matchFinder, context);
+        var handler = new SimulationInputHandler(swapOps, new StubPowerUpHandler());
+
+        var pending = PendingMoveState.None;
+        var lastFrom = Position.Invalid;
+        var lastTo = Position.Invalid;
+
+        // Swap FROM empty (2,2) TO tile (2,1) — should be rejected
+        bool result = handler.ApplyMove(
+            new Position(2, 2), new Position(2, 1),
+            ref state, ref pending, ref lastFrom, ref lastTo,
+            0, 0f, NullEventCollector.Instance);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void ApplyMove_NoDataChange_WhenNoMatch()
+    {
+        var state = CreateStateWithEmptyCell(); // (2,2) is empty
+        var matchFinder = new StubMatchFinder { AlwaysMatch = false };
+        var context = new TestSwapContext();
+        var swapOps = new SwapOperations(matchFinder, context);
+        var handler = new SimulationInputHandler(swapOps, new StubPowerUpHandler());
+
+        var tileType = state.GetTile(2, 1).Type;
+        var pending = PendingMoveState.None;
+        var lastFrom = Position.Invalid;
+        var lastTo = Position.Invalid;
+
+        // Swap attempt: tile (2,1) → empty (2,2), no match
+        bool result = handler.ApplyMove(
+            new Position(2, 1), new Position(2, 2),
+            ref state, ref pending, ref lastFrom, ref lastTo,
+            0, 0f, NullEventCollector.Instance);
+
+        Assert.True(result); // Swap accepted (will revert visually)
+        // Grid data unchanged — tile still at (2,1), empty still at (2,2)
+        Assert.Equal(tileType, state.GetTile(2, 1).Type);
+        Assert.Equal(ElementType.None, state.GetTile(2, 2).Type);
+        Assert.False(pending.HadMatch);
+    }
+
+    #endregion
+
+    #region IsEmptySwapTarget Tests
+
+    [Fact]
+    public void IsEmptySwapTarget_ReturnsTrueForBareSlot()
+    {
+        var state = new GameState(3, 3, 4, new StubRandom());
+        // Default: all Slot, no tiles, no obstacles, no covers
+        Assert.True(state.IsEmptySwapTarget(1, 1));
+    }
+
+    [Fact]
+    public void IsEmptySwapTarget_ReturnsFalseForVoid()
+    {
+        var state = new GameState(3, 3, 4, new StubRandom());
+        state.SetCell(1, 1, CellKind.Void);
+        Assert.False(state.IsEmptySwapTarget(1, 1));
+    }
+
+    [Fact]
+    public void IsEmptySwapTarget_ReturnsFalseWhenTileExists()
+    {
+        var state = new GameState(3, 3, 4, new StubRandom());
+        state.SetTile(1, 1, new Tile(1, ElementType.Item1, 1, 1));
+        Assert.False(state.IsEmptySwapTarget(1, 1));
+    }
+
+    [Fact]
+    public void IsEmptySwapTarget_ReturnsFalseWhenObstacleExists()
+    {
+        var state = new GameState(3, 3, 4, new StubRandom());
+        state.SetObstacle(1, 1, new Obstacle { Type = ObstacleType.Box, Stage = 1 });
+        Assert.False(state.IsEmptySwapTarget(1, 1));
+    }
+
+    [Fact]
+    public void IsEmptySwapTarget_ReturnsFalseWhenCoverExists()
+    {
+        var state = new GameState(3, 3, 4, new StubRandom());
+        state.SetCover(1, 1, new Cover(CoverType.Cage));
+        Assert.False(state.IsEmptySwapTarget(1, 1));
     }
 
     #endregion

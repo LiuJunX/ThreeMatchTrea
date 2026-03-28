@@ -1,0 +1,35 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_023",
+  "name": "Bush",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 30,
+  "targetDifficulty": 0.3,
+  "objectives": [
+    { "targetLayer": "Obstacle", "elementType": 2, "targetCount": 4 }
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","Bush","None","None","None","Bush","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","Bush","None","None","None","Bush","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,2,0,0,0,2,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,2,0,0,0,2,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "notes": "Bush test: 4 Bush (2 HP). Death spawns Grass in adjacent cells."
+}

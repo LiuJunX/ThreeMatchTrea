@@ -250,6 +250,20 @@ public static class BoardAnalyzer
     }
 
     /// <summary>
+    /// Counts how many obstacles of the given type are currently on the board.
+    /// </summary>
+    public static int CountObstacleOnBoard(ref GameState state, ObstacleType type)
+    {
+        int count = 0;
+        for (int i = 0; i < state.ObstacleLayer.Length; i++)
+        {
+            if (state.ObstacleLayer[i].Type == type)
+                count++;
+        }
+        return count;
+    }
+
+    /// <summary>
     /// Returns the color of the topmost non-empty tile in the column.
     /// </summary>
     public static ElementType GetColumnTopColor(ref GameState state, int x)

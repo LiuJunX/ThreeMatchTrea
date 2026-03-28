@@ -78,9 +78,10 @@ public class SimulationEngineTests
     #region ApplyMove Tests
 
     [Fact]
-    public void ApplyMove_SwapsTiles()
+    public void ApplyMove_SwapsTiles_WhenMatchExists()
     {
-        var state = CreateStableState();
+        // Use a state where swap (0,0)↔(1,0) produces a match
+        var state = CreateMatchOnSwapState();
         var engine = TestEngineFactory.CreateEngine(state);
 
         var tileABefore = engine.State.GetTile(0, 0).Type;
@@ -93,6 +94,22 @@ public class SimulationEngineTests
 
         Assert.Equal(tileABefore, tileBAfter);
         Assert.Equal(tileBBefore, tileAAfter);
+    }
+
+    [Fact]
+    public void ApplyMove_DoesNotSwapData_WhenNoMatch()
+    {
+        var state = CreateNoMatchSwapState();
+        var engine = TestEngineFactory.CreateEngine(state);
+
+        var tileABefore = engine.State.GetTile(0, 0).Type;
+        var tileBBefore = engine.State.GetTile(1, 0).Type;
+
+        engine.ApplyMove(new Position(0, 0), new Position(1, 0));
+
+        // Data should NOT be swapped for non-matching moves
+        Assert.Equal(tileABefore, engine.State.GetTile(0, 0).Type);
+        Assert.Equal(tileBBefore, engine.State.GetTile(1, 0).Type);
     }
 
     [Fact]
@@ -253,7 +270,7 @@ public class SimulationEngineTests
     }
 
     [Fact]
-    public void ApplyMove_InvalidSwap_RevertsAfterAnimationDuration()
+    public void ApplyMove_InvalidSwap_DataUnchangedThroughout()
     {
         // Arrange
         var state = CreateNoMatchSwapState();
@@ -262,22 +279,20 @@ public class SimulationEngineTests
         var originalTileA = state.GetTile(0, 0).Type;
         var originalTileB = state.GetTile(1, 0).Type;
 
-        // Act: Apply invalid swap
+        // Act: Apply invalid swap — data should NOT be modified
         engine.ApplyMove(new Position(0, 0), new Position(1, 0));
 
-        // After swap, tiles are in swapped positions
-        Assert.Equal(originalTileB, engine.State.GetTile(0, 0).Type);
-        Assert.Equal(originalTileA, engine.State.GetTile(1, 0).Type);
+        // Data unchanged immediately
+        Assert.Equal(originalTileA, engine.State.GetTile(0, 0).Type);
+        Assert.Equal(originalTileB, engine.State.GetTile(1, 0).Type);
 
-        // Run enough ticks to complete the swap animation and trigger revert
-        // SwapAnimationDuration = 0.15f, FixedDeltaTime = 0.016f
-        // Need about 10 ticks to pass 0.15 seconds
+        // Run ticks through animation
         for (int i = 0; i < 15; i++)
         {
             engine.Tick();
         }
 
-        // Assert: Tiles should be back in original positions
+        // Data still unchanged after revert animation
         Assert.Equal(originalTileA, engine.State.GetTile(0, 0).Type);
         Assert.Equal(originalTileB, engine.State.GetTile(1, 0).Type);
     }

@@ -1,0 +1,23 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_019",
+  "name": "Chain",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 30,
+  "targetDifficulty": 0.3,
+  "objectives": [
+    { "targetLayer": "Cover", "elementType": 2, "targetCount": 8 }
+  ],
+  "covers": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","Chain","Chain","None","None","None",
+    "None","None","Chain","None","None","Chain","None","None",
+    "None","None","Chain","None","None","Chain","None","None",
+    "None","None","None","Chain","Chain","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "notes": "Chain cover test: 8 Chain in ring. Blocks swap, allows matching."
+}

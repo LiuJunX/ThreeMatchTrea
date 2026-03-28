@@ -1,37 +1,46 @@
 {
   "$schema": "../schemas/level.schema.json",
   "id": "level_001",
-  "name": "Tutorial 1",
+  "name": "Dam Break",
   "width": 8,
   "height": 8,
-  "moveLimit": 25,
+  "moveLimit": 28,
+  "tileTypesCount": 4,
   "targetDifficulty": 0.2,
   "objectives": [
-    {
-      "targetLayer": "Tile",
-      "elementType": 1,
-      "targetCount": 15
-    },
-    {
-      "targetLayer": "Tile",
-      "elementType": 3,
-      "targetCount": 15
-    },
-    {
-      "targetLayer": "Tile",
-      "elementType": 4,
-      "targetCount": 15
-    }
+    { "targetLayer": "Tile", "elementType": 1, "targetCount": 12 },
+    { "targetLayer": "Tile", "elementType": 3, "targetCount": 12 }
+  ],
+  "cells": [
+    "Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Void","Slot","Slot","Slot","Slot","Slot","Slot","Void"
   ],
   "grid": [
-    0,  0,  0,  0,  0,  0,  0,  0,
-    0,  0,  0, 13,  0,  0,  0,  0,
-    0,  0,  0,  0,  0,  0, 13,  0,
-    0, 13,  0,  0,  0,  0,  0,  0,
-    0,  0,  0,  0,  0, 13,  0,  0,
-    0,  0, 13,  0,  0,  0,  0,  0,
-    0,  0,  0,  0, 13,  0,  0,  0,
-    0,  0,  0,  0,  0,  0,  0,  0
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty",
+    "KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty",
+    "None","KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty","None"
   ],
-  "notes": "6 UFOs scattered for testing"
+  "obstacles": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "Box","Box","Box","Box","Box","Box","Box","Box",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBAQEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+  "notes": "Dam Break: 4 colors, 3 rows above single Box dam, KeepEmpty below. Box row breaks → tiles flood into 22 empty cells → massive cascade."
 }

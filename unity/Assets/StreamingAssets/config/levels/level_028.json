@@ -1,0 +1,23 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_028",
+  "name": "Mailbox",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 35,
+  "targetDifficulty": 0.4,
+  "objectives": [
+    { "targetLayer": "Tile", "elementType": 103, "targetCount": 4 }
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","Mailbox","None","None","Mailbox","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","Mailbox","None","None","Mailbox","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "notes": "Mailbox test: 4 Mailbox (indestructible). Adjacent elimination spawns Envelope. Collect 4 Envelopes."
+}
