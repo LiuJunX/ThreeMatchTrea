@@ -8,6 +8,10 @@
 - [ ] 邻接消除设计 review：当前 CanReactAdjacent 混合了"任意邻接"（Box/Bush/Cupboard）和"同色邻接"（ColorBox）两种语义，由 NotifyBatchElimination 统一驱动。随着 ColorBox 引入，考虑是否需要拆分为独立路径（如 IAdjacentReaction 策略），使颜色匹配逻辑更显式、可扩展。关联：Curtain 的全局色消除也是另一种颜色反应模式 (2026-03-22)
 - [ ] SimulationInvariantTests seed=1337 残留锁：ColorBomb combo session 的 Indestructible lock (0x10) 在 move 23 后残留于 index 11。已加防御性清理但根因未定位，疑似 session 生命周期时序问题 (2026-03-22)
 
+## 关卡设计
+
+- [ ] 上线兜底方案：如果 Day 1 数据显示 L001 退出率异常高（>15%），在 UI 层加极轻提示（首次 swap 时高亮闪烁可交换的两个 tile）。不改关卡结构、不加箭头、不强制操作，保持设计者契约不受损 (2026-03-29)
+
 ## 功能想法
 
 <!-- 新功能、改进想法 -->
