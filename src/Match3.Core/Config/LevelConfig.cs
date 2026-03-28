@@ -83,6 +83,12 @@ public class LevelConfig
     public float TargetDifficulty { get; set; } = 0.5f;
 
     /// <summary>
+    /// Number of distinct tile colors (2-6). Overrides the global default when set.
+    /// null = use global default from GameServiceConfiguration.
+    /// </summary>
+    public int? TileTypesCount { get; set; }
+
+    /// <summary>
     /// Level objectives (max 4, fixed size array).
     /// </summary>
     private LevelObjective[] _objectives = new LevelObjective[4];
@@ -177,6 +183,7 @@ public class LevelConfig
         {
             MoveLimit = MoveLimit,
             TargetDifficulty = TargetDifficulty,
+            TileTypesCount = TileTypesCount,
             Spawners = DeepCopySpawners(),
             ApprovedSeeds = ApprovedSeeds != null ? (int[])ApprovedSeeds.Clone() : null,
             AnalysisCache = AnalysisCache
@@ -212,7 +219,34 @@ public class LevelConfig
                 {
                     Sequence = src.Preset.Sequence != null ? (ElementType[])src.Preset.Sequence.Clone() : Array.Empty<ElementType>(),
                     Cycles = src.Preset.Cycles
-                } : null
+                } : null,
+                Phases = DeepCopyPhases(src.Phases)
+            };
+        }
+        return copy;
+    }
+
+    private static SpawnerPhaseConfig[]? DeepCopyPhases(SpawnerPhaseConfig[]? phases)
+    {
+        if (phases == null) return null;
+        var copy = new SpawnerPhaseConfig[phases.Length];
+        for (int i = 0; i < phases.Length; i++)
+        {
+            var src = phases[i];
+            copy[i] = new SpawnerPhaseConfig
+            {
+                Trigger = new PhaseTriggerConfig
+                {
+                    Type = src.Trigger?.Type ?? "",
+                    ObstacleType = src.Trigger?.ObstacleType ?? ""
+                },
+                Preset = src.Preset != null ? new PresetQueueConfig
+                {
+                    Sequence = src.Preset.Sequence != null
+                        ? (ElementType[])src.Preset.Sequence.Clone()
+                        : Array.Empty<ElementType>(),
+                    Cycles = src.Preset.Cycles
+                } : new PresetQueueConfig()
             };
         }
         return copy;

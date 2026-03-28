@@ -88,28 +88,37 @@ public class BoardInitializer : IBoardInitializer
                     }
 
                     // ElementType.None in a CellKind.Slot means "Generate Random".
+                    // ElementType.KeepEmpty means "intentionally empty — no tile".
                     var type = (levelConfig.Grid != null && i < levelConfig.Grid.Length)
                         ? levelConfig.Grid[i]
                         : ElementType.None;
 
-                    if (type == ElementType.None)
+                    if (type == ElementType.KeepEmpty)
                     {
-                        type = _tileGenerator.GenerateNonMatchingTile(ref state, x, y);
-                    }
-
-                    var tile = new Tile(state.NextTileId++, type, x, y);
-
-                    // Apply tile stage: explicit config > type default > 1
-                    if (levelConfig.TileStages != null && i < levelConfig.TileStages.Length && levelConfig.TileStages[i] > 0)
-                    {
-                        tile.Stage = levelConfig.TileStages[i];
+                        // Intentionally empty Slot — skip tile generation
+                        // Ground/Cover layers below will still be initialized
                     }
                     else
                     {
-                        tile.Stage = TileRules.GetDefaultStage(type);
-                    }
+                        if (type == ElementType.None)
+                        {
+                            type = _tileGenerator.GenerateNonMatchingTile(ref state, x, y);
+                        }
 
-                    state.SetTile(x, y, tile);
+                        var tile = new Tile(state.NextTileId++, type, x, y);
+
+                        // Apply tile stage: explicit config > type default > 1
+                        if (levelConfig.TileStages != null && i < levelConfig.TileStages.Length && levelConfig.TileStages[i] > 0)
+                        {
+                            tile.Stage = levelConfig.TileStages[i];
+                        }
+                        else
+                        {
+                            tile.Stage = TileRules.GetDefaultStage(type);
+                        }
+
+                        state.SetTile(x, y, tile);
+                    }
 
                     // Initialize Ground layer
                     if (levelConfig.Grounds != null && i < levelConfig.Grounds.Length)

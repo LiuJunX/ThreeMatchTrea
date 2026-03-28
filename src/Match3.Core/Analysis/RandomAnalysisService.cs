@@ -14,6 +14,8 @@ using Match3.Core.Systems.Scoring;
 using Match3.Core.Utility;
 using Match3.Core.Systems.Spawning;
 using Match3.Core.Models.Enums;
+using Match3.Core.Systems.Obstacles;
+using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Layers;
 using Match3.Random;
 
@@ -191,8 +193,9 @@ public sealed class RandomAnalysisService : ILevelAnalysisService
 
     private GameState CreateInitialStateFromConfig(LevelConfig levelConfig)
     {
-        // 统计关卡中使用的不同颜色数量
-        int tileTypesCount = CountDistinctTileTypes(levelConfig.Grid);
+        // 优先使用 LevelConfig 显式指定的颜色数，否则从 Grid 推导
+        int tileTypesCount = levelConfig.TileTypesCount
+            ?? CountDistinctTileTypes(levelConfig.Grid);
         if (tileTypesCount == 0) tileTypesCount = 6; // 默认值
 
         var random = new XorShift64(12345);
@@ -202,29 +205,76 @@ public sealed class RandomAnalysisService : ILevelAnalysisService
             TargetDifficulty = levelConfig.TargetDifficulty
         };
 
-        // 从 LevelConfig 初始化棋盘
+        // 从 LevelConfig 初始化棋盘（与 AnalysisUtility.CreateInitialStateFromConfig 对齐）
         for (int y = 0; y < levelConfig.Height; y++)
         {
             for (int x = 0; x < levelConfig.Width; x++)
             {
                 int idx = y * levelConfig.Width + x;
 
-                // Tile 层
-                var type = levelConfig.Grid[idx];
-
-                if (type == Models.Enums.ElementType.None)
+                // 1. Cell 层
+                if (levelConfig.Cells != null && idx < levelConfig.Cells.Length)
                 {
-                    // 如果是 None 或 Random，生成随机颜色
-                    var types = GetTileTypes(tileTypesCount);
-                    do
-                    {
-                        type = types[random.Next(types.Length)];
-                    } while (WouldCreateMatch(state, x, y, type));
+                    state.SetCell(x, y, levelConfig.Cells[idx]);
                 }
 
-                state.SetTile(x, y, new Tile(state.NextTileId++, type, x, y));
+                var cellKind = state.GetCell(x, y);
+                if (cellKind == CellKind.Void || cellKind == CellKind.Wall)
+                    continue;
 
-                // Ground 层
+                // 2. Obstacle 层（障碍占据格子，不放 tile）
+                if (levelConfig.Obstacles != null && idx < levelConfig.Obstacles.Length)
+                {
+                    var obstacleType = levelConfig.Obstacles[idx];
+                    if (obstacleType != ObstacleType.None)
+                    {
+                        byte stage = ObstacleRules.GetDefaultStage(obstacleType);
+                        if (levelConfig.ObstacleStages != null && idx < levelConfig.ObstacleStages.Length && levelConfig.ObstacleStages[idx] > 0)
+                        {
+                            stage = (byte)levelConfig.ObstacleStages[idx];
+                        }
+                        byte obstacleState = 0;
+                        if (levelConfig.ObstacleStates != null && idx < levelConfig.ObstacleStates.Length)
+                        {
+                            obstacleState = (byte)levelConfig.ObstacleStates[idx];
+                        }
+                        if (obstacleState == 0)
+                        {
+                            obstacleState = ObstacleRules.GetDefaultState(obstacleType);
+                        }
+                        if (obstacleType == ObstacleType.PotionBottle)
+                        {
+                            stage = 0;
+                            for (uint bits = obstacleState; bits != 0; bits &= bits - 1)
+                                stage++;
+                        }
+                        state.SetObstacle(x, y, new Obstacle(obstacleType, stage, obstacleState));
+                        continue;
+                    }
+                }
+
+                // 3. Tile 层
+                var type = levelConfig.Grid[idx];
+
+                if (type == Models.Enums.ElementType.KeepEmpty)
+                {
+                    // 故意留空——跳过 tile 但仍初始化 Ground/Cover
+                }
+                else
+                {
+                    if (type == Models.Enums.ElementType.None)
+                    {
+                        var types = GetTileTypes(tileTypesCount);
+                        do
+                        {
+                            type = types[random.Next(types.Length)];
+                        } while (WouldCreateMatch(state, x, y, type));
+                    }
+
+                    state.SetTile(x, y, new Tile(state.NextTileId++, type, x, y));
+                }
+
+                // 4. Ground 层
                 if (levelConfig.Grounds != null && idx < levelConfig.Grounds.Length)
                 {
                     var groundType = levelConfig.Grounds[idx];
@@ -239,7 +289,7 @@ public sealed class RandomAnalysisService : ILevelAnalysisService
                     }
                 }
 
-                // Cover 层
+                // 5. Cover 层
                 if (levelConfig.Covers != null && idx < levelConfig.Covers.Length)
                 {
                     var coverType = levelConfig.Covers[idx];
@@ -271,7 +321,7 @@ public sealed class RandomAnalysisService : ILevelAnalysisService
         var seen = new System.Collections.Generic.HashSet<Models.Enums.ElementType>();
         foreach (var type in grid)
         {
-            if (type != Models.Enums.ElementType.None && type != Models.Enums.ElementType.ColorBomb)
+            if (type != Models.Enums.ElementType.None && type != Models.Enums.ElementType.ColorBomb && type != Models.Enums.ElementType.KeepEmpty)
             {
                 seen.Add(type);
             }

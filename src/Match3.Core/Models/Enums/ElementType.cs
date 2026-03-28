@@ -105,6 +105,15 @@ public enum ElementType : byte
 
     /// <summary>Moving obstacle: flowerpot, 2 stages. Spreads 3×3 Grass on death. Falls with gravity.</summary>
     Flowerpot = 214,
+
+    // --- Config-only sentinel (never stored in GameState) ---
+
+    /// <summary>
+    /// Config-only sentinel for LevelConfig.Grid: marks a Slot cell that should start
+    /// with no tile. BoardInitializer and analysis skip tile generation for this value.
+    /// Never stored in GameState at runtime.
+    /// </summary>
+    KeepEmpty = 255,
 }
 
 /// <summary>

@@ -193,7 +193,8 @@ public sealed class GameServiceFactory : IGameServiceFactory
         int height = levelConfig?.Height ?? configuration.Height;
 
         // Create initial state
-        var state = new GameState(width, height, configuration.TileTypesCount, mainRng);
+        int tileTypesCount = levelConfig?.TileTypesCount ?? configuration.TileTypesCount;
+        var state = new GameState(width, height, tileTypesCount, mainRng);
 
         // Initialize board (consumes Refill-domain random for tile generation)
         var objectiveSystem = _objectiveSystemFactory();

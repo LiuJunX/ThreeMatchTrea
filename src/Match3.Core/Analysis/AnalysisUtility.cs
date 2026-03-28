@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
+using Match3.Core.Systems.Elimination;
 using Match3.Core.Systems.Objectives;
+using Match3.Core.Systems.Obstacles;
 using Match3.Random;
 
 namespace Match3.Core.Analysis;
@@ -54,7 +56,8 @@ internal static class AnalysisUtility
     /// </summary>
     public static GameState CreateInitialStateFromConfig(LevelConfig levelConfig, XorShift64 random)
     {
-        int tileTypesCount = CountDistinctTileTypes(levelConfig.Grid);
+        int tileTypesCount = levelConfig.TileTypesCount
+            ?? CountDistinctTileTypes(levelConfig.Grid);
         if (tileTypesCount == 0) tileTypesCount = 6;
 
         var state = new GameState(levelConfig.Width, levelConfig.Height, tileTypesCount, random)
@@ -69,19 +72,69 @@ internal static class AnalysisUtility
             {
                 int idx = y * levelConfig.Width + x;
 
-                var type = levelConfig.Grid[idx];
-
-                if (type == ElementType.None)
+                // 1. Cell layer (Structure)
+                if (levelConfig.Cells != null && idx < levelConfig.Cells.Length)
                 {
-                    var types = GetTileTypes(tileTypesCount);
-                    do
-                    {
-                        type = types[random.Next(types.Length)];
-                    } while (WouldCreateMatch(in state, x, y, type));
+                    state.SetCell(x, y, levelConfig.Cells[idx]);
                 }
 
-                state.SetTile(x, y, new Tile(state.NextTileId++, type, x, y));
+                var cellKind = state.GetCell(x, y);
+                if (cellKind == CellKind.Void || cellKind == CellKind.Wall)
+                    continue;
 
+                // 2. Obstacle layer (before tile — obstacle occupies the cell)
+                if (levelConfig.Obstacles != null && idx < levelConfig.Obstacles.Length)
+                {
+                    var obstacleType = levelConfig.Obstacles[idx];
+                    if (obstacleType != ObstacleType.None)
+                    {
+                        byte stage = ObstacleRules.GetDefaultStage(obstacleType);
+                        if (levelConfig.ObstacleStages != null && idx < levelConfig.ObstacleStages.Length && levelConfig.ObstacleStages[idx] > 0)
+                        {
+                            stage = (byte)levelConfig.ObstacleStages[idx];
+                        }
+                        byte obstacleState = 0;
+                        if (levelConfig.ObstacleStates != null && idx < levelConfig.ObstacleStates.Length)
+                        {
+                            obstacleState = (byte)levelConfig.ObstacleStates[idx];
+                        }
+                        if (obstacleState == 0)
+                        {
+                            obstacleState = ObstacleRules.GetDefaultState(obstacleType);
+                        }
+                        if (obstacleType == ObstacleType.PotionBottle)
+                        {
+                            stage = 0;
+                            for (uint bits = obstacleState; bits != 0; bits &= bits - 1)
+                                stage++;
+                        }
+                        state.SetObstacle(x, y, new Obstacle(obstacleType, stage, obstacleState));
+                        continue; // Obstacle occupies cell — no tile
+                    }
+                }
+
+                // 3. Tile layer
+                var type = levelConfig.Grid[idx];
+
+                if (type == ElementType.KeepEmpty)
+                {
+                    // Intentionally empty — skip tile but still init Ground/Cover
+                }
+                else
+                {
+                    if (type == ElementType.None)
+                    {
+                        var types = GetTileTypes(tileTypesCount);
+                        do
+                        {
+                            type = types[random.Next(types.Length)];
+                        } while (WouldCreateMatch(in state, x, y, type));
+                    }
+
+                    state.SetTile(x, y, new Tile(state.NextTileId++, type, x, y));
+                }
+
+                // 4. Ground layer
                 if (levelConfig.Grounds != null && idx < levelConfig.Grounds.Length)
                 {
                     var groundType = levelConfig.Grounds[idx];
@@ -96,6 +149,7 @@ internal static class AnalysisUtility
                     }
                 }
 
+                // 5. Cover layer
                 if (levelConfig.Covers != null && idx < levelConfig.Covers.Length)
                 {
                     var coverType = levelConfig.Covers[idx];
@@ -129,7 +183,7 @@ internal static class AnalysisUtility
         var seen = new HashSet<ElementType>();
         foreach (var type in grid)
         {
-            if (type != ElementType.None && type != ElementType.ColorBomb)
+            if (type != ElementType.None && type != ElementType.ColorBomb && type != ElementType.KeepEmpty)
             {
                 seen.Add(type);
             }
