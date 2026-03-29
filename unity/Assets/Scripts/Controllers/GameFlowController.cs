@@ -157,7 +157,11 @@ namespace Match3.Unity.Controllers
                     if (topPanel != null)
                     {
                         topPanel.OnQuitClicked -= OnQuitLevel;
+                        topPanel.OnPrevLevelClicked -= OnPrevLevel;
+                        topPanel.OnReplayClicked -= OnReplayLevel;
+                        topPanel.OnNextLevelClicked -= OnNextLevel;
                         topPanel.SetQuitButtonVisible(false);
+                        topPanel.SetNavButtonsVisible(false);
                     }
                     break;
                 case FlowState.Result:
@@ -208,12 +212,19 @@ namespace Match3.Unity.Controllers
             // Disable UIManager's auto-result (flow mode handles it)
             _gameController.UI?.SetAutoResultEnabled(false);
 
-            // Show quit button and wire it
+            // Show quit button and nav buttons, wire them
             var topPanel = _gameController.UI?.TopPanel;
             if (topPanel != null)
             {
                 topPanel.SetQuitButtonVisible(true);
                 topPanel.OnQuitClicked += OnQuitLevel;
+
+                topPanel.SetNavButtonsVisible(true);
+                topPanel.SetPrevEnabled(HasPrevLevel());
+                topPanel.SetNextEnabled(HasNextLevel());
+                topPanel.OnPrevLevelClicked += OnPrevLevel;
+                topPanel.OnReplayClicked += OnReplayLevel;
+                topPanel.OnNextLevelClicked += OnNextLevel;
             }
 
             // Wire game-end callback
@@ -240,13 +251,16 @@ namespace Match3.Unity.Controllers
                 _lastStars = PlayerProgress.CalculateStars(bridge.MovesRemaining, bridge.MoveLimit);
                 _progress.SetBestStars(_currentLevelId, _lastStars);
 
-                // Unlock next level
-                int idx = Array.IndexOf(_officialLevelIds, _currentLevelId);
-                if (idx >= 0 && idx + 1 < _officialLevelIds.Length)
+                // Unlock next official level (test levels are always unlocked)
+                if (!_currentLevelId.StartsWith("test_", StringComparison.Ordinal))
                 {
-                    var nextId = _officialLevelIds[idx + 1];
-                    _progress.UnlockedLevels.Add(nextId);
-                    Debug.Log($"[GameFlow] Unlocked '{nextId}'");
+                    int idx = Array.IndexOf(_officialLevelIds, _currentLevelId);
+                    if (idx >= 0 && idx + 1 < _officialLevelIds.Length)
+                    {
+                        var nextId = _officialLevelIds[idx + 1];
+                        _progress.UnlockedLevels.Add(nextId);
+                        Debug.Log($"[GameFlow] Unlocked '{nextId}'");
+                    }
                 }
 
                 _progressService.Save(_progress);
@@ -259,10 +273,28 @@ namespace Match3.Unity.Controllers
             TransitionTo(FlowState.Result);
         }
 
+        /// <summary>
+        /// Returns the level list that contains the current level (official or test).
+        /// </summary>
+        private string[] GetCurrentLevelList()
+        {
+            if (_currentLevelId != null && _currentLevelId.StartsWith("test_", StringComparison.Ordinal))
+                return _testLevelIds;
+            return _officialLevelIds;
+        }
+
         private bool HasNextLevel()
         {
-            int idx = Array.IndexOf(_officialLevelIds, _currentLevelId);
-            return idx >= 0 && idx + 1 < _officialLevelIds.Length;
+            var list = GetCurrentLevelList();
+            int idx = Array.IndexOf(list, _currentLevelId);
+            return idx >= 0 && idx + 1 < list.Length;
+        }
+
+        private bool HasPrevLevel()
+        {
+            var list = GetCurrentLevelList();
+            int idx = Array.IndexOf(list, _currentLevelId);
+            return idx > 0;
         }
 
         private void WireResultButtons()
@@ -297,9 +329,34 @@ namespace Match3.Unity.Controllers
 
         private void OnResultNextLevel()
         {
-            int idx = Array.IndexOf(_officialLevelIds, _currentLevelId);
-            if (idx >= 0 && idx + 1 < _officialLevelIds.Length)
-                _currentLevelId = _officialLevelIds[idx + 1];
+            var list = GetCurrentLevelList();
+            int idx = Array.IndexOf(list, _currentLevelId);
+            if (idx >= 0 && idx + 1 < list.Length)
+                _currentLevelId = list[idx + 1];
+            TransitionTo(FlowState.Playing);
+        }
+
+        private void OnPrevLevel()
+        {
+            if (!HasPrevLevel()) return;
+            var list = GetCurrentLevelList();
+            int idx = Array.IndexOf(list, _currentLevelId);
+            _currentLevelId = list[idx - 1];
+            TransitionTo(FlowState.Playing);
+        }
+
+        private void OnReplayLevel()
+        {
+            // Restart the same level with a new seed
+            TransitionTo(FlowState.Playing);
+        }
+
+        private void OnNextLevel()
+        {
+            if (!HasNextLevel()) return;
+            var list = GetCurrentLevelList();
+            int idx = Array.IndexOf(list, _currentLevelId);
+            _currentLevelId = list[idx + 1];
             TransitionTo(FlowState.Playing);
         }
 

@@ -20,6 +20,7 @@ namespace Match3.Unity.UI
         private Match3Bridge _bridge;
         private bool _initialized;
         private bool _quitWasVisible;
+        private bool _navWasVisible;
 
         // Cached delegates for proper unsubscription
         private Action<float> _onSpeedChangedHandler;
@@ -234,8 +235,10 @@ namespace Match3.Unity.UI
         public void EnterReplayMode()
         {
             _quitWasVisible = _topPanel != null && _topPanel.IsQuitButtonVisible;
+            _navWasVisible = _topPanel != null && _topPanel.IsNavButtonsVisible;
             _bottomPanel?.gameObject.SetActive(false);
             _topPanel?.SetQuitButtonVisible(false);
+            _topPanel?.SetNavButtonsVisible(false);
             _replayPanel?.ResetState();
             _replayPanel?.Show();
         }
@@ -248,6 +251,7 @@ namespace Match3.Unity.UI
             _replayPanel?.Hide();
             _bottomPanel?.gameObject.SetActive(true);
             _topPanel?.SetQuitButtonVisible(_quitWasVisible);
+            _topPanel?.SetNavButtonsVisible(_navWasVisible);
         }
 
         /// <summary>

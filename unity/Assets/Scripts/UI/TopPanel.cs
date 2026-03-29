@@ -20,11 +20,17 @@ namespace Match3.Unity.UI
         private TextMeshProUGUI _movesText;
         private TextMeshProUGUI _scoreText;
         private Button _quitButton;
+        private Button _prevButton;
+        private Button _replayButton;
+        private Button _nextButton;
 
         private int _currentMoves;
         private int _currentScore;
 
         public event Action OnQuitClicked;
+        public event Action OnPrevLevelClicked;
+        public event Action OnReplayClicked;
+        public event Action OnNextLevelClicked;
 
         /// <summary>
         /// Initialize the top panel.
@@ -58,6 +64,31 @@ namespace Match3.Unity.UI
             quitLayout.preferredWidth = 80;
             quitLayout.preferredHeight = 40;
             _quitButton.gameObject.SetActive(false);
+
+            // Nav buttons: Prev | Replay | Next (hidden by default, shown in flow mode)
+            _prevButton = UIFactory.CreateButton(
+                transform, "< Prev", () => OnPrevLevelClicked?.Invoke(),
+                new Color(0.35f, 0.35f, 0.4f), Color.white, 16, "PrevButton");
+            var prevLayout = _prevButton.gameObject.AddComponent<LayoutElement>();
+            prevLayout.preferredWidth = 70;
+            prevLayout.preferredHeight = 36;
+            _prevButton.gameObject.SetActive(false);
+
+            _replayButton = UIFactory.CreateButton(
+                transform, "Replay", () => OnReplayClicked?.Invoke(),
+                new Color(0.3f, 0.4f, 0.5f), Color.white, 16, "ReplayButton");
+            var replayLayout = _replayButton.gameObject.AddComponent<LayoutElement>();
+            replayLayout.preferredWidth = 75;
+            replayLayout.preferredHeight = 36;
+            _replayButton.gameObject.SetActive(false);
+
+            _nextButton = UIFactory.CreateButton(
+                transform, "Next >", () => OnNextLevelClicked?.Invoke(),
+                new Color(0.35f, 0.35f, 0.4f), Color.white, 16, "NextButton");
+            var nextLayout = _nextButton.gameObject.AddComponent<LayoutElement>();
+            nextLayout.preferredWidth = 70;
+            nextLayout.preferredHeight = 36;
+            _nextButton.gameObject.SetActive(false);
 
             // Spacer to push moves/score to right
             var spacer = new GameObject("Spacer");
@@ -129,11 +160,42 @@ namespace Match3.Unity.UI
         public bool IsQuitButtonVisible => _quitButton != null && _quitButton.gameObject.activeSelf;
 
         /// <summary>
+        /// Whether the nav buttons are currently visible.
+        /// </summary>
+        public bool IsNavButtonsVisible => _replayButton != null && _replayButton.gameObject.activeSelf;
+
+        /// <summary>
         /// Show or hide the quit button (used by flow mode).
         /// </summary>
         public void SetQuitButtonVisible(bool visible)
         {
             _quitButton.gameObject.SetActive(visible);
+        }
+
+        /// <summary>
+        /// Show or hide the nav buttons (Prev, Replay, Next). Used by flow mode.
+        /// </summary>
+        public void SetNavButtonsVisible(bool visible)
+        {
+            _prevButton.gameObject.SetActive(visible);
+            _replayButton.gameObject.SetActive(visible);
+            _nextButton.gameObject.SetActive(visible);
+        }
+
+        /// <summary>
+        /// Enable/disable Prev button (disabled at first level).
+        /// </summary>
+        public void SetPrevEnabled(bool enabled)
+        {
+            _prevButton.interactable = enabled;
+        }
+
+        /// <summary>
+        /// Enable/disable Next button (disabled at last level).
+        /// </summary>
+        public void SetNextEnabled(bool enabled)
+        {
+            _nextButton.interactable = enabled;
         }
     }
 }

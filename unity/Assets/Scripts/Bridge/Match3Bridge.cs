@@ -933,6 +933,14 @@ namespace Match3.Unity.Bridge
         {
             if (_recorder == null || !_recorder.IsRecording || _gameEngine == null) return;
 
+            // Skip saving empty recordings (no player commands = nothing useful to replay)
+            if (_recorder.CommandCount == 0)
+            {
+                Debug.Log("[Recording] Skipped auto-save: no commands recorded");
+                _recorder.Dispose();
+                return;
+            }
+
             var state = _gameEngine.CurrentState;
             var recording = _recorder.Complete(
                 _gameEngine.CurrentTick,
