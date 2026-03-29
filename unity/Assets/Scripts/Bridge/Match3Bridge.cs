@@ -94,7 +94,10 @@ namespace Match3.Unity.Bridge
                 var layout = new bool[state.Height, state.Width];
                 for (int y = 0; y < state.Height; y++)
                     for (int x = 0; x < state.Width; x++)
-                        layout[y, x] = state.Cells[y * state.Width + x] == Core.Models.Enums.CellKind.Slot;
+                    {
+                        var cell = state.Cells[y * state.Width + x];
+                        layout[y, x] = cell != Core.Models.Enums.CellKind.Void && cell != Core.Models.Enums.CellKind.Wall;
+                    }
                 return layout;
             }
         }
