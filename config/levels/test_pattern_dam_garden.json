@@ -1,0 +1,55 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_pattern_dam_garden",
+  "name": "Pattern: Dam Garden (决堤花园)",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 20,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.3,
+  "cells": [
+    "Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty",
+    "KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty","KeepEmpty"
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "Box","Bush","Box","Bush","Bush","Box","Bush","Box",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    1,1,1,1,1,1,1,1,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Ground", "elementType": 2, "targetCount": 6 },
+    { "targetLayer": "Tile", "elementType": 1, "targetCount": 12 }
+  ],
+  "notes": "决堤花园 v2: 8x8 board, dam at row 5 (alternating Box+Bush HP1), 2 rows KeepEmpty below (reduced from 4 to lower deadlock). Bush death → Grass in flood zone. Target: 6 Grass (4 Bushes × 4 potential = 16 max) + 12 Red. Three-layer consequence: space release + Grass growth + collection."
+}

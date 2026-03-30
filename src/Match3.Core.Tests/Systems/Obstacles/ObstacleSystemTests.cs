@@ -269,10 +269,10 @@ public class ObstacleSystemTests
     }
 
     [Fact]
-    public void NotifyBatch_ColorBox_BombSource_NoAdjacentDamage()
+    public void NotifyBatch_ColorBox_BombSource_TriggersAdjacentDamage()
     {
+        // Royal Match consistency: all sources trigger adjacent reactions
         var state = CreateState();
-        // Same-color tile eliminated by Bomb next to ColorBox — Bomb doesn't trigger adjacency
         state.SetObstacle(2, 2, new Obstacle(ObstacleType.ColorBox, 3, (byte)ElementType.Item1));
         var system = new ObstacleSystem();
 
@@ -283,7 +283,7 @@ public class ObstacleSystemTests
 
         system.NotifyBatchElimination(ref state, eliminated, 0, 0f, NullEventCollector.Instance);
 
-        Assert.Equal(3, state.GetObstacle(2, 2).Stage); // undamaged — Bomb doesn't trigger adjacency
+        Assert.Equal(2, state.GetObstacle(2, 2).Stage); // damaged: 3→2
     }
 
     [Fact]
@@ -304,8 +304,9 @@ public class ObstacleSystemTests
     }
 
     [Fact]
-    public void NotifyBatch_BombSource_DoesNotTriggerAdjacent()
+    public void NotifyBatch_BombSource_TriggersAdjacent()
     {
+        // Royal Match consistency: all sources trigger adjacent reactions
         var state = CreateState();
         state.SetObstacle(2, 2, new Obstacle(ObstacleType.Box, 4));
         var system = new ObstacleSystem();
@@ -317,7 +318,7 @@ public class ObstacleSystemTests
 
         system.NotifyBatchElimination(ref state, eliminated, 0, 0f, NullEventCollector.Instance);
 
-        Assert.Equal(4, state.GetObstacle(2, 2).Stage); // undamaged — Bomb doesn't trigger adjacency
+        Assert.Equal(3, state.GetObstacle(2, 2).Stage); // damaged: 4→3
     }
 
     [Fact]

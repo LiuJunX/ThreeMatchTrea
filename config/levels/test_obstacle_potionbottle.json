@@ -1,0 +1,41 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_obstacle_potionbottle",
+  "name": "Test: PotionBottle (Stages 1-4)",
+  "width": 7,
+  "height": 7,
+  "moveLimit": 30,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.1,
+  "obstacles": [
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","None","PotionBottle","None","PotionBottle","None","None",
+    "None","None","None","None","None","None","None",
+    "None","None","PotionBottle","None","PotionBottle","None","None",
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,
+    0,0,1,0,2,0,0,
+    0,0,0,0,0,0,0,
+    0,0,3,0,4,0,0,
+    0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0
+  ],
+  "obstacleStates": [
+    0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,
+    0,0,1,0,3,0,0,
+    0,0,0,0,0,0,0,
+    0,0,7,0,15,0,0,
+    0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Obstacle", "elementType": 11, "targetCount": 4 }
+  ],
+  "notes": "Test: PotionBottle stage1/state1 at (2,2), stage2/state3 at (2,4), stage3/state7 at (4,2), stage4/state15 at (4,4). Verify bitmask sub-bottle destruction."
+}

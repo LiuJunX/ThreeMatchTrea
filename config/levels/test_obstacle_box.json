@@ -1,0 +1,32 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_obstacle_box",
+  "name": "Test: Box (Stages 1-4)",
+  "width": 7,
+  "height": 7,
+  "moveLimit": 30,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.1,
+  "obstacles": [
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","Box","None","Box","None","Box","None",
+    "None","None","None","None","None","None","None",
+    "None","None","None","Box","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,
+    0,1,0,2,0,3,0,
+    0,0,0,0,0,0,0,
+    0,0,0,4,0,0,0,
+    0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Obstacle", "elementType": 1, "targetCount": 4 }
+  ],
+  "notes": "Test: Box stage1 at (2,1), stage2 at (2,3), stage3 at (2,5), stage4 at (4,3). Verify multi-layer destruction."
+}

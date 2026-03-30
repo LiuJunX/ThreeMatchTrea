@@ -86,6 +86,16 @@ public class CoverSystem : ICoverSystem
         // Only sync if the cover is dynamic
         if (fromCover.Type != CoverType.None && fromCover.IsDynamic)
         {
+            var toCover = state.GetCover(to);
+
+            // Don't overwrite existing static covers (e.g. Bubble must not silently delete a Cage)
+            if (toCover.Type != CoverType.None && !toCover.IsDynamic)
+            {
+                // Target has a static cover — drop the dynamic cover instead of overwriting
+                state.SetCover(from, Cover.Empty);
+                return;
+            }
+
             // Move cover from old position to new position
             state.SetCover(to, fromCover);
             state.SetCover(from, Cover.Empty);
@@ -119,16 +129,10 @@ public class CoverSystem : ICoverSystem
     }
 
     /// <summary>
-    /// Determines whether an elimination source triggers adjacent cover reactions.
-    /// Same rules as obstacle adjacency: Match, ColorBomb, and consumed ColorBomb.
+    /// All elimination sources trigger adjacent cover reactions (Honey / Frost).
+    /// Royal Match consistency: power-ups are always at least as effective as matching.
     /// </summary>
-    private static bool IsAdjacentSource(ElimSource source, Tile tile) => source switch
-    {
-        ElimSource.Match => true,
-        ElimSource.ColorBomb => true,
-        ElimSource.ConsumeBomb => tile.Type == ElementType.ColorBomb,
-        _ => false
-    };
+    private static bool IsAdjacentSource(ElimSource source, Tile tile) => true;
 
     private void TryDamageAdjacentCover(
         ref GameState state, Position neighbor,

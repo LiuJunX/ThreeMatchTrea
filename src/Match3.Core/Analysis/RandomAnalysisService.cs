@@ -373,11 +373,12 @@ public sealed class RandomAnalysisService : ILevelAnalysisService
         var refill = ctx.GetRefill(state.TileTypesCount);
         var matchFinder = ctx.GetMatchFinder();
         var matchProcessor = ctx.GetMatchProcessor();
-        var powerUpHandler = ctx.GetPowerUpHandler();
+        var basePowerUpHandler = ctx.GetPowerUpHandler();
         var objectiveSystem = ctx.GetObjectiveSystem();
 
         var simCtx = Simulation.SimulationContext.Create(objectiveSystem);
         var explosionSystem = new ExplosionSystem(simCtx);
+        var powerUpHandler = basePowerUpHandler.WithExplosionSystem(explosionSystem);
 
         using var engine = new SimulationEngine(
             state,

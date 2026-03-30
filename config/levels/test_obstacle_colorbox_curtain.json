@@ -1,0 +1,45 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_obstacle_colorbox_curtain",
+  "name": "Test: ColorBox & Curtain",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 30,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.1,
+  "obstacles": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","ColorBox","ColorBox","None","None","ColorBox","ColorBox","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","Curtain","Curtain","None","None","Curtain","Curtain","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,1,1,0,0,1,1,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,1,1,0,0,1,1,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "obstacleStates": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,1,1,0,0,2,2,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,3,3,0,0,4,4,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Obstacle", "elementType": 4, "targetCount": 4 },
+    { "targetLayer": "Obstacle", "elementType": 6, "targetCount": 4 }
+  ],
+  "notes": "Test: ColorBox Red(1) at (2,1-2), Green(2) at (2,5-6). Curtain Blue(3) at (5,1-2), Yellow(4) at (5,5-6). ColorBox needs color-match adjacent; Curtain needs global color elimination."
+}

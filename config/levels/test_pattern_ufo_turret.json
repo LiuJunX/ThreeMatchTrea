@@ -1,0 +1,55 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_pattern_ufo_turret",
+  "name": "Pattern: UFO Turret (UFO炮台)",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 35,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.3,
+  "cells": [
+    "Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None",
+    "Safe","None","None","None","None","None","None","Safe",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,
+    1,0,0,0,0,0,0,1,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Obstacle", "elementType": 3, "targetCount": 2 },
+    { "targetLayer": "Tile", "elementType": 2, "targetCount": 15 }
+  ],
+  "notes": "UFO炮台 v2: Standard 8x8 board, 4 Safes (HP1) at near-corners (1,0)(1,7)(6,0)(6,7). Corners are hardest to match near → nudges player toward bomb solutions. UFO auto-targets Safe (score 90). 4 colors = frequent 2x2 matches → UFO production. Discovery: making UFO anywhere → it flies to corner Safe automatically. Dual objective: clear 4 Safe + collect 15 Green."
+}

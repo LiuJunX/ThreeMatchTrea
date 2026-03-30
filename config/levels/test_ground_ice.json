@@ -1,0 +1,32 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_ground_ice",
+  "name": "Test: Ice Ground",
+  "width": 7,
+  "height": 7,
+  "moveLimit": 25,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.1,
+  "grounds": [
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","None","Ice","Ice","Ice","None","None",
+    "None","None","Ice","Ice","Ice","None","None",
+    "None","None","Ice","Ice","Ice","None","None",
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None"
+  ],
+  "groundHealths": [
+    0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,
+    0,0,1,1,1,0,0,
+    0,0,1,2,1,0,0,
+    0,0,1,1,1,0,0,
+    0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Ground", "elementType": 1, "targetCount": 9 }
+  ],
+  "notes": "Test: 3x3 Ice block in center. Outer ring HP1, center HP2. Verify ice breaks on tile elimination above."
+}

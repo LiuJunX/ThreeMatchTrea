@@ -96,7 +96,10 @@ namespace Match3.Unity.Bridge
                     for (int x = 0; x < state.Width; x++)
                     {
                         var cell = state.Cells[y * state.Width + x];
-                        layout[y, x] = cell != Core.Models.Enums.CellKind.Void && cell != Core.Models.Enums.CellKind.Wall;
+                        // Spawner/Sink are functional cells but NOT part of the visible board area.
+                        // Spawner row is hidden above the board (tiles emerge from behind).
+                        // Sink row is hidden below (collectibles disappear into it).
+                        layout[y, x] = cell == Core.Models.Enums.CellKind.Slot;
                     }
                 return layout;
             }

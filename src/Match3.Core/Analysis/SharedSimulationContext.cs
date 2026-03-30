@@ -106,6 +106,7 @@ internal sealed class SharedSimulationContext : IDisposable
     {
         var simCtx = SimulationContext.Create(objectiveSystem);
         var explosionSystem = new ExplosionSystem(simCtx);
+        var powerUpHandler = GetPowerUpHandler().WithExplosionSystem(explosionSystem);
 
         return new SimulationEngine(
             state,
@@ -114,7 +115,7 @@ internal sealed class SharedSimulationContext : IDisposable
             GetRefill(),
             GetMatchFinder(),
             GetMatchProcessor(),
-            GetPowerUpHandler(),
+            powerUpHandler,
             null,
             NullEventCollector.Instance,
             explosionSystem,

@@ -1,0 +1,24 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_combo_rocket_tnt",
+  "name": "Test: Rocket + TNT Combo",
+  "width": 7,
+  "height": 7,
+  "moveLimit": 30,
+  "tileTypesCount": 3,
+  "targetDifficulty": 0.1,
+  "grid": [
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","None","VerticalRocket","Square5x5","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None"
+  ],
+  "objectives": [
+    { "targetLayer": "Tile", "elementType": 1, "targetCount": 10 },
+    { "targetLayer": "Tile", "elementType": 2, "targetCount": 10 }
+  ],
+  "notes": "Test: V-Rocket at (3,2) + TNT at (3,3). Swap to verify 3-row + 3-column giant cross."
+}

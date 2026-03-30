@@ -1,0 +1,26 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_combo_colorbomb",
+  "name": "Test: ColorBomb Combos",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 30,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.1,
+  "grid": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","ColorBomb","HorizontalRocket","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","ColorBomb","Square5x5","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","ColorBomb","Ufo","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","ColorBomb","ColorBomb","None","None","None","None"
+  ],
+  "objectives": [
+    { "targetLayer": "Tile", "elementType": 1, "targetCount": 15 },
+    { "targetLayer": "Tile", "elementType": 2, "targetCount": 15 }
+  ],
+  "notes": "Test: ColorBomb combos. Row 2: CB+Rocket. Row 4: CB+TNT. Row 6: CB+UFO. Row 8: CB+CB. Swap each pair."
+}

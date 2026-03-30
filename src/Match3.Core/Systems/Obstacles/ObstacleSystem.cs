@@ -58,24 +58,12 @@ public sealed class ObstacleSystem : IObstacleSystem
         var hit = Pools.ObtainHashSet<Position>();
         try
         {
-            // Pass 1: standard adjacent reactions (Match/ColorBomb sources only)
+            // All elimination sources trigger adjacent reactions (Royal Match consistency:
+            // power-ups are always at least as effective as matching).
             foreach (ref readonly var info in eliminated)
             {
-                if (!IsAdjacentSource(info.Source, info.Tile))
-                    continue;
-
                 ProcessNeighborReactions(ref state, info.Pos, info.Tile.Type,
                     hit, tick, simTime, events);
-            }
-
-            // Pass 2: generator reactions (ALL sources — Bomb/Projectile also trigger generators)
-            // The shared dedup HashSet prevents double activation from Pass 1.
-            foreach (ref readonly var info in eliminated)
-            {
-                if (IsAdjacentSource(info.Source, info.Tile))
-                    continue; // already processed in Pass 1
-
-                ProcessGeneratorReactions(ref state, info.Pos, hit, tick, simTime, events);
             }
         }
         finally
@@ -106,20 +94,6 @@ public sealed class ObstacleSystem : IObstacleSystem
         }
     }
 
-    /// <summary>
-    /// Determines whether an elimination source triggers adjacent obstacle reactions.
-    /// Only Match and ColorBomb-related eliminations trigger adjacency.
-    /// </summary>
-    private static bool IsAdjacentSource(ElimSource source, Tile tile)
-    {
-        return source switch
-        {
-            ElimSource.Match     => true,
-            ElimSource.ColorBomb => true,
-            ElimSource.ConsumeBomb => tile.Type == ElementType.ColorBomb,
-            _ => false
-        };
-    }
 
     private void ProcessNeighborReactions(
         ref GameState state, Position pos, ElementType triggerType,
@@ -152,34 +126,6 @@ public sealed class ObstacleSystem : IObstacleSystem
             ActivateGenerator(ref state, neighbor, ref obstacle, tick, simTime, events);
         else
             ApplyDamage(ref state, neighbor, ref obstacle, tick, simTime, events);
-    }
-
-    private void ProcessGeneratorReactions(
-        ref GameState state, Position pos,
-        HashSet<Position> hit, int tick, float simTime, IEventCollector events)
-    {
-        TryGeneratorAt(ref state, new Position(pos.X - 1, pos.Y), hit, tick, simTime, events);
-        TryGeneratorAt(ref state, new Position(pos.X + 1, pos.Y), hit, tick, simTime, events);
-        TryGeneratorAt(ref state, new Position(pos.X, pos.Y - 1), hit, tick, simTime, events);
-        TryGeneratorAt(ref state, new Position(pos.X, pos.Y + 1), hit, tick, simTime, events);
-    }
-
-    private void TryGeneratorAt(
-        ref GameState state, Position neighbor,
-        HashSet<Position> hit, int tick, float simTime, IEventCollector events)
-    {
-        if (!state.IsValid(neighbor.X, neighbor.Y))
-            return;
-        if (!hit.Add(neighbor))
-            return; // dedup: already hit in this batch
-
-        ref var obstacle = ref state.GetObstacle(neighbor);
-        if (!obstacle.HasObstacle)
-            return;
-        if (!ObstacleRules.IsGenerator(obstacle.Type))
-            return;
-
-        ActivateGenerator(ref state, neighbor, ref obstacle, tick, simTime, events);
     }
 
     private ObstacleHitResult ApplyDamage(

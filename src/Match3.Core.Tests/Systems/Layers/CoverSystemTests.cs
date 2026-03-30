@@ -336,6 +336,24 @@ public class CoverSystemTests
         Assert.Equal(3, state.GetCover(to).Health);
     }
 
+    [Fact]
+    public void SyncDynamicCovers_TargetHasStaticCover_DropsBubblePreservesCage()
+    {
+        // Arrange: Bubble at 'from', Cage at 'to'
+        var state = CreateState();
+        var from = new Position(2, 2);
+        var to = new Position(2, 3);
+        state.SetCover(from, new Cover(CoverType.Bubble, health: 1, isDynamic: true));
+        state.SetCover(to, new Cover(CoverType.Cage, health: 1, isDynamic: false));
+
+        // Act
+        _coverSystem.SyncDynamicCovers(ref state, from, to);
+
+        // Assert: Cage preserved, Bubble dropped
+        Assert.Equal(CoverType.Cage, state.GetCover(to).Type);
+        Assert.Equal(CoverType.None, state.GetCover(from).Type);
+    }
+
     #endregion
 
     #region GameState Cover Interaction Tests
@@ -744,9 +762,10 @@ public class CoverSystemTests
     }
 
     [Fact]
-    public void NotifyBatchElimination_BombSource_DoesNotTriggerAdjacency()
+    public void NotifyBatchElimination_BombSource_TriggersAdjacency()
     {
         // Arrange: Honey at (3,3), tile eliminated at (3,2) by Bomb
+        // Royal Match consistency: power-ups are always at least as effective as matching
         var state = CreateState();
         state.SetCover(new Position(3, 3), new Cover(CoverType.Honey, health: 1));
         var events = new BufferedEventCollector();
@@ -759,9 +778,8 @@ public class CoverSystemTests
         // Act
         _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
 
-        // Assert: Honey unchanged — Bomb source doesn't trigger adjacency
-        Assert.Equal(CoverType.Honey, state.GetCover(new Position(3, 3)).Type);
-        Assert.Equal(1, state.GetCover(new Position(3, 3)).Health);
+        // Assert: Honey destroyed — all sources trigger adjacency
+        Assert.Equal(CoverType.None, state.GetCover(new Position(3, 3)).Type);
     }
 
     [Fact]
@@ -923,8 +941,9 @@ public class CoverSystemTests
     [InlineData(ElimSource.ChainReaction)]
     [InlineData(ElimSource.SideItem)]
     [InlineData(ElimSource.ConsumeBomb)]
-    public void NotifyBatchElimination_NonTriggeringSources_HoneyUnchanged(ElimSource source)
+    public void NotifyBatchElimination_AllSources_TriggerHoneyAdjacency(ElimSource source)
     {
+        // Royal Match consistency: all elimination sources trigger Honey adjacency
         var state = CreateState();
         state.SetCover(new Position(3, 3), new Cover(CoverType.Honey, health: 1));
         var events = new BufferedEventCollector();
@@ -936,8 +955,7 @@ public class CoverSystemTests
 
         _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
 
-        Assert.Equal(CoverType.Honey, state.GetCover(new Position(3, 3)).Type);
-        Assert.Equal(1, state.GetCover(new Position(3, 3)).Health);
+        Assert.Equal(CoverType.None, state.GetCover(new Position(3, 3)).Type);
     }
 
     [Fact]
@@ -1147,8 +1165,9 @@ public class CoverSystemTests
     }
 
     [Fact]
-    public void NotifyBatchElimination_BombSource_DoesNotTriggerFrostAdjacency()
+    public void NotifyBatchElimination_BombSource_TriggersFrostAdjacency()
     {
+        // Royal Match consistency: all sources trigger Frost adjacency
         var state = CreateState();
         state.SetCover(new Position(3, 3), new Cover(CoverType.Frost, health: 1));
         var events = new BufferedEventCollector();
@@ -1160,7 +1179,7 @@ public class CoverSystemTests
 
         _coverSystem.NotifyBatchElimination(ref state, new ReadOnlySpan<EliminatedTileInfo>(eliminated), 1, 0.1f, events);
 
-        Assert.Equal(CoverType.Frost, state.GetCover(new Position(3, 3)).Type);
+        Assert.Equal(CoverType.None, state.GetCover(new Position(3, 3)).Type);
     }
 
     #endregion
