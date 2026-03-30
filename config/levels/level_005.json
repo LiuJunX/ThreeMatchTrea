@@ -11,16 +11,26 @@
     { "targetLayer": "Tile", "elementType": 3, "targetCount": 30 },
     { "targetLayer": "Tile", "elementType": 5, "targetCount": 30 }
   ],
-  "grid": null,
+  "grid": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
   "cells": [
-    1, 1, 1, 0, 0, 0, 1, 1, 1,
-    1, 1, 1, 1, 0, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1,
-    0, 1, 1, 1, 1, 1, 1, 1, 0,
-    0, 0, 1, 1, 1, 1, 1, 0, 0,
-    0, 1, 1, 1, 1, 1, 1, 1, 0,
-    1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 0, 1, 1, 1, 1,
-    1, 1, 1, 0, 0, 0, 1, 1, 1
+    "Spawner","Spawner","Spawner","Void","Void","Void","Spawner","Spawner","Spawner",
+    "Slot","Slot","Slot","Spawner","Void","Spawner","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Void","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Void",
+    "Void","Void","Slot","Slot","Slot","Slot","Slot","Void","Void",
+    "Void","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Void",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Void","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Void","Void","Void","Slot","Slot","Slot"
   ]
 }

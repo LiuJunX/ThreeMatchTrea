@@ -12,8 +12,8 @@
     { "targetLayer": "Tile", "elementType": 3, "targetCount": 12 }
   ],
   "cells": [
-    "Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner",
-    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Void","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Void",
+    "Spawner","Slot","Slot","Slot","Slot","Slot","Slot","Spawner",
     "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
     "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
     "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",

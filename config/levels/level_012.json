@@ -9,17 +9,45 @@
   "objectives": [
     { "targetLayer": "Obstacle", "elementType": 2, "targetCount": 6 }
   ],
-  "grid": null,
-  "obstacles": [
+  "cells": [
+    "Void","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Void",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot"
+  ],
+  "grid": [
     "None","None","None","None","None","None","None","None",
-    "None","Bush","None","None","None","None","Bush","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "obstacles": [
     "None","None","None","None","None","None","None","None",
     "None","None","None","Bush","Bush","None","None","None",
     "None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None",
     "None","Bush","None","None","None","None","Bush","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","Bush","None","None","Bush","None","None",
     "None","None","None","None","None","None","None","None"
   ],
-  "obstacleStages": "AAAAAAAAAAAABQAAAAADAAAAAAAAAAAAAAAABQUAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAABQAAAAAAAAAAAA==",
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,3,3,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,2,0,0,0,0,2,0,
+    0,0,0,0,0,0,0,0,
+    0,0,3,0,0,3,0,0,
+    0,0,0,0,0,0,0,0
+  ],
   "notes": "Bush verification level: 6 bushes — 4 at stage 5, 2 at stage 3. Bushes surrounded by open space for Grass spread verification. Objective: destroy all 6 bushes."
 }

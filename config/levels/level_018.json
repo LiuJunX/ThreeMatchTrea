@@ -9,6 +9,26 @@
   "objectives": [
     { "targetLayer": "Ground", "elementType": 1, "targetCount": 10 }
   ],
+  "cells": [
+    "Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Void","Slot","Slot","Slot","Slot","Slot","Slot","Void",
+    "Void","Void","Slot","Slot","Slot","Slot","Void","Void",
+    "Void","Void","Void","Slot","Slot","Slot","Void","Void"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
   "grounds": [
     "None","None","None","None","None","None","None","None",
     "Ice","None","Ice","Ice","Ice","Ice","None","Ice",
@@ -16,8 +36,8 @@
     "None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None",
-    "None","Ice","None","None","None","None","Ice","None",
-    "Ice","None","None","None","None","None","None","Ice"
+    "None","None","Ice","None","None","Ice","None","None",
+    "None","None","None","Ice","None","Ice","None","None"
   ],
   "groundHealths": [
     0,0,0,0,0,0,0,0,
@@ -26,8 +46,8 @@
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,
-    0,1,0,0,0,0,1,0,
-    1,0,0,0,0,0,0,1
+    0,0,1,0,0,1,0,0,
+    0,0,0,1,0,1,0,0
   ],
   "covers": [
     "None","None","None","None","None","None","None","None",
