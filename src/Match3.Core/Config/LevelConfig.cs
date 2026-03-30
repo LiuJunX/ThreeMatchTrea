@@ -120,6 +120,15 @@ public class LevelConfig
     }
 
     /// <summary>
+    /// Linked random groups (R-elements).
+    /// Each entry maps a group name (e.g. "R1") to an array of linear cell indices.
+    /// All cells in the same group get the same random color at board initialization.
+    /// The color is re-randomized each time the level starts (not stored in Grid).
+    /// Example JSON: { "R1": [6, 8, 16], "R2": [12, 14] }
+    /// </summary>
+    public Dictionary<string, int[]>? LinkedGroups { get; set; }
+
+    /// <summary>
     /// Per-spawner configurations (optional).
     /// Each spawner controls element generation for specific columns.
     /// Columns not assigned to any spawner use global default behavior.

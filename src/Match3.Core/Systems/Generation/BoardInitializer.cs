@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Match3.Core.Config;
 using Match3.Core.Models.Enums;
 using Match3.Core.Models.Grid;
@@ -12,6 +13,9 @@ public class BoardInitializer : IBoardInitializer
     private readonly ITileGenerator _tileGenerator;
     private readonly ILevelObjectiveSystem? _objectiveSystem;
 
+    // Resolved linked group colors: cell index → color
+    private Dictionary<int, ElementType>? _linkedGroupColors;
+
     public BoardInitializer(ITileGenerator tileGenerator, ILevelObjectiveSystem? objectiveSystem = null)
     {
         _tileGenerator = tileGenerator;
@@ -22,6 +26,8 @@ public class BoardInitializer : IBoardInitializer
     {
         if (levelConfig != null)
         {
+            // Phase 2: Resolve linked groups (R-elements)
+            ResolveLinkedGroups(ref state, levelConfig);
             // Initialize difficulty settings from level config
             state.MoveLimit = levelConfig.MoveLimit;
             state.TargetDifficulty = levelConfig.TargetDifficulty;
@@ -92,6 +98,13 @@ public class BoardInitializer : IBoardInitializer
                     var type = (levelConfig.Grid != null && i < levelConfig.Grid.Length)
                         ? levelConfig.Grid[i]
                         : ElementType.None;
+
+                    // Check if this cell belongs to a linked group (R-element)
+                    if (type == ElementType.None && _linkedGroupColors != null &&
+                        _linkedGroupColors.TryGetValue(i, out var linkedColor))
+                    {
+                        type = linkedColor;
+                    }
 
                     if (type == ElementType.KeepEmpty)
                     {
@@ -167,5 +180,47 @@ public class BoardInitializer : IBoardInitializer
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Phase 2: Resolve linked random groups.
+    /// Each group gets one random color; all members share it.
+    /// Colors are chosen to avoid creating 3-matches or 2×2 with already-placed fixed tiles.
+    /// </summary>
+    private void ResolveLinkedGroups(ref GameState state, LevelConfig levelConfig)
+    {
+        _linkedGroupColors = null;
+        if (levelConfig.LinkedGroups == null || levelConfig.LinkedGroups.Count == 0)
+            return;
+
+        _linkedGroupColors = new Dictionary<int, ElementType>();
+        int colorCount = levelConfig.TileTypesCount ?? state.TileTypesCount;
+
+        foreach (var (groupName, indices) in levelConfig.LinkedGroups)
+        {
+            if (indices == null || indices.Length == 0) continue;
+
+            // Pick a random color for this group
+            var color = PickGroupColor(ref state, colorCount);
+            foreach (int idx in indices)
+            {
+                if (idx >= 0 && idx < levelConfig.Width * levelConfig.Height)
+                    _linkedGroupColors[idx] = color;
+            }
+        }
+    }
+
+    private ElementType PickGroupColor(ref GameState state, int colorCount)
+    {
+        int count = System.Math.Min(colorCount, 6);
+        if (count <= 0) return ElementType.Item1;
+
+        var colors = new[] {
+            ElementType.Item1, ElementType.Item2, ElementType.Item3,
+            ElementType.Item4, ElementType.Item5, ElementType.Item6
+        };
+
+        int idx = state.Random.Next(0, count);
+        return colors[idx];
     }
 }

@@ -51,14 +51,22 @@ public class StandardTileGenerator : ITileGenerator
 
     private bool CreatesImmediateRun(ref GameState state, int x, int y, ElementType t)
     {
-        if (x >= 2)
-        {
-            if (state.GetType(x - 1, y) == t && state.GetType(x - 2, y) == t) return true;
-        }
-        if (y >= 2)
-        {
-            if (state.GetType(x, y - 1) == t && state.GetType(x, y - 2) == t) return true;
-        }
+        // Horizontal 3-in-a-row: left two are same color
+        if (x >= 2 && state.GetType(x - 1, y) == t && state.GetType(x - 2, y) == t)
+            return true;
+
+        // Vertical 3-in-a-row: top two are same color
+        if (y >= 2 && state.GetType(x, y - 1) == t && state.GetType(x, y - 2) == t)
+            return true;
+
+        // 2×2 square: left, above, and diagonal are same color
+        // Placing t at (x,y) would complete a 2×2 block → UFO trigger
+        if (x >= 1 && y >= 1 &&
+            state.GetType(x - 1, y) == t &&
+            state.GetType(x, y - 1) == t &&
+            state.GetType(x - 1, y - 1) == t)
+            return true;
+
         return false;
     }
 

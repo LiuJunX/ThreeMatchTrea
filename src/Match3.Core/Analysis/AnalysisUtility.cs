@@ -206,14 +206,23 @@ internal static class AnalysisUtility
     /// </summary>
     public static bool WouldCreateMatch(in GameState state, int x, int y, ElementType type)
     {
+        // Horizontal 3-in-a-row
         if (x >= 2 &&
             state.GetType(x - 1, y) == type &&
             state.GetType(x - 2, y) == type)
             return true;
 
+        // Vertical 3-in-a-row
         if (y >= 2 &&
             state.GetType(x, y - 1) == type &&
             state.GetType(x, y - 2) == type)
+            return true;
+
+        // 2×2 square (UFO trigger prevention)
+        if (x >= 1 && y >= 1 &&
+            state.GetType(x - 1, y) == type &&
+            state.GetType(x, y - 1) == type &&
+            state.GetType(x - 1, y - 1) == type)
             return true;
 
         return false;
