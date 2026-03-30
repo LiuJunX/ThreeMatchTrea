@@ -10,18 +10,49 @@
     { "targetLayer": "Obstacle", "elementType": 1, "targetCount": 4 },
     { "targetLayer": "Tile", "elementType": 1, "targetCount": 15 }
   ],
-  "grid": null,
-  "obstacles": [
+  "cells": [
+    "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Spawner",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",
+    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",
+    "Void",    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",    "Void",
+    "Void",    "Void",    "Void",    "Slot",    "Slot",    "Slot",    "Void",    "Void",    "Void"
+  ],
+  "grid": [
     "None","None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None","None",
-    "None","None","None","Box", "None","Box", "None","None","None",
     "None","None","None","None","None","None","None","None","None",
-    "None","None","None","Box", "None","Box", "None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None","None"
   ],
-  "obstacleStages": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-  "notes": "Box introduction: 4 single-stage boxes in center pairs. Clear all boxes + collect tiles."
+  "obstacles": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","Box", "None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","Box", "None","None","None","Box", "None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","Box", "None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,1,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,1,0,0,0,1,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,1,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "notes": "Box introduction: shield shape (wide top → narrow bottom, 9→3 cols). 4 Box in diamond at center. Shield = defense, Box = obstacle to break through. Silhouette tapers downward."
 }

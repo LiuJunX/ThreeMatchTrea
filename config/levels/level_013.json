@@ -2,32 +2,56 @@
   "$schema": "../schemas/level.schema.json",
   "id": "level_013",
   "name": "Ice Field",
-  "width": 8,
-  "height": 8,
+  "width": 9,
+  "height": 9,
   "moveLimit": 23,
   "targetDifficulty": 0.15,
+  "cells": [
+    "Void",    "Void",    "Void",    "Spawner", "Spawner", "Spawner", "Void",    "Void",    "Void",
+    "Void",    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",    "Void",
+    "Void",    "Spawner", "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Spawner", "Void",
+    "Spawner", "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Spawner",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",
+    "Void",    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",    "Void",
+    "Void",    "Void",    "Void",    "Slot",    "Slot",    "Slot",    "Void",    "Void",    "Void",
+    "Void",    "Void",    "Void",    "Void",    "Slot",    "Void",    "Void",    "Void",    "Void"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
   "objectives": [
     { "targetLayer": "Ground", "elementType": 1, "targetCount": 10 }
   ],
   "grounds": [
-    "None","None","None","None","None","None","None","None",
-    "None","None","None","None","None","None","None","None",
-    "None","None","None","None","Ice","None","None","None",
-    "None","None","None","Ice","Ice","Ice","None","None",
-    "None","None","Ice","Ice","Ice","Ice","Ice","None",
-    "None","None","None","Ice","Ice","Ice","None","None",
-    "None","None","None","None","Ice","None","None","None",
-    "None","None","None","None","None","None","None","None"
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","Ice", "None","None","None","None",
+    "None","None","None","Ice", "Ice", "Ice", "None","None","None",
+    "None","None","Ice", "Ice", "Ice", "Ice", "Ice", "None","None",
+    "None","None","None","Ice", "Ice", "Ice", "None","None","None",
+    "None","None","None","None","Ice", "None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
   ],
   "groundHealths": [
-    0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,
-    0,0,0,0,1,0,0,0,
-    0,0,0,1,1,1,0,0,
-    0,0,1,1,1,1,1,0,
-    0,0,0,1,1,1,0,0,
-    0,0,0,0,1,0,0,0,
-    0,0,0,0,0,0,0,0
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,1,0,0,0,0,
+    0,0,0,1,1,1,0,0,0,
+    0,0,1,1,1,1,1,0,0,
+    0,0,0,1,1,1,0,0,0,
+    0,0,0,0,1,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0
   ],
-  "notes": "Ice introduction: 13 ice blocks in a diamond pattern (HP 1). Objective: clear 10 of 13. Diamond covers 20% of board for good random coverage."
+  "notes": "Ice introduction: diamond/kite board shape (3→5→7→9→7→5→3→1 cols). Inner Ice diamond nested inside board diamond = ice crystal motif. Side spawners feed expanding rows."
 }
