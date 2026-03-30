@@ -65,7 +65,9 @@ public sealed class RandomAnalysisService : ILevelAnalysisService
         CancellationToken cancellationToken)
     {
         var initialState = CreateInitialStateFromConfig(levelConfig);
-        return RunAnalysisCore(initialState, config, progress, cancellationToken);
+        var (initDeadlockRate, initShuffleRate) = MeasureInitQualityFromConfig(levelConfig, samples: 100);
+        return RunAnalysisCore(initialState, config, progress, cancellationToken,
+            initDeadlockRate, initShuffleRate);
     }
 
     private LevelAnalysisResult RunAnalysis(
@@ -78,11 +80,130 @@ public sealed class RandomAnalysisService : ILevelAnalysisService
         return RunAnalysisCore(initialState, config, progress, cancellationToken);
     }
 
+    /// <summary>
+    /// Sample N independent board initializations to measure init quality.
+    /// Returns (deadlock rate, shuffle rate) where:
+    /// - deadlock = no valid move after init
+    /// - shuffle = pre-existing match after init (would trigger immediate cascade)
+    /// </summary>
+    /// <summary>
+    /// Public entry point for init quality measurement (used by PlayerSimAnalysisService too).
+    /// </summary>
+    public static (float deadlockRate, float shuffleRate) MeasureInitQualityFromConfig(
+        LevelConfig levelConfig, int samples = 100)
+    {
+        int noMoveCount = 0;
+        int preMatchCount = 0;
+
+        for (int i = 0; i < samples; i++)
+        {
+            var rng = new XorShift64(AnalysisSeedDerivation.FromSimulationIndex(i + 10000));
+            var state = AnalysisUtility.CreateInitialStateFromConfig(levelConfig, rng);
+
+            if (HasPreExistingMatch(in state)) preMatchCount++;
+            if (!HasAnyValidMove(in state)) noMoveCount++;
+        }
+
+        return ((float)noMoveCount / samples, (float)preMatchCount / samples);
+    }
+
+    private static bool HasPreExistingMatch(in GameState state)
+    {
+        for (int y = 0; y < state.Height; y++)
+        {
+            for (int x = 0; x < state.Width; x++)
+            {
+                var t = state.GetTile(x, y).Type;
+                if (!t.IsColor()) continue;
+
+                // Horizontal 3-in-a-row
+                if (x + 2 < state.Width &&
+                    state.GetTile(x + 1, y).Type == t &&
+                    state.GetTile(x + 2, y).Type == t)
+                    return true;
+
+                // Vertical 3-in-a-row
+                if (y + 2 < state.Height &&
+                    state.GetTile(x, y + 1).Type == t &&
+                    state.GetTile(x, y + 2).Type == t)
+                    return true;
+
+                // 2×2 square
+                if (x + 1 < state.Width && y + 1 < state.Height &&
+                    state.GetTile(x + 1, y).Type == t &&
+                    state.GetTile(x, y + 1).Type == t &&
+                    state.GetTile(x + 1, y + 1).Type == t)
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    private static bool HasAnyValidMove(in GameState state)
+    {
+        for (int y = 0; y < state.Height; y++)
+        {
+            for (int x = 0; x < state.Width; x++)
+            {
+                var t = state.GetTile(x, y).Type;
+                if (!t.IsColor()) continue;
+
+                // Try swap right
+                if (x + 1 < state.Width)
+                {
+                    var o = state.GetTile(x + 1, y).Type;
+                    if (o.IsColor() && o != t)
+                    {
+                        if (SwapWouldMatch(state, x, y, x + 1, y))
+                            return true;
+                    }
+                }
+                // Try swap down
+                if (y + 1 < state.Height)
+                {
+                    var o = state.GetTile(x, y + 1).Type;
+                    if (o.IsColor() && o != t)
+                    {
+                        if (SwapWouldMatch(state, x, y, x, y + 1))
+                            return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private static bool SwapWouldMatch(in GameState s, int x1, int y1, int x2, int y2)
+    {
+        var t1 = s.GetTile(x1, y1).Type;
+        var t2 = s.GetTile(x2, y2).Type;
+        return CountLine(s, x2, y2, 1, 0, t1, x1, y1) + CountLine(s, x2, y2, -1, 0, t1, x1, y1) >= 2
+            || CountLine(s, x2, y2, 0, 1, t1, x1, y1) + CountLine(s, x2, y2, 0, -1, t1, x1, y1) >= 2
+            || CountLine(s, x1, y1, 1, 0, t2, x2, y2) + CountLine(s, x1, y1, -1, 0, t2, x2, y2) >= 2
+            || CountLine(s, x1, y1, 0, 1, t2, x2, y2) + CountLine(s, x1, y1, 0, -1, t2, x2, y2) >= 2;
+    }
+
+    private static int CountLine(in GameState s, int x, int y, int dx, int dy,
+        Models.Enums.ElementType target, int ex, int ey)
+    {
+        int c = 0;
+        int cx = x + dx, cy = y + dy;
+        while (cx >= 0 && cx < s.Width && cy >= 0 && cy < s.Height)
+        {
+            if (cx == ex && cy == ey) break;
+            if (s.GetTile(cx, cy).Type != target) break;
+            c++; cx += dx; cy += dy;
+        }
+        return c;
+    }
+
     private LevelAnalysisResult RunAnalysisCore(
         GameState initialState,
         AnalysisConfig config,
         IProgress<SimulationProgress>? progress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        float initDeadlockRate = 0f,
+        float initShuffleRate = 0f)
     {
         // Shared aggregation state — mutated under lock by the runner
         int winCount = 0;
@@ -142,7 +263,9 @@ public sealed class RandomAnalysisService : ILevelAnalysisService
                             (double)totalWinRemainingMovesSquared / winCount
                             - System.Math.Pow((double)totalWinRemainingMoves / winCount, 2)))
                         : 0,
-                    AvgScorePerMove = totalMovesUsed > 0 ? (float)totalTilesSpawned / totalMovesUsed : 0
+                    AvgScorePerMove = totalMovesUsed > 0 ? (float)totalTilesSpawned / totalMovesUsed : 0,
+                    InitDeadlockRate = initDeadlockRate,
+                    InitShuffleRate = initShuffleRate
                 };
             },
             reportProgress: progress != null

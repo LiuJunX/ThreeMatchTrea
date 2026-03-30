@@ -77,6 +77,14 @@ static class AnalyzeCommand
         Console.WriteLine($"  Win Remaining:   {result.AvgWinRemainingMoves:F1} +/- {result.StdDevWinRemainingMoves:F1} moves  (赢时剩余步数)");
         Console.WriteLine($"  Score/Move:      {result.AvgScorePerMove:F1}  (每步消除量)");
 
+        // Init quality metrics (only shown when non-zero or from LevelConfig analysis)
+        if (result.InitDeadlockRate > 0 || result.InitShuffleRate > 0)
+        {
+            Console.WriteLine("--- Init Quality ---");
+            Console.WriteLine($"  Init Deadlock:   {result.InitDeadlockRate:P1}  (开局无有效步)");
+            Console.WriteLine($"  Init Shuffle:    {result.InitShuffleRate:P1}  (开局即塌陷)");
+        }
+
         // Show tier results for population mode
         if (result.TierResults != null)
         {

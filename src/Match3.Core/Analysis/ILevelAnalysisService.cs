@@ -93,6 +93,20 @@ public sealed class LevelAnalysisResult
     /// <summary>每步平均得分（消除量的代理指标）</summary>
     public float AvgScorePerMove { get; init; }
 
+    // ── Board Init Quality Metrics ──
+
+    /// <summary>
+    /// 棋盘初始化死锁率：初始化后无有效交换的比例 (0-1)。
+    /// 高于 1% 说明该关卡配置（棋盘面积×颜色数）存在开局风险。
+    /// </summary>
+    public float InitDeadlockRate { get; init; }
+
+    /// <summary>
+    /// 棋盘初始化洗牌率：初始化后存在预匹配（开局即塌陷）的比例 (0-1)。
+    /// 应为 0%（算法硬保证）。非零说明约束填充有 bug。
+    /// </summary>
+    public float InitShuffleRate { get; init; }
+
     /// <summary>
     /// 分层玩家统计结果（当使用 PlayerPopulation 模式时）
     /// </summary>

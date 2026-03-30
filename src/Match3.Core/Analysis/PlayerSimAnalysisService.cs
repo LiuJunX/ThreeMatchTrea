@@ -22,6 +22,7 @@ public sealed class PlayerSimAnalysisService : ILevelAnalysisService
     private static readonly ThreadLocal<SharedSimulationContext> _contextCache =
         new(() => new SharedSimulationContext(), trackAllValues: false);
 
+
     public async Task<LevelAnalysisResult> AnalyzeAsync(
         LevelData levelData,
         AnalysisConfig? config = null,
@@ -48,7 +49,9 @@ public sealed class PlayerSimAnalysisService : ILevelAnalysisService
         {
             var random = new XorShift64(12345);
             var initialState = AnalysisUtility.CreateInitialStateFromConfig(levelConfig, random);
-            return RunAnalysisCore(initialState, config, progress, cancellationToken);
+            var (initDeadlockRate, initShuffleRate) = RandomAnalysisService.MeasureInitQualityFromConfig(levelConfig);
+            return RunAnalysisCore(initialState, config, progress, cancellationToken,
+                initDeadlockRate, initShuffleRate);
         }, cancellationToken);
     }
 
@@ -56,11 +59,14 @@ public sealed class PlayerSimAnalysisService : ILevelAnalysisService
         GameState initialState,
         AnalysisConfig config,
         IProgress<SimulationProgress>? progress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        float initDeadlockRate = 0f,
+        float initShuffleRate = 0f)
     {
         if (config.Mode == SimulationMode.PlayerPopulation)
         {
-            return RunPopulationAnalysis(initialState, config, progress, cancellationToken);
+            return RunPopulationAnalysis(initialState, config, progress, cancellationToken,
+                initDeadlockRate, initShuffleRate);
         }
         else
         {
@@ -72,7 +78,9 @@ public sealed class PlayerSimAnalysisService : ILevelAnalysisService
         GameState initialState,
         AnalysisConfig config,
         IProgress<SimulationProgress>? progress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        float initDeadlockRate = 0f,
+        float initShuffleRate = 0f)
     {
         var popConfig = config.PopulationConfig ?? new PlayerPopulationConfig();
         var tiers = popConfig.Tiers;
@@ -158,7 +166,8 @@ public sealed class PlayerSimAnalysisService : ILevelAnalysisService
                     globalMoves, globalScores, tierStats, progressAccumulator, progressCounts,
                     moveLimit, remaining0to2, remaining3to5, remaining6to10, remaining10plus, totalWinsForRemaining,
                     totalLossCompletionRate, totalWinRemainingMoves, totalWinRemainingMovesSquared, totalTilesSpawned,
-                    elapsedMs, wasCancelled, popConfig.OutputTierResults),
+                    elapsedMs, wasCancelled, popConfig.OutputTierResults,
+                    initDeadlockRate, initShuffleRate),
             reportProgress: progress != null
                 ? (completed, totalCount) => progress.Report(new SimulationProgress
                 {
@@ -316,7 +325,8 @@ public sealed class PlayerSimAnalysisService : ILevelAnalysisService
         int remaining0to2, int remaining3to5, int remaining6to10, int remaining10plus, int totalWinsForRemaining,
         float totalLossCompletionRate, long totalWinRemainingMoves,
         long totalWinRemainingMovesSquared, long totalTilesSpawned,
-        double elapsedMs, bool wasCancelled, bool outputTierResults)
+        double elapsedMs, bool wasCancelled, bool outputTierResults,
+        float initDeadlockRate = 0f, float initShuffleRate = 0f)
     {
         // 构建分层结果
         PlayerTierResult[]? tierResults = null;
@@ -391,6 +401,8 @@ public sealed class PlayerSimAnalysisService : ILevelAnalysisService
                     - System.Math.Pow((double)totalWinRemainingMoves / winCount, 2)))
                 : 0,
             AvgScorePerMove = totalMoves > 0 ? (float)totalTilesSpawned / totalMoves : 0,
+            InitDeadlockRate = initDeadlockRate,
+            InitShuffleRate = initShuffleRate,
             TierResults = tierResults,
             ProgressDistribution = new StageProgressDistribution
             {
