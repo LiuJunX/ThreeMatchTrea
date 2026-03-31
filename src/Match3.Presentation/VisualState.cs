@@ -173,8 +173,9 @@ public sealed class VisualState : IVisualState
                         continue;
                     }
 
-                    // Interpolate position: find this tile in nextState by ID
-                    var nextTile = FindTileById(in nextState, tile.Id);
+                    // Interpolate position: check same grid position in nextState first (fast path),
+                    // then fall back to ID scan only if needed
+                    var nextTile = FindTileInNextState(in nextState, tile.Id, x, y);
                     if (nextTile.Type != ElementType.None)
                     {
                         // Tile exists in both states — interpolate
@@ -225,20 +226,47 @@ public sealed class VisualState : IVisualState
     }
 
     /// <summary>
-    /// Find a tile by ID in a game state (linear scan).
-    /// Returns a default Tile with Type=None if not found.
+    /// Find a tile in nextState by ID. Fast path: check same (x,y) and neighbors first
+    /// (tile usually stays at same position or moves down by 1). Falls back to full scan.
     /// </summary>
-    private static Tile FindTileById(in GameState state, int tileId)
+    private static Tile FindTileInNextState(in GameState state, int tileId, int hintX, int hintY)
     {
+        // Fast path 1: same position (most common — tile didn't move this tick)
+        var t = state.GetTile(hintX, hintY);
+        if (t.Id == tileId) return t;
+
+        // Fast path 2: one row below (tile fell by gravity)
+        if (hintY + 1 < state.Height)
+        {
+            t = state.GetTile(hintX, hintY + 1);
+            if (t.Id == tileId) return t;
+        }
+
+        // Fast path 3: diagonal neighbors (side-slide fill)
+        if (hintY + 1 < state.Height)
+        {
+            if (hintX - 1 >= 0)
+            {
+                t = state.GetTile(hintX - 1, hintY + 1);
+                if (t.Id == tileId) return t;
+            }
+            if (hintX + 1 < state.Width)
+            {
+                t = state.GetTile(hintX + 1, hintY + 1);
+                if (t.Id == tileId) return t;
+            }
+        }
+
+        // Slow fallback: full scan (rare — tile teleported or was shuffled)
         for (int y = 0; y < state.Height; y++)
         {
             for (int x = 0; x < state.Width; x++)
             {
-                var t = state.GetTile(x, y);
+                t = state.GetTile(x, y);
                 if (t.Id == tileId) return t;
             }
         }
-        return default; // Type = None
+        return default; // Type = None — tile was destroyed in next state
     }
 
     /// <summary>
