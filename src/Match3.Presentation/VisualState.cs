@@ -173,22 +173,31 @@ public sealed class VisualState : IVisualState
                         continue;
                     }
 
-                    // Interpolate position: check same grid position in nextState first (fast path),
-                    // then fall back to ID scan only if needed
-                    var nextTile = FindTileInNextState(in nextState, tile.Id, x, y);
-                    if (nextTile.Type != ElementType.None)
+                    // Skip interpolation for tiles on Spawner/Sink cells —
+                    // they should not be visible until they enter the Slot area.
+                    var cellKind = currentState.Cells[y * currentState.Width + x];
+                    if (cellKind == CellKind.Spawner || cellKind == CellKind.Sink)
                     {
-                        // Tile exists in both states — interpolate
-                        visual.Position = new Vector2(
-                            tile.Position.X + (nextTile.Position.X - tile.Position.X) * alpha,
-                            tile.Position.Y + (nextTile.Position.Y - tile.Position.Y) * alpha
-                        );
+                        visual.Position = tile.Position;
                     }
                     else
                     {
-                        // Tile doesn't exist in next state (will be consumed/destroyed)
-                        // Use current position — the destroy animation will take over
-                        visual.Position = tile.Position;
+                        // Interpolate position: check same grid position in nextState first (fast path)
+                        var nextTile = FindTileInNextState(in nextState, tile.Id, x, y);
+                        if (nextTile.Type != ElementType.None)
+                        {
+                            // Tile exists in both states — interpolate
+                            visual.Position = new Vector2(
+                                tile.Position.X + (nextTile.Position.X - tile.Position.X) * alpha,
+                                tile.Position.Y + (nextTile.Position.Y - tile.Position.Y) * alpha
+                            );
+                        }
+                        else
+                        {
+                            // Tile doesn't exist in next state (will be consumed/destroyed)
+                            // Use current position — the destroy animation will take over
+                            visual.Position = tile.Position;
+                        }
                     }
                     visual.GridPosition = new Position(x, y);
                 }
