@@ -35,6 +35,15 @@ namespace Match3.Unity.Editor
         [MenuItem("Match3/Test/Click Level 15")]
         public static void ClickLevel15() => ClickButton("Level_level_015");
 
+        [MenuItem("Match3/Test/Click Level 19")]
+        public static void ClickLevel19() => ClickButton("Level_level_019");
+
+        [MenuItem("Match3/Test/Click Level 20")]
+        public static void ClickLevel20() => ClickButton("Level_level_020");
+
+        [MenuItem("Match3/Test/Click Level 21")]
+        public static void ClickLevel21() => ClickButton("Level_level_021");
+
         [MenuItem("Match3/Test/Click Restart")]
         public static void ClickRestart() => ClickButton("RestartButton");
 
