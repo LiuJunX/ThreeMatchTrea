@@ -34,24 +34,24 @@
   "grounds": [
     "None","None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None","None",
-    "None","None","None","None","Ice", "None","None","None","None",
     "None","None","None","Ice", "Ice", "Ice", "None","None","None",
-    "None","None","Ice", "Ice", "Ice", "Ice", "Ice", "None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","Ice", "Ice", "None","Ice", "Ice", "None","None",
+    "None","None","None","None","None","None","None","None","None",
     "None","None","None","Ice", "Ice", "Ice", "None","None","None",
-    "None","None","None","None","Ice", "None","None","None","None",
     "None","None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None","None"
   ],
   "groundHealths": [
     0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,0,
-    0,0,0,0,1,0,0,0,0,
     0,0,0,1,1,1,0,0,0,
-    0,0,1,1,1,1,1,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,1,1,0,1,1,0,0,
+    0,0,0,0,0,0,0,0,0,
     0,0,0,1,1,1,0,0,0,
-    0,0,0,0,1,0,0,0,0,
     0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,0
   ],
-  "notes": "Ice introduction: diamond/kite board shape (3→5→7→9→7→5→3→1 cols). Inner Ice diamond nested inside board diamond = ice crystal motif. Side spawners feed expanding rows."
+  "notes": "Progress visibility: diamond board shape with Ice spread across 3 horizontal bands (rows 2, 4, 6). Band spacing with clear rows between them lets player see steady top-to-bottom progress. 10 Ice total: 3+4+3 per band."
 }

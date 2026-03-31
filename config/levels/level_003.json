@@ -8,13 +8,13 @@
   "tileTypesCount": 4,
   "targetDifficulty": 0.1,
   "cells": [
+    "Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
     "Void","Slot","Slot","Slot","Slot","Slot","Slot","Void",
-    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
-    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
-    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
-    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
-    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
-    "Void","Slot","Slot","Slot","Slot","Slot","Slot","Void"
+    "Void","Slot","Slot","Slot","Slot","Slot","Slot","Void",
+    "Void","Void","Slot","Slot","Slot","Slot","Void","Void"
   ],
   "grid": [
     "None","None","None","None","None","None","None","None",
@@ -30,5 +30,5 @@
     { "targetLayer": "Tile", "elementType": 2, "targetCount": 8 },
     { "targetLayer": "Tile", "elementType": 3, "targetCount": 8 }
   ],
-  "notes": "Chain Boom L003: 8x7, 4 colors, HorizontalRocket at (3,1) + VerticalRocket at (4,5). Player taps each separately to learn row vs column clear. Rockets NOT adjacent, NOT on same row/col (prevent chain activation). 12 moves, collect 8 each of 3 colors."
+  "notes": "Mini-story 'Launch from Base': shield shape (wide top → narrow bottom). HorizontalRocket at (3,1) sweeps the wide launchpad. VerticalRocket at (4,5) in the narrow base 'launches upward'. Shield tapering guides the eye downward toward the rocket. 12 moves, 4 colors."
 }

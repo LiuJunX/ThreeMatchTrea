@@ -70,5 +70,5 @@
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0
   ],
-  "notes": "Frozen Prison v3 — 视觉叙事：Cage 门上移到 row2（拉大与 Ice 距离）。四段式：操作区(row0-1) → Cage 门(row2) → 过渡空间(row3) → Ice 目标区(row4-7)。距离感制造'先突破门 → 再进攻冰区'的清晰策略叙事。"
+  "notes": "Frozen Prison: hex shape with clear visual narrative. 4 zones: operating area (row 0-1) → Cage gates at row 2 (break through first) → transition space (row 3) → Ice target zone (rows 4-7). Spatial separation between Cage and Ice creates 'break gate then assault ice' strategy."
 }

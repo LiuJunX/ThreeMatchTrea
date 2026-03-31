@@ -4,7 +4,7 @@
   "name": "Descent",
   "width": 8,
   "height": 8,
-  "moveLimit": 21,
+  "moveLimit": 24,
   "targetDifficulty": 0.35,
   "objectives": [
     { "targetLayer": "Ground", "elementType": 1, "targetCount": 10 }
@@ -31,30 +31,30 @@
   ],
   "grounds": [
     "None","None","None","None","None","None","None","None",
-    "Ice","None","Ice","Ice","Ice","Ice","None","Ice",
-    "None","Ice","None","Ice","Ice","None","Ice","None",
+    "None","Ice", "Ice", "Ice", "Ice", "Ice", "Ice", "None",
     "None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None",
-    "None","None","Ice","None","None","Ice","None","None",
-    "None","None","None","Ice","None","Ice","None","None"
+    "None","None","None","None","None","None","None","None",
+    "None","None","Ice", "None","None","Ice", "None","None",
+    "None","None","None","Ice", "Ice", "None","None","None"
   ],
   "groundHealths": [
     0,0,0,0,0,0,0,0,
-    1,0,1,1,1,1,0,1,
-    0,1,0,1,1,0,1,0,
+    0,1,1,1,1,1,1,0,
+    0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,
     0,0,1,0,0,1,0,0,
-    0,0,0,1,0,1,0,0
+    0,0,0,1,1,0,0,0
   ],
   "covers": [
     "None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None",
-    "None","None","Cage","None","None","Cage","None","None",
+    "None","None","None","Cage","Cage","None","None","None",
     "None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None"
@@ -64,10 +64,10 @@
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,
-    0,0,1,0,0,1,0,0,
+    0,0,0,1,1,0,0,0,
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0
   ],
-  "notes": "Three-act level on 8x8. Act 1 (rows 1-2): 12 ice in dense upper band, quick cascade clearing. Act 2 (row 4): 2 Cages as mid-board gatekeepers. Act 3 (rows 6-7): 4 ice in corners, hardest to reach with few remaining moves. Objective: clear 11 of 16."
+  "notes": "Three-act story on arrow shape. Act 1 (row 1): 6 Ice band across top — easy cascade start. Act 2 (row 4): 2 Cage gatekeepers at center — mid challenge requiring targeted matches. Act 3 (rows 6-7): 4 Ice in tight bottom of arrow — finale. Clear separation between acts with empty rows."
 }

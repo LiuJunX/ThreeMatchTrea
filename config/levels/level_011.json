@@ -16,9 +16,9 @@
     "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
     "Void","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Void",
     "Void","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Void",
-    "Void","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Void",
     "Void","Void","Slot","Slot","Slot","Slot","Slot","Void","Void",
-    "Void","Void","Slot","Slot","Slot","Slot","Slot","Void","Void"
+    "Void","Void","Slot","Slot","Slot","Slot","Slot","Void","Void",
+    "Void","Void","Void","Slot","Slot","Slot","Void","Void","Void"
   ],
   "grid": [
     "None","None","None","None","None","None","None","None","None",
@@ -34,24 +34,24 @@
   "obstacles": [
     "None","None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None","None",
-    "None","None","Cupboard","None","None","None","Cupboard","None","None",
     "None","None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None","None",
-    "None","None","Cupboard","None","None","None","Cupboard","None","None",
     "None","None","None","None","None","None","None","None","None",
-    "None","None","None","None","None","None","None","None","None"
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","Cupboard","Cupboard","None","None","None","None",
+    "None","None","None","Cupboard","Cupboard","None","None","None","None"
   ],
   "obstacleStages": [
     0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,0,
-    0,0,2,0,0,0,2,0,0,
     0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,0,
-    0,0,2,0,0,0,2,0,0,
     0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,2,2,0,0,0,0,
+    0,0,0,2,2,0,0,0,0
   ],
-  "notes": "Cupboard introduction: 4 cupboards (stage 2) releasing Plates. Collect all 4 Plates to win. Each cupboard needs 2 adjacent matches to open."
+  "notes": "Goal backwards method: funnel shape (wide top → narrow bottom). 4 Cupboard (stage 2) clustered as 2x2 block at bottom focal point (rows 7-8). Wide upper area provides ample matching space; gravity funnels tiles down toward the Cupboard cluster. Player's eye drawn to the goal."
 }

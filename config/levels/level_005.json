@@ -32,5 +32,6 @@
     "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
     "Slot","Slot","Slot","Slot","Void","Slot","Slot","Slot","Slot",
     "Slot","Slot","Slot","Void","Void","Void","Slot","Slot","Slot"
-  ]
+  ],
+  "notes": "Butterfly shape verified: 9x9 with symmetric wing silhouette. Left wing (cols 0-2) + right wing (cols 6-8) connected by narrow body (cols 3-5). Side spawners feed each wing independently. Format verified: all cells/grid use string format."
 }

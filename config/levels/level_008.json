@@ -11,8 +11,8 @@
   ],
   "cells": [
     "Void",    "Void",    "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Void",    "Void",
-    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",
-    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Void",    "Spawner", "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Spawner", "Void",
+    "Spawner", "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Spawner",
     "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
     "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
     "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
@@ -33,25 +33,25 @@
   ],
   "obstacles": [
     "None","None","None","None","None","None","None","None","None",
-    "None","None","None","None","Box", "None","None","None","None",
-    "None","None","Box", "None","None","None","Box", "None","None",
-    "None","None","None","None","Box", "None","None","None","None",
-    "None","None","None","Box", "None","Box", "None","None","None",
-    "None","None","None","None","Box", "None","None","None","None",
-    "None","None","Box", "None","None","None","Box", "None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","Box", "None","Box", "None","Box", "None","None",
+    "None","Box", "None","None","None","None","None","Box", "None",
+    "None","None","Box", "None","Box", "None","Box", "None","None",
+    "None","None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None","None"
   ],
   "obstacleStages": [
     0,0,0,0,0,0,0,0,0,
-    0,0,0,0,1,0,0,0,0,
-    0,0,1,0,0,0,1,0,0,
-    0,0,0,0,2,0,0,0,0,
-    0,0,0,2,0,2,0,0,0,
-    0,0,0,0,3,0,0,0,0,
-    0,0,1,0,0,0,1,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,1,0,1,0,1,0,0,
+    0,1,0,0,0,0,0,1,0,
+    0,0,1,0,1,0,1,0,0,
+    0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,0
   ],
-  "notes": "Box fortress: octagon board + 8 Box in double-diamond pattern. Outer diamond (4 Box, HP1) + inner diamond (4 Box, HP2-3 gradient toward center). Symmetric fortress shape teaches multi-stage Box."
+  "notes": "Choke point method: octagon board + 8 Box in two horizontal choke lines. Row 3: 3 Box (HP1) as first breakable wall. Row 5: 3 Box (HP2) as tougher second wall. 2 Box (HP2) flank as sentinels at row 4 edges. Two-stage breakthrough teaches multi-hit Box."
 }
