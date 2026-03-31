@@ -4,7 +4,7 @@
   "name": "Box Basics",
   "width": 9,
   "height": 9,
-  "moveLimit": 25,
+  "moveLimit": 28,
   "targetDifficulty": 0.4,
   "objectives": [
     { "targetLayer": "Obstacle", "elementType": 1, "targetCount": 4 },
@@ -35,24 +35,24 @@
   "obstacles": [
     "None","None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None","None",
-    "None","None","None","None","Box", "None","None","None","None",
     "None","None","None","None","None","None","None","None","None",
-    "None","None","Box", "None","None","None","Box", "None","None",
     "None","None","None","None","None","None","None","None","None",
-    "None","None","None","None","Box", "None","None","None","None",
+    "None","None","None","Box", "Box", "None","None","None","None",
+    "None","None","None","Box", "Box", "None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None","None"
   ],
   "obstacleStages": [
     0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,0,
-    0,0,0,0,1,0,0,0,0,
     0,0,0,0,0,0,0,0,0,
-    0,0,1,0,0,0,1,0,0,
     0,0,0,0,0,0,0,0,0,
-    0,0,0,0,1,0,0,0,0,
+    0,0,0,1,1,0,0,0,0,
+    0,0,0,1,1,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,0
   ],
-  "notes": "Box introduction: shield shape (wide top → narrow bottom, 9→3 cols). 4 Box in diamond at center. Shield = defense, Box = obstacle to break through. Silhouette tapers downward."
+  "notes": "Box introduction v4 — 视觉叙事：4 Box 形成 2×2 紧密方块在底部偏左（强焦点团块）。上方 5 行全空（极致方向引导'从上往下'）。无 Ice 干扰，Box 团块是唯一焦点。盾形底部收窄让 Box 更显突出。"
 }

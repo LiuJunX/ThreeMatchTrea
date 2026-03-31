@@ -33,42 +33,42 @@
   "grounds": [
     "None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None",
-    "None","None","None","None","Ice","None","None","None",
-    "None","None","None","Ice","Ice","Ice","None","None",
-    "None","None","Ice","Ice","Ice","Ice","Ice","None",
-    "None","None","None","Ice","Ice","Ice","None","None",
-    "None","None","None","None","Ice","None","None","None",
-    "None","None","None","None","None","None","None","None"
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","Ice", "Ice", "Ice", "Ice", "None","None",
+    "None","Ice", "Ice", "Ice", "Ice", "Ice", "Ice", "None",
+    "None","None","Ice", "Ice", "Ice", "Ice", "None","None",
+    "None","None","None","Ice", "Ice", "None","None","None"
   ],
   "groundHealths": [
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,
-    0,0,0,0,1,0,0,0,
-    0,0,0,1,1,1,0,0,
-    0,0,1,1,1,1,1,0,
-    0,0,0,1,1,1,0,0,
-    0,0,0,0,1,0,0,0,
-    0,0,0,0,0,0,0,0
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,1,1,1,1,0,0,
+    0,1,1,2,2,1,1,0,
+    0,0,1,2,2,1,0,0,
+    0,0,0,1,1,0,0,0
   ],
   "covers": [
     "None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None",
+    "None","None","Cage","None","None","Cage","None","None",
     "None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None",
-    "None","Cage","None","None","None","None","None","None",
-    "None","None","None","None","None","None","Cage","None",
+    "None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None"
   ],
   "coverHealths": [
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,
+    0,0,1,0,0,1,0,0,
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,
-    0,1,0,0,0,0,0,0,
-    0,0,0,0,0,0,1,0,
+    0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0
   ],
-  "notes": "Ice+Cage combo: 13 ice diamond (same as L13) + 2 Cages on row 6 edges. Dual objective: clear 8 ice + collect 10 green. Cages at bottom minimize gravity disruption."
+  "notes": "Frozen Prison v3 — 视觉叙事：Cage 门上移到 row2（拉大与 Ice 距离）。四段式：操作区(row0-1) → Cage 门(row2) → 过渡空间(row3) → Ice 目标区(row4-7)。距离感制造'先突破门 → 再进攻冰区'的清晰策略叙事。"
 }

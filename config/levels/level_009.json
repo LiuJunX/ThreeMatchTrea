@@ -34,15 +34,47 @@
   ],
   "grounds": [
     "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","Grass","None","None","None","None",
     "None","None","None","Grass","Grass","Grass","None","None","None",
     "None","None","Grass","Grass","Grass","Grass","Grass","None","None",
+    "None","Grass","Grass","Grass","Grass","Grass","Grass","Grass","None",
     "None","None","Grass","Grass","Grass","Grass","Grass","None","None",
-    "None","None","Grass","Grass","Grass","Grass","Grass","None","None",
-    "None","None","Grass","Grass","Grass","Grass","Grass","None","None",
-    "None","None","Grass","Grass","Grass","Grass","Grass","None","None",
-    "None","None","None","Grass","Grass","Grass","None","None","None",
+    "None","None","None","Grass","Grass","Grass","None","None","None"
+  ],
+  "groundHealths": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,1,0,0,0,0,
+    0,0,0,1,1,1,0,0,0,
+    0,0,1,1,2,1,1,0,0,
+    0,1,1,1,2,1,1,1,0,
+    0,0,1,1,2,1,1,0,0,
+    0,0,0,1,1,1,0,0,0
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","Box", "None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None","None"
   ],
-  "groundHealths": "AAAAAAAAAAAAAAAAAQEBAAAAAAABAQEBAQAAAAABAQIBAQAAAAABAQIBAQAAAAABAQIBAQAAAAABAQEBAQAAAAAAAQEBAAAAAAAAAAAAAAAA",
-  "notes": "Grass introduction: diamond of Grass (outer HP=1, center column HP=2). Clear 8 Grass + collect tiles."
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,2,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "notes": "Grass introduction v3 — 视觉叙事：Grass 倒三角底部堆积 + 1 个 Box(HP2) 在 Grass 区顶部中心（前景焦点，'守门员'）。策略暗示：先打碎 Box 打通入口 → 再从上往下清 Grass。三层：空旷操作区(上) + Box 守门焦点(中) + Grass 目标区(下)。"
 }
