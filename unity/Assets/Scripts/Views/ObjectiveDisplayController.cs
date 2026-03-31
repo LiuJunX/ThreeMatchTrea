@@ -26,10 +26,16 @@ namespace Match3.Unity.Views
         private const float CompletedAlpha = 0.5f;
         private const float IconTiltX = 25f;
 
+        private const float LabelOffsetY = 1.2f;
+        private const int LabelFontSize = 48;
+        private const float LabelCharSize = 0.08f;
+
         private Match3Bridge _bridge;
         private Board3DView _boardView;
         private EffectManager _effectManager;
         private FlyAnimationConfig _flyConfig;
+        private string _levelId;
+        private TextMesh _levelLabel;
 
         private Transform _iconContainer;
         private readonly List<ObjectiveIcon> _icons = new();
@@ -83,12 +89,13 @@ namespace Match3.Unity.Views
             public long SuppressedKey;
         }
 
-        public void Initialize(Match3Bridge bridge, Board3DView boardView, EffectManager effectManager)
+        public void Initialize(Match3Bridge bridge, Board3DView boardView, EffectManager effectManager, string levelId = null)
         {
             _bridge = bridge;
             _boardView = boardView;
             _effectManager = effectManager;
             _flyConfig = new FlyAnimationConfig();
+            _levelId = levelId;
 
             // Wire effect suppression
             _effectManager.SuppressedPositions = SuppressedEffectPositions;
@@ -140,6 +147,9 @@ namespace Match3.Unity.Views
             float centerX = origin.x + boardWidth * 0.5f;
             float baseY = origin.y + boardHeight + GapAboveBoard;
 
+            // Level ID label above objectives
+            RebuildLevelLabel(centerX, baseY);
+
             // Calculate horizontal layout
             float totalWidth = (activeCount - 1) * IconSpacing;
             float startX = centerX - totalWidth * 0.5f;
@@ -165,6 +175,29 @@ namespace Match3.Unity.Views
                 _icons.Add(icon);
                 slot++;
             }
+        }
+
+        private void RebuildLevelLabel(float centerX, float baseY)
+        {
+            if (_levelLabel != null)
+            {
+                Destroy(_levelLabel.gameObject);
+                _levelLabel = null;
+            }
+
+            if (string.IsNullOrEmpty(_levelId)) return;
+
+            var labelGo = new GameObject("LevelLabel");
+            labelGo.transform.SetParent(_iconContainer, false);
+            labelGo.transform.position = new Vector3(centerX, baseY + LabelOffsetY, 0f);
+
+            _levelLabel = labelGo.AddComponent<TextMesh>();
+            _levelLabel.text = _levelId;
+            _levelLabel.fontSize = LabelFontSize;
+            _levelLabel.characterSize = LabelCharSize;
+            _levelLabel.anchor = TextAnchor.MiddleCenter;
+            _levelLabel.alignment = TextAlignment.Center;
+            _levelLabel.color = new Color(1f, 1f, 1f, 0.7f);
         }
 
         private ObjectiveIcon CreateIcon(int index, ElementType elementType, ObstacleType obstacleType, GroundType groundType, int current, int target, Vector3 position)
@@ -583,6 +616,13 @@ namespace Match3.Unity.Views
             _pendingMergeFlies.Clear();
             HiddenTileIds.Clear();
             SuppressedEffectPositions.Clear();
+
+            // Destroy level label
+            if (_levelLabel != null)
+            {
+                Destroy(_levelLabel.gameObject);
+                _levelLabel = null;
+            }
 
             // Destroy icons
             foreach (var icon in _icons)

@@ -193,7 +193,7 @@ namespace Match3.Unity.Controllers
                 _objectiveDisplay = go.AddComponent<ObjectiveDisplayController>();
             }
 
-            _objectiveDisplay.Initialize(_bridge, board3D, _effectManager);
+            _objectiveDisplay.Initialize(_bridge, board3D, _effectManager, _currentLevelId);
             board3D.ObjectiveDisplay = _objectiveDisplay;
         }
 
