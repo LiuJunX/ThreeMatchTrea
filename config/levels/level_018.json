@@ -15,9 +15,9 @@
     "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
     "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
     "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
-    "Void","Slot","Slot","Slot","Slot","Slot","Slot","Void",
-    "Void","Void","Slot","Slot","Slot","Slot","Void","Void",
-    "Void","Void","Void","Slot","Slot","Slot","Void","Void"
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot"
   ],
   "grid": [
     "None","None","None","None","None","None","None","None",
@@ -31,30 +31,30 @@
   ],
   "grounds": [
     "None","None","None","None","None","None","None","None",
-    "None","Ice", "Ice", "Ice", "Ice", "Ice", "Ice", "None",
     "None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None",
-    "None","None","None","None","None","None","None","None",
-    "None","None","None","None","None","None","None","None",
-    "None","None","Ice", "None","None","Ice", "None","None",
-    "None","None","None","Ice", "Ice", "None","None","None"
+    "None","None","None","None","None","Ice", "Ice", "Ice",
+    "None","None","None","None","Ice", "Ice", "Ice", "Ice",
+    "None","None","None","Ice", "Ice", "Ice", "Ice", "Ice",
+    "None","None","None","Ice", "Ice", "Ice", "Ice", "Ice",
+    "None","None","None","None","Ice", "Ice", "Ice", "None"
   ],
   "groundHealths": [
     0,0,0,0,0,0,0,0,
-    0,1,1,1,1,1,1,0,
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,
-    0,0,1,0,0,1,0,0,
-    0,0,0,1,1,0,0,0
+    0,0,0,0,0,1,1,1,
+    0,0,0,0,1,1,1,1,
+    0,0,0,1,1,2,2,1,
+    0,0,0,1,1,2,2,1,
+    0,0,0,0,1,1,1,0
   ],
   "covers": [
     "None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None",
-    "None","None","None","None","None","None","None","None",
-    "None","None","None","Cage","Cage","None","None","None",
+    "None","None","None","Cage","None","None","None","None",
+    "None","None","None","Cage","None","None","None","None",
     "None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None",
     "None","None","None","None","None","None","None","None"
@@ -63,11 +63,11 @@
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,
-    0,0,0,1,1,0,0,0,
+    0,0,0,1,0,0,0,0,
+    0,0,0,1,0,0,0,0,
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0
   ],
-  "notes": "Three-act story on arrow shape. Act 1 (row 1): 6 Ice band across top — easy cascade start. Act 2 (row 4): 2 Cage gatekeepers at center — mid challenge requiring targeted matches. Act 3 (rows 6-7): 4 Ice in tight bottom of arrow — finale. Clear separation between acts with empty rows."
+  "notes": "Descent v4 — 对角线不对称：8×8 方正外框。Ice 团块占据右下半板（对角线重量），左上空旷（操作区）。2 Cage 竖排在 col 3 row 3-4 形成边界线 = '先突破左侧 Cage 门，再进攻右侧 Ice 区'。HP2 中心加深焦点。Royal Match 式不对称：框稳定，内部重量差制造方向感。"
 }
