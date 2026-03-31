@@ -136,20 +136,31 @@ public sealed class VisualState : IVisualState
     }
 
     /// <summary>
-    /// Sync falling tile positions from game state.
+    /// Sync falling tile positions from game state (no interpolation, legacy).
+    /// </summary>
+    public void SyncFallingTilesFromGameState(in GameState state)
+    {
+        SyncFallingTilesFromGameState(in state, in state, 0f);
+    }
+
+    /// <summary>
+    /// Sync falling tile positions with interpolation between two game states.
     /// Call this each frame to update positions of tiles being moved by physics.
     /// This handles gravity-based movement that doesn't go through the event system.
     /// Only syncs tiles with IsFalling=true to avoid overwriting animation positions.
     /// </summary>
-    public void SyncFallingTilesFromGameState(in GameState state)
+    /// <param name="currentState">The last consumed tick state</param>
+    /// <param name="nextState">The pre-computed next tick state (from ring buffer)</param>
+    /// <param name="alpha">Interpolation factor 0-1 between current and next</param>
+    public void SyncFallingTilesFromGameState(in GameState currentState, in GameState nextState, float alpha)
     {
         _aliveTileIds.Clear();
 
-        for (int y = 0; y < state.Height; y++)
+        for (int y = 0; y < currentState.Height; y++)
         {
-            for (int x = 0; x < state.Width; x++)
+            for (int x = 0; x < currentState.Width; x++)
             {
-                var tile = state.GetTile(x, y);
+                var tile = currentState.GetTile(x, y);
                 if (tile.Type == ElementType.None) continue;
 
                 _aliveTileIds.Add(tile.Id);
@@ -162,8 +173,22 @@ public sealed class VisualState : IVisualState
                         continue;
                     }
 
-                    // Sync position from physics/game state
-                    visual.Position = tile.Position;
+                    // Interpolate position: find this tile in nextState by ID
+                    var nextTile = FindTileById(in nextState, tile.Id);
+                    if (nextTile.Type != ElementType.None)
+                    {
+                        // Tile exists in both states — interpolate
+                        visual.Position = new Vector2(
+                            tile.Position.X + (nextTile.Position.X - tile.Position.X) * alpha,
+                            tile.Position.Y + (nextTile.Position.Y - tile.Position.Y) * alpha
+                        );
+                    }
+                    else
+                    {
+                        // Tile doesn't exist in next state (will be consumed/destroyed)
+                        // Use current position — the destroy animation will take over
+                        visual.Position = tile.Position;
+                    }
                     visual.GridPosition = new Position(x, y);
                 }
                 else
@@ -197,6 +222,23 @@ public sealed class VisualState : IVisualState
         {
             _tiles.Remove(id);
         }
+    }
+
+    /// <summary>
+    /// Find a tile by ID in a game state (linear scan).
+    /// Returns a default Tile with Type=None if not found.
+    /// </summary>
+    private static Tile FindTileById(in GameState state, int tileId)
+    {
+        for (int y = 0; y < state.Height; y++)
+        {
+            for (int x = 0; x < state.Width; x++)
+            {
+                var t = state.GetTile(x, y);
+                if (t.Id == tileId) return t;
+            }
+        }
+        return default; // Type = None
     }
 
     /// <summary>

@@ -523,7 +523,11 @@ namespace Match3.Unity.Bridge
 
             _player.Tick(scaledDelta);
             _player.VisualState.UpdateEffects(scaledDelta);
-            _player.VisualState.SyncFallingTilesFromGameState(in state);
+
+            // Interpolate tile positions between current and next tick for smooth rendering
+            var nextState = _gameEngine.NextState;
+            float alpha = _gameEngine.InterpolationAlpha;
+            _player.VisualState.SyncFallingTilesFromGameState(in state, in nextState, alpha);
         }
 
         private void TryMakeAutoMove()

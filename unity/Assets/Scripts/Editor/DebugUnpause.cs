@@ -75,6 +75,27 @@ namespace Match3.Unity.Editor
             Debug.Log($"[Debug] Restarted, AutoPlay=True Speed=2");
         }
 
+        [MenuItem("Match3/Debug/Speed 0.1x")]
+        public static void Speed01()  => SetSpeed(0.1f);
+
+        [MenuItem("Match3/Debug/Speed 0.5x")]
+        public static void Speed05()  => SetSpeed(0.5f);
+
+        [MenuItem("Match3/Debug/Speed 1x")]
+        public static void Speed1()   => SetSpeed(1f);
+
+        [MenuItem("Match3/Debug/Speed 2x")]
+        public static void Speed2()   => SetSpeed(2f);
+
+        private static void SetSpeed(float speed)
+        {
+            if (!EditorApplication.isPlaying) return;
+            var controller = Object.FindFirstObjectByType<GameController>();
+            if (controller == null || controller.Bridge == null) return;
+            controller.Bridge.GameSpeed = speed;
+            Debug.Log($"[Debug] GameSpeed = {speed}x");
+        }
+
         private static void TryDisableErrorPause()
         {
             try

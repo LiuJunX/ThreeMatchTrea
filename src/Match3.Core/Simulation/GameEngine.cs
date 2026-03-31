@@ -94,9 +94,32 @@ public sealed class GameEngine : IPeekProvider, IDisposable
     public SimulationEngine Engine => _engine;
 
     /// <summary>
-    /// Current game state (the slot being rendered).
+    /// Current game state (the last consumed tick).
     /// </summary>
     public GameState CurrentState => _buffer[_current % _bufferSize].State;
+
+    /// <summary>
+    /// Next game state (one tick ahead, for interpolation).
+    /// The ring buffer guarantees this slot is pre-computed.
+    /// Falls back to CurrentState if next slot is not available.
+    /// </summary>
+    public GameState NextState
+    {
+        get
+        {
+            int next = _current + 1;
+            if (next < _write)
+                return _buffer[next % _bufferSize].State;
+            return CurrentState; // fallback: no interpolation
+        }
+    }
+
+    /// <summary>
+    /// Interpolation alpha (0-1) between CurrentState and NextState.
+    /// 0 = exactly at CurrentState, 1 = exactly at NextState.
+    /// Use: renderPos = lerp(CurrentState.pos, NextState.pos, InterpolationAlpha)
+    /// </summary>
+    public float InterpolationAlpha => FixedDeltaTime > 0 ? _accumulator / FixedDeltaTime : 0f;
 
     /// <summary>
     /// Current simulation tick.
