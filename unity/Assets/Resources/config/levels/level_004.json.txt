@@ -1,0 +1,38 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_004",
+  "name": "Bomb Fusion",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 10,
+  "tileTypesCount": 3,
+  "targetDifficulty": 0.1,
+  "cells": [
+    "Void","Void","Void","Slot","Slot","Slot","Void","Void","Void",
+    "Void","Void","Void","Slot","Slot","Slot","Void","Void","Void",
+    "Void","Void","Void","Slot","Slot","Slot","Void","Void","Void",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Void","Void","Void","Slot","Slot","Slot","Void","Void","Void",
+    "Void","Void","Void","Slot","Slot","Slot","Void","Void","Void",
+    "Void","Void","Void","Slot","Slot","Slot","Void","Void","Void"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","Square5x5","None","None","None","None",
+    "None","None","None","None","HorizontalRocket","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "objectives": [
+    { "targetLayer": "Tile", "elementType": 1, "targetCount": 10 },
+    { "targetLayer": "Tile", "elementType": 2, "targetCount": 10 },
+    { "targetLayer": "Tile", "elementType": 3, "targetCount": 10 }
+  ],
+  "notes": "Bomb Fusion L004: 9x9 cross (3-wide arms), 3 colors, Square5x5 at (4,3) + HorizontalRocket at (4,4) adjacent vertically. Veteran path: swap combo → 3row+3col clears 60%+. Newbie path: tap each separately. Prologue finale, peak collection experience."
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_bomb_special",
+  "name": "Test: TNT & UFO & ColorBomb",
+  "width": 7,
+  "height": 7,
+  "moveLimit": 30,
+  "tileTypesCount": 3,
+  "targetDifficulty": 0.1,
+  "grid": [
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","Square5x5","None","Ufo","None","ColorBomb","None",
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None"
+  ],
+  "objectives": [
+    { "targetLayer": "Tile", "elementType": 1, "targetCount": 8 },
+    { "targetLayer": "Tile", "elementType": 2, "targetCount": 8 },
+    { "targetLayer": "Tile", "elementType": 3, "targetCount": 8 }
+  ],
+  "notes": "Test: TNT at (2,1), UFO at (2,3), ColorBomb at (2,5). Activate each to verify 5x5 blast, homing, color clear."
+}

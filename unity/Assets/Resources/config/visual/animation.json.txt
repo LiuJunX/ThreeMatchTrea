@@ -1,0 +1,9 @@
+{
+  "$schema": "../schemas/animation.schema.json",
+  "swapDuration": 0.15,
+  "fallDuration": 0.3,
+  "matchFlashDuration": 0.1,
+  "destroyDuration": 0.2,
+  "spawnDelay": 0.05,
+  "cascadeDelay": 0.1
+}

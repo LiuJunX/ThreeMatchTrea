@@ -1,0 +1,20 @@
+{
+  "$schema": "../schemas/colors.schema.json",
+  "tileColors": {
+    "Red": "#E63333",
+    "Green": "#33CC4D",
+    "Blue": "#3366E6",
+    "Yellow": "#F2D933",
+    "Purple": "#B34DCC",
+    "Orange": "#F2801A",
+    "Rainbow": "#E6E6E6"
+  },
+  "bombIndicatorColors": {
+    "Horizontal": "#FFFFFFE6",
+    "Vertical": "#FFFFFFE6",
+    "Square5x5": "#FFCC33E6",
+    "Color": "#FFFFFFE6",
+    "Ufo": "#80FF80E6"
+  },
+  "backgroundColor": "#262633"
+}

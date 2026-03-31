@@ -1,0 +1,75 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_pattern_honey_fortress",
+  "name": "Pattern: Honey Fortress (蜂蜜堡垒)",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 22,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.4,
+  "cells": [
+    "Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "covers": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","Honey","Honey","None","None","None",
+    "None","None","Honey","None","None","Honey","None","None",
+    "None","None","None","Honey","Honey","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "coverHealths": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,1,1,0,0,0,
+    0,0,1,0,0,1,0,0,
+    0,0,0,1,1,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "grounds": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","Ice","Ice","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "groundHealths": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,1,1,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Ground", "elementType": 1, "targetCount": 2 },
+    { "targetLayer": "Tile", "elementType": 1, "targetCount": 15 }
+  ],
+  "notes": "蜂蜜堡垒: 6 Honey form a ring (rows 3-5, cols 2-5) protecting 2 Ice in the center. Honey blocks all interaction, only adjacent Match/ColorBomb can break. Bombs are USELESS against Honey adjacency! Player must match NEAR Honey to crack it, then clear inner Ice. Discovery: 'bombs don't work on Honey, I need to match next to it'. Ring shape = each Honey has free neighbors for matching."
+}

@@ -1,0 +1,80 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_016",
+  "name": "Mushroom Cap",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 28,
+  "targetDifficulty": 0.3,
+  "grid": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "cells": [
+    "Void","Void","Void","Spawner","Spawner","Spawner","Void","Void","Void",
+    "Void","Spawner","Spawner","Slot","Slot","Slot","Spawner","Spawner","Void",
+    "Spawner","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Spawner",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Void","Void","Slot","Slot","Slot","Slot","Slot","Void","Void",
+    "Void","Void","Slot","Slot","Slot","Slot","Slot","Void","Void",
+    "Void","Void","Slot","Slot","Slot","Slot","Slot","Void","Void",
+    "Void","Void","Slot","Slot","Slot","Slot","Slot","Void","Void"
+  ],
+  "objectives": [
+    { "targetLayer": "Ground", "elementType": 1, "targetCount": 10 },
+    { "targetLayer": "Tile", "elementType": 3, "targetCount": 9 }
+  ],
+  "grounds": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","Ice","Ice","Ice","Ice","Ice","None","None",
+    "None","None","Ice","Ice","Ice","Ice","Ice","None","None",
+    "None","None","Ice","Ice","Ice","Ice","Ice","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "groundHealths": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,1,1,1,1,1,0,0,
+    0,0,1,1,1,1,1,0,0,
+    0,0,1,1,1,1,1,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "covers": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","Cage","None","None","None","None","None","Cage","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "coverHealths": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,1,0,0,0,0,0,1,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "notes": "Mushroom-shaped board: wide cap (rows 0-4) funneling into narrow stem (rows 5-8, 5 wide). 12 ice blocks fill stem center (3x4). 2 Cages in cap wings. Dual objective: clear 8 ice + collect 12 yellow."
+}

@@ -38,7 +38,6 @@ namespace Match3.Unity.Controllers
         private void Awake()
         {
             Application.runInBackground = true;
-
             _progressService = new PlayerProgressService();
             _progress = _progressService.Load();
             Debug.Log($"[GameFlow] Loaded progress: {_progress.UnlockedLevels.Count} levels unlocked, {_progress.BestStars.Count} with stars");

@@ -1,0 +1,65 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_pattern_color_tension",
+  "name": "Pattern: Color Tension (颜色张力)",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 25,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.4,
+  "cells": [
+    "Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","ColorBox","None","None","None","None","PotionBottle","None",
+    "None","None","None","None","None","None","None","None",
+    "None","ColorBox","None","None","None","None","PotionBottle","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,1,0,0,0,0,4,0,
+    0,0,0,0,0,0,0,0,
+    0,1,0,0,0,0,4,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "obstacleStates": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,1,0,0,0,0,15,0,
+    0,0,0,0,0,0,0,0,
+    0,1,0,0,0,0,15,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Obstacle", "elementType": 4, "targetCount": 2 },
+    { "targetLayer": "Obstacle", "elementType": 11, "targetCount": 2 }
+  ],
+  "notes": "颜色张力: Left side ColorBox(Red, HP1) x2, Right side PotionBottle(all 4 colors, HP4) x2. ColorBox wants COLOR FOCUS (match Red near it). PotionBottle wants COLOR DIVERSITY (match all 4 colors near it). Player must balance focused vs diverse color strategy across the board. Discovery: 'I need Red on the left but ALL colors on the right!' Key tension: both obstacles are color-conditional but with opposite strategies."
+}

@@ -1,0 +1,81 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_method_element_placement",
+  "name": "Element Placement (元素属性决定位置)",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 25,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.4,
+  "cells": [
+    "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Spawner",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",
+    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",
+    "Void",    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",    "Void",
+    "Void",    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",    "Void"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","Safe","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,1,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "grounds": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","Ice", "Ice", "Ice", "None","None","None",
+    "None","None","Ice", "Ice", "Ice", "Ice", "Ice", "None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "groundHealths": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,1,1,1,0,0,0,
+    0,0,1,1,1,1,1,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Obstacle", "elementType": 3, "targetCount": 1 },
+    { "targetLayer": "Ground", "elementType": 1, "targetCount": 6 }
+  ],
+  "notes": "元素属性决定位置测试：盾形棋盘(宽顶→窄底)。Safe(只能被炸弹摧毁)放在(2,4)=宽区中心，周围空间大→容易造4连5连→自然产生炸弹命中Safe。Ice放在底部窄区(rows 6-7)作次要目标。设计原则：元素的'需要什么来清'决定它应该放在'什么环境里'。Safe需要炸弹→放在容易造炸弹的宽区。"
+}

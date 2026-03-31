@@ -1,0 +1,49 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_obstacle_generators",
+  "name": "Test: Cupboard & Mailbox & MagicHat",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 40,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.1,
+  "cells": [
+    "Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Sink","Sink","Sink","Sink","Sink","Sink","Sink","Sink","Sink"
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","Cupboard","None","None","None","None","None","Cupboard","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","Mailbox","None","None","None","None","None","Mailbox","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","MagicHat","None","None","None","None","None","MagicHat","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,2,0,0,0,0,0,2,0,
+    0,0,0,0,0,0,0,0,0,
+    0,1,0,0,0,0,0,1,0,
+    0,0,0,0,0,0,0,0,0,
+    0,1,0,0,0,0,0,1,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Tile", "elementType": 102, "targetCount": 2 },
+    { "targetLayer": "Tile", "elementType": 103, "targetCount": 4 },
+    { "targetLayer": "Tile", "elementType": 104, "targetCount": 2 }
+  ],
+  "notes": "Test: Cupboard(stage2) at row 2 → Plate. Mailbox(indestructible) at row 4 → Envelope. MagicHat at row 6 → Diamond. Sink at bottom row for collection."
+}

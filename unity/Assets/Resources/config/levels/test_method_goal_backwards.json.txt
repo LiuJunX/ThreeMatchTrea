@@ -1,0 +1,59 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_method_goal_backwards",
+  "name": "Goal Backwards (目标倒推)",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 25,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.4,
+  "cells": [
+    "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Spawner",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",
+    "Void",    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",    "Void",
+    "Void",    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",    "Void",
+    "Void",    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",    "Void",
+    "Void",    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",    "Void",
+    "Void",    "Void",    "Void",    "Slot",    "Slot",    "Slot",    "Void",    "Void",    "Void"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","Box", "None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","Bush","Bush","Bush","None","None","None",
+    "None","None","None","None","Bush","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,2,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,1,1,1,0,0,0,
+    0,0,0,0,1,0,0,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Obstacle", "elementType": 2, "targetCount": 4 },
+    { "targetLayer": "Tile", "elementType": 1, "targetCount": 12 }
+  ],
+  "notes": "目标倒推法测试。倒推逻辑：目标=清4Bush → Bush需要被消除 → Bush放在底部漏斗窄区(row6-7) → 漏斗上方有Box守门(row4中心HP2) → 宽顶操作区(row0-2, 9列) → 自然漏斗收窄。棋盘形状=倒漏斗(9→7→5→5→5→3)服务于叙事：宽区操作→瓶颈→目标区。"
+}

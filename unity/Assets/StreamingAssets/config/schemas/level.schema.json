@@ -58,6 +58,51 @@
     "grid": {
       "type": ["array", "null"],
       "description": "Initial tile layout (null = random)"
+    },
+    "spawners": {
+      "type": ["array", "null"],
+      "description": "Per-spawner configurations. Columns not assigned use global default.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Unique spawner identifier"
+          },
+          "columns": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 0 },
+            "minItems": 1,
+            "description": "Column indices this spawner controls (0-based)"
+          },
+          "weights": {
+            "type": ["object", "null"],
+            "description": "Element drop weights. Keys are ElementType names, values are relative weights.",
+            "additionalProperties": { "type": "integer", "minimum": 0 }
+          },
+          "preset": {
+            "type": ["object", "null"],
+            "description": "Fixed element sequence to drop first (highest priority). Each column has independent queue.",
+            "properties": {
+              "sequence": {
+                "type": "array",
+                "items": { "type": "string" },
+                "minItems": 1,
+                "description": "Element types to emit in order"
+              },
+              "cycles": {
+                "type": "integer",
+                "minimum": 0,
+                "default": 1,
+                "description": "Repeat count. 0=infinite, 1=once (default)"
+              }
+            },
+            "required": ["sequence"]
+          }
+        },
+        "required": ["id", "columns"]
+      }
     }
   },
   "required": ["id", "width", "height", "moveLimit", "objectives"]

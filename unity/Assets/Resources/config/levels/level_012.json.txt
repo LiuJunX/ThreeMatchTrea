@@ -1,0 +1,53 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_012",
+  "name": "Bush Garden",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 30,
+  "targetDifficulty": 0.4,
+  "objectives": [
+    { "targetLayer": "Obstacle", "elementType": 2, "targetCount": 6 }
+  ],
+  "cells": [
+    "Void","Void","Spawner","Spawner","Spawner","Spawner","Void","Void",
+    "Void","Spawner","Slot","Slot","Slot","Slot","Spawner","Void",
+    "Spawner","Slot","Slot","Slot","Slot","Slot","Slot","Spawner",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Void","Slot","Slot","Slot","Slot","Slot","Slot","Void",
+    "Void","Void","Slot","Slot","Slot","Slot","Void","Void"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","Bush","Bush","None","None","None",
+    "None","Bush","None","Bush","Bush","None","Bush","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,2,2,0,0,0,
+    0,1,0,2,2,0,1,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "notes": "Mini-story 'Garden': octagon board. 4 Bush (stage 3) form a 2x2 garden plot at center (rows 3-4, cols 3-4). 2 Bush (stage 2) flank as hedges at (1,4) and (6,4). Clear the garden! Octagon shape frames the garden motif."
+}

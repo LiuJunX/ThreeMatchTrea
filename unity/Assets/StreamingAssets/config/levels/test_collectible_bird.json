@@ -1,0 +1,32 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_collectible_bird",
+  "name": "Test: Bird Collectible + Sink",
+  "width": 7,
+  "height": 7,
+  "moveLimit": 25,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.1,
+  "cells": [
+    "Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Sink","Sink","Sink","Sink","Sink","Sink","Sink"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None",
+    "None","None","None","Bird","None","None","None",
+    "None","Bird","None","None","None","Bird","None",
+    "None","None","None","Bird","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None"
+  ],
+  "objectives": [
+    { "targetLayer": "Tile", "elementType": 100, "targetCount": 4 }
+  ],
+  "notes": "Test: 4 Birds placed at rows 1-3. Sink at bottom row 6. Birds must fall through board to Sink to be collected."
+}

@@ -661,9 +661,9 @@ namespace Match3.Unity.Pools
         {
             if (_litShader != null) return _litShader;
 
-            _litShader = Shader.Find("Universal Render Pipeline/Lit");
-            if (_litShader == null)
-                _litShader = Shader.Find("Standard");
+            _litShader = Shader.Find("Universal Render Pipeline/Lit")
+                         ?? Shader.Find("Standard")
+                         ?? Shader.Find("Universal Render Pipeline/Unlit");
 
             return _litShader;
         }

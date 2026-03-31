@@ -1,0 +1,49 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_obstacle_safe_stone_owl",
+  "name": "Test: Safe & Stone & Owl (Power-up Only)",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 40,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.1,
+  "grid": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","Square5x5","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","ColorBomb","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","Safe","None","None","None","Safe","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","Stone","None","None","None","Stone","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","Owl","None","Stone","None","Owl","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,2,0,0,0,2,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,2,0,0,0,2,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,1,0,3,0,1,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Obstacle", "elementType": 3, "targetCount": 2 },
+    { "targetLayer": "Obstacle", "elementType": 10, "targetCount": 3 },
+    { "targetLayer": "Obstacle", "elementType": 9, "targetCount": 2 }
+  ],
+  "notes": "Test: Safe HP2, Stone HP2/HP3, Owl HP1. All power-up only. Pre-placed TNT at (3,4) and ColorBomb at (5,4) to help. Generate bombs via matching."
+}

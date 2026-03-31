@@ -1,0 +1,103 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_pattern_star_flower_v2",
+  "name": "Star Flower v2",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 26,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.3,
+  "cells": [
+    "Void",    "Void",    "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Void",    "Void",
+    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",
+    "Void",    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",    "Void"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","Box", "None","None","None","None",
+    "None","None","None","Bush","None","Bush","None","None","None",
+    "None","None","Box", "None","None","None","Box", "None","None",
+    "None","None","None","Bush","None","Bush","None","None","None",
+    "None","None","None","None","Box", "None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,1,0,0,0,0,
+    0,0,0,1,0,1,0,0,0,
+    0,0,1,0,0,0,1,0,0,
+    0,0,0,1,0,1,0,0,0,
+    0,0,0,0,1,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "grounds": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","Ice", "Ice", "None","Ice", "Ice", "None","None",
+    "None","Ice", "Ice", "None","None","None","Ice", "Ice", "None",
+    "None","Ice", "None","None","None","None","None","Ice", "None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","Ice", "None","None","None","None","None","Ice", "None",
+    "None","Ice", "Ice", "None","None","None","Ice", "Ice", "None",
+    "None","None","Ice", "Ice", "None","Ice", "Ice", "None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "groundHealths": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,1,1,0,1,1,0,0,
+    0,1,1,0,0,0,1,1,0,
+    0,1,0,0,0,0,0,1,0,
+    0,0,0,0,0,0,0,0,0,
+    0,1,0,0,0,0,0,1,0,
+    0,1,1,0,0,0,1,1,0,
+    0,0,1,1,0,1,1,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "covers": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","Frost","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "Frost","None","None","None","None","None","None","None","Frost",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","Frost","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "coverHealths": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,1,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    1,0,0,0,0,0,0,0,1,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,1,0,0,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Obstacle", "elementType": 1, "targetCount": 4 },
+    { "targetLayer": "Ground", "elementType": 1, "targetCount": 14 }
+  ],
+  "notes": "星花 v2：八角轮廓。中心双环花朵图案 — 内环：Box(十字4) + Bush(对角4) 交替形成8瓣花蕊，外环：20 Ice 形成大菱形花瓣环。4 Frost 在板的东西南北极点作为点缀。三层视觉叠加（Ice底+Obstacle中+Frost点缀），元素密度大幅提升。"
+}

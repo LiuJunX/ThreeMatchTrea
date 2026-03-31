@@ -1,0 +1,36 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_cover_bubble_honey_frost",
+  "name": "Test: Bubble & Honey & Frost",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 30,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.1,
+  "covers": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","Bubble","Bubble","None","Bubble","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","Honey","Honey","None","Honey","Honey","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","Frost","Frost","None","Frost","Frost","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "coverHealths": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,1,1,0,1,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,1,1,0,2,2,0,
+    0,0,0,0,0,0,0,0,
+    0,0,1,1,0,1,1,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Cover", "elementType": 3, "targetCount": 3 },
+    { "targetLayer": "Cover", "elementType": 4, "targetCount": 4 },
+    { "targetLayer": "Cover", "elementType": 5, "targetCount": 4 }
+  ],
+  "notes": "Test: Bubble at row 2. Honey HP1/HP2 at row 4. Frost at row 6. Verify Bubble moves with tile, Honey blocks, Frost allows match."
+}

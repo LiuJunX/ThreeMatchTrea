@@ -1,0 +1,33 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_cover_cage_chain",
+  "name": "Test: Cage & Chain",
+  "width": 7,
+  "height": 7,
+  "moveLimit": 30,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.1,
+  "covers": [
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","Cage","Cage","None","Cage","Cage","None",
+    "None","None","None","None","None","None","None",
+    "None","Chain","None","Chain","None","Chain","None",
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None"
+  ],
+  "coverHealths": [
+    0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,
+    0,1,1,0,2,2,0,
+    0,0,0,0,0,0,0,
+    0,1,0,2,0,3,0,
+    0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Cover", "elementType": 1, "targetCount": 4 },
+    { "targetLayer": "Cover", "elementType": 2, "targetCount": 3 }
+  ],
+  "notes": "Test: Cage HP1 at (2,1-2), Cage HP2 at (2,4-5). Chain HP1 at (4,1), HP2 at (4,3), HP3 at (4,5). Verify damage and break."
+}

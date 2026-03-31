@@ -1,0 +1,36 @@
+# cc-connect configuration
+# Docs: https://github.com/chenhg5/cc-connect
+
+language = "zh"
+
+[log]
+level = "info"
+
+[display]
+tool_max_len = 1
+
+[speech]
+enabled = true
+provider = "qwen"
+language = "zh"
+
+[speech.qwen]
+api_key = "sk-cc2db9a2e5bd4313bdde7fc778a9275c"
+model = "qwen3-asr-flash"
+
+[[projects]]
+name = "match3explore"
+
+[projects.agent]
+type = "claudecode"
+
+[projects.agent.options]
+work_dir = "D:/GitWorkSpace/LiuJun/Match3Explore"
+mode = "bypassPermissions"
+
+[[projects.platforms]]
+type = "feishu"
+
+[projects.platforms.options]
+app_id = "cli_a94cb96f19f91bc3"
+app_secret = "0rH7OVCdziSB7fM8pNPpXcKrkSOyn5eB"

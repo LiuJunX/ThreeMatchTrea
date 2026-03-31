@@ -1,0 +1,45 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_moving_special",
+  "name": "Test: Oyster & Flowerpot",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 35,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.1,
+  "cells": [
+    "Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Sink","Sink","Sink","Sink","Sink","Sink","Sink","Sink"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","Oyster","None","None","Oyster","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","Flowerpot","None","None","Flowerpot","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "tileStages": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,3,0,0,3,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,2,0,0,2,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Tile", "elementType": 213, "targetCount": 2 },
+    { "targetLayer": "Tile", "elementType": 214, "targetCount": 2 }
+  ],
+  "notes": "Test: Oyster(3HP) at (2,2) and (2,5) — releases Pearl on death. Flowerpot(2HP) at (4,2) and (4,5) — spreads 3x3 Leaves on death. Sink at bottom for Pearl collection."
+}

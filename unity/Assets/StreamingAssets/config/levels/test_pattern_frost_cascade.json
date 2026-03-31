@@ -1,0 +1,55 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_pattern_frost_cascade",
+  "name": "Pattern: Frost Cascade (霜降连锁)",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 18,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.3,
+  "cells": [
+    "Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "covers": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","Frost","Frost","Frost","Frost","Frost","Frost","None",
+    "None","Frost","Frost","Frost","Frost","Frost","Frost","None",
+    "None","Frost","Frost","Frost","Frost","Frost","Frost","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "coverHealths": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Tile", "elementType": 1, "targetCount": 20 },
+    { "targetLayer": "Tile", "elementType": 2, "targetCount": 20 }
+  ],
+  "notes": "霜降连锁: 18 Frost covers in a 6x3 block (rows 2-4, cols 1-6). Frost allows matching (unlike Cage) AND takes adjacency damage (unlike Chain). One match inside Frost field → Frost adjacency breaks neighboring Frosts → newly freed tiles can match → cascade of Frost breaking. Discovery: 'Frost field melts like dominoes from one match!' Contrast with Chain: Chain won't cascade-break. Tile collection targets to ensure board activity."
+}

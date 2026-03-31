@@ -1,0 +1,65 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_pattern_colorbox_flow",
+  "name": "Pattern: Color Flow (颜色锁定)",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 20,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.3,
+  "cells": [
+    "Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","ColorBox","ColorBox","None","None","ColorBox","ColorBox","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,1,1,0,0,1,1,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "obstacleStates": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,1,1,0,0,2,2,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Obstacle", "elementType": 4, "targetCount": 4 },
+    { "targetLayer": "Tile", "elementType": 1, "targetCount": 10 }
+  ],
+  "notes": "颜色锁定: 4 ColorBoxes at bottom row 6 — 2 Red(state=1) left, 2 Green(state=2) right. All HP1. Placed low on board = tiles flow down naturally. 4 colors, 8x8. Discovery: clear non-target colors above ColorBox → new tiles cascade down → target color naturally appears adjacent. Dual objective: clear 4 ColorBox + collect 10 Red (aligned with Red ColorBox)."
+}

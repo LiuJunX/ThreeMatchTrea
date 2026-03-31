@@ -1,0 +1,36 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_moving_basic",
+  "name": "Test: RoyalEgg & Vase & PorcelainPiggy",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 30,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.1,
+  "grid": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","RoyalEgg","None","None","Vase","None","None",
+    "None","None","None","Square5x5","None","None","None","None",
+    "None","None","None","None","PorcelainPiggy","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "tileStages": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,1,0,0,2,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,1,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Tile", "elementType": 210, "targetCount": 1 },
+    { "targetLayer": "Tile", "elementType": 211, "targetCount": 1 },
+    { "targetLayer": "Tile", "elementType": 212, "targetCount": 1 }
+  ],
+  "notes": "Test: RoyalEgg(1HP) at (2,2), Vase(2HP) at (2,5), PorcelainPiggy(1HP power-up only) at (4,4). Pre-placed TNT at (3,3) to help with Piggy."
+}

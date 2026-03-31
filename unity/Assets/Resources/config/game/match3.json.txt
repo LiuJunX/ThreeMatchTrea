@@ -1,0 +1,22 @@
+{
+  "$schema": "../schemas/match3.schema.json",
+  "defaultWidth": 8,
+  "defaultHeight": 8,
+  "tileTypesCount": 6,
+  "physics": {
+    "swapSpeed": 15.0,
+    "initialFallSpeed": 12.0,
+    "gravityAcceleration": 20.0,
+    "maxFallSpeed": 25.0
+  },
+  "poolSizes": {
+    "tiles": {
+      "initial": 64,
+      "max": 128
+    },
+    "projectiles": {
+      "initial": 5,
+      "max": 20
+    }
+  }
+}

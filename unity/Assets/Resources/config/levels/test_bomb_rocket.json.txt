@@ -1,0 +1,24 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_bomb_rocket",
+  "name": "Test: H-Rocket & V-Rocket",
+  "width": 7,
+  "height": 7,
+  "moveLimit": 30,
+  "tileTypesCount": 3,
+  "targetDifficulty": 0.1,
+  "grid": [
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","HorizontalRocket","None","None","None","VerticalRocket","None",
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None"
+  ],
+  "objectives": [
+    { "targetLayer": "Tile", "elementType": 1, "targetCount": 10 },
+    { "targetLayer": "Tile", "elementType": 2, "targetCount": 10 }
+  ],
+  "notes": "Test: H-Rocket at (3,1), V-Rocket at (3,5). Activate to verify row/column clear."
+}

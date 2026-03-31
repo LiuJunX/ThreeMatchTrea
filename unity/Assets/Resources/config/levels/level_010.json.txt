@@ -1,0 +1,38 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "level_010",
+  "name": "Box & Grass",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 25,
+  "targetDifficulty": 0.5,
+  "objectives": [
+    { "targetLayer": "Obstacle", "elementType": 1, "targetCount": 8 },
+    { "targetLayer": "Ground", "elementType": 2, "targetCount": 12 }
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","Box", "None","None","None","Box", "None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","Box", "None","None","None","None","None","Box", "None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","Box", "None","None","None","None","None","Box", "None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","Box", "None","None","None","Box", "None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": "AAAAAAAAAAAAAAACAAAAAgAAAAAAAAAAAAAAAAEAAAAAAAEAAAAAAAAAAAAAAAEAAAAAAAEAAAAAAAAAAAAAAAACAAAAAgAAAAAAAAAAAAAA",
+  "grounds": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","Grass","Grass","Grass","None","None","None",
+    "None","None","Grass","Grass","Grass","Grass","Grass","None","None",
+    "None","None","Grass","Grass","Grass","Grass","Grass","None","None",
+    "None","None","Grass","Grass","Grass","Grass","Grass","None","None",
+    "None","None","None","Grass","Grass","Grass","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "groundHealths": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAAAAAAABAQEBAQAAAAABAgICAQAAAAABAQEBAQAAAAAAAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "notes": "Mixed mechanics: 8 Boxes (corners HP=2, sides HP=1) guard a Grass diamond (outer HP=1, center HP=2). Clear both to win."
+}

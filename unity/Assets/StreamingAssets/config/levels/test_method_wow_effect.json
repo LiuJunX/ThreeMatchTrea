@@ -1,0 +1,55 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_method_wow_effect",
+  "name": "Wow Effect (Wow情绪型)",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 15,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.3,
+  "cells": [
+    "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Spawner",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",
+    "Void",    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",    "Void"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","Square5x5","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","Box", "Box", "Box", "Box", "None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,1,1,1,1,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Tile", "elementType": 1, "targetCount": 20 },
+    { "targetLayer": "Tile", "elementType": 2, "targetCount": 20 }
+  ],
+  "notes": "Wow情绪型测试：预置Square5x5炸弹在(3,3)，row2有4个Box(HP1)保护层。玩家清除Box→暴露炸弹→激活引发大范围爆炸=Wow时刻。底部角裁切。目标：收集20红+20蓝，炸弹爆炸大量清除加速完成。设计关键：延迟满足→情绪高峰。"
+}

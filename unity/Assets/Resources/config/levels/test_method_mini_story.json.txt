@@ -1,0 +1,81 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_method_mini_story",
+  "name": "Mini Story (每关是小故事)",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 24,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.4,
+  "cells": [
+    "Void",    "Void",    "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Void",    "Void",
+    "Void",    "Spawner", "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Spawner", "Void",
+    "Spawner", "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Spawner",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",
+    "Void",    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",    "Void"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","Box", "Box", "Box", "Box", "Box", "None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,1,1,1,1,1,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "grounds": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","Ice", "Ice", "Ice", "None","None","None",
+    "None","None","Ice", "Ice", "Ice", "Ice", "Ice", "None","None",
+    "None","None","None","Ice", "Ice", "Ice", "None","None","None",
+    "None","None","None","None","Ice", "None","None","None","None"
+  ],
+  "groundHealths": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,1,1,1,0,0,0,
+    0,0,1,1,2,1,1,0,0,
+    0,0,0,1,2,1,0,0,0,
+    0,0,0,0,1,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Obstacle", "elementType": 1, "targetCount": 5 },
+    { "targetLayer": "Ground", "elementType": 1, "targetCount": 8 }
+  ],
+  "notes": "小故事法测试：'发现宝藏'叙事。上半区(row0-3)=操作空间（探索区），row4=5个Box（锁），下半区(row5-8)=Ice菱形（宝藏）。三幕结构：探索→开锁→揭宝。八角形棋盘(4角裁切)。HP梯度：外Ice HP1，中心Ice HP2。"
+}

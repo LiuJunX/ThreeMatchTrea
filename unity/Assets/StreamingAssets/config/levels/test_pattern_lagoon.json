@@ -1,0 +1,103 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_pattern_lagoon_v2",
+  "name": "Lagoon v2",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 24,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.3,
+  "cells": [
+    "Void",    "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Void",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Void",    "Void",    "Void",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Void",    "Void",    "Void",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",
+    "Void",    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",    "Void"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "covers": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","Frost","Frost","Frost","Frost","Frost","None","None",
+    "None","None","Frost","None","None","None","Frost","None","None",
+    "None","None","Frost","None","None","None","Frost","None","None",
+    "None","None","Frost","Frost","Frost","Frost","Frost","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "coverHealths": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,1,1,1,1,1,0,0,
+    0,0,1,0,0,0,1,0,0,
+    0,0,1,0,0,0,1,0,0,
+    0,0,1,1,1,1,1,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "grounds": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","Ice", "Ice", "Ice", "Ice", "Ice", "Ice", "Ice", "None",
+    "None","None","Ice", "Ice", "Ice", "Ice", "Ice", "None","None",
+    "None","None","None","Ice", "Ice", "Ice", "None","None","None"
+  ],
+  "groundHealths": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,1,1,1,1,1,1,1,0,
+    0,0,1,1,2,1,1,0,0,
+    0,0,0,1,2,1,0,0,0
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None","None",
+    "Box", "None","None","None","None","None","None","None","Box",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,0,
+    1,0,0,0,0,0,0,0,1,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Ground", "elementType": 1, "targetCount": 12 },
+    { "targetLayer": "Tile", "elementType": 1, "targetCount": 15 }
+  ],
+  "notes": "泻湖 v2：中心 3x3 岛(Void) + 四角削出圆润轮廓 + 底部额外削角。Frost 14 格宽环紧贴岛屿（比 v1 多 4 格，视觉更厚实）。底部三角形 Ice 区 15 格（row6 全宽7 + row7 宽5 + row8 宽3），HP 渐变（外1内2）形成浅→深沙滩。上方两角 Box 如灯塔。三层视觉：Frost 珊瑚环(中) + Ice 沙滩(下) + Void 岛(中心焦点)。"
+}

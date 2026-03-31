@@ -1,0 +1,294 @@
+{
+  "$schema": "schemas/progression_blueprint.schema.json",
+  "phases": [
+    // ════════════════════════════════════════════════
+    // Phase 1: Tutorial — 基础匹配，建立信心
+    // ════════════════════════════════════════════════
+    {
+      "name": "Tutorial",
+      "startLevel": 1,
+      "endLevel": 10,
+
+      "minBoardWidth": 7,  "maxBoardWidth": 8,
+      "minBoardHeight": 7, "maxBoardHeight": 8,
+      "shapes": ["rectangle"],
+
+      "minColors": 4, "maxColors": 5,
+
+      // 无障碍/cover/ground，纯色块匹配
+      "obstacles": [],
+      "covers": [],
+      "grounds": [],
+      "collectibles": [],
+      "movingObstacles": [],
+
+      "maxObjectives": 1,
+      "objectiveLayers": ["Tile"],
+
+      "minDifficulty": 0.0, "maxDifficulty": 0.2,
+      "minWinRate": 0.85, "maxWinRate": 0.98,
+      "minMoves": 15, "maxMoves": 25,
+
+      "easyRatio": 0.3,
+      "hardRatio": 0.0,
+      "bossEveryN": 10
+    },
+
+    // ════════════════════════════════════════════════
+    // Phase 2: Early Game — 引入基础 Ground + Cover
+    // ════════════════════════════════════════════════
+    {
+      "name": "EarlyGame",
+      "startLevel": 11,
+      "endLevel": 30,
+
+      "minBoardWidth": 7,  "maxBoardWidth": 9,
+      "minBoardHeight": 7, "maxBoardHeight": 9,
+      "shapes": ["rectangle", "cross"],
+
+      "minColors": 4, "maxColors": 5,
+
+      "obstacles": [],
+      "covers": [
+        { "type": "Cage", "maxHealth": 1, "maxCount": 12 }
+      ],
+      "grounds": [
+        { "type": "Ice", "maxHealth": 1, "maxCount": 15 }
+      ],
+      "collectibles": [],
+      "movingObstacles": [],
+
+      "maxObjectives": 2,
+      "objectiveLayers": ["Tile", "Ground", "Cover"],
+
+      "minDifficulty": 0.1, "maxDifficulty": 0.35,
+      "minWinRate": 0.75, "maxWinRate": 0.92,
+      "minMoves": 18, "maxMoves": 28,
+
+      "easyRatio": 0.15,
+      "hardRatio": 0.1,
+      "bossEveryN": 10
+    },
+
+    // ════════════════════════════════════════════════
+    // Phase 3: Obstacle Introduction — 首批障碍物登场
+    // ════════════════════════════════════════════════
+    {
+      "name": "ObstacleIntro",
+      "startLevel": 31,
+      "endLevel": 55,
+
+      "minBoardWidth": 8,  "maxBoardWidth": 9,
+      "minBoardHeight": 8, "maxBoardHeight": 9,
+      "shapes": ["rectangle", "cross", "diamond"],
+
+      "minColors": 5, "maxColors": 6,
+
+      "obstacles": [
+        { "type": "Box",  "maxStage": 2, "maxCount": 10 },
+        { "type": "Bush", "maxStage": 2, "maxCount": 6 }
+      ],
+      "covers": [
+        { "type": "Chain", "maxHealth": 1, "maxCount": 12 }
+      ],
+      "grounds": [
+        { "type": "Ice",   "maxHealth": 2, "maxCount": 20 },
+        { "type": "Grass", "maxHealth": 1, "maxCount": 15 }
+      ],
+      "collectibles": [
+        { "type": "Bird", "maxCount": 5 }
+      ],
+      "movingObstacles": [],
+
+      "maxObjectives": 2,
+      "objectiveLayers": ["Tile", "Ground", "Cover", "Obstacle"],
+
+      "minDifficulty": 0.2, "maxDifficulty": 0.5,
+      "minWinRate": 0.65, "maxWinRate": 0.88,
+      "minMoves": 20, "maxMoves": 32,
+
+      "easyRatio": 0.12,
+      "hardRatio": 0.16,
+      "bossEveryN": 10
+    },
+
+    // ════════════════════════════════════════════════
+    // Phase 4: Mid Game — 机制丰富化
+    // ════════════════════════════════════════════════
+    {
+      "name": "MidGame",
+      "startLevel": 56,
+      "endLevel": 90,
+
+      "minBoardWidth": 8,  "maxBoardWidth": 9,
+      "minBoardHeight": 8, "maxBoardHeight": 9,
+      "shapes": ["rectangle", "cross", "diamond", "L-shape"],
+
+      "minColors": 5, "maxColors": 6,
+
+      "obstacles": [
+        { "type": "Box",      "maxStage": 3, "maxCount": 12 },
+        { "type": "Bush",     "maxStage": 3, "maxCount": 8 },
+        { "type": "Safe",     "maxStage": 2, "maxCount": 6 },
+        { "type": "ColorBox", "maxStage": 1, "maxCount": 6 },
+        { "type": "Cupboard", "maxStage": 2, "maxCount": 4 }
+      ],
+      "covers": [
+        { "type": "Cage",   "maxHealth": 2, "maxCount": 15 },
+        { "type": "Chain",  "maxHealth": 2, "maxCount": 12 },
+        { "type": "Bubble", "maxHealth": 1, "maxCount": 8 },
+        { "type": "Honey",  "maxHealth": 1, "maxCount": 8 }
+      ],
+      "grounds": [
+        { "type": "Ice",   "maxHealth": 3, "maxCount": 25 },
+        { "type": "Grass", "maxHealth": 2, "maxCount": 20 }
+      ],
+      "collectibles": [
+        { "type": "Bird",  "maxCount": 6 },
+        { "type": "Plate", "maxCount": 4 }
+      ],
+      "movingObstacles": [
+        { "type": "RoyalEgg", "maxStage": 1, "maxCount": 4 },
+        { "type": "Vase",     "maxStage": 2, "maxCount": 3 }
+      ],
+
+      "maxObjectives": 2,
+      "objectiveLayers": ["Tile", "Ground", "Cover", "Obstacle"],
+
+      "minDifficulty": 0.3, "maxDifficulty": 0.6,
+      "minWinRate": 0.60, "maxWinRate": 0.82,
+      "minMoves": 22, "maxMoves": 35,
+
+      "easyRatio": 0.1,
+      "hardRatio": 0.2,
+      "bossEveryN": 10
+    },
+
+    // ════════════════════════════════════════════════
+    // Phase 5: Advanced — 复杂机制 + 三目标
+    // ════════════════════════════════════════════════
+    {
+      "name": "Advanced",
+      "startLevel": 91,
+      "endLevel": 140,
+
+      "minBoardWidth": 8,  "maxBoardWidth": 10,
+      "minBoardHeight": 8, "maxBoardHeight": 10,
+      "shapes": ["rectangle", "cross", "diamond", "L-shape", "hourglass"],
+
+      "minColors": 5, "maxColors": 6,
+
+      "obstacles": [
+        { "type": "Box",        "maxStage": 4, "maxCount": 15 },
+        { "type": "Bush",       "maxStage": 4, "maxCount": 10 },
+        { "type": "Safe",       "maxStage": 3, "maxCount": 8 },
+        { "type": "ColorBox",   "maxStage": 1, "maxCount": 8 },
+        { "type": "MagicHat",   "maxStage": 1, "maxCount": 3 },
+        { "type": "Cupboard",   "maxStage": 2, "maxCount": 6 },
+        { "type": "Mailbox",    "maxStage": 1, "maxCount": 3 },
+        { "type": "Stone",      "maxStage": 2, "maxCount": 6 }
+      ],
+      "covers": [
+        { "type": "Cage",   "maxHealth": 2, "maxCount": 18 },
+        { "type": "Chain",  "maxHealth": 3, "maxCount": 15 },
+        { "type": "Bubble", "maxHealth": 1, "maxCount": 10 },
+        { "type": "Honey",  "maxHealth": 2, "maxCount": 10 },
+        { "type": "Frost",  "maxHealth": 1, "maxCount": 10 }
+      ],
+      "grounds": [
+        { "type": "Ice",    "maxHealth": 3, "maxCount": 30 },
+        { "type": "Grass",  "maxHealth": 2, "maxCount": 25 },
+        { "type": "Leaves", "maxHealth": 2, "maxCount": 20 }
+      ],
+      "collectibles": [
+        { "type": "Bird",     "maxCount": 8 },
+        { "type": "Plate",    "maxCount": 5 },
+        { "type": "Diamond",  "maxCount": 4 },
+        { "type": "Envelope", "maxCount": 4 }
+      ],
+      "movingObstacles": [
+        { "type": "RoyalEgg",      "maxStage": 1, "maxCount": 5 },
+        { "type": "Vase",          "maxStage": 2, "maxCount": 5 },
+        { "type": "Oyster",        "maxStage": 3, "maxCount": 3 },
+        { "type": "Flowerpot",     "maxStage": 2, "maxCount": 3 }
+      ],
+
+      "maxObjectives": 3,
+      "objectiveLayers": ["Tile", "Ground", "Cover", "Obstacle"],
+
+      "minDifficulty": 0.4, "maxDifficulty": 0.75,
+      "minWinRate": 0.50, "maxWinRate": 0.78,
+      "minMoves": 25, "maxMoves": 40,
+
+      "easyRatio": 0.08,
+      "hardRatio": 0.22,
+      "bossEveryN": 10
+    },
+
+    // ════════════════════════════════════════════════
+    // Phase 6: Expert — 全元素解锁，高难度组合
+    // ════════════════════════════════════════════════
+    {
+      "name": "Expert",
+      "startLevel": 141,
+      "endLevel": 200,
+
+      "minBoardWidth": 8,  "maxBoardWidth": 10,
+      "minBoardHeight": 8, "maxBoardHeight": 10,
+      "shapes": ["rectangle", "cross", "diamond", "L-shape", "hourglass", "compartment"],
+
+      "minColors": 5, "maxColors": 7,
+
+      "obstacles": [
+        { "type": "Box",          "maxStage": 4, "maxCount": 18 },
+        { "type": "Bush",         "maxStage": 5, "maxCount": 12 },
+        { "type": "Safe",         "maxStage": 5, "maxCount": 10 },
+        { "type": "ColorBox",     "maxStage": 1, "maxCount": 10 },
+        { "type": "MagicHat",     "maxStage": 1, "maxCount": 4 },
+        { "type": "Curtain",      "maxStage": 1, "maxCount": 10 },
+        { "type": "Cupboard",     "maxStage": 2, "maxCount": 8 },
+        { "type": "Mailbox",      "maxStage": 1, "maxCount": 4 },
+        { "type": "Owl",          "maxStage": 1, "maxCount": 6 },
+        { "type": "Stone",        "maxStage": 3, "maxCount": 8 },
+        { "type": "PotionBottle", "maxStage": 4, "maxCount": 4 }
+      ],
+      "covers": [
+        { "type": "Cage",   "maxHealth": 2, "maxCount": 20 },
+        { "type": "Chain",  "maxHealth": 3, "maxCount": 18 },
+        { "type": "Bubble", "maxHealth": 1, "maxCount": 12 },
+        { "type": "Honey",  "maxHealth": 2, "maxCount": 12 },
+        { "type": "Frost",  "maxHealth": 1, "maxCount": 12 }
+      ],
+      "grounds": [
+        { "type": "Ice",    "maxHealth": 3, "maxCount": 35 },
+        { "type": "Grass",  "maxHealth": 2, "maxCount": 30 },
+        { "type": "Leaves", "maxHealth": 2, "maxCount": 25 }
+      ],
+      "collectibles": [
+        { "type": "Bird",     "maxCount": 10 },
+        { "type": "Pearl",    "maxCount": 5 },
+        { "type": "Plate",    "maxCount": 6 },
+        { "type": "Envelope", "maxCount": 5 },
+        { "type": "Diamond",  "maxCount": 5 }
+      ],
+      "movingObstacles": [
+        { "type": "RoyalEgg",       "maxStage": 1, "maxCount": 6 },
+        { "type": "Vase",           "maxStage": 2, "maxCount": 6 },
+        { "type": "PorcelainPiggy", "maxStage": 1, "maxCount": 4 },
+        { "type": "Oyster",         "maxStage": 3, "maxCount": 4 },
+        { "type": "Flowerpot",      "maxStage": 2, "maxCount": 4 }
+      ],
+
+      "maxObjectives": 3,
+      "objectiveLayers": ["Tile", "Ground", "Cover", "Obstacle"],
+
+      "minDifficulty": 0.5, "maxDifficulty": 0.9,
+      "minWinRate": 0.40, "maxWinRate": 0.72,
+      "minMoves": 25, "maxMoves": 45,
+
+      "easyRatio": 0.08,
+      "hardRatio": 0.25,
+      "bossEveryN": 10
+    }
+  ]
+}

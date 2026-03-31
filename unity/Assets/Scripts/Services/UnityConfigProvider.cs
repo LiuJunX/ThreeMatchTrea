@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using Match3.Core.Config;
 using UnityEngine;
 
@@ -7,17 +8,14 @@ namespace Match3.Unity.Services
 {
     /// <summary>
     /// Unity-specific configuration provider.
-    /// In Editor: loads from project root config/ directory.
-    /// In Build: loads from StreamingAssets/config/ directory.
+    /// In Editor: loads from project root config/ directory via File.IO.
+    /// In Build: loads from Resources/config via Resources.Load.
     /// </summary>
     public static class UnityConfigProvider
     {
         private static FileConfigProvider _instance;
         private static bool _initialized;
 
-        /// <summary>
-        /// Get the configuration provider instance.
-        /// </summary>
         public static IConfigProvider Instance
         {
             get
@@ -27,29 +25,18 @@ namespace Match3.Unity.Services
             }
         }
 
-        /// <summary>
-        /// Initialize the config provider.
-        /// Call this early in game startup.
-        /// </summary>
         public static void Initialize()
         {
             if (_initialized) return;
 
-            var configRoot = GetConfigRoot();
-            Debug.Log($"[Config] Loading from: {configRoot}");
-
-            _instance = new FileConfigProvider(
-                configRoot,
-                readFile: ReadFile,
-                listFiles: ListFiles
-            );
-
+#if UNITY_EDITOR
+            InitializeFromFileSystem();
+#else
+            InitializeFromResources();
+#endif
             _initialized = true;
         }
 
-        /// <summary>
-        /// Clear cached configurations and reload.
-        /// </summary>
         public static void Reload()
         {
             _instance?.ClearCache();
@@ -58,56 +45,99 @@ namespace Match3.Unity.Services
         private static void EnsureInitialized()
         {
             if (!_initialized)
-            {
                 Initialize();
-            }
         }
 
-        private static string GetConfigRoot()
+        private static void InitializeFromFileSystem()
         {
-#if UNITY_EDITOR
-            // In Editor: use project root config/
             var projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, "../.."));
-            var configPath = Path.Combine(projectRoot, "config");
-            if (Directory.Exists(configPath))
+            var configRoot = Path.Combine(projectRoot, "config");
+
+            if (!Directory.Exists(configRoot))
             {
-                return configPath;
+                Debug.LogError($"[Config] Config not found: {configRoot}");
+                return;
             }
-            Debug.LogWarning($"[Config] Project config not found at {configPath}, falling back to StreamingAssets");
-#endif
-            // In Build or fallback: use StreamingAssets
-            return Path.Combine(Application.streamingAssetsPath, "config");
+
+            Debug.Log($"[Config] Loading from filesystem: {configRoot}");
+
+            _instance = new FileConfigProvider(
+                configRoot,
+                readFile: path =>
+                {
+                    var p = path.Replace('/', Path.DirectorySeparatorChar);
+                    return File.ReadAllText(p);
+                },
+                listFiles: path =>
+                {
+                    var p = path.Replace('/', Path.DirectorySeparatorChar);
+                    if (!Directory.Exists(p)) return Array.Empty<string>();
+                    return Directory.GetFiles(p)
+                        .Select(Path.GetFileName)
+                        .ToArray();
+                }
+            );
         }
 
-        private static string ReadFile(string path)
+        private static void InitializeFromResources()
         {
-            // Normalize path separators
-            var normalizedPath = path.Replace('/', Path.DirectorySeparatorChar);
+            Debug.Log("[Config] Loading from Resources");
 
-            if (!File.Exists(normalizedPath))
+            // Load manifest to know which files exist
+            var manifestAsset = Resources.Load<TextAsset>("config/manifest");
+            if (manifestAsset == null)
             {
-                throw new FileNotFoundException($"Config file not found: {normalizedPath}");
+                Debug.LogError("[Config] Resources/config/manifest.txt not found! Run 'Match3 > Sync Config to Resources' before building.");
+                return;
             }
 
-            return File.ReadAllText(normalizedPath);
-        }
+            var manifestLines = manifestAsset.text
+                .Split('\n')
+                .Select(l => l.Trim())
+                .Where(l => !string.IsNullOrEmpty(l))
+                .ToArray();
 
-        private static string[] ListFiles(string path)
-        {
-            var normalizedPath = path.Replace('/', Path.DirectorySeparatorChar);
+            Debug.Log($"[Config] Manifest: {manifestLines.Length} files");
 
-            if (!Directory.Exists(normalizedPath))
-            {
-                return Array.Empty<string>();
-            }
+            _instance = new FileConfigProvider(
+                "config",
+                readFile: path =>
+                {
+                    // path is like "config/game/match3.json"
+                    // Resources.Load needs "config/game/match3.json" without extension
+                    var resourcePath = path.Replace('\\', '/');
+                    if (resourcePath.EndsWith(".json"))
+                        resourcePath = resourcePath + ".txt";
 
-            var files = Directory.GetFiles(normalizedPath);
-            var result = new string[files.Length];
-            for (int i = 0; i < files.Length; i++)
-            {
-                result[i] = Path.GetFileName(files[i]);
-            }
-            return result;
+                    // Remove .txt extension for Resources.Load
+                    var loadPath = resourcePath;
+                    if (loadPath.EndsWith(".txt"))
+                        loadPath = loadPath.Substring(0, loadPath.Length - 4);
+
+                    var asset = Resources.Load<TextAsset>(loadPath);
+                    if (asset == null)
+                        throw new FileNotFoundException($"Config resource not found: {loadPath}");
+
+                    return asset.text;
+                },
+                listFiles: path =>
+                {
+                    // path is like "config/levels"
+                    var prefix = path.Replace('\\', '/');
+                    if (!prefix.EndsWith("/")) prefix += "/";
+
+                    return manifestLines
+                        .Where(f => f.StartsWith(prefix.Substring("config/".Length)))
+                        .Where(f =>
+                        {
+                            // Only direct children, not nested
+                            var rest = f.Substring(prefix.Substring("config/".Length).Length);
+                            return !rest.Contains("/");
+                        })
+                        .Select(f => f.Substring(f.LastIndexOf('/') + 1))
+                        .ToArray();
+                }
+            );
         }
     }
 }

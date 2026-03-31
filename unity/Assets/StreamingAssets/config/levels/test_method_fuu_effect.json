@@ -1,0 +1,54 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_method_fuu_effect",
+  "name": "Fuu Effect (Fuu挫折型)",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 16,
+  "tileTypesCount": 5,
+  "targetDifficulty": 0.6,
+  "cells": [
+    "Void",    "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Void",
+    "Spawner", "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Spawner",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "grounds": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","Ice", "None","None","None",
+    "None","None","None","Ice", "Ice", "Ice", "None","None",
+    "None","None","Ice", "Ice", "Ice", "Ice", "Ice", "None",
+    "None","None","None","Ice", "Ice", "Ice", "None","None",
+    "None","None","None","None","Ice", "None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "groundHealths": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,1,0,0,0,
+    0,0,0,1,1,1,0,0,
+    0,0,1,1,2,1,1,0,
+    0,0,0,1,2,1,0,0,
+    0,0,0,0,1,0,0,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Ground", "elementType": 1, "targetCount": 11 }
+  ],
+  "notes": "Fuu挫折型测试：紧张步数(16) + 5色(匹配更难) + Ice菱形centered(rows 2-6)共13个Ice。中心3个HP2，外围HP1。目标11(差2个余量=紧margin)。设计意图：~40-50%胜率，差一点点失败→'再来一次！'的Fuu情绪驱动重试。六角形棋盘。"
+}

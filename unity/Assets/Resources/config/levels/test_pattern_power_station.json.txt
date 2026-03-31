@@ -1,0 +1,59 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_pattern_power_station",
+  "name": "Pattern: Power Station (发电站)",
+  "width": 9,
+  "height": 9,
+  "moveLimit": 30,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.3,
+  "cells": [
+    "Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner","Spawner",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot","Slot",
+    "Sink","Sink","Sink","Sink","Sink","Sink","Sink","Sink","Sink"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","MagicHat","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","MagicHat","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,1,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,1,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Tile", "elementType": 104, "targetCount": 1 },
+    { "targetLayer": "Tile", "elementType": 1, "targetCount": 15 }
+  ],
+  "notes": "发电站 v2: 2 MagicHats at center col 4, rows 3 and 5. Each has 4 free adjacent cells for maximum trigger efficiency (~every 3-4 moves produces Diamond). Target: collect 2 Diamonds (via Sink) + 20 Red tiles. 4 colors, 9x9, lots of space. Simplified from v1: no Safe (pure MagicHat mechanic validation)."
+}

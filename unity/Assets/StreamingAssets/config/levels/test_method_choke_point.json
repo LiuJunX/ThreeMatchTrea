@@ -1,0 +1,75 @@
+{
+  "$schema": "../schemas/level.schema.json",
+  "id": "test_method_choke_point",
+  "name": "Choke Point (瓶颈法)",
+  "width": 8,
+  "height": 8,
+  "moveLimit": 22,
+  "tileTypesCount": 4,
+  "targetDifficulty": 0.3,
+  "cells": [
+    "Void",    "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Spawner", "Void",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",
+    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",
+    "Void",    "Void",    "Slot",    "Slot",    "Slot",    "Slot",    "Void",    "Void"
+  ],
+  "grid": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "obstacles": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","Box", "Box", "Box", "Box", "None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None"
+  ],
+  "obstacleStages": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,1,1,1,1,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0
+  ],
+  "grounds": [
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","None","None","None","None","None","None","None",
+    "None","Ice", "Ice", "Ice", "Ice", "Ice", "Ice", "None",
+    "None","None","Ice", "Ice", "Ice", "Ice", "None","None",
+    "None","None","None","Ice", "Ice", "None","None","None"
+  ],
+  "groundHealths": [
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,1,1,1,1,1,1,0,
+    0,0,1,2,2,1,0,0,
+    0,0,0,2,2,0,0,0
+  ],
+  "objectives": [
+    { "targetLayer": "Ground", "elementType": 1, "targetCount": 10 },
+    { "targetLayer": "Obstacle", "elementType": 1, "targetCount": 4 }
+  ],
+  "notes": "瓶颈法测试：Box 横排(row3)封住上下通道 = 瓶颈。Ice 在底部倒三角(row5-7)。策略叙事：上区操作→打通 Box 瓶颈→cascade 冲入底部 Ice 区。倒推设计：目标是清 Ice → 需要打通通道 → Box 横排制造瓶颈 → 上方留空间造炸弹。"
+}
