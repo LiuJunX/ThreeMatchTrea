@@ -23,6 +23,9 @@ namespace Match3.Unity.Editor
         [MenuItem("Match3/Test/Click Level 3")]
         public static void ClickLevel3() => ClickButton("Level_level_003");
 
+        [MenuItem("Match3/Test/Click Level 10")]
+        public static void ClickLevel10() => ClickButton("Level_level_010");
+
         [MenuItem("Match3/Test/Click Restart")]
         public static void ClickRestart() => ClickButton("RestartButton");
 
