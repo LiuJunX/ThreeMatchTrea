@@ -21,6 +21,8 @@ namespace Match3.Unity.Pools
         private static readonly Dictionary<ElementType, Material[]> _bombMaterialCache = new();
         private static readonly Dictionary<ObstacleType, Mesh> _obstacleMeshCache = new();
         private static readonly Dictionary<ObstacleType, Material[]> _obstacleMaterialCache = new();
+        private static readonly Dictionary<CoverType, Mesh> _coverMeshCache = new();
+        private static readonly Dictionary<CoverType, Material[]> _coverMaterialCache = new();
         private static readonly Dictionary<GroundType, Mesh> _groundMeshCache = new();
         private static readonly Dictionary<GroundType, Material[]> _groundMaterialCache = new();
         private static Shader _litShader;
@@ -225,6 +227,69 @@ namespace Match3.Unity.Pools
 
             Debug.LogWarning($"[MeshFactory] {typeName} mesh not found, using fallback");
             _obstacleMeshCache[type] = GetFallbackMesh();
+        }
+
+        /// <summary>
+        /// Get the mesh for a cover type (Cage, Chain, etc.).
+        /// Loads from Resources/Art/Gems/Models/{CoverName}, falls back to fallback mesh.
+        /// </summary>
+        public static Mesh GetCoverMesh(CoverType type)
+        {
+            if (type == CoverType.None) return GetFallbackMesh();
+
+            if (_coverMeshCache.TryGetValue(type, out var cached))
+                return cached;
+
+            LoadCoverModel(type);
+            return _coverMeshCache.TryGetValue(type, out cached) ? cached : GetFallbackMesh();
+        }
+
+        /// <summary>
+        /// Get the cached materials array for a cover type.
+        /// Returns null if the model has no embedded materials.
+        /// </summary>
+        public static Material[] GetCoverMaterials(CoverType type)
+        {
+            if (type == CoverType.None) return null;
+
+            if (!_coverMaterialCache.ContainsKey(type))
+                LoadCoverModel(type);
+
+            return _coverMaterialCache.TryGetValue(type, out var mats) ? mats : null;
+        }
+
+        private static void LoadCoverModel(CoverType type)
+        {
+            if (_coverMeshCache.ContainsKey(type)) return;
+
+            var typeName = type switch
+            {
+                CoverType.Cage => "Cage",
+                CoverType.Chain => "Chain",
+                CoverType.Bubble => "Bubble",
+                CoverType.Honey => "Honey",
+                CoverType.Frost => "Frost",
+                _ => type.ToString()
+            };
+            var model = ResourceService.Loader.Load<GameObject>($"Art/Gems/Models/{typeName}");
+            if (model != null)
+            {
+                var meshFilter = model.GetComponentInChildren<MeshFilter>();
+                if (meshFilter != null)
+                {
+                    _coverMeshCache[type] = meshFilter.sharedMesh;
+
+                    var renderer = model.GetComponentInChildren<MeshRenderer>();
+                    if (renderer != null && renderer.sharedMaterials.Length > 0)
+                        _coverMaterialCache[type] = CloneMaterialsWithTileLit(renderer.sharedMaterials);
+
+                    Debug.Log($"[MeshFactory] Loaded {typeName} cover mesh from Resources ({renderer?.sharedMaterials.Length ?? 0} materials)");
+                    return;
+                }
+            }
+
+            Debug.LogWarning($"[MeshFactory] {typeName} cover mesh not found, using fallback");
+            _coverMeshCache[type] = GetFallbackMesh();
         }
 
         /// <summary>
@@ -542,6 +607,19 @@ namespace Match3.Unity.Pools
             _bombMaterialCache.Clear();
 
             _obstacleMeshCache.Clear();
+
+            _coverMeshCache.Clear();
+            foreach (var mats in _coverMaterialCache.Values)
+            {
+                if (mats == null) continue;
+                foreach (var mat in mats)
+                {
+                    if (mat != null)
+                        Object.Destroy(mat);
+                }
+            }
+            _coverMaterialCache.Clear();
+
             foreach (var mats in _obstacleMaterialCache.Values)
             {
                 if (mats == null) continue;

@@ -9,6 +9,7 @@ namespace Match3.Unity.Views.Covers
     {
         public static ICoverPresenter Create(CoverType type) => type switch
         {
+            CoverType.Cage => new CagePresenter(),
             CoverType.Frost => new FrostPresenter(),
             _ => new FrostPresenter() // Fallback until other presenters are implemented
         };
