@@ -38,6 +38,11 @@ namespace Match3.Unity.Controllers
         private void Awake()
         {
             Application.runInBackground = true;
+
+            // Target 120fps on high-refresh-rate devices
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = 120;
+
             _progressService = new PlayerProgressService();
             _progress = _progressService.Load();
             Debug.Log($"[GameFlow] Loaded progress: {_progress.UnlockedLevels.Count} levels unlocked, {_progress.BestStars.Count} with stars");
