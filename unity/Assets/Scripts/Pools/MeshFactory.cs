@@ -654,6 +654,13 @@ namespace Match3.Unity.Pools
         {
             if (_tileLitShader != null) return _tileLitShader;
             _tileLitShader = Shader.Find("Match3/TileLit");
+            // Fallback: load from Resources reference material (survives shader stripping)
+            if (_tileLitShader == null)
+            {
+                var refMat = Resources.Load<Material>("Shaders/TileLitReference");
+                if (refMat != null)
+                    _tileLitShader = refMat.shader;
+            }
             return _tileLitShader;
         }
 

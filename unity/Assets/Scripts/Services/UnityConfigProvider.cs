@@ -122,18 +122,16 @@ namespace Match3.Unity.Services
                 },
                 listFiles: path =>
                 {
-                    // path is like "config/levels"
-                    var prefix = path.Replace('\\', '/');
-                    if (!prefix.EndsWith("/")) prefix += "/";
+                    // path is like "config/levels" — manifest entries are like "levels/level_001.json"
+                    var dir = path.Replace('\\', '/');
+                    // Strip "config/" prefix to match manifest format
+                    var configPrefix = "config/";
+                    if (dir.StartsWith(configPrefix))
+                        dir = dir.Substring(configPrefix.Length);
+                    if (!dir.EndsWith("/")) dir += "/";
 
                     return manifestLines
-                        .Where(f => f.StartsWith(prefix.Substring("config/".Length)))
-                        .Where(f =>
-                        {
-                            // Only direct children, not nested
-                            var rest = f.Substring(prefix.Substring("config/".Length).Length);
-                            return !rest.Contains("/");
-                        })
+                        .Where(f => f.StartsWith(dir) && !f.Substring(dir.Length).Contains("/"))
                         .Select(f => f.Substring(f.LastIndexOf('/') + 1))
                         .ToArray();
                 }

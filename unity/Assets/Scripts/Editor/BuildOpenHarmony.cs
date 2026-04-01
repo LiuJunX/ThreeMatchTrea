@@ -151,7 +151,6 @@ namespace Match3.Unity.Editor
             var shaderNames = new[]
             {
                 "Universal Render Pipeline/Unlit",
-                "Universal Render Pipeline/Lit",
                 "Universal Render Pipeline/Particles/Unlit",
                 "Unlit/Transparent",
                 "Unlit/Color",

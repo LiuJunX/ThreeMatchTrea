@@ -38,6 +38,7 @@ Shader "Match3/TileLit"
             #pragma vertex LitVert
             #pragma fragment LitFrag
 
+            #pragma multi_compile_instancing
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
             #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
@@ -58,9 +59,14 @@ Shader "Match3/TileLit"
                 half4 _GlowColor;
                 half  _GlowWidth;
                 half  _GlowPower;
-                float _ClipYMin;
-                float _ClipYMax;
             CBUFFER_END
+
+            // Per-instance clip bounds — must be outside UnityPerMaterial CBUFFER
+            // so MaterialPropertyBlock overrides work on all mobile GPUs.
+            UNITY_INSTANCING_BUFFER_START(Props)
+                UNITY_DEFINE_INSTANCED_PROP(float, _ClipYMin)
+                UNITY_DEFINE_INSTANCED_PROP(float, _ClipYMax)
+            UNITY_INSTANCING_BUFFER_END(Props)
 
             struct Attributes
             {
@@ -100,8 +106,8 @@ Shader "Match3/TileLit"
                 UNITY_SETUP_INSTANCE_ID(input);
 
                 // Y-axis clipping for hole portal effect
-                clip(input.positionWS.y - _ClipYMin);
-                clip(_ClipYMax - input.positionWS.y);
+                clip(input.positionWS.y - UNITY_ACCESS_INSTANCED_PROP(Props, _ClipYMin));
+                clip(UNITY_ACCESS_INSTANCED_PROP(Props, _ClipYMax) - input.positionWS.y);
 
                 // Surface data
                 InputData inputData = (InputData)0;
@@ -154,6 +160,7 @@ Shader "Match3/TileLit"
             #pragma vertex ShadowVert
             #pragma fragment ShadowFrag
 
+            #pragma multi_compile_instancing
             #pragma multi_compile_vertex _ _CASTING_PUNCTUAL_LIGHT_SHADOW
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
@@ -170,9 +177,12 @@ Shader "Match3/TileLit"
                 half4 _GlowColor;
                 half  _GlowWidth;
                 half  _GlowPower;
-                float _ClipYMin;
-                float _ClipYMax;
             CBUFFER_END
+
+            UNITY_INSTANCING_BUFFER_START(Props)
+                UNITY_DEFINE_INSTANCED_PROP(float, _ClipYMin)
+                UNITY_DEFINE_INSTANCED_PROP(float, _ClipYMax)
+            UNITY_INSTANCING_BUFFER_END(Props)
 
             float3 _LightDirection;
             float3 _LightPosition;
@@ -181,17 +191,22 @@ Shader "Match3/TileLit"
             {
                 float4 positionOS : POSITION;
                 float3 normalOS   : NORMAL;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
                 float3 positionWS : TEXCOORD0;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             Varyings ShadowVert(Attributes input)
             {
                 Varyings o;
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_TRANSFER_INSTANCE_ID(input, o);
+
                 float3 posWS   = TransformObjectToWorld(input.positionOS.xyz);
                 float3 normalWS = TransformObjectToWorldNormal(input.normalOS);
 
@@ -215,8 +230,9 @@ Shader "Match3/TileLit"
 
             half4 ShadowFrag(Varyings input) : SV_Target
             {
-                clip(input.positionWS.y - _ClipYMin);
-                clip(_ClipYMax - input.positionWS.y);
+                UNITY_SETUP_INSTANCE_ID(input);
+                clip(input.positionWS.y - UNITY_ACCESS_INSTANCED_PROP(Props, _ClipYMin));
+                clip(UNITY_ACCESS_INSTANCED_PROP(Props, _ClipYMax) - input.positionWS.y);
                 return 0;
             }
             ENDHLSL
@@ -235,6 +251,8 @@ Shader "Match3/TileLit"
             #pragma vertex DepthVert
             #pragma fragment DepthFrag
 
+            #pragma multi_compile_instancing
+
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
@@ -248,24 +266,32 @@ Shader "Match3/TileLit"
                 half4 _GlowColor;
                 half  _GlowWidth;
                 half  _GlowPower;
-                float _ClipYMin;
-                float _ClipYMax;
             CBUFFER_END
+
+            UNITY_INSTANCING_BUFFER_START(Props)
+                UNITY_DEFINE_INSTANCED_PROP(float, _ClipYMin)
+                UNITY_DEFINE_INSTANCED_PROP(float, _ClipYMax)
+            UNITY_INSTANCING_BUFFER_END(Props)
 
             struct Attributes
             {
                 float4 positionOS : POSITION;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
                 float3 positionWS : TEXCOORD0;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             Varyings DepthVert(Attributes input)
             {
                 Varyings o;
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_TRANSFER_INSTANCE_ID(input, o);
+
                 o.positionWS = TransformObjectToWorld(input.positionOS.xyz);
                 o.positionCS = TransformWorldToHClip(o.positionWS);
                 return o;
@@ -273,8 +299,9 @@ Shader "Match3/TileLit"
 
             half4 DepthFrag(Varyings input) : SV_Target
             {
-                clip(input.positionWS.y - _ClipYMin);
-                clip(_ClipYMax - input.positionWS.y);
+                UNITY_SETUP_INSTANCE_ID(input);
+                clip(input.positionWS.y - UNITY_ACCESS_INSTANCED_PROP(Props, _ClipYMin));
+                clip(UNITY_ACCESS_INSTANCED_PROP(Props, _ClipYMax) - input.positionWS.y);
                 return 0;
             }
             ENDHLSL
@@ -292,6 +319,8 @@ Shader "Match3/TileLit"
             #pragma vertex DepthNormalsVert
             #pragma fragment DepthNormalsFrag
 
+            #pragma multi_compile_instancing
+
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
@@ -305,14 +334,18 @@ Shader "Match3/TileLit"
                 half4 _GlowColor;
                 half  _GlowWidth;
                 half  _GlowPower;
-                float _ClipYMin;
-                float _ClipYMax;
             CBUFFER_END
+
+            UNITY_INSTANCING_BUFFER_START(Props)
+                UNITY_DEFINE_INSTANCED_PROP(float, _ClipYMin)
+                UNITY_DEFINE_INSTANCED_PROP(float, _ClipYMax)
+            UNITY_INSTANCING_BUFFER_END(Props)
 
             struct Attributes
             {
                 float4 positionOS : POSITION;
                 float3 normalOS   : NORMAL;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct Varyings
@@ -320,11 +353,15 @@ Shader "Match3/TileLit"
                 float4 positionCS : SV_POSITION;
                 float3 positionWS : TEXCOORD0;
                 half3  normalWS   : TEXCOORD1;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             Varyings DepthNormalsVert(Attributes input)
             {
                 Varyings o;
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_TRANSFER_INSTANCE_ID(input, o);
+
                 o.positionWS = TransformObjectToWorld(input.positionOS.xyz);
                 o.positionCS = TransformWorldToHClip(o.positionWS);
                 o.normalWS   = TransformObjectToWorldNormal(input.normalOS);
@@ -333,8 +370,9 @@ Shader "Match3/TileLit"
 
             half4 DepthNormalsFrag(Varyings input) : SV_Target
             {
-                clip(input.positionWS.y - _ClipYMin);
-                clip(_ClipYMax - input.positionWS.y);
+                UNITY_SETUP_INSTANCE_ID(input);
+                clip(input.positionWS.y - UNITY_ACCESS_INSTANCED_PROP(Props, _ClipYMin));
+                clip(UNITY_ACCESS_INSTANCED_PROP(Props, _ClipYMax) - input.positionWS.y);
                 half3 nWS = NormalizeNormalPerPixel(input.normalWS);
                 float2 octNormal = PackNormalOctQuadEncode(nWS);
                 return half4(octNormal, 0, 0);
@@ -357,6 +395,8 @@ Shader "Match3/TileLit"
             #pragma vertex GlowVert
             #pragma fragment GlowFrag
 
+            #pragma multi_compile_instancing
+
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
@@ -370,14 +410,18 @@ Shader "Match3/TileLit"
                 half4 _GlowColor;
                 half  _GlowWidth;
                 half  _GlowPower;
-                float _ClipYMin;
-                float _ClipYMax;
             CBUFFER_END
+
+            UNITY_INSTANCING_BUFFER_START(Props)
+                UNITY_DEFINE_INSTANCED_PROP(float, _ClipYMin)
+                UNITY_DEFINE_INSTANCED_PROP(float, _ClipYMax)
+            UNITY_INSTANCING_BUFFER_END(Props)
 
             struct Attributes
             {
                 float4 positionOS : POSITION;
                 float3 normalOS   : NORMAL;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct Varyings
@@ -385,11 +429,15 @@ Shader "Match3/TileLit"
                 float4 positionCS : SV_POSITION;
                 float3 positionWS : TEXCOORD0;
                 half3  normalWS   : TEXCOORD1;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             Varyings GlowVert(Attributes input)
             {
                 Varyings o;
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_TRANSFER_INSTANCE_ID(input, o);
+
                 float3 expandedOS = input.positionOS.xyz + input.normalOS * _GlowWidth;
                 o.positionWS = TransformObjectToWorld(expandedOS);
                 o.positionCS = TransformWorldToHClip(o.positionWS);
@@ -399,8 +447,9 @@ Shader "Match3/TileLit"
 
             half4 GlowFrag(Varyings input) : SV_Target
             {
-                clip(input.positionWS.y - _ClipYMin);
-                clip(_ClipYMax - input.positionWS.y);
+                UNITY_SETUP_INSTANCE_ID(input);
+                clip(input.positionWS.y - UNITY_ACCESS_INSTANCED_PROP(Props, _ClipYMin));
+                clip(UNITY_ACCESS_INSTANCED_PROP(Props, _ClipYMax) - input.positionWS.y);
 
                 half3 normalWS = normalize(input.normalWS);
                 half3 viewDir = GetWorldSpaceNormalizeViewDir(input.positionWS);

@@ -48,6 +48,18 @@ publish/
 
 # Build output
 builds/
+Il2CppBackup/
+*.hap
+unity/Match3Explore_BurstDebugInformation_DoNotShip/
+unity/pram-shadow-files
+
+# Signing keys (keep .cer and .p7b, exclude private keys)
+signing/*.p12
+signing/*.csr
+unity/user.p12
+unity/user.p12.csr
+unity/debug.cer
+unity/debug.p7b
 
 # Runtime screenshots
 unity/Screenshots/
