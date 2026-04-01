@@ -292,6 +292,8 @@ public struct GameState
     public readonly bool CanMatch(int x, int y)
     {
         var idx = y * Width + x;
+        var cell = Cells[idx];
+        if (cell == CellKind.Spawner || cell == CellKind.Sink) return false;
         var cover = CoverLayer[idx];
         if (CoverRules.BlocksMatch(cover.Type)) return false;
         if (CellLockOps.IsLocked(CellLocks[idx], CellLockType.Matching)) return false;

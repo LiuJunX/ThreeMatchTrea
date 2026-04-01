@@ -403,6 +403,18 @@ public class CoverSystemTests
     }
 
     [Theory]
+    [InlineData(CellKind.Slot, true)]       // Slot allows match
+    [InlineData(CellKind.Spawner, false)]   // Spawner blocks match
+    [InlineData(CellKind.Sink, false)]      // Sink blocks match
+    public void CanMatch_WithCellKind_ReturnsExpected(CellKind cellKind, bool expected)
+    {
+        var state = CreateState();
+        state.SetCell(3, 3, cellKind);
+
+        Assert.Equal(expected, state.CanMatch(3, 3));
+    }
+
+    [Theory]
     [InlineData(CoverType.Cage, false)]    // Cage blocks movement
     [InlineData(CoverType.Chain, false)]   // Chain blocks movement
     [InlineData(CoverType.Bubble, true)]   // Bubble allows movement (dynamic)
