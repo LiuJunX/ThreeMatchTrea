@@ -57,7 +57,9 @@ namespace Match3.Unity.Views
         private Vector2 _hintNudgeDir;
         private float _hintTime;
         private bool _wasAnimated;
+        private bool _wasFalling;
         private float _bounceTime = -1f;
+        private float _stretchBlend;
         private float _highlightTime;
         private float _spinAngle;
 
@@ -159,9 +161,16 @@ namespace Match3.Unity.Views
             TileId = id;
             ApplyAppearance(type);
 
-            // 棋子在棋盘上投射并接收阴影
-            _meshRenderer.shadowCastingMode = ShadowCastingMode.On;
-            _meshRenderer.receiveShadows = true;
+            // Set per-instance base color via PropertyBlock (shared material + GPU Instancing)
+            var color = MeshFactory.GetCeramicColor(type);
+            _meshRenderer.GetPropertyBlock(_propBlock);
+            _propBlock.SetColor(ColorProp, color);
+            _propBlock.SetColor(ColorPropFallback, color);
+            _meshRenderer.SetPropertyBlock(_propBlock);
+
+            // No realtime shadows — blob shadows provide grounding
+            _meshRenderer.shadowCastingMode = ShadowCastingMode.Off;
+            _meshRenderer.receiveShadows = false;
         }
 
         private void ApplyAppearance(ElementType type)
@@ -179,12 +188,6 @@ namespace Match3.Unity.Views
         public void UpdateFromVisual(TileVisual visual, float cellSize, Vector2 origin, int height, float dt)
         {
             var isAnimated = visual.IsBeingAnimated;
-
-            // Detect landing: was animated, now idle
-            if (_wasAnimated && !isAnimated)
-            {
-                _bounceTime = 0f;
-            }
             _wasAnimated = isAnimated;
 
             // Position (with Y-flip)
@@ -228,15 +231,45 @@ namespace Match3.Unity.Views
                 effectPos.z = Mathf.Sin(_highlightTime * 5f) * 0.04f * cellSize;
             }
 
-            // Landing bounce
+            // Falling stretch + landing bounce (smooth transitions)
             {
-                var (newBounce, squash) = TileAnimationHelper.CalculateBounceSquash(_bounceTime, dt);
+                bool isFalling = visual.IsFalling;
+
+                // Detect landing: was falling, now stopped
+                if (_wasFalling && !isFalling)
+                    _bounceTime = 0f;
+                _wasFalling = isFalling;
+
+                // Stretch: ramp up only when falling, ramp down otherwise
+                float stretchTarget = isFalling ? 1f : 0f;
+                float stretchSpeed = isFalling ? 16f : 12f;
+                _stretchBlend = Mathf.MoveTowards(_stretchBlend, stretchTarget, stretchSpeed * dt);
+
+                // New fall starts during bounce → cancel bounce, stretch takes over
+                if (isFalling && _bounceTime >= 0f)
+                    _bounceTime = -1f;
+
+                // Landing bounce
+                var (newBounce, squash, hop) = TileAnimationHelper.CalculateBounceSquash(_bounceTime, dt);
                 _bounceTime = newBounce;
-                if (squash != 0f)
+
+                // Y hop: small upward pop on landing (world Y-up)
+                if (hop != 0f)
+                    effectPos.y += hop * cellSize;
+
+                // Blend: stretch and bounce
+                float stretch = _stretchBlend * 0.02f;
+                float deform = squash - stretch;
+                if (deform != 0f)
                 {
-                    fxScale.x *= 1f + squash;
-                    fxScale.z *= 1f + squash;
-                    fxScale.y *= 1f - squash;
+                    fxScale.x *= 1f + deform;
+                    fxScale.z *= 1f + deform;
+                    fxScale.y *= 1f - deform;
+
+                    // Squash 时下移 Y，让底边（着地面）固定，顶部被压缩
+                    // Scale 中心在 tile 中点，缩短 Y 后上下各缩半，补偿下移即可锚定底边
+                    if (squash > 0f)
+                        effectPos.y -= squash * scaleFactor * 0.5f;
                 }
             }
 
@@ -259,10 +292,7 @@ namespace Match3.Unity.Views
 
                 // Emission pulse for hint
                 _meshRenderer.GetPropertyBlock(_propBlock);
-                var mat = _meshRenderer.sharedMaterial;
-                var baseColor = mat.HasProperty(ColorProp)
-                    ? mat.GetColor(ColorProp)
-                    : mat.GetColor(ColorPropFallback);
+                var baseColor = _propBlock.GetColor(ColorProp);
                 var emFreq = _hintType == HintAnimationType.SwapNudge ? 1f : 2f;
                 var emissionStrength = Mathf.Lerp(0.1f, 0.15f, (Mathf.Sin(_hintTime * emFreq * Mathf.PI * 2f) + 1f) * 0.5f);
                 _propBlock.SetColor(EmissionColorProp, baseColor * emissionStrength);
@@ -306,22 +336,15 @@ namespace Match3.Unity.Views
             // Update blob shadow
             UpdateBlobShadow(worldPos, cellSize, _pose.Scale, _pose.Position.z);
 
-            // Alpha via MaterialPropertyBlock
+            // Alpha via MaterialPropertyBlock (read base color from PropertyBlock, not sharedMaterial)
             if (visual.Alpha < 1f)
             {
                 _meshRenderer.GetPropertyBlock(_propBlock);
-                var mat = _meshRenderer.sharedMaterial;
-                var color = mat.HasProperty(ColorProp)
-                    ? mat.GetColor(ColorProp)
-                    : mat.GetColor(ColorPropFallback);
+                var color = _propBlock.GetColor(ColorProp);
                 color.a = visual.Alpha;
                 _propBlock.SetColor(ColorProp, color);
                 _propBlock.SetColor(ColorPropFallback, color);
                 _meshRenderer.SetPropertyBlock(_propBlock);
-            }
-            else if (!_isHinted && !_isHighlighted && !_clipActive && !_isOutlined)
-            {
-                _meshRenderer.SetPropertyBlock(null);
             }
 
             // Visibility
@@ -361,10 +384,7 @@ namespace Match3.Unity.Views
             _meshRenderer.GetPropertyBlock(_propBlock);
             if (outlined)
             {
-                var mat = _meshRenderer.sharedMaterial;
-                var baseColor = mat.HasProperty(ColorProp)
-                    ? mat.GetColor(ColorProp)
-                    : mat.GetColor(ColorPropFallback);
+                var baseColor = _propBlock.GetColor(ColorProp);
                 _propBlock.SetColor(FresnelColorProp, baseColor * 0.5f);
                 _propBlock.SetFloat(FresnelPowerProp, 2.5f);
             }
@@ -387,22 +407,15 @@ namespace Match3.Unity.Views
             _meshRenderer.GetPropertyBlock(_propBlock);
             if (highlighted)
             {
-                var mat = _meshRenderer.sharedMaterial;
-                var baseColor = mat.HasProperty(ColorProp)
-                    ? mat.GetColor(ColorProp)
-                    : mat.GetColor(ColorPropFallback);
+                var baseColor = _propBlock.GetColor(ColorProp);
                 _propBlock.SetColor(EmissionColorProp, baseColor * 0.3f);
                 _propBlock.SetColor(FresnelColorProp, baseColor * 0.6f);
                 _propBlock.SetFloat(FresnelPowerProp, 3f);
-                _propBlock.SetColor(GlowColorProp, baseColor * 0.4f);
-                _propBlock.SetFloat(GlowWidthProp, 0.08f);
             }
             else
             {
                 _propBlock.SetColor(EmissionColorProp, Color.black);
                 _propBlock.SetColor(FresnelColorProp, Color.black);
-                _propBlock.SetColor(GlowColorProp, Color.black);
-                _propBlock.SetFloat(GlowWidthProp, 0f);
                 _highlightTime = 0f;
                 _spinAngle = 0f;
                 // Transform resets via PoseStack on next Compose
@@ -522,8 +535,11 @@ namespace Match3.Unity.Views
                 _ufoTakeoffBlend = 0f;
                 if (_shadowTransform != null)
                     _shadowTransform.gameObject.SetActive(false);
-                // Clear lingering alpha/emission from normal rendering
-                _meshRenderer.SetPropertyBlock(null);
+                // Reset emission/fresnel but keep base color (needed for GPU Instancing)
+                _meshRenderer.GetPropertyBlock(_propBlock);
+                _propBlock.SetColor(EmissionColorProp, Color.black);
+                _propBlock.SetColor(FresnelColorProp, Color.black);
+                _meshRenderer.SetPropertyBlock(_propBlock);
             }
 
             // --- Retarget blend: snapshot current arc when retarget flag is set ---
@@ -683,7 +699,9 @@ namespace Match3.Unity.Views
             _hintType = HintAnimationType.None;
             _hintTime = 0f;
             _wasAnimated = false;
+            _wasFalling = false;
             _bounceTime = -1f;
+            _stretchBlend = 0f;
             _highlightTime = 0f;
             _clipActive = false;
             _isOutlined = false;
@@ -703,7 +721,15 @@ namespace Match3.Unity.Views
             _pose.Compose();
             if (_shadowTransform != null)
                 _shadowTransform.gameObject.SetActive(true);
-            _meshRenderer.SetPropertyBlock(null);
+            // Reset emission/fresnel/alpha but keep base color (needed for GPU Instancing)
+            _meshRenderer.GetPropertyBlock(_propBlock);
+            _propBlock.SetColor(EmissionColorProp, Color.black);
+            _propBlock.SetColor(FresnelColorProp, Color.black);
+            var resetColor = _propBlock.GetColor(ColorProp);
+            resetColor.a = 1f;
+            _propBlock.SetColor(ColorProp, resetColor);
+            _propBlock.SetColor(ColorPropFallback, resetColor);
+            _meshRenderer.SetPropertyBlock(_propBlock);
         }
 
         public void OnDespawn()

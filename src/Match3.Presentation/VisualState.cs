@@ -23,33 +23,34 @@ public sealed class VisualState : IVisualState
 
     /// <summary>
     /// All tile visuals indexed by tile ID.
+    /// Returns concrete Dictionary to avoid IReadOnlyDictionary foreach enumerator boxing.
     /// </summary>
-    public IReadOnlyDictionary<int, TileVisual> Tiles => _tiles;
+    public Dictionary<int, TileVisual> Tiles => _tiles;
 
     /// <summary>
     /// All projectile visuals indexed by projectile ID.
     /// </summary>
-    public IReadOnlyDictionary<int, ProjectileVisual> Projectiles => _projectiles;
+    public Dictionary<int, ProjectileVisual> Projectiles => _projectiles;
 
     /// <summary>
     /// All obstacle visuals indexed by grid position.
     /// </summary>
-    public IReadOnlyDictionary<Position, ObstacleVisual> Obstacles => _obstacles;
+    public Dictionary<Position, ObstacleVisual> Obstacles => _obstacles;
 
     /// <summary>
     /// All ground visuals indexed by grid position.
     /// </summary>
-    public IReadOnlyDictionary<Position, GroundVisual> Grounds => _grounds;
+    public Dictionary<Position, GroundVisual> Grounds => _grounds;
 
     /// <summary>
     /// All cover visuals indexed by grid position.
     /// </summary>
-    public IReadOnlyDictionary<Position, CoverVisual> Covers => _covers;
+    public Dictionary<Position, CoverVisual> Covers => _covers;
 
     /// <summary>
     /// All active visual effects.
     /// </summary>
-    public IReadOnlyList<VisualEffect> Effects => _effects;
+    public List<VisualEffect> Effects => _effects;
 
     /// <summary>
     /// Grid width.
@@ -140,19 +141,20 @@ public sealed class VisualState : IVisualState
     /// </summary>
     public void SyncFallingTilesFromGameState(in GameState state)
     {
-        SyncFallingTilesFromGameState(in state, in state, 0f);
+        SyncFallingTilesFromGameState(in state, in state, 0f, 0f);
     }
 
     /// <summary>
-    /// Sync falling tile positions with interpolation between two game states.
-    /// Call this each frame to update positions of tiles being moved by physics.
-    /// This handles gravity-based movement that doesn't go through the event system.
-    /// Only syncs tiles with IsFalling=true to avoid overwriting animation positions.
+    /// Sync falling tile positions with cubic Hermite interpolation between two game states.
+    /// Uses tile velocity at both endpoints to produce smooth curves that match
+    /// the physics acceleration, eliminating the "faceted" look of linear lerp
+    /// on high-refresh-rate displays.
     /// </summary>
     /// <param name="currentState">The last consumed tick state</param>
     /// <param name="nextState">The pre-computed next tick state (from ring buffer)</param>
     /// <param name="alpha">Interpolation factor 0-1 between current and next</param>
-    public void SyncFallingTilesFromGameState(in GameState currentState, in GameState nextState, float alpha)
+    /// <param name="fixedDt">Fixed time step (seconds per tick), used to scale velocity into tangents</param>
+    public void SyncFallingTilesFromGameState(in GameState currentState, in GameState nextState, float alpha, float fixedDt = 0f)
     {
         _aliveTileIds.Clear();
 
@@ -177,10 +179,26 @@ public sealed class VisualState : IVisualState
                     var nextTile = FindTileInNextState(in nextState, tile.Id, x, y);
                     if (nextTile.Type != ElementType.None)
                     {
-                        // Tile exists in both states — interpolate
+                        // Cubic Hermite interpolation using velocity at both endpoints.
+                        // Produces smooth parabolic curves for accelerating motion instead
+                        // of the piecewise-linear "staircase" that linear lerp creates.
+                        // When fixedDt=0 or velocities are zero, degrades to linear lerp.
+                        float t = alpha;
+                        float t2 = t * t;
+                        float t3 = t2 * t;
+                        float h00 = 2f * t3 - 3f * t2 + 1f;
+                        float h10 = t3 - 2f * t2 + t;
+                        float h01 = -2f * t3 + 3f * t2;
+                        float h11 = t3 - t2;
+
+                        float m0x = tile.Velocity.X * fixedDt;
+                        float m0y = tile.Velocity.Y * fixedDt;
+                        float m1x = nextTile.Velocity.X * fixedDt;
+                        float m1y = nextTile.Velocity.Y * fixedDt;
+
                         visual.Position = new Vector2(
-                            tile.Position.X + (nextTile.Position.X - tile.Position.X) * alpha,
-                            tile.Position.Y + (nextTile.Position.Y - tile.Position.Y) * alpha
+                            h00 * tile.Position.X + h10 * m0x + h01 * nextTile.Position.X + h11 * m1x,
+                            h00 * tile.Position.Y + h10 * m0y + h01 * nextTile.Position.Y + h11 * m1y
                         );
                     }
                     else
@@ -190,6 +208,9 @@ public sealed class VisualState : IVisualState
                         visual.Position = tile.Position;
                     }
                     visual.GridPosition = new Position(x, y);
+
+                    // Mark falling: use Core's physics flag (velocity is zeroed on snap, too late to read)
+                    visual.IsFalling = tile.IsFalling;
                 }
                 else
                 {
@@ -557,6 +578,12 @@ public sealed class TileVisual
 
     /// <summary>Grid position.</summary>
     public Position GridPosition { get; set; }
+
+    /// <summary>
+    /// Whether this tile is currently falling (position driven by physics sync, not Player animation).
+    /// Set by <see cref="VisualState.SyncFallingTilesFromGameState"/>, consumed by View for stretch effects.
+    /// </summary>
+    public bool IsFalling { get; set; }
 
     /// <summary>
     /// Reference count of animations controlling this tile's position.

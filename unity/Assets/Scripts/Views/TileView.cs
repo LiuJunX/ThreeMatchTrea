@@ -87,7 +87,7 @@ namespace Match3.Unity.Views
 
             // Landing bounce
             {
-                var (newBounce, squash) = TileAnimationHelper.CalculateBounceSquash(_bounceTime, dt);
+                var (newBounce, squash, _) = TileAnimationHelper.CalculateBounceSquash(_bounceTime, dt);
                 _bounceTime = newBounce;
                 if (squash != 0f)
                 {

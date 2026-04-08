@@ -178,6 +178,9 @@ namespace Match3.Unity.Controllers
 
             _initialized = true;
 
+            // // 纯 View 匀速掉落对比测试（棋盘右侧）
+            // SetupFallingTest();
+
             Debug.Log("GameController initialized");
         }
 
@@ -300,6 +303,9 @@ namespace Match3.Unity.Controllers
             }
 
             _initialized = true;
+
+            // // 纯 View 匀速掉落对比测试（棋盘右侧）
+            // SetupFallingTest();
         }
 
         /// <summary>
@@ -337,6 +343,9 @@ namespace Match3.Unity.Controllers
             }
 
             _initialized = true;
+
+            // // 纯 View 匀速掉落对比测试（棋盘右侧）
+            // SetupFallingTest();
         }
 
         /// <summary>
@@ -464,7 +473,7 @@ namespace Match3.Unity.Controllers
             _shakeController.Restore();
 
             // Tick simulation
-            _bridge.Tick(Time.deltaTime);
+            _bridge.Tick(Time.smoothDeltaTime);
 
             float viewDt = _bridge.ScaledDeltaTime;
 
@@ -790,6 +799,21 @@ namespace Match3.Unity.Controllers
                 _inputController.enabled = true;
 
             _initialized = false;
+        }
+
+        private Views.FallingTestView _fallingTest;
+
+        private void SetupFallingTest()
+        {
+            // 清理旧的（Restart 时会重建）
+            if (_fallingTest != null)
+            {
+                Destroy(_fallingTest);
+                _fallingTest = null;
+            }
+
+            _fallingTest = gameObject.AddComponent<Views.FallingTestView>();
+            _fallingTest.Setup(_bridge);
         }
 
         private IBoardView CreateBoardView()
