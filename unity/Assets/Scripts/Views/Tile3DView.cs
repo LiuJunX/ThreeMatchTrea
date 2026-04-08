@@ -161,8 +161,23 @@ namespace Match3.Unity.Views
             TileId = id;
             ApplyAppearance(type);
 
-            // Set per-instance base color via PropertyBlock (shared material + GPU Instancing)
-            var color = MeshFactory.GetCeramicColor(type);
+            // Set per-instance base color via PropertyBlock.
+            // Standard tiles: ceramic color (shared white material + GPU Instancing).
+            // Bombs/collectibles/moving obstacles: read from FBX-embedded material.
+            Color color;
+            if (type.IsBomb() || type.IsCollectible() || type.IsMovingObstacle())
+            {
+                var mat = _meshRenderer.sharedMaterial;
+                color = mat != null && mat.HasProperty(ColorProp)
+                    ? mat.GetColor(ColorProp)
+                    : mat != null && mat.HasProperty(ColorPropFallback)
+                        ? mat.GetColor(ColorPropFallback)
+                        : Color.white;
+            }
+            else
+            {
+                color = MeshFactory.GetCeramicColor(type);
+            }
             _meshRenderer.GetPropertyBlock(_propBlock);
             _propBlock.SetColor(ColorProp, color);
             _propBlock.SetColor(ColorPropFallback, color);
@@ -721,10 +736,12 @@ namespace Match3.Unity.Views
             _pose.Compose();
             if (_shadowTransform != null)
                 _shadowTransform.gameObject.SetActive(true);
-            // Reset emission/fresnel/alpha but keep base color (needed for GPU Instancing)
+            // Reset all PropertyBlock overrides for clean reuse
             _meshRenderer.GetPropertyBlock(_propBlock);
             _propBlock.SetColor(EmissionColorProp, Color.black);
             _propBlock.SetColor(FresnelColorProp, Color.black);
+            _propBlock.SetFloat(ClipYMinProp, -9999f);
+            _propBlock.SetFloat(ClipYMaxProp, 9999f);
             var resetColor = _propBlock.GetColor(ColorProp);
             resetColor.a = 1f;
             _propBlock.SetColor(ColorProp, resetColor);

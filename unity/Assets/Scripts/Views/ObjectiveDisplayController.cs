@@ -248,6 +248,17 @@ namespace Match3.Unity.Views
                     mr.sharedMaterials = mats;
                 else
                     mr.sharedMaterial = MeshFactory.GetFallbackMaterial();
+
+                // Standard tiles use a shared white material (GPU Instancing) —
+                // apply ceramic color via PropertyBlock like Tile3DView does
+                if (!elementType.IsCollectible() && !elementType.IsMovingObstacle() && !elementType.IsBomb())
+                {
+                    var propBlock = new MaterialPropertyBlock();
+                    var color = MeshFactory.GetCeramicColor(elementType);
+                    propBlock.SetColor("_BaseColor", color);
+                    propBlock.SetColor("_Color", color);
+                    mr.SetPropertyBlock(propBlock);
+                }
             }
             else
             {
