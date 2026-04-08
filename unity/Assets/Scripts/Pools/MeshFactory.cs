@@ -353,21 +353,34 @@ namespace Match3.Unity.Pools
             _groundMeshCache[type] = GetFallbackMesh();
         }
 
+        private static Material _sharedTileMaterial;
+
         /// <summary>
-        /// Get a cached ceramic material for the given tile type.
-        /// Uses confirmed color palette with colored specular highlights.
+        /// Get the shared ceramic material for all standard tile types.
+        /// Color is set per-instance via MaterialPropertyBlock for GPU Instancing.
         /// </summary>
         public static Material GetTileMaterial(ElementType type)
         {
-            if (_materialCache.TryGetValue(type, out var cached))
-                return cached;
+            // Collectibles and moving obstacles keep per-type materials (different FBX materials)
+            if (type.IsCollectible() || type.IsMovingObstacle())
+            {
+                if (_materialCache.TryGetValue(type, out var cached))
+                    return cached;
+                var color = GetCeramicColor(type);
+                var mat = CreateCeramicMaterial(color);
+                ApplyRenderTuningToMaterial(mat, _tuning);
+                mat.name = $"Tile3D_{GetTileTypeName(type)}";
+                _materialCache[type] = mat;
+                return mat;
+            }
 
-            var color = GetCeramicColor(type);
-            var mat = CreateCeramicMaterial(color);
-            ApplyRenderTuningToMaterial(mat, _tuning);
-            mat.name = $"Tile3D_{GetTileTypeName(type)}";
-            _materialCache[type] = mat;
-            return mat;
+            // All standard tiles share one material for GPU Instancing
+            if (_sharedTileMaterial != null) return _sharedTileMaterial;
+            _sharedTileMaterial = CreateCeramicMaterial(Color.white);
+            _sharedTileMaterial.enableInstancing = true;
+            ApplyRenderTuningToMaterial(_sharedTileMaterial, _tuning);
+            _sharedTileMaterial.name = "Tile3D_Shared";
+            return _sharedTileMaterial;
         }
 
         /// <summary>
@@ -376,7 +389,7 @@ namespace Match3.Unity.Pools
         /// art-directed values with higher saturation to compensate for 3D lighting.
         /// Source of truth: Match3Art/docs/art-direction.md
         /// </summary>
-        private static Color GetCeramicColor(ElementType type)
+        public static Color GetCeramicColor(ElementType type)
         {
             if (type == ElementType.Item1) return new Color(0.900f, 0.092f, 0.018f); // Red
             if (type == ElementType.Item3) return new Color(0.070f, 0.367f, 0.880f); // Blue
