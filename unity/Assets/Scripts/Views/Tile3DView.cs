@@ -75,9 +75,11 @@ namespace Match3.Unity.Views
         private static readonly int ClipYMinProp = Shader.PropertyToID("_ClipYMin");
         private static readonly int ClipYMaxProp = Shader.PropertyToID("_ClipYMax");
 
-        // Per-tile X tilt (replaces TileContainer3D rotation for clean coordinates)
-        private const float BaseTiltX = -10f;
-        private static readonly Quaternion BaseTiltQuat = Quaternion.Euler(BaseTiltX, 0f, 0f);
+        // Per-tile X tilt: gems flat (0°), bombs use a stronger tilt for visual emphasis.
+        // Set per-instance in Setup() based on element type.
+        private const float BombTiltX = -25f;
+        private static readonly Quaternion BombTiltQuat = Quaternion.Euler(BombTiltX, 0f, 0f);
+        private Quaternion _baseTiltQuat = Quaternion.identity;
 
         // Pose channel indices — each owned by exactly one animation system
         private static class Ch
@@ -92,8 +94,10 @@ namespace Match3.Unity.Views
 
         private PoseStack _pose;
 
-        // Scale multiplier: makes tiles fill more of the cell
-        private const float TileScaleMultiplier = 1.05f;
+        // Scale multiplier: normal tiles smaller than cell, bombs fill more.
+        private const float TileScaleMultiplier = 0.9f;
+        private const float BombScaleMultiplier = 1.05f;
+        private float _scaleMultiplier = TileScaleMultiplier;
 
         // Blob shadow constants
         private const float BlobShadowZ = 0.08f;
@@ -136,7 +140,7 @@ namespace Match3.Unity.Views
             _propBlock = new MaterialPropertyBlock();
             CreateBlobShadow();
             _pose = new PoseStack(transform, Ch.Count);
-            _pose[Ch.BaseTilt].rotation = BaseTiltQuat;
+            _pose[Ch.BaseTilt].rotation = _baseTiltQuat;
         }
 
         private void CreateBlobShadow()
@@ -161,27 +165,60 @@ namespace Match3.Unity.Views
             TileId = id;
             ApplyAppearance(type);
 
+            // Bombs get a stronger X tilt for visual emphasis; normal tiles stay flat.
+            _baseTiltQuat = type.IsBomb() ? BombTiltQuat : Quaternion.identity;
+            _pose[Ch.BaseTilt].rotation = _baseTiltQuat;
+            _scaleMultiplier = type.IsBomb() ? BombScaleMultiplier : TileScaleMultiplier;
+
             // Set per-instance base color via PropertyBlock.
             // Standard tiles: ceramic color (shared white material + GPU Instancing).
             // Bombs/collectibles/moving obstacles: read from FBX-embedded material.
-            Color color;
-            if (type.IsBomb() || type.IsCollectible() || type.IsMovingObstacle())
+            // Textured tiles (MC wool/diamond/etc.): also read from FBX material so the
+            //   texture shows through unmodified (baseColor = white).
+            var sharedMats = _meshRenderer.sharedMaterials;
+            if (sharedMats != null && sharedMats.Length > 1)
             {
-                var mat = _meshRenderer.sharedMaterial;
-                color = mat != null && mat.HasProperty(ColorProp)
-                    ? mat.GetColor(ColorProp)
-                    : mat != null && mat.HasProperty(ColorPropFallback)
-                        ? mat.GetColor(ColorPropFallback)
-                        : Color.white;
+                // Multi-material model (bombs, some collectibles): each submesh owns its
+                // own color. Apply PropertyBlock per-index so we don't flatten the whole
+                // renderer to submesh-0's color.
+                for (int i = 0; i < sharedMats.Length; i++)
+                {
+                    var submat = sharedMats[i];
+                    var subColor = submat != null && submat.HasProperty(ColorProp)
+                        ? submat.GetColor(ColorProp)
+                        : submat != null && submat.HasProperty(ColorPropFallback)
+                            ? submat.GetColor(ColorPropFallback)
+                            : Color.white;
+                    _meshRenderer.GetPropertyBlock(_propBlock, i);
+                    _propBlock.SetColor(ColorProp, subColor);
+                    _propBlock.SetColor(ColorPropFallback, subColor);
+                    _meshRenderer.SetPropertyBlock(_propBlock, i);
+                }
             }
             else
             {
-                color = MeshFactory.GetCeramicColor(type);
+                Color color;
+                var mat = _meshRenderer.sharedMaterial;
+                var hasBaseMap = mat != null
+                    && mat.HasProperty("_BaseMap")
+                    && mat.GetTexture("_BaseMap") != null;
+                if (type.IsCollectible() || type.IsMovingObstacle() || hasBaseMap)
+                {
+                    color = mat != null && mat.HasProperty(ColorProp)
+                        ? mat.GetColor(ColorProp)
+                        : mat != null && mat.HasProperty(ColorPropFallback)
+                            ? mat.GetColor(ColorPropFallback)
+                            : Color.white;
+                }
+                else
+                {
+                    color = MeshFactory.GetCeramicColor(type);
+                }
+                _meshRenderer.GetPropertyBlock(_propBlock);
+                _propBlock.SetColor(ColorProp, color);
+                _propBlock.SetColor(ColorPropFallback, color);
+                _meshRenderer.SetPropertyBlock(_propBlock);
             }
-            _meshRenderer.GetPropertyBlock(_propBlock);
-            _propBlock.SetColor(ColorProp, color);
-            _propBlock.SetColor(ColorPropFallback, color);
-            _meshRenderer.SetPropertyBlock(_propBlock);
 
             // No realtime shadows — blob shadows provide grounding
             _meshRenderer.shadowCastingMode = ShadowCastingMode.Off;
@@ -220,7 +257,7 @@ namespace Match3.Unity.Views
             {
                 _ufoFlying = false;
                 _pose.ResetAll();
-                _pose[Ch.BaseTilt].rotation = BaseTiltQuat;
+                _pose[Ch.BaseTilt].rotation = _baseTiltQuat;
                 if (_shadowTransform != null)
                     _shadowTransform.gameObject.SetActive(true);
             }
@@ -228,7 +265,7 @@ namespace Match3.Unity.Views
             // --- Ch.Grid: world position + base scale (stable, no animation) ---
             _pose[Ch.Grid].position = new Vector3(worldPos.x, worldPos.y, 0f);
 
-            var scaleFactor = cellSize * TileScaleMultiplier;
+            var scaleFactor = cellSize * _scaleMultiplier;
             _baseScale = new Vector3(scaleFactor, scaleFactor, scaleFactor);
             _pose[Ch.Grid].scale = _baseScale;
 
@@ -732,7 +769,7 @@ namespace Match3.Unity.Views
             _spinAngle = 0f;
             _lastMaterials = null;
             _pose.ResetAll();
-            _pose[Ch.BaseTilt].rotation = BaseTiltQuat;
+            _pose[Ch.BaseTilt].rotation = _baseTiltQuat;
             _pose.Compose();
             if (_shadowTransform != null)
                 _shadowTransform.gameObject.SetActive(true);
