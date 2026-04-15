@@ -63,11 +63,13 @@ namespace Match3.Unity.Pools
                 {
                     _tileMeshCache[type] = meshFilter.sharedMesh;
 
-                    // Cache FBX-embedded materials for collectibles and moving obstacles (clone with TileLit for clip support)
-                    if (type.IsCollectible() || type.IsMovingObstacle())
+                    // Cache FBX-embedded materials (clone with TileLit for clip support).
+                    // Standard tiles use these when they have a textured _BaseMap; otherwise
+                    // GetTileMaterial falls back to the shared ceramic material.
                     {
                         var renderer = model.GetComponentInChildren<MeshRenderer>();
-                        if (renderer != null && renderer.sharedMaterials.Length > 0)
+                        if (renderer != null && renderer.sharedMaterials.Length > 0
+                            && renderer.sharedMaterials[0] != null)
                             _customModelMaterialCache[type] = CloneMaterialsWithTileLit(renderer.sharedMaterials);
                     }
 
@@ -419,13 +421,26 @@ namespace Match3.Unity.Pools
                     return bombMats;
             }
 
-            // Collectibles and moving obstacles use FBX-embedded materials (cached during LoadTileModel)
+            // Collectibles and moving obstacles always use FBX-embedded materials.
+            // Standard tiles use them ONLY when the FBX has a textured _BaseMap
+            // (otherwise fall through to shared ceramic material for GPU Instancing).
             if (type.IsCollectible() || type.IsMovingObstacle())
             {
                 if (!_customModelMaterialCache.ContainsKey(type))
                     GetTileMesh(type); // trigger load + material cache
                 if (_customModelMaterialCache.TryGetValue(type, out var colMats) && colMats.Length > 0)
                     return colMats;
+            }
+            else
+            {
+                // Standard tile: only use FBX material if it has a _BaseMap texture
+                if (!_customModelMaterialCache.ContainsKey(type))
+                    GetTileMesh(type); // trigger load + material cache
+                if (_customModelMaterialCache.TryGetValue(type, out var tileMats)
+                    && tileMats.Length > 0 && tileMats[0] != null
+                    && tileMats[0].HasProperty("_BaseMap")
+                    && tileMats[0].GetTexture("_BaseMap") != null)
+                    return tileMats;
             }
 
             // Cached single-element array for tile materials

@@ -69,6 +69,10 @@ namespace Match3.Unity.Views
         // "emerging from behind the board" effect for pieces spawning from Spawner cells.
         private readonly Dictionary<int, float> _columnTopClipY = new();
 
+        // Per-column bottom clip boundary: world Y of the bottom edge of the bottommost Slot cell.
+        // Tiles below this boundary are clipped, hiding pieces entering Sink rows.
+        private readonly Dictionary<int, float> _columnBotClipY = new();
+
         public int ActiveTileCount => _activeTiles.Count;
 
         /// <summary>
@@ -170,6 +174,7 @@ namespace Match3.Unity.Views
             RebuildBoardVignette();
             BuildHoleZones();
             BuildSpawnClipZones();
+            BuildSinkClipZones();
         }
 
         private void RebuildBoardFloor()
@@ -201,7 +206,7 @@ namespace Match3.Unity.Views
             _boardFloor.AddComponent<MeshFilter>().mesh = mesh;
             var floorRenderer = _boardFloor.AddComponent<MeshRenderer>();
             floorRenderer.materials = BoardMeshBuilder.GetBoardMaterials();
-            floorRenderer.receiveShadows = true; // 棋盘接收棋子投影
+            floorRenderer.receiveShadows = false; // blob shadows only, no realtime shadow map
         }
 
         private void SetupEnvironment()
@@ -854,13 +859,41 @@ namespace Match3.Unity.Views
         }
 
         /// <summary>
+        /// Precompute the world-Y bottom edge of the bottommost Slot cell in each column.
+        /// Used to clip tiles entering Sink rows below the visible board boundary.
+        /// </summary>
+        private void BuildSinkClipZones()
+        {
+            _columnBotClipY.Clear();
+
+            var state = _bridge.CurrentState;
+            var cellSize = _bridge.CellSize;
+            var origin = _bridge.BoardOrigin;
+            var height = _bridge.Height;
+
+            for (int x = 0; x < state.Width; x++)
+            {
+                for (int y = state.Height - 1; y >= 0; y--)
+                {
+                    if (state.GetCell(x, y) == CellKind.Slot)
+                    {
+                        // Bottom edge of this cell in world Y
+                        float botWorldY = origin.y + (height - 1 - y) * cellSize;
+                        _columnBotClipY[x] = botWorldY;
+                        break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// Apply portal visual effects to tiles falling through hole zones.
         /// Uses shader Y-axis clipping — tile shape is preserved (no scale distortion).
         /// The shader discards pixels outside [ClipYMin, ClipYMax] in world space.
         /// </summary>
         private void UpdatePortalEffects(float cellSize, Vector2 origin, int height)
         {
-            if (_columnHoleZones.Count == 0 && _columnTopClipY.Count == 0) return;
+            if (_columnHoleZones.Count == 0 && _columnTopClipY.Count == 0 && _columnBotClipY.Count == 0) return;
 
             foreach (var kvp in _activeTiles)
             {
@@ -882,9 +915,18 @@ namespace Match3.Unity.Views
 
                 // Spawn clip: hide tiles above the board top edge for their column.
                 // Creates a smooth "emerging from behind the board" effect.
-                if (_columnTopClipY.TryGetValue(col, out var topClipY) && worldPos.y > topClipY - cellSize)
+                _columnTopClipY.TryGetValue(col, out var topClipY);
+                bool nearTop = topClipY != 0f && worldPos.y > topClipY - cellSize;
+
+                // Sink clip: hide tiles below the board bottom edge for their column.
+                _columnBotClipY.TryGetValue(col, out var botClipY);
+                bool nearBot = botClipY != 0f && worldPos.y < botClipY + cellSize;
+
+                if (nearTop || nearBot)
                 {
-                    tileView.SetClipBounds(-9999f, topClipY);
+                    float clipMin = nearBot ? botClipY : -9999f;
+                    float clipMax = nearTop ? topClipY : 9999f;
+                    tileView.SetClipBounds(clipMin, clipMax);
                     continue;
                 }
 

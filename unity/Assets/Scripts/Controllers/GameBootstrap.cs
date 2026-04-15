@@ -27,9 +27,9 @@ namespace Match3.Unity.Controllers
             // Ensure game runs when editor loses focus (needed for MCP automation)
             Application.runInBackground = true;
 
-            // Target 120fps on high-refresh-rate devices; disable VSync to allow uncapped framerate
+            // Match display refresh rate for consistent frame pacing on mobile
             QualitySettings.vSyncCount = 0;
-            Application.targetFrameRate = 120;
+            Application.targetFrameRate = (int)Screen.currentResolution.refreshRateRatio.value;
 
             // Create game root with GameController
             // GameController.Awake auto-creates Bridge, EffectManager, InputController as children

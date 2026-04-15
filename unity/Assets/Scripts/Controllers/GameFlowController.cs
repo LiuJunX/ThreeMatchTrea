@@ -39,9 +39,9 @@ namespace Match3.Unity.Controllers
         {
             Application.runInBackground = true;
 
-            // Target 120fps on high-refresh-rate devices
+            // Match display refresh rate for consistent frame pacing on mobile
             QualitySettings.vSyncCount = 0;
-            Application.targetFrameRate = 120;
+            Application.targetFrameRate = (int)Screen.currentResolution.refreshRateRatio.value;
 
             _progressService = new PlayerProgressService();
             _progress = _progressService.Load();

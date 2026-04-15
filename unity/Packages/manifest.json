@@ -1,7 +1,13 @@
 {
   "dependencies": {
-    "com.gamelovers.mcp-unity": "https://github.com/CoderGamester/mcp-unity.git",
-    "com.singularitygroup.hotreload": "git+https://gitlab.hotreload.net/root/hot-reload-releases.git#1.13.17",
+    "com.esotericsoftware.spine.spine-csharp": "https://github.com/EsotericSoftware/spine-runtimes.git?path=spine-csharp/src#4.2",
+    "com.esotericsoftware.spine.spine-unity": "https://github.com/EsotericSoftware/spine-runtimes.git?path=spine-unity/Assets/Spine#4.2",
+    "com.esotericsoftware.spine.urp-shaders": "https://github.com/EsotericSoftware/spine-runtimes.git?path=spine-unity/Modules/com.esotericsoftware.spine.urp-shaders#4.2",
+    "com.ivanmurzak.unity.mcp": "0.63.4",
+    "com.ivanmurzak.unity.mcp.animation": "1.1.23",
+    "com.ivanmurzak.unity.mcp.particlesystem": "1.0.50",
+    "com.ivanmurzak.unity.mcp.probuilder": "1.0.62",
+    "com.singularitygroup.hotreload": "git\u002Bhttps://gitlab.hotreload.net/root/hot-reload-releases.git#1.13.17",
     "com.unity.collab-proxy": "2.11.3",
     "com.unity.feature.2d": "2.0.1",
     "com.unity.ide.rider": "3.0.36",
@@ -42,5 +48,32 @@
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
     "com.unity.modules.xr": "1.0.0"
-  }
+  },
+  "scopedRegistries": [
+    {
+      "name": "OpenUPM",
+      "url": "https://package.openupm.com",
+      "scopes": [
+        "com.ivanmurzak.unity.mcp",
+        "com.ivanmurzak.unity.mcp.animation",
+        "com.ivanmurzak.unity.mcp.probuilder",
+        "com.ivanmurzak.unity.mcp.particlesystem",
+        "com.cysharp.unitask",
+        "extensions.unity.playerprefsex",
+        "org.nuget"
+      ]
+    },
+    {
+      "name": "package.openupm.com",
+      "url": "https://package.openupm.com",
+      "scopes": [
+        "com.ivanmurzak",
+        "extensions.unity",
+        "org.nuget.com.ivanmurzak",
+        "org.nuget.microsoft",
+        "org.nuget.system",
+        "org.nuget.r3"
+      ]
+    }
+  ]
 }

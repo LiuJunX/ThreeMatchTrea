@@ -507,14 +507,6 @@ namespace Match3.Unity.Bridge
             var events = (IReadOnlyList<GameEvent>)_eventBuffer;
             if (_eventBuffer.Count > 0)
             {
-                foreach (var evt in _eventBuffer)
-                {
-                    if (evt is Match3.Core.Events.ObstacleDamagedEvent dmg)
-                        Debug.Log($"[Obstacle] Damaged: {dmg.Type} at ({dmg.GridPosition.X},{dmg.GridPosition.Y}) → stage {dmg.RemainingStage}");
-                    else if (evt is Match3.Core.Events.ObstacleDestroyedEvent dst)
-                        Debug.Log($"[Obstacle] Destroyed: {dst.Type} at ({dst.GridPosition.X},{dst.GridPosition.Y}) IsGoal={dst.IsGoal}");
-                }
-
                 _objectiveCollector.Process(events, state, OnObjectiveCollected);
 
                 var commands = _choreographer.Choreograph(events, _player.CurrentTime);
@@ -524,10 +516,12 @@ namespace Match3.Unity.Bridge
             _player.Tick(scaledDelta);
             _player.VisualState.UpdateEffects(scaledDelta);
 
-            // Interpolate tile positions between current and next tick for smooth rendering
+            // Interpolate tile positions between current and next tick for smooth rendering.
+            // Cubic Hermite interpolation uses velocity to produce smooth curves on high-refresh displays.
             var nextState = _gameEngine.NextState;
             float alpha = _gameEngine.InterpolationAlpha;
-            _player.VisualState.SyncFallingTilesFromGameState(in state, in nextState, alpha);
+            float fixedDt = _gameEngine.FixedDeltaTime;
+            _player.VisualState.SyncFallingTilesFromGameState(in state, in nextState, alpha, fixedDt);
         }
 
         private void TryMakeAutoMove()

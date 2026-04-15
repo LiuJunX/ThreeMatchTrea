@@ -88,7 +88,7 @@ namespace Match3.Unity.Controllers
         {
             OnUserInput?.Invoke();
             var to = _inputSystem.GetSwipeTarget(from, direction);
-            if (_bridge.GetTileIdAt(to) >= 0)
+            if (_bridge.GetTileIdAt(to) >= 0 || _bridge.CurrentState.IsEmptySwapTarget(to))
             {
                 _bridge.ApplyMove(from, to);
             }
